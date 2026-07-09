@@ -1,0 +1,111 @@
+services:
+  postgres-dev:
+    image: postgres:16-alpine
+    container_name: feba_postgres_dev
+    environment:
+      POSTGRES_DB: feba_dev
+      POSTGRES_USER: feba_user
+      POSTGRES_PASSWORD: feba_dev_pass
+    volumes:
+      - postgres_dev_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U feba_user -d feba_dev"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis-dev:
+    image: redis:7-alpine
+    container_name: feba_redis_dev
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend-dev:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    container_name: feba_backend_dev
+    env_file: .env.dev
+    volumes:
+      - ./backend:/app
+      - media_dev:/app/media
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres-dev:
+        condition: service_healthy
+      redis-dev:
+        condition: service_healthy
+    command: python /app/entrypoint.dev.py
+    healthcheck:
+      # N'utilise PAS curl (absent de l'image python:3.12-slim, pour
+      # ne pas alourdir l'image avec un paquet supplémentaire) — un
+      # one-liner Python suffit et est toujours disponible.
+      test: ["CMD", "python", "-c", "import urllib.request as u; u.urlopen('http://localhost:8000/api/health/', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+
+  celery-dev:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    container_name: feba_celery_dev
+    env_file: .env.dev
+    volumes:
+      - ./backend:/app
+      - media_dev:/app/media
+    depends_on:
+      backend-dev:
+        # Attendre que le backend soit RÉELLEMENT opérationnel (migrations
+        # appliquées + serveur qui répond), pas seulement démarré. Évite
+        # que Celery ne se lance en parallèle d'un backend en échec et ne
+        # masque l'erreur réelle derrière un deuxième crash redondant.
+        condition: service_healthy
+    command: celery -A feba_project worker --loglevel=info
+
+  celery-beat-dev:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    container_name: feba_celery_beat_dev
+    env_file: .env.dev
+    volumes:
+      - ./backend:/app
+    depends_on:
+      backend-dev:
+        condition: service_healthy
+    command: celery -A feba_project beat --loglevel=info
+
+  frontend-dev:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    container_name: feba_frontend_dev
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    ports:
+      - "5173:5173"
+    depends_on:
+      backend-dev:
+        condition: service_healthy
+    # VITE_API_URL vide = Vite utilise son proxy intégré (/api → backend-dev:8000)
+    # défini dans vite.config.js — c'est le mode correct pour le développement.
+    # Ne PAS mettre http://localhost:8000 ici : ça bypasse le proxy et casse le
+    # remplacement automatique de token 401.
+    environment:
+      - VITE_API_URL=/api
+      - VITE_WS_URL=ws://localhost:8000
+
+volumes:
+  postgres_dev_data:
+  media_dev:

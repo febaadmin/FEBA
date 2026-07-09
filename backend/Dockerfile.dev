@@ -1,0 +1,28 @@
+FROM python:3.12-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+# Rend les erreurs Python visibles immédiatement dans docker logs (pas de buffer)
+ENV PYTHONFAULTHANDLER=1
+
+RUN apt-get update && apt-get install -y \
+    bash \
+    gcc libpq-dev \
+    libcairo2 libpango-1.0-0 libpangocairo-1.0-0 \
+    libgdk-pixbuf-xlib-2.0-0 libffi-dev shared-mime-info \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Copier requirements AVANT le code source pour bénéficier du cache
+# Docker (évite de réinstaller les dépendances si seulement le code
+# a changé, pas les requirements).
+COPY requirements/base.txt requirements/base.txt
+COPY requirements/dev.txt requirements/dev.txt
+RUN pip install --no-cache-dir -r requirements/dev.txt
+
+COPY . .
+
+EXPOSE 8000
+# L'entrypoint dev effectue : attendre postgres → check → migrate → runserver
+CMD ["python", "/app/entrypoint.dev.py"]

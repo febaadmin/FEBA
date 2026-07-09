@@ -1,0 +1,109 @@
+services:
+  postgres-prod:
+    image: postgres:16-alpine
+    container_name: feba_postgres_prod
+    environment:
+      POSTGRES_DB: feba_prod
+      POSTGRES_USER: feba_user
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - postgres_prod_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U feba_user -d feba_prod"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis-prod:
+    image: redis:7-alpine
+    container_name: feba_redis_prod
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend-prod:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.prod
+    container_name: feba_backend_prod
+    env_file: .env.prod
+    volumes:
+      - media_prod:/app/media
+      - static_prod:/app/staticfiles
+    depends_on:
+      postgres-prod:
+        condition: service_healthy
+      redis-prod:
+        condition: service_healthy
+    restart: unless-stopped
+    expose:
+      - "8000"
+    command: python /app/entrypoint.prod.py
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request as u; u.urlopen('http://localhost:8000/api/health/', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+
+  celery-prod:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.prod
+    container_name: feba_celery_prod
+    env_file: .env.prod
+    volumes:
+      - media_prod:/app/media
+    depends_on:
+      backend-prod:
+        condition: service_healthy
+    restart: unless-stopped
+    command: celery -A feba_project worker --loglevel=info --concurrency=2
+
+  celery-beat:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.prod
+    container_name: feba_celery_beat
+    env_file: .env.prod
+    depends_on:
+      backend-prod:
+        condition: service_healthy
+    restart: unless-stopped
+    command: celery -A feba_project beat --loglevel=info
+
+  frontend-prod:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.prod
+    container_name: feba_frontend_prod
+    restart: unless-stopped
+    expose:
+      - "80"
+
+  nginx-prod:
+    image: nginx:1.25-alpine
+    container_name: feba_nginx_prod
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.prod.conf:/etc/nginx/nginx.conf:ro
+      - static_prod:/var/www/static:ro
+      - media_prod:/var/www/media:ro
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+    depends_on:
+      backend-prod:
+        condition: service_healthy
+      frontend-prod:
+        condition: service_started
+    restart: unless-stopped
+
+volumes:
+  postgres_prod_data:
+  media_prod:
+  static_prod:

@@ -1,0 +1,108 @@
+# ══════════════════════════════════════════════════════════════════════
+# FEBA — Pile Jitsi Meet AUTO-HÉBERGÉE (service indépendant, FIX v35)
+#
+# Architecture conforme à la mission : Jitsi n'est JAMAIS mélangé à
+# Django — c'est une pile séparée (web + prosody + jicofo + jvb) avec
+# authentification JWT : seuls les jetons signés émis par le backend
+# FEBA (JITSI_APP_SECRET partagé) ouvrent une salle.
+#
+#   Démarrage local :
+#     cp .env.jitsi.example .env.jitsi        # renseigner les secrets
+#     docker compose -f docker-compose.jitsi.yml --env-file .env.jitsi up -d
+#     → interface Jitsi sur http://localhost:8443 (HTTPS auto-signé :8444)
+#     → côté FEBA : JITSI_DOMAIN=localhost:8443 + mêmes APP_ID/SECRET
+#
+#   Production : voir guide_deploiement_production.pdf §9
+#     (domaine dédié type meet.mon-ecole.bj, HTTPS Let's Encrypt,
+#      ports UDP 10000 ouverts, TURN si réseaux restrictifs).
+# ══════════════════════════════════════════════════════════════════════
+
+services:
+  jitsi-web:
+    image: jitsi/web:stable
+    restart: unless-stopped
+    ports:
+      - "${JITSI_HTTP_PORT:-8443}:80"
+      - "${JITSI_HTTPS_PORT:-8444}:443"
+    environment:
+      - ENABLE_AUTH=1
+      - ENABLE_GUESTS=0
+      - AUTH_TYPE=jwt
+      - JWT_APP_ID=${JITSI_APP_ID}
+      - JWT_APP_SECRET=${JITSI_APP_SECRET}
+      - PUBLIC_URL=${JITSI_PUBLIC_URL}
+      - XMPP_DOMAIN=meet.jitsi
+      - XMPP_AUTH_DOMAIN=auth.meet.jitsi
+      - XMPP_BOSH_URL_BASE=http://prosody:5280
+      - XMPP_GUEST_DOMAIN=guest.meet.jitsi
+      - XMPP_MUC_DOMAIN=muc.meet.jitsi
+      - TZ=${TZ:-Africa/Porto-Novo}
+    volumes:
+      - jitsi-web-config:/config
+    networks: [jitsi]
+    depends_on: [prosody]
+
+  prosody:
+    image: jitsi/prosody:stable
+    restart: unless-stopped
+    environment:
+      - ENABLE_AUTH=1
+      - ENABLE_GUESTS=0
+      - AUTH_TYPE=jwt
+      - JWT_APP_ID=${JITSI_APP_ID}
+      - JWT_APP_SECRET=${JITSI_APP_SECRET}
+      - JWT_ALLOW_EMPTY=0
+      - XMPP_DOMAIN=meet.jitsi
+      - XMPP_AUTH_DOMAIN=auth.meet.jitsi
+      - XMPP_GUEST_DOMAIN=guest.meet.jitsi
+      - XMPP_MUC_DOMAIN=muc.meet.jitsi
+      - XMPP_INTERNAL_MUC_DOMAIN=internal-muc.meet.jitsi
+      - JICOFO_AUTH_PASSWORD=${JICOFO_AUTH_PASSWORD}
+      - JVB_AUTH_PASSWORD=${JVB_AUTH_PASSWORD}
+      - TZ=${TZ:-Africa/Porto-Novo}
+    volumes:
+      - jitsi-prosody-config:/config
+    networks:
+      jitsi:
+        aliases: [meet.jitsi, auth.meet.jitsi, muc.meet.jitsi]
+
+  jicofo:
+    image: jitsi/jicofo:stable
+    restart: unless-stopped
+    environment:
+      - XMPP_SERVER=prosody
+      - XMPP_DOMAIN=meet.jitsi
+      - XMPP_AUTH_DOMAIN=auth.meet.jitsi
+      - XMPP_INTERNAL_MUC_DOMAIN=internal-muc.meet.jitsi
+      - JICOFO_AUTH_PASSWORD=${JICOFO_AUTH_PASSWORD}
+      - TZ=${TZ:-Africa/Porto-Novo}
+    volumes:
+      - jitsi-jicofo-config:/config
+    networks: [jitsi]
+    depends_on: [prosody]
+
+  jvb:
+    image: jitsi/jvb:stable
+    restart: unless-stopped
+    ports:
+      - "${JVB_PORT:-10000}:10000/udp"
+    environment:
+      - XMPP_SERVER=prosody
+      - XMPP_AUTH_DOMAIN=auth.meet.jitsi
+      - XMPP_INTERNAL_MUC_DOMAIN=internal-muc.meet.jitsi
+      - JVB_AUTH_PASSWORD=${JVB_AUTH_PASSWORD}
+      - JVB_ADVERTISE_IPS=${JVB_ADVERTISE_IPS:-}
+      - TZ=${TZ:-Africa/Porto-Novo}
+    volumes:
+      - jitsi-jvb-config:/config
+    networks: [jitsi]
+    depends_on: [prosody]
+
+networks:
+  jitsi:
+
+volumes:
+  jitsi-web-config:
+  jitsi-prosody-config:
+  jitsi-jicofo-config:
+  jitsi-jvb-config:
