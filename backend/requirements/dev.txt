@@ -3,3 +3,6 @@ django-debug-toolbar==4.3.0
 factory-boy==3.3.0
 Faker==24.11.0
 pypdf==6.14.2
+
+pytest==9.1.1
+pytest-django==4.12.0
