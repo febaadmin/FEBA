@@ -87,6 +87,12 @@ class SchoolYearSerializer(serializers.ModelSerializer):
     class Meta:
         model = SchoolYear
         fields = ['id', 'school', 'school_name', 'name', 'start_date', 'end_date', 'is_current', 'created_at']
+        # DRF génère automatiquement un UniqueTogetherValidator depuis la
+        # contrainte (school, name) qui rend `school` OBLIGATOIRE dans le
+        # payload — alors que le tenant est résolu côté vue (admin → son
+        # établissement). L'unicité du nom est déjà contrôlée dans validate()
+        # avec un message clair, et la contrainte base reste le garde-fou final.
+        validators = []
         extra_kwargs = {
             'school': {'required': False, 'allow_null': True},
             'name': {'error_messages': {'required': "Le nom de l'année est obligatoire (ex: 2026-2027)."}},

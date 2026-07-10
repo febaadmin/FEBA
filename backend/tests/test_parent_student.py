@@ -46,8 +46,14 @@ def make_school(name="École Test FEBA"):
 
 def get_default_school():
     """Une école partagée par défaut pour les tests qui n'en testent pas
-    explicitement plusieurs (évite de créer 50 écoles inutiles)."""
-    if "school" not in _DEFAULT_SCHOOL:
+    explicitement plusieurs (évite de créer 50 écoles inutiles).
+
+    FIX : le cache module survivait au rollback effectué entre chaque test
+    (TestCase) → les utilisateurs créés ensuite pointaient vers une école
+    SUPPRIMÉE de la base, et le login échouait en School.DoesNotExist.
+    On revalide donc l'existence de l'école cachée à chaque appel."""
+    school = _DEFAULT_SCHOOL.get("school")
+    if school is None or not School.objects.filter(pk=school.pk).exists():
         _DEFAULT_SCHOOL["school"] = make_school("École par défaut (tests)")
     return _DEFAULT_SCHOOL["school"]
 
@@ -316,14 +322,21 @@ class ParentStudentConcurrencyTest(TransactionTestCase):
         barrier = threading.Barrier(2)
 
         def assign(parent, result_list):
-            c = APIClient()
-            c.force_authenticate(user=self.admin)
-            barrier.wait()  # synchronise les deux threads
-            resp = c.post(
-                f"/api/parents/{parent.id}/link_student/",
-                {"student_id": student.id},
-            )
-            result_list.append(resp.status_code)
+            try:
+                c = APIClient()
+                c.force_authenticate(user=self.admin)
+                barrier.wait()  # synchronise les deux threads
+                resp = c.post(
+                    f"/api/parents/{parent.id}/link_student/",
+                    {"student_id": student.id},
+                )
+                result_list.append(resp.status_code)
+            finally:
+                # FIX : chaque thread ouvre sa propre connexion DB ; sans
+                # fermeture explicite, la destruction de la base de test
+                # échouait ("database is being accessed by 2 other sessions").
+                from django.db import connections
+                connections.close_all()
 
         t1 = threading.Thread(target=assign, args=(p1, results))
         t2 = threading.Thread(target=assign, args=(p2, results))

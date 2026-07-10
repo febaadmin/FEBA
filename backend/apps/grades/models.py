@@ -1,7 +1,7 @@
 """
 Grade model — v18 FEBA Bilingual
 Corrections critiques :
-  1. Système bilingue : Moy FR × 40% + Moy EN × 60% = Moy Bilingue
+  1. Système bilingue : Moy FR × 60% + Moy EN × 40% = Moy Bilingue
   2. Système de lettres : A+/A/A-/B+/B/B-/C+/C/C-/D+/D/D-/F
   3. Calcul annuel correct : (T1+T2+T3) / nb_trimestres
   4. Matières maternelle : notation en lettres uniquement
@@ -270,8 +270,14 @@ class Grade(models.Model):
         return round(sum(avgs) / Decimal(len(avgs)), 2)
 
     # ──────────────────────────────────────────────────────────────────────────
-    # Bilingual Calculation — FR × 40% + EN × 60%
+    # Bilingual Calculation — FR × 60% + EN × 40%
     # ──────────────────────────────────────────────────────────────────────────
+
+    # Pondérations OFFICIELLES de la moyenne bilingue (BUG N°6) :
+    # Moyenne Bilingue = (Moyenne Française × 60%) + (Moyenne Anglaise × 40%)
+    BILINGUAL_FR_WEIGHT = Decimal('0.6')
+    BILINGUAL_EN_WEIGHT = Decimal('0.4')
+    BILINGUAL_FORMULA = 'Bilingue = (Moyenne FR × 60%) + (Moyenne EN × 40%)'
 
     @classmethod
     def calculate_bilingual_averages(cls, student, school_year, period):
@@ -279,7 +285,7 @@ class Grade(models.Model):
         Retourne {
             'fr_average': ...,
             'en_average': ...,
-            'bilingual_average': fr*0.4 + en*0.6,
+            'bilingual_average': fr*0.6 + en*0.4,
             'fr_subjects': [...],
             'en_subjects': [...],
             'has_fr_subjects': bool,
@@ -307,7 +313,9 @@ class Grade(models.Model):
         en_avg = weighted_avg(en_subjects)
 
         if fr_avg is not None and en_avg is not None:
-            bilingual = round(fr_avg * Decimal('0.4') + en_avg * Decimal('0.6'), 2)
+            bilingual = round(
+                fr_avg * cls.BILINGUAL_FR_WEIGHT + en_avg * cls.BILINGUAL_EN_WEIGHT, 2
+            )
         elif fr_avg is not None:
             bilingual = fr_avg
         elif en_avg is not None:
@@ -323,7 +331,7 @@ class Grade(models.Model):
             'en_subjects': list(en_subjects.values()),
             'has_fr_subjects': bool(fr_subjects),
             'has_en_subjects': bool(en_subjects),
-            'formula': 'Bilingue = (Moyenne FR × 40%) + (Moyenne EN × 60%)',
+            'formula': cls.BILINGUAL_FORMULA,
         }
 
     @classmethod
@@ -349,6 +357,68 @@ class Grade(models.Model):
             'formula': 'Bilingue Annuelle = Moyenne des moyennes bilingues trimestrielles',
         }
         return result
+
+    @classmethod
+    def get_class_bilingual_stats(cls, student_class, school_year, period):
+        """
+        Statistiques de classe pour le bulletin (BUG N°2) : moyennes
+        minimales et maximales de la classe — FR, EN, bilingue et générale.
+        Calculées dynamiquement à partir des résultats réels de TOUS les
+        élèves actifs de la classe (aucune valeur codée en dur).
+        period='annual' agrège les trimestres comme get_annual_bilingual().
+        """
+        from apps.students.models import Student
+
+        if student_class is None or school_year is None:
+            return {
+                'students_count': 0, 'graded_count': 0,
+                'fr_min': None, 'fr_max': None,
+                'en_min': None, 'en_max': None,
+                'bi_min': None, 'bi_max': None,
+                'general_min': None, 'general_max': None,
+            }
+
+        # Élèves de la classe POUR CETTE ANNÉE (inscriptions annuelles),
+        # avec repli sur le pointeur current_class.
+        students = list(Student.objects.filter(
+            enrollments__school_year=school_year,
+            enrollments__class_obj=student_class,
+            is_active=True,
+        ).distinct()) or list(student_class.students.filter(is_active=True))
+
+        fr_list, en_list, bi_list, gen_list = [], [], [], []
+        for s in students:
+            if period == 'annual':
+                data = cls.get_annual_bilingual(s, school_year)['annual']
+                gen = cls.calculate_annual_average(s, school_year)
+            else:
+                data = cls.calculate_bilingual_averages(s, school_year, period)
+                gen = cls.calculate_average(s, school_year, period)
+            if data['fr_average'] is not None:
+                fr_list.append(data['fr_average'])
+            if data['en_average'] is not None:
+                en_list.append(data['en_average'])
+            if data['bilingual_average'] is not None:
+                bi_list.append(data['bilingual_average'])
+            if gen is not None:
+                gen_list.append(gen)
+
+        def _min_max(values):
+            return (min(values), max(values)) if values else (None, None)
+
+        fr_min, fr_max = _min_max(fr_list)
+        en_min, en_max = _min_max(en_list)
+        bi_min, bi_max = _min_max(bi_list)
+        gen_min, gen_max = _min_max(gen_list)
+
+        return {
+            'students_count': len(students),
+            'graded_count': len(gen_list),
+            'fr_min': fr_min, 'fr_max': fr_max,
+            'en_min': en_min, 'en_max': en_max,
+            'bi_min': bi_min, 'bi_max': bi_max,
+            'general_min': gen_min, 'general_max': gen_max,
+        }
 
 
 class GradeHistory(models.Model):

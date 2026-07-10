@@ -142,10 +142,16 @@ class ScheduleTenantTest(TwoSchoolBase):
     def test_admin_a_cannot_list_schedule_of_school_b(self):
         """GET /api/schedule/ : admin A ne voit que les créneaux de son école."""
         from apps.classes.models import Class
-        cls_b = Class.objects.create(name="6ème B", school_year=self.year_b)
+        from apps.schools.models import Level
+        # FIX : Class.level est obligatoire (NOT NULL) — le test créait la
+        # classe sans niveau et échouait en NotNullViolation.
+        level_b = Level.objects.create(school=self.school_b, name="6ème", order=1)
+        cls_b = Class.objects.create(name="6ème B", school_year=self.year_b, level=level_b)
+        from apps.subjects.models import Subject
+        subj_b = Subject.objects.create(school=self.school_b, name="Maths B", code="MATB", coefficient=1)
         from apps.schedule.models import ClassSchedule
         sch_b = ClassSchedule.objects.create(
-            cls=cls_b, school_year=self.year_b,
+            cls=cls_b, school_year=self.year_b, subject=subj_b,
             day_of_week=1, start_time="08:00", end_time="09:00",
         )
         resp = self.client_a.get("/api/schedule/")

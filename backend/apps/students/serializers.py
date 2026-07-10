@@ -103,6 +103,11 @@ class StudentSerializer(serializers.ModelSerializer):
         extra_kwargs = {
             'first_name': {'error_messages': {'required': 'Le prénom est obligatoire.'}},
             'last_name':  {'error_messages': {'required': 'Le nom est obligatoire.'}},
+            # Le UniqueValidator auto-généré (OneToOne user) renvoyait le
+            # message générique « Un objet Élève avec ce champ user existe
+            # déjà » AVANT validate_user() ; on le retire pour laisser le
+            # message métier clair (compte déjà associé → réinscription).
+            'user': {'validators': []},
         }
 
     def get_full_name(self, obj):

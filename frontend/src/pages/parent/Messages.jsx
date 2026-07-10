@@ -423,8 +423,8 @@ export default function MessagesPage() {
             <textarea
               {...composeForm.register("body", { required: true })}
               className="input"
-              rows={5}
-              placeholder="Votre message…" rows={6} style={{resize:"vertical",minHeight:"120px"}}
+              rows={6}
+              placeholder="Votre message…" style={{resize:"vertical",minHeight:"120px"}}
             />
           </div>
           <div className="flex items-center gap-2">

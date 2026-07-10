@@ -5,19 +5,60 @@ from apps.schools.models import SchoolYear
 from apps.classes.models import Class
 
 
+import re
+
+
+def _school_matricule_prefix(school):
+    """
+    Préfixe court du matricule pour un établissement.
+    Priorité : School.matricule_prefix (configurable) → dernier segment du
+    slug s'il est parlant (groupe-scolaire-feba → FEBA) → début du slug.
+    """
+    if school is None:
+        return "ECOLE"
+    configured = (getattr(school, "matricule_prefix", "") or "").strip()
+    if configured:
+        return re.sub(r"[^A-Z0-9]", "", configured.upper())[:8] or "ECOLE"
+    slug = (school.slug or "").strip()
+    if slug:
+        last = slug.split("-")[-1]
+        if len(last) >= 3:
+            return last.upper()[:8]
+        return slug.upper().replace("-", "")[:8]
+    return "ECOLE"
+
+
 def generate_matricule(school=None):
-    """Génère un matricule unique POUR UN ÉTABLISSEMENT donné.
-    Le préfixe reprend le slug de l'établissement (ex: FEBA, LYCEE-X)
-    pour rester lisible même quand plusieurs tenants partagent la même
-    base de données.
+    """
+    BUG N°8 — nouvelle génération de matricules : FEBA_26_0001
+      - FEBA : préfixe court de l'établissement (configurable, sinon dérivé) ;
+      - 26   : deux derniers chiffres de l'année d'inscription ;
+      - 0001 : numéro séquentiel PAR établissement et PAR année.
+
+    Garanties :
+      - unique   : séquence calculée sur le max existant + garde-fou de
+                   collision dans Student.save() ;
+      - lisible  : court (FEBA_26_0001 = 12 caractères) ;
+      - séquentiel : 0001, 0002, ... par année ;
+      - compatible : les anciens matricules (GROUPESCOL-2026-0005) restent
+                   valides tels quels — aucun renumérotage, recherche et
+                   unicité par établissement inchangées.
     """
     year = timezone.now().year
-    prefix = (school.slug.upper().replace("-", "")[:10] if school and school.slug else "ECOLE")
-    qs = Student.objects.filter(enrollment_date__year=year)
+    prefix = _school_matricule_prefix(school)
+    base = f"{prefix}_{year % 100:02d}_"
+
+    qs = Student.objects.filter(matricule__startswith=base)
     if school is not None:
         qs = qs.filter(school=school)
-    count = qs.count() + 1
-    return f"{prefix}-{year}-{count:04d}"
+
+    max_seq = 0
+    pattern = re.compile(re.escape(base) + r"(\d+)$")
+    for matricule in qs.values_list("matricule", flat=True):
+        match = pattern.match(matricule)
+        if match:
+            max_seq = max(max_seq, int(match.group(1)))
+    return f"{base}{max_seq + 1:04d}"
 
 
 class Student(models.Model):

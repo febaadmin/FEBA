@@ -137,8 +137,8 @@ class SummaryBilingualSuperadminTests(TestCase):
             f"/api/grades/bilingual/?student={self.student.id}&period=T1&school_year={self.year.id}"
         )
         self.assertEqual(resp.status_code, status.HTTP_200_OK, resp.data)
-        # FR 15 (40%) + EN 10 (60%) = 6 + 6 = 12
-        self.assertEqual(float(resp.data["bilingual_average"]), 12.0)
+        # BUG N°6 — formule corrigée : FR 15 (60%) + EN 10 (40%) = 9 + 4 = 13
+        self.assertEqual(float(resp.data["bilingual_average"]), 13.0)
         self.assertTrue(resp.data["has_fr_subjects"])
         self.assertTrue(resp.data["has_en_subjects"])
 

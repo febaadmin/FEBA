@@ -94,13 +94,16 @@ export default function AdminHomework() {
       <PageHeader title="Devoirs" subtitle={`${homework.length} devoir(s)`}
         action={<button onClick={openCreate} className="btn-primary flex items-center gap-2"><Plus className="w-4 h-4" />Nouveau devoir</button>} />
       <div className="card">
-        <DataTable columns={cols} data={homework} loading={isLoading} onRowClick={row => setViewItem(row)} actions={row => (
-          <div className="flex items-center gap-1 justify-end">
-            <button onClick={() => openEdit(row)} className="p-1.5 rounded-lg hover:bg-primary-50 text-slate-400 hover:text-primary"><Pencil className="w-4 h-4"
+        {/* FIX BUG N°9 (audit) : selectable/onBulkDelete/bulkDeletePending
+            étaient posées sur l'icône <Pencil> (warnings React + sélection
+            groupée inopérante). Remises sur DataTable. */}
+        <DataTable columns={cols} data={homework} loading={isLoading} onRowClick={row => setViewItem(row)}
           selectable
           onBulkDelete={ids => bulkDeleteMut.mutate(ids)}
           bulkDeletePending={bulkDeleteMut.isPending}
-        /></button>
+          actions={row => (
+          <div className="flex items-center gap-1 justify-end">
+            <button onClick={() => openEdit(row)} className="p-1.5 rounded-lg hover:bg-primary-50 text-slate-400 hover:text-primary"><Pencil className="w-4 h-4" /></button>
             <button onClick={() => setDeleteItem(row)} className="p-1.5 rounded-lg hover:bg-danger-50 text-slate-400 hover:text-danger"><Trash2 className="w-4 h-4" /></button>
           </div>
         )} />

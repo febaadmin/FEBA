@@ -113,6 +113,52 @@ class SchoolYearViewSet(viewsets.ModelViewSet):
         if instance.is_current:
             SchoolYear.objects.filter(school=instance.school, is_current=True).exclude(pk=instance.pk).update(is_current=False)
 
+    def destroy(self, request, *args, **kwargs):
+        """
+        BUG N°5 — suppression d'une année scolaire avec garde-fous :
+          - une année ACTIVE (is_current=True) ne peut pas être supprimée ;
+          - une année UTILISÉE (inscriptions, notes, classes, paiements,
+            bulletins, absences...) ne peut pas être supprimée : contrôle
+            d'intégrité explicite, réponse 409 listant les dépendances.
+        """
+        year = self.get_object()
+
+        if year.is_current:
+            return Response({
+                'error': f"L'année {year.name} est l'année active : elle ne peut pas "
+                         "être supprimée. Clôturez-la ou activez une autre année d'abord.",
+            }, status=status.HTTP_409_CONFLICT)
+
+        deps = {
+            'inscriptions': year.enrollments.count(),
+            'classes': year.classes.count(),
+            'notes': year.grades.count(),
+            'élèves rattachés': year.students.count(),
+        }
+        # Relations sans related_name explicite — comptage direct
+        from apps.payments.models import Payment
+        from apps.bulletins.models import Bulletin
+        from apps.attendance.models import Attendance
+        deps['paiements'] = Payment.objects.filter(school_year=year).count()
+        deps['bulletins'] = Bulletin.objects.filter(school_year=year).count()
+        deps['absences'] = Attendance.objects.filter(school_year=year).count()
+
+        blocking = {k: v for k, v in deps.items() if v}
+        if blocking:
+            detail = ", ".join(f"{v} {k}" for k, v in blocking.items())
+            return Response({
+                'error': f"Suppression impossible : l'année {year.name} est utilisée par "
+                         f"{detail}. Supprimez ou déplacez d'abord ces données.",
+                'dependencies': deps,
+            }, status=status.HTTP_409_CONFLICT)
+
+        name = year.name
+        year.delete()
+        return Response(
+            {'detail': f"Année scolaire {name} supprimée."},
+            status=status.HTTP_200_OK,
+        )
+
     @action(detail=True, methods=['post'])
     def set_current(self, request, pk=None):
         from django.db import transaction

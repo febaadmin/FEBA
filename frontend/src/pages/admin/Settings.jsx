@@ -38,6 +38,8 @@ export default function AdminSettings() {
   // ── Modal states ──────────────────────────────────────────────────────────
   const [subjectModal, setSubjectModal]       = useState(false);
   const [yearModal, setYearModal]             = useState(false);
+  const [editYear, setEditYear]               = useState(null);
+  const [deleteYear, setDeleteYear]           = useState(null);
   const [roomModal, setRoomModal]             = useState(false);
   const [editRoom, setEditRoom]               = useState(null);
   const [deleteSubject, setDeleteSubject]     = useState(null);
@@ -129,6 +131,28 @@ export default function AdminSettings() {
   const activateYearMut = useMutation({
     mutationFn: schoolsAPI.activateYear,
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["years"] }); toast.success("Année activée !"); },
+  });
+  // BUG N°5 — CRUD complet : modification et suppression d'une année
+  const updateYearMut = useMutation({
+    mutationFn: ({ id, data }) => schoolsAPI.updateYear(id, data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["years"] });
+      toast.success("Année scolaire modifiée !");
+      setYearModal(false); setEditYear(null); rsy();
+    },
+    onError: (e) => toast.error(extractApiError(e)),
+  });
+  const deleteYearMut = useMutation({
+    mutationFn: schoolsAPI.deleteYear,
+    onSuccess: (d) => {
+      qc.invalidateQueries({ queryKey: ["years"] });
+      toast.success(d.data?.detail || "Année scolaire supprimée.");
+      setDeleteYear(null);
+    },
+    onError: (e) => {
+      toast.error(extractApiError(e));
+      setDeleteYear(null);
+    },
   });
   const closeYearMut = useMutation({
     mutationFn: schoolsAPI.closeYear,
@@ -346,7 +370,8 @@ export default function AdminSettings() {
           <h3 className="font-semibold text-slate-800 flex items-center gap-2">
             <Calendar className="w-4 h-4" />Années Scolaires
           </h3>
-          <button onClick={() => setYearModal(true)} className="btn-primary text-sm flex items-center gap-1">
+          <button onClick={() => { setEditYear(null); rsy({ name: "", start_date: "", end_date: "" }); setYearModal(true); }}
+            className="btn-primary text-sm flex items-center gap-1">
             <Plus className="w-4 h-4" />Nouvelle année
           </button>
         </div>
@@ -357,17 +382,41 @@ export default function AdminSettings() {
                 <p className="text-sm font-medium text-slate-800">{y.name}</p>
                 <p className="text-xs text-slate-400">{y.start_date} → {y.end_date}</p>
               </div>
-              {y.is_current ? (
-                <span className="flex items-center gap-2">
-                  <span className="badge bg-success-50 text-success flex items-center gap-1">
-                    <Check className="w-3 h-3" />En cours
+              <div className="flex items-center gap-2">
+                {/* BUG N°5 — Modifier */}
+                <button
+                  onClick={() => {
+                    setEditYear(y);
+                    rsy({ name: y.name, start_date: y.start_date, end_date: y.end_date });
+                    setYearModal(true);
+                  }}
+                  title="Modifier cette année"
+                  className="p-1.5 rounded-lg hover:bg-primary-50 text-slate-400 hover:text-primary">
+                  <Pencil className="w-4 h-4" />
+                </button>
+                {/* BUG N°5 — Supprimer (interdit sur l'année active) */}
+                <button
+                  onClick={() => y.is_current
+                    ? toast.error("L'année active ne peut pas être supprimée. Clôturez-la d'abord.")
+                    : setDeleteYear(y)}
+                  title={y.is_current ? "Année active : suppression impossible" : "Supprimer cette année"}
+                  className={`p-1.5 rounded-lg ${y.is_current
+                    ? "text-slate-200 cursor-not-allowed"
+                    : "hover:bg-danger-50 text-slate-400 hover:text-danger"}`}>
+                  <Trash2 className="w-4 h-4" />
+                </button>
+                {y.is_current ? (
+                  <span className="flex items-center gap-2">
+                    <span className="badge bg-success-50 text-success flex items-center gap-1">
+                      <Check className="w-3 h-3" />En cours
+                    </span>
+                    <button onClick={() => closeYearMut.mutate(y.id)} title="Clôturer cette année"
+                      className="btn-secondary text-xs py-1 px-2">Clôturer</button>
                   </span>
-                  <button onClick={() => closeYearMut.mutate(y.id)} title="Clôturer cette année"
-                    className="btn-secondary text-xs py-1 px-2">Clôturer</button>
-                </span>
-              ) : (
-                <button onClick={() => activateYearMut.mutate(y.id)} className="btn-secondary text-xs py-1 px-2">Activer</button>
-              )}
+                ) : (
+                  <button onClick={() => activateYearMut.mutate(y.id)} className="btn-secondary text-xs py-1 px-2">Activer</button>
+                )}
+              </div>
             </div>
           ))}
         </div>
@@ -541,17 +590,30 @@ export default function AdminSettings() {
         </form>
       </Modal>
 
-      {/* ── Modal : Année scolaire ────────────────────────────────────────── */}
-      <Modal open={yearModal} onClose={() => { setYearModal(false); rsy(); }} title="Nouvelle année scolaire">
-        <form onSubmit={hsy(d => createYearMut.mutate({ ...d, school: school?.id }))} className="space-y-4">
+      {/* ── Modal : Année scolaire (création + modification — BUG N°5) ───── */}
+      <Modal
+        open={yearModal}
+        onClose={() => { setYearModal(false); setEditYear(null); rsy(); }}
+        title={editYear ? `Modifier l'année ${editYear.name}` : "Nouvelle année scolaire"}
+      >
+        <form
+          onSubmit={hsy(d => editYear
+            ? updateYearMut.mutate({ id: editYear.id, data: d })
+            : createYearMut.mutate({ ...d, school: school?.id }))}
+          className="space-y-4"
+        >
           <div><label className="label">Nom *</label><input {...ry("name", { required: true })} placeholder="ex: 2025-2026" className="input" /></div>
           <div className="grid grid-cols-2 gap-4">
             <div><label className="label">Début *</label><input {...ry("start_date", { required: true })} type="date" className="input" /></div>
             <div><label className="label">Fin *</label><input {...ry("end_date", { required: true })} type="date" className="input" /></div>
           </div>
           <div className="flex gap-3 justify-end">
-            <button type="button" onClick={() => { setYearModal(false); rsy(); }} className="btn-secondary">Annuler</button>
-<button type="submit" disabled={createYearMut.isPending} className="btn-primary">{createYearMut.isPending ? "Création…" : "Créer"}</button>
+            <button type="button" onClick={() => { setYearModal(false); setEditYear(null); rsy(); }} className="btn-secondary">Annuler</button>
+            <button type="submit" disabled={createYearMut.isPending || updateYearMut.isPending} className="btn-primary">
+              {editYear
+                ? (updateYearMut.isPending ? "Modification…" : "Modifier")
+                : (createYearMut.isPending ? "Création…" : "Créer")}
+            </button>
           </div>
         </form>
       </Modal>
@@ -563,6 +625,13 @@ export default function AdminSettings() {
         onConfirm={() => deleteRoomTypeMut.mutate(deleteRoomType?.id)}
         loading={deleteRoomTypeMut.isPending}
         message={`Supprimer le type "${deleteRoomType?.name}" ? Les salles utilisant ce type seront mises à jour.`}
+      />
+      <ConfirmDialog
+        open={!!deleteYear}
+        onClose={() => setDeleteYear(null)}
+        onConfirm={() => deleteYearMut.mutate(deleteYear?.id)}
+        loading={deleteYearMut.isPending}
+        message={`Supprimer définitivement l'année scolaire "${deleteYear?.name}" ? Cette action est impossible si l'année contient des inscriptions, classes, notes ou paiements.`}
       />
       <ConfirmDialog
         open={!!deleteSubject}
