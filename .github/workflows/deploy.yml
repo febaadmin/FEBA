@@ -1,0 +1,122 @@
+name: Deploy FEBA Production
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: feba-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Deploy to Hetzner
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Configure SSH
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SERVER_SSH_KEY }}
+          SERVER_HOST: ${{ secrets.SERVER_HOST }}
+          SERVER_PORT: ${{ secrets.SERVER_PORT }}
+        run: |
+          set -euo pipefail
+
+          install -m 700 -d ~/.ssh
+
+          printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/feba_deploy
+          chmod 600 ~/.ssh/feba_deploy
+
+          ssh-keyscan \
+            -p "$SERVER_PORT" \
+            -H "$SERVER_HOST" \
+            >> ~/.ssh/known_hosts
+
+      - name: Deploy application
+        env:
+          SERVER_HOST: ${{ secrets.SERVER_HOST }}
+          SERVER_USER: ${{ secrets.SERVER_USER }}
+          SERVER_PORT: ${{ secrets.SERVER_PORT }}
+        run: |
+          ssh \
+            -i ~/.ssh/feba_deploy \
+            -p "$SERVER_PORT" \
+            "$SERVER_USER@$SERVER_HOST" <<'REMOTE'
+          set -Eeuo pipefail
+
+          cd /opt/feba/app/FEBA
+
+          echo "==> Récupération du code"
+          git fetch origin main
+          git reset --hard origin/main
+
+          echo "==> Validation de Docker Compose"
+          docker compose \
+            --env-file .env.prod \
+            -f docker-compose.prod.yml \
+            config >/dev/null
+
+          echo "==> Construction et démarrage"
+          docker compose \
+            --env-file .env.prod \
+            -f docker-compose.prod.yml \
+            up -d --build --remove-orphans
+
+          echo "==> Attente du backend"
+          for attempt in $(seq 1 30); do
+            status="$(docker inspect \
+              --format='{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' \
+              feba_backend_prod 2>/dev/null || true)"
+
+            echo "Tentative $attempt/30 : $status"
+
+            if [ "$status" = "healthy" ]; then
+              break
+            fi
+
+            if [ "$attempt" -eq 30 ]; then
+              echo "ERREUR : le backend n'est pas devenu sain."
+
+              docker compose \
+                --env-file .env.prod \
+                -f docker-compose.prod.yml \
+                ps
+
+              docker compose \
+                --env-file .env.prod \
+                -f docker-compose.prod.yml \
+                logs backend-prod --tail=150
+
+              exit 1
+            fi
+
+            sleep 10
+          done
+
+          echo "==> Vérification HTTPS"
+          curl \
+            --fail \
+            --silent \
+            --show-error \
+            --retry 10 \
+            --retry-delay 5 \
+            https://globalfeba.com/api/health/
+
+          echo
+          echo "==> État final"
+          docker compose \
+            --env-file .env.prod \
+            -f docker-compose.prod.yml \
+            ps
+
+          echo "==> Nettoyage des images inutilisées"
+          docker image prune -f
+
+          echo "Déploiement terminé avec succès."
+          REMOTE
