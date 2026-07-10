@@ -34,13 +34,40 @@ export default function StudentHome() {
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard title="Moyenne générale" icon={GraduationCap} color="primary"
-          value={kpis.average != null ? `${kpis.average}/20` : "—"} delay={0} />
+          value={kpis.average != null ? `${Number(kpis.average).toFixed(2)}/20` : "—"}
+          trend={kpis.progression != null && kpis.progression < 0 ? "down" : "up"}
+          trendValue={
+            kpis.progression != null
+              ? `${kpis.progression >= 0 ? "+" : ""}${kpis.progression} pt vs T1${kpis.appreciation ? ` • ${kpis.appreciation}` : ""}`
+              : kpis.appreciation || undefined
+          }
+          delay={0} />
         <StatCard title="Devoirs à rendre" icon={FileText} color="accent"
           value={kpis.pending_homework ?? 0} delay={0.1} />
         <StatCard title="Absences" icon={Calendar} color="danger"
           value={kpis.absent_count ?? 0} delay={0.2} />
         <StatCard title="Retards" icon={AlertCircle} color="secondary"
           value={kpis.late_count ?? 0} delay={0.3} />
+      </div>
+
+      {/* Moyennes par trimestre (BUG N°3) */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {[
+          { label: "Moyenne T1", value: kpis.average_t1 },
+          { label: "Moyenne T2", value: kpis.average_t2 },
+          { label: "Moyenne T3", value: kpis.average_t3 },
+          { label: "Moyenne annuelle", value: kpis.annual_average },
+        ].map(({ label, value }) => (
+          <div key={label} className="card text-center py-4">
+            <p className="text-xs font-medium text-slate-500 mb-1">{label}</p>
+            <p className={`text-xl font-bold ${
+              value == null ? "text-slate-300"
+                : value >= 10 ? "text-success" : "text-danger"
+            }`}>
+              {value != null ? `${Number(value).toFixed(2)}/20` : "—"}
+            </p>
+          </div>
+        ))}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

@@ -405,9 +405,8 @@ export default function AdminUsers() {
           title="Supprimer l'utilisateur"
           message={`Supprimer définitivement ${deleteItem.first_name} ${deleteItem.last_name} (${deleteItem.email}) ?`}
           onConfirm={() => deleteMut.mutate(deleteItem.id)}
-          onCancel={() => setDeleteItem(null)}
+          onClose={() => setDeleteItem(null)}
           loading={deleteMut.isPending}
-          danger
         />
       )}
 

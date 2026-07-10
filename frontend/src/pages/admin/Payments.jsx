@@ -202,15 +202,15 @@ export default function AdminPayments() {
             </div>
             <div className="space-y-0 text-sm divide-y divide-slate-100">
               {[
-                ["Référence", <span className="font-bold text-slate-800">{viewItem.reference_number}</span>],
+                ["Référence", <span key="ref" className="font-bold text-slate-800">{viewItem.reference_number}</span>],
                 ["Élève",     viewItem.student_name],
                 ["Classe",    viewItem.student_class],
                 ["Type",      viewItem.payment_type_label],
-                ["Montant",   <span className="font-bold text-success">{Number(viewItem.amount).toLocaleString()} FCFA</span>],
+                ["Montant",   <span key="amount" className="font-bold text-success">{Number(viewItem.amount).toLocaleString()} FCFA</span>],
                 ["Mode",      viewItem.payment_method_label],
                 ["Date",      viewItem.payment_date],
                 ["Reçu par",  viewItem.received_by_name],
-                ["Statut",    <span className={viewItem.is_confirmed ? "text-success font-medium" : "text-danger font-medium"}>{viewItem.is_confirmed ? "Confirmé" : "Annulé"}</span>],
+                ["Statut",    <span key="status" className={viewItem.is_confirmed ? "text-success font-medium" : "text-danger font-medium"}>{viewItem.is_confirmed ? "Confirmé" : "Annulé"}</span>],
               ].map(([label, val]) => (
                 <div key={label} className="flex justify-between py-2">
                   <span className="text-slate-500">{label}</span><span>{val}</span>

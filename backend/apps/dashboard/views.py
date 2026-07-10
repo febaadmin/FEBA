@@ -60,8 +60,13 @@ class AdminDashboardView(APIView):
             total = pay_qs.aggregate(s=Sum("amount"))["s"] or 0
             monthly_revenue.append({"month": m, "amount": safe_float(total)})
 
-        # KPIs filtrés par année active ET par établissement
-        student_qs = Student.objects.filter(school=school, is_active=True, user__is_active=True)
+        # KPIs filtrés par année active ET par établissement.
+        # FIX (audit) : user__is_active=True excluait les élèves SANS compte
+        # utilisateur lié (user=None) — ils disparaissaient du comptage.
+        from django.db.models import Q
+        student_qs = Student.objects.filter(school=school, is_active=True).filter(
+            Q(user__isnull=True) | Q(user__is_active=True)
+        )
         # FIX v20: Filtrer les élèves par année active (school_year field)
         if active_year:
             student_qs = student_qs.filter(school_year=active_year)
@@ -234,7 +239,15 @@ class ParentDashboardView(APIView):
         children_data = []
         for link in children_links:
             child = link.student
-            avg = Grade.calculate_average(child, school_year) if school_year else None
+            # FIX BUG N°3 : calculate_average(child, school_year) sans période
+            # filtrait sur period=None → jamais aucune note → moyenne toujours
+            # vide ("—") sur le tableau de bord parent. La moyenne générale
+            # est la moyenne annuelle (moyenne des trimestres notés).
+            avg = Grade.calculate_annual_average(child, school_year) if school_year else None
+            avg_t1 = Grade.calculate_average(child, school_year, "T1") if school_year else None
+            avg_t2 = Grade.calculate_average(child, school_year, "T2") if school_year else None
+            avg_t3 = Grade.calculate_average(child, school_year, "T3") if school_year else None
+            from apps.grades.models import get_appreciation
             absent_qs = Attendance.objects.filter(student=child, status="absent")
             if school_year:
                 absent_qs = absent_qs.filter(school_year=school_year)
@@ -255,7 +268,15 @@ class ParentDashboardView(APIView):
                 "class_id": child.current_class.id if child.current_class else None,
                 "level": child.current_class.level.name if child.current_class and child.current_class.level else "—",
                 "school_year": child.school_year.name if child.school_year else "—",
-                "average": safe_float(avg) if avg else None,
+                "average": safe_float(avg) if avg is not None else None,
+                "average_t1": safe_float(avg_t1) if avg_t1 is not None else None,
+                "average_t2": safe_float(avg_t2) if avg_t2 is not None else None,
+                "average_t3": safe_float(avg_t3) if avg_t3 is not None else None,
+                "appreciation": get_appreciation(avg) if avg is not None else None,
+                "progression": (
+                    round(safe_float(avg_t2) - safe_float(avg_t1), 2)
+                    if avg_t1 is not None and avg_t2 is not None else None
+                ),
                 "absent_count": absent_count,
                 "pending_homework": hw_count,
                 "relationship": link.relationship,
@@ -291,9 +312,15 @@ class StudentDashboardView(APIView):
         school_year = SchoolYear.objects.filter(school=get_request_school(request), is_current=True).first()
         today = timezone.now().date()
 
-        avg = Grade.calculate_average(student, school_year) if school_year else None
+        # FIX BUG N°3 : calculate_average(student, school_year) sans période
+        # filtrait sur period=None → la « Moyenne générale » du tableau de
+        # bord élève était toujours vide ("—"). La moyenne générale est la
+        # moyenne annuelle (moyenne des trimestres effectivement notés).
+        avg = Grade.calculate_annual_average(student, school_year) if school_year else None
         grades_t1 = Grade.calculate_average(student, school_year, "T1") if school_year else None
         grades_t2 = Grade.calculate_average(student, school_year, "T2") if school_year else None
+        grades_t3 = Grade.calculate_average(student, school_year, "T3") if school_year else None
+        from apps.grades.models import get_appreciation
 
         # Filter attendance by active year
         att_base = Attendance.objects.filter(student=student)
@@ -329,9 +356,16 @@ class StudentDashboardView(APIView):
                 "gender": student.gender,
             },
             "kpis": {
-                "average": safe_float(avg) if avg else None,
-                "average_t1": safe_float(grades_t1) if grades_t1 else None,
-                "average_t2": safe_float(grades_t2) if grades_t2 else None,
+                "average": safe_float(avg) if avg is not None else None,
+                "average_t1": safe_float(grades_t1) if grades_t1 is not None else None,
+                "average_t2": safe_float(grades_t2) if grades_t2 is not None else None,
+                "average_t3": safe_float(grades_t3) if grades_t3 is not None else None,
+                "annual_average": safe_float(avg) if avg is not None else None,
+                "appreciation": get_appreciation(avg) if avg is not None else None,
+                "progression": (
+                    round(safe_float(grades_t2) - safe_float(grades_t1), 2)
+                    if grades_t1 is not None and grades_t2 is not None else None
+                ),
                 "absent_count": absent_count,
                 "late_count": late_count,
                 "pending_homework": (

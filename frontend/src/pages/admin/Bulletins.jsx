@@ -89,7 +89,6 @@ export default function AdminBulletins() {
     { key: "period",       label: "Période",       accessor: "period_label" },
     { key: "year",         label: "Année",         accessor: "school_year_name" },
     { key: "avg",          label: "Moyenne",       render: r => r.average ? `${parseFloat(r.average).toFixed(2)}/20` : "—" },
-    { key: "rank",         label: "Rang",          render: r => r.rank_in_class ? `${r.rank_in_class}e` : "—" },
     { key: "appreciation", label: "Appréciation",  accessor: "appreciation" },
     { key: "date",         label: "Généré le",     render: r => r.generated_at?.slice(0, 10) },
   ];
@@ -143,18 +142,25 @@ export default function AdminBulletins() {
       </div>
 
       <div className="card">
-        <DataTable columns={cols} data={bulletins} loading={isLoading} actions={row => (
-          (row.pdf_url || row.pdf_file) ? (
-            <a href={row.pdf_url || row.pdf_file} target="_blank" rel="noreferrer"
-              className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs bg-primary-50 text-primary hover:bg-primary-100 font-medium">
-              <Download className="w-3 h-3"
+        {/* FIX BUG N°9 (audit) : les props selectable / onBulkDelete /
+            bulkDeletePending étaient posées par erreur sur l'icône <Download>
+            (warnings React « unknown prop » + sélection groupée inopérante).
+            Elles appartiennent à DataTable. */}
+        <DataTable
+          columns={cols}
+          data={bulletins}
+          loading={isLoading}
           selectable
           onBulkDelete={ids => bulkDeleteMut.mutate(ids)}
           bulkDeletePending={bulkDeleteMut.isPending}
-        />PDF
-            </a>
-          ) : <span className="text-xs text-slate-400">En cours…</span>
-        )} />
+          actions={row => (
+            (row.pdf_url || row.pdf_file) ? (
+              <a href={row.pdf_url || row.pdf_file} target="_blank" rel="noreferrer"
+                className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs bg-primary-50 text-primary hover:bg-primary-100 font-medium">
+                <Download className="w-3 h-3" />PDF
+              </a>
+            ) : <span className="text-xs text-slate-400">En cours…</span>
+          )} />
       </div>
 
       <Modal open={genOpen} onClose={() => { setGenOpen(false); reset(); }}

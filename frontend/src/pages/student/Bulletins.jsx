@@ -86,11 +86,6 @@ export default function StudentBulletins() {
                           {avg.toFixed(2)}/20
                         </span>
                       )}
-                      {b.rank_in_class && (
-                        <span className="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full">
-                          {b.rank_in_class}e rang
-                        </span>
-                      )}
                       {b.letter && (
                         <span className={`text-sm font-bold ${letterColor}`}>
                           {b.letter}

@@ -51,10 +51,13 @@ export default function ParentHome() {
               </div>
               <div className="grid grid-cols-3 gap-2">
                 <div className="bg-slate-50 rounded-xl p-2 text-center">
-                  <p className="text-xs text-slate-500">Moyenne</p>
+                  <p className="text-xs text-slate-500">Moyenne générale</p>
                   <p className={`font-bold text-sm ${child.average >= 10 ? "text-success" : "text-danger"}`}>
-                    {child.average != null ? `${child.average}/20` : "—"}
+                    {child.average != null ? `${Number(child.average).toFixed(2)}/20` : "—"}
                   </p>
+                  {child.appreciation && (
+                    <p className="text-[10px] text-slate-400">{child.appreciation}</p>
+                  )}
                 </div>
                 <div className="bg-slate-50 rounded-xl p-2 text-center">
                   <p className="text-xs text-slate-500">Absences</p>
@@ -67,6 +70,27 @@ export default function ParentHome() {
                   <p className="font-bold text-sm text-primary">{child.pending_homework ?? 0}</p>
                 </div>
               </div>
+              {/* Moyennes trimestrielles (BUG N°3) */}
+              <div className="grid grid-cols-3 gap-2 mt-2">
+                {[["T1", child.average_t1], ["T2", child.average_t2], ["T3", child.average_t3]].map(([t, v]) => (
+                  <div key={t} className="bg-slate-50 rounded-xl p-2 text-center">
+                    <p className="text-xs text-slate-500">Moy. {t}</p>
+                    <p className={`font-bold text-sm ${
+                      v == null ? "text-slate-300" : v >= 10 ? "text-success" : "text-danger"
+                    }`}>
+                      {v != null ? `${Number(v).toFixed(2)}` : "—"}
+                    </p>
+                  </div>
+                ))}
+              </div>
+              {child.progression != null && (
+                <div className={`mt-2 flex items-center gap-1.5 text-xs font-medium ${
+                  child.progression >= 0 ? "text-success" : "text-danger"
+                }`}>
+                  <TrendingUp className={`w-3.5 h-3.5 ${child.progression < 0 ? "rotate-180" : ""}`} />
+                  Progression T1 → T2 : {child.progression >= 0 ? "+" : ""}{child.progression} pt
+                </div>
+              )}
             </motion.div>
           ))}
         </div>

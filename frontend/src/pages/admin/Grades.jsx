@@ -316,8 +316,11 @@ export default function AdminGrades() {
         }
       />
 
-      {/* View tabs */}
-      <div className="flex gap-1 bg-gray-100 rounded-xl p-1 w-fit">
+      {/* View tabs — FIX BUG N°9 (responsive) : la barre passait sous les
+          filtres et se déformait sur petit écran ; les onglets passent
+          désormais à la ligne proprement (flex-wrap) et les libellés ne
+          se cassent plus (whitespace-nowrap). */}
+      <div className="flex flex-wrap gap-1 bg-gray-100 rounded-xl p-1 w-fit max-w-full">
         {[
           { key: "list", label: "Liste", icon: BookOpen },
           { key: "summary", label: "Résumé par élève", icon: User },
@@ -326,8 +329,8 @@ export default function AdminGrades() {
           { key: "allhistory", label: "Historique", icon: History },
         ].map(({ key, label, icon: Icon }) => (
           <button key={key} onClick={() => setView(key)}
-            className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition ${view === key ? "bg-white shadow text-blue-700" : "text-gray-600 hover:text-gray-800"}`}>
-            <Icon className="w-4 h-4" />{label}
+            className={`flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition ${view === key ? "bg-white shadow text-blue-700" : "text-gray-600 hover:text-gray-800"}`}>
+            <Icon className="w-4 h-4 shrink-0" />{label}
           </button>
         ))}
       </div>
@@ -414,21 +417,23 @@ export default function AdminGrades() {
         <div className="grid gap-4 grid-cols-1">
           {/* Table */}
           <div>
+            {/* Bulk toolbar — FIX BUG N°9 : ce bloc était rendu À L'INTÉRIEUR
+                de <table> (DOM invalide → erreur console React
+                validateDOMNesting). Déplacé au-dessus du tableau. */}
+            {bulkSelected.size > 0 && (
+              <div className="flex items-center gap-3 mb-3 px-2 py-2 bg-blue-50 rounded-xl border border-blue-200 flex-wrap">
+                <span className="text-sm text-blue-700 font-medium">{bulkSelected.size} note(s) sélectionnée(s)</span>
+                <button onClick={() => bulkDelMut.mutate([...bulkSelected])} disabled={bulkDelMut.isPending}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-600 text-white text-xs font-medium hover:bg-red-700 disabled:opacity-50">
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                  {bulkDelMut.isPending ? "Suppression…" : "Supprimer la sélection"}
+                </button>
+                <button onClick={() => setBulkSelected(new Set())} className="text-xs text-blue-500 hover:underline">Désélectionner</button>
+              </div>
+            )}
             <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
               <div className="overflow-x-auto">
               <table className="w-full text-sm min-w-[700px]">
-                {/* Bulk toolbar */}
-                {bulkSelected.size > 0 && (
-                  <div className="flex items-center gap-3 mb-3 px-2 py-2 bg-blue-50 rounded-xl border border-blue-200">
-                    <span className="text-sm text-blue-700 font-medium">{bulkSelected.size} note(s) sélectionnée(s)</span>
-                    <button onClick={() => bulkDelMut.mutate([...bulkSelected])} disabled={bulkDelMut.isPending}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-600 text-white text-xs font-medium hover:bg-red-700 disabled:opacity-50">
-                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                      {bulkDelMut.isPending ? "Suppression…" : "Supprimer la sélection"}
-                    </button>
-                    <button onClick={() => setBulkSelected(new Set())} className="text-xs text-blue-500 hover:underline">Désélectionner</button>
-                  </div>
-                )}
                 <thead className="bg-gray-50 border-b border-gray-200">
                   <tr>
                     <th className="px-3 py-3 w-10">
@@ -449,10 +454,10 @@ export default function AdminGrades() {
                 </thead>
                 <tbody className="divide-y divide-gray-100">
                   {isLoading && (
-                    <tr><td colSpan={7} className="px-4 py-8 text-center text-gray-400">Chargement…</td></tr>
+                    <tr><td colSpan={8} className="px-4 py-8 text-center text-gray-400">Chargement…</td></tr>
                   )}
                   {!isLoading && grades.length === 0 && (
-                    <tr><td colSpan={7} className="px-4 py-8 text-center text-gray-400">Aucune note pour cette sélection.</td></tr>
+                    <tr><td colSpan={8} className="px-4 py-8 text-center text-gray-400">Aucune note pour cette sélection.</td></tr>
                   )}
                   {grades.slice((gradePage-1)*GRADES_PER_PAGE, gradePage*GRADES_PER_PAGE).map(r => (
                     <tr
@@ -713,7 +718,7 @@ export default function AdminGrades() {
               <div className="bg-gradient-to-r from-blue-900 to-blue-800 rounded-xl p-4 text-white">
                 <h3 className="font-bold text-yellow-400 mb-1">Système Bilingue FEBA</h3>
                 <p className="text-blue-200 text-sm">
-                  <strong className="text-white">Formule :</strong> Moyenne Bilingue = (Moyenne Française × 40%) + (Moyenne Anglaise × 60%)
+                  <strong className="text-white">Formule :</strong> Moyenne Bilingue = (Moyenne Française × 60%) + (Moyenne Anglaise × 40%)
                 </p>
               </div>
 

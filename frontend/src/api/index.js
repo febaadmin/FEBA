@@ -91,6 +91,7 @@ export const schoolsAPI = {
   years: ()          => api.get("/schools/years/", { params: BIG }),
   createYear: (d)    => api.post("/schools/years/", d),
   updateYear: (id,d) => api.patch(`/schools/years/${id}/`, d),
+  deleteYear: (id)   => api.delete(`/schools/years/${id}/`),
   activateYear: (id) => api.post(`/schools/years/${id}/set_current/`),
   closeYear: (id)    => api.post(`/schools/years/${id}/close/`),
   levels: ()         => api.get("/schools/levels/", { params: BIG }),
@@ -381,9 +382,11 @@ export const userFilesAPI = {
   list:     (params) => api.get("/user-files/", { params }),
   get:      (id)     => api.get(`/user-files/${id}/`),
   create:   (d)      => api.post("/user-files/", d, { headers: { "Content-Type": "multipart/form-data" } }),
-  update:   (id, d)  => api.patch(`/user-files/${id}/`, d instanceof FormData
-    ? { headers: { "Content-Type": "multipart/form-data" } }
-    : {}),
+  // FIX BUG N°9 : le payload était remplacé par l'objet {headers} —
+  // le PATCH envoyait les en-têtes comme données et perdait le contenu.
+  update:   (id, d)  => d instanceof FormData
+    ? api.patch(`/user-files/${id}/`, d, { headers: { "Content-Type": "multipart/form-data" } })
+    : api.patch(`/user-files/${id}/`, d),
   replace:  (id, d)  => api.put(`/user-files/${id}/`, d, { headers: { "Content-Type": "multipart/form-data" } }),
   delete:   (id)     => api.delete(`/user-files/${id}/`),
   download: (id)     => api.get(`/user-files/${id}/download/`, { responseType: "blob" }),

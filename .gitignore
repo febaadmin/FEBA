@@ -1,3 +1,13 @@
 
 .env.prod
 .env.prod.bak
+
+# Artefacts locaux — jamais versionnés
+backend/.env
+backend/media/
+backend/staticfiles/
+__pycache__/
+*.pyc
+frontend/node_modules/
+frontend/dist/
+dump.rdb

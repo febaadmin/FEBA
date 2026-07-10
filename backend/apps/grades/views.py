@@ -627,7 +627,7 @@ from rest_framework.permissions import IsAuthenticated as IA
 def bilingual_averages_view(request):
     """
     GET /api/grades/bilingual/?student=&period=&school_year=
-    Returns full bilingual breakdown: FR avg, EN avg, bilingual avg (FR×40%+EN×60%)
+    Returns full bilingual breakdown: FR avg, EN avg, bilingual avg (FR×60%+EN×40%)
     FIX v26: auto-détecte l'élève si user est student, rend period optionnel.
     """
     user           = request.user
@@ -685,7 +685,7 @@ def bilingual_averages_view(request):
             'fr_average': None, 'en_average': None, 'bilingual_average': None,
             'fr_subjects': [], 'en_subjects': [],
             'has_fr_subjects': False, 'has_en_subjects': False,
-            'formula': 'Bilingue = (Moyenne FR × 40%) + (Moyenne EN × 60%)',
+            'formula': Grade.BILINGUAL_FORMULA,
         }
 
     # FIX v33 : les entrées matières embarquent des instances Grade (clé

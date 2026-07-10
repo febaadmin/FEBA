@@ -29,7 +29,6 @@ export default function ParentBulletins() {
     { key: "avg",     label: "Moyenne", render: r => r.average
         ? <span className="font-bold text-primary">{parseFloat(r.average).toFixed(2)}/20</span>
         : "—" },
-    { key: "rank",    label: "Rang", render: r => r.rank_in_class ? `${r.rank_in_class}e` : "—" },
     { key: "appreciation", label: "Appréciation", accessor: "appreciation" },
     { key: "pdf", label: "PDF", accessor: "pdf_url", sortable: false,
       render: r => (r.pdf_url || r.pdf_file)

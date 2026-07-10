@@ -29,7 +29,7 @@ export function useAuth() {
     try {
       const { refreshToken } = useAuthStore.getState();
       if (refreshToken) await authAPI.logout(refreshToken);
-    } catch {}
+    } catch { /* déconnexion best-effort : le token local est purgé quoi qu'il arrive */ }
     // Clear ALL cached queries so next user sees fresh data
     queryClient.clear();
     clearAuth();

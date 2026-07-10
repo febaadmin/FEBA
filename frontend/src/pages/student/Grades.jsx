@@ -60,10 +60,19 @@ export default function StudentGrades() {
     enabled:  !!currentYear?.id,
   });
 
+  // Moyenne annuelle (BUG N°3) — calculée côté serveur (moyenne des
+  // trimestres effectivement notés)
+  const { data: avgAnnual } = useQuery({
+    queryKey: ["student-avg", "annual", currentYear?.id],
+    queryFn:  () => gradesAPI.averages({ period: "annual", school_year: currentYear?.id }),
+    enabled:  !!currentYear?.id,
+  });
+
   const avgByPeriod = [
     { period: "T1", avg: avgT1?.data?.average ?? null },
     { period: "T2", avg: avgT2?.data?.average ?? null },
     { period: "T3", avg: avgT3?.data?.average ?? null },
+    { period: "Année", avg: avgAnnual?.data?.average ?? null },
   ];
 
   // 4. Radar — moyennes par matière sur la période sélectionnée
@@ -106,8 +115,8 @@ export default function StudentGrades() {
     <div className="space-y-6">
       <PageHeader title="Mes Notes" subtitle="Résultats par matière et période" />
 
-      {/* Moyennes trimestrielles (calculées côté serveur) */}
-      <div className="grid grid-cols-3 gap-4">
+      {/* Moyennes trimestrielles + annuelle (calculées côté serveur) */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         {avgByPeriod.map(({ period: p, avg }) => (
           <div key={p} className="card text-center">
             <p className="text-xs font-medium text-slate-500 mb-1">{p}</p>

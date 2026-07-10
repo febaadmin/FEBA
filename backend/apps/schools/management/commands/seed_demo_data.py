@@ -72,8 +72,12 @@ class Command(BaseCommand):
                 "address": "Rue des Cocotiers, Akpakpa",
                 "city": "Cotonou", "country": "Bénin",
                 "phone": "+229 97 00 00 00", "email": "contact@feba.bj",
+                "matricule_prefix": "FEBA",  # BUG N°8 : matricules FEBA_26_0001
             },
         )
+        if not school.matricule_prefix:
+            school.matricule_prefix = "FEBA"
+            school.save(update_fields=["matricule_prefix"])
         self.stdout.write("  ✅ Établissement")
 
         # ── 3 ANNÉES SCOLAIRES (dynamiques : N-2, N-1, N) ────────────────

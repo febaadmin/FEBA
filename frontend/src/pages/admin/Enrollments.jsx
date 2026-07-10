@@ -280,13 +280,26 @@ export default function AdminEnrollments() {
 
   /* ── Helpers ─────────────────────────────────────────────────────────────── */
   const yearOptions = years.map(y => ({ value: y.id, label: `${y.name}${y.is_current ? " ✓ Active" : ""}` }));
-  // FIX v33 : les classes existent par année (CM2-A 2024, CM2-A 2025...) →
-  // on désambiguïse chaque libellé par son année scolaire pour éviter les
-  // doublons illisibles dans les listes déroulantes (captures Assistant).
-  const classOptions = classes.map(c => ({
+
+  // BUG N°7 — plus AUCUN doublon dans les listes de classes :
+  //  1. dédoublonnage strict par id (au cas où l'API renverrait deux fois
+  //     la même classe) ;
+  //  2. chaque liste déroulante est FILTRÉE par l'année scolaire concernée
+  //     (année cible / année source) : une classe n'apparaît donc qu'UNE
+  //     seule fois pour une année donnée, au lieu de mélanger les
+  //     homonymes de toutes les années (CE1-A 2024, CE1-A 2025, ...).
+  const uniqueClasses = [...new Map(classes.map(c => [c.id, c])).values()];
+  const classToOption = (c, withYear) => ({
     value: c.id,
-    label: `${c.name}${c.school_year_name ? ` — ${c.school_year_name}` : ""} (${c.class_level || c.level_name || ""})`,
-  }));
+    label: `${c.name}${withYear && c.school_year_name ? ` — ${c.school_year_name}` : ""} (${c.class_level || c.level_name || ""})`,
+  });
+  // Liste pour UNE année précise : pas de doublon possible, libellé court.
+  const classOptionsForYear = (yearId) => uniqueClasses
+    .filter(c => String(c.school_year) === String(yearId))
+    .map(c => classToOption(c, false));
+  // Liste toutes années (sélection d'une classe SOURCE dans une année
+  // passée) : libellé désambiguïsé par l'année.
+  const classOptionsAllYears = uniqueClasses.map(c => classToOption(c, true));
   const studentOptions = students.map(s => ({
     value: s.id,
     label: `${s.first_name} ${s.last_name} — ${s.class_name || "Sans classe"} (${s.matricule || ""})`,
@@ -399,15 +412,18 @@ export default function AdminEnrollments() {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
               <label className="label">Classe source</label>
-              <SearchableSelect options={classOptions} value={byClassSrc} onChange={setByClassSrc} placeholder="— Sélectionner —" />
+              <SearchableSelect options={classOptionsAllYears} value={byClassSrc} onChange={setByClassSrc} placeholder="— Sélectionner —" />
             </div>
             <div>
               <label className="label">Année cible</label>
-              <SearchableSelect options={yearOptions} value={byClassYear} onChange={setByClassYear} placeholder="— Sélectionner —" />
+              <SearchableSelect options={yearOptions} value={byClassYear} onChange={(v) => { setByClassYear(v); setByClassDst(""); }} placeholder="— Sélectionner —" />
             </div>
             <div>
               <label className="label">Nouvelle classe (optionnel)</label>
-              <SearchableSelect options={classOptions} value={byClassDst} onChange={setByClassDst} placeholder="— Même classe —" />
+              <SearchableSelect
+                options={byClassYear ? classOptionsForYear(byClassYear) : []}
+                value={byClassDst} onChange={setByClassDst}
+                placeholder={byClassYear ? "— Même classe —" : "— Choisir d'abord l'année cible —"} />
             </div>
           </div>
           <ResultBanner result={byClassResult} onClear={() => setByClassResult(null)} />
@@ -443,11 +459,14 @@ export default function AdminEnrollments() {
             </div>
             <div>
               <label className="label">Année scolaire cible *</label>
-              <SearchableSelect options={yearOptions} value={indivYear} onChange={setIndivYear} placeholder="— Sélectionner —" />
+              <SearchableSelect options={yearOptions} value={indivYear} onChange={(v) => { setIndivYear(v); setIndivClass(""); }} placeholder="— Sélectionner —" />
             </div>
             <div>
               <label className="label">Classe cible (optionnel)</label>
-              <SearchableSelect options={classOptions} value={indivClass} onChange={setIndivClass} placeholder="— Sans classe —" />
+              <SearchableSelect
+                options={indivYear ? classOptionsForYear(indivYear) : []}
+                value={indivClass} onChange={setIndivClass}
+                placeholder={indivYear ? "— Sans classe —" : "— Choisir d'abord l'année cible —"} />
             </div>
             <div>
               <label className="label">Statut de passage</label>
@@ -498,7 +517,7 @@ export default function AdminEnrollments() {
             <div>
               <label className="label">Année scolaire cible (nouvelle année) *</label>
               <div className="sm:w-1/2">
-                <SearchableSelect options={yearOptions} value={eoyYear} onChange={setEoyYear} placeholder="— Sélectionner —" />
+                <SearchableSelect options={yearOptions} value={eoyYear} onChange={(v) => { setEoyYear(v); setEoyClass(""); }} placeholder="— Sélectionner —" />
               </div>
             </div>
 
@@ -527,7 +546,10 @@ export default function AdminEnrollments() {
                 {["promote", "honor", "repeat", "transfer"].includes(eoyAction) && (
                   <div>
                     <label className="label">Nouvelle classe (optionnel)</label>
-                    <SearchableSelect options={classOptions} value={eoyClass} onChange={setEoyClass} placeholder="— Non affectée —" />
+                    <SearchableSelect
+                      options={eoyYear ? classOptionsForYear(eoyYear) : []}
+                      value={eoyClass} onChange={setEoyClass}
+                      placeholder={eoyYear ? "— Non affectée —" : "— Choisir d'abord l'année cible —"} />
                   </div>
                 )}
               </div>
