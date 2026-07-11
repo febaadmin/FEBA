@@ -93,6 +93,31 @@ def P(text, **kw):
     return Paragraph(text, ParagraphStyle('_', **kw))
 
 
+# ─── Cellules de tableau qui RETOURNENT À LA LIGNE (anti-débordement) ─────────
+#
+# BUG N°1 — Débordement latéral / colonnes coupées.
+# Cause racine : les cellules de tableau étaient de simples chaînes. ReportLab
+# ne coupe JAMAIS une chaîne : un intitulé long (« Éducation Civique, Morale et
+# Instruction à la Citoyenneté Démocratique ») force donc sa colonne à s'élargir
+# et déborde sur les colonnes voisines et hors du cadre. En enveloppant le texte
+# dans un Paragraph, il se replie proprement dans la largeur de colonne fixée.
+
+_CELL_BASE = dict(fontName='Helvetica', fontSize=8, leading=9.5,
+                  wordWrap='CJK')  # 'CJK' coupe même les très longs mots/URL
+
+
+def C(text, *, align='LEFT', bold=False, size=8, color=None):
+    """Cellule de tableau à retour à la ligne automatique."""
+    style = dict(_CELL_BASE)
+    style['fontName'] = 'Helvetica-Bold' if bold else 'Helvetica'
+    style['fontSize'] = size
+    style['leading'] = size + 1.5
+    style['alignment'] = {'LEFT': 0, 'CENTER': 1, 'RIGHT': 2}[align]
+    if color is not None:
+        style['textColor'] = color
+    return Paragraph('' if text is None else str(text), ParagraphStyle('_c', **style))
+
+
 # ─── Entry Point ──────────────────────────────────────────────────────────────
 
 def generate_bulletin(student, period, school_year):
@@ -257,7 +282,7 @@ def _add_header(story, student, period, school_year, logo_path, title):
     name, subtitle = _school_display_names(student, school_year)
     if logo_path and os.path.exists(logo_path):
         try:
-            logo_img = Image(logo_path, width=2.5 * cm, height=2.5 * cm)
+            logo_img = Image(logo_path, width=2.0 * cm, height=2.0 * cm)
             logo_img.hAlign = 'CENTER'
             story.append(logo_img)
         except Exception as exc:
@@ -271,7 +296,7 @@ def _add_header(story, student, period, school_year, logo_path, title):
                    textColor=GOLD, spaceBefore=4))
     story.append(P(f'Année scolaire / School Year : {school_year.name}',
                    fontSize=10, alignment=1, spaceAfter=4))
-    story.append(Spacer(1, 0.3 * cm))
+    story.append(Spacer(1, 0.2 * cm))
 
 
 def _add_student_info(story, student, period, school_year):
@@ -279,26 +304,32 @@ def _add_student_info(story, student, period, school_year):
     class_name = student.current_class.name if student.current_class else '—'
     level_name = (student.current_class.level.name
                   if student.current_class and student.current_class.level else '—')
+    def lbl(t):
+        return C(t, bold=True, size=8.5)
+
+    def val(t):
+        return C(t, size=8.5)
+
     info = [
-        ['Nom / Name:', student.get_full_name(), 'Matricule:', student.matricule],
-        ['Classe / Class:', class_name, 'Niveau / Level:', level_name],
-        ['Période / Period:', _period_label(period), 'Année / Year:', school_year.name],
-        ['Date de naissance:', str(student.date_of_birth) if student.date_of_birth else '—',
-         'Sexe / Gender:', student.get_gender_display() if student.gender else '—'],
+        [lbl('Nom / Name:'), val(student.get_full_name()), lbl('Matricule:'), val(student.matricule)],
+        [lbl('Classe / Class:'), val(class_name), lbl('Niveau / Level:'), val(level_name)],
+        [lbl('Période / Period:'), val(_period_label(period)), lbl('Année / Year:'), val(school_year.name)],
+        [lbl('Date de naissance:'), val(str(student.date_of_birth) if student.date_of_birth else '—'),
+         lbl('Sexe / Gender:'), val(student.get_gender_display() if student.gender else '—')],
     ]
-    info_tbl = Table(info, colWidths=[3.7 * cm, 5.6 * cm, 3.7 * cm, 5 * cm])
+    info_tbl = Table(info, colWidths=[3.5 * cm, 5.8 * cm, 3.5 * cm, 5.7 * cm])
     info_tbl.setStyle(TableStyle([
-        ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
-        ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
-        ('FONTNAME', (2, 0), (2, -1), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, -1), 9),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
         ('GRID', (0, 0), (-1, -1), 0.25, colors.lightgrey),
         ('BACKGROUND', (0, 0), (0, -1), LIGHT),
         ('BACKGROUND', (2, 0), (2, -1), LIGHT),
-        ('PADDING', (0, 0), (-1, -1), 5),
+        ('LEFTPADDING', (0, 0), (-1, -1), 5),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 5),
+        ('TOPPADDING', (0, 0), (-1, -1), 3),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
     ]))
     story.append(info_tbl)
-    story.append(Spacer(1, 0.4 * cm))
+    story.append(Spacer(1, 0.3 * cm))
 
 
 # ─── Tableaux de résultats FR / EN (BUG N°1) ─────────────────────────────────
@@ -331,13 +362,13 @@ def _subject_rows_trimester(entries):
         weighted = (float(avg) * info['coefficient']) if avg is not None else None
         letter, _, _ = get_letter_grade(avg)
         rows.append([
-            info['subject_name'],
+            C(info['subject_name'], bold=True),
             str(info['coefficient']),
-            details,
+            C(details, align='CENTER', size=7.5),
             f'{_fmt(avg)}/20' if avg is not None else '—',
             f'{weighted:.2f}' if weighted is not None else '—',
             letter or '—',
-            get_appreciation(avg) if avg is not None else '—',
+            C(get_appreciation(avg) if avg is not None else '—', align='CENTER'),
         ])
     return rows
 
@@ -350,14 +381,14 @@ def _subject_rows_annual(entries):
         avg = info['average']
         letter, _, _ = get_letter_grade(avg)
         rows.append([
-            info['subject_name'],
+            C(info['subject_name'], bold=True),
             str(info['coefficient']),
             _fmt(t_avgs.get('T1')),
             _fmt(t_avgs.get('T2')),
             _fmt(t_avgs.get('T3')),
             f'{_fmt(avg)}/20' if avg is not None else '—',
             letter or '—',
-            get_appreciation(avg) if avg is not None else '—',
+            C(get_appreciation(avg) if avg is not None else '—', align='CENTER'),
         ])
     return rows
 
@@ -376,33 +407,45 @@ def _add_language_section(story, title, entries, period, head_color, zebra_color
                        fontSize=9, textColor=colors.grey, spaceAfter=8))
         return None
 
+    def hcell(t, align='CENTER'):
+        return C(t, align=align, bold=True, size=8, color=colors.white)
+
     if period == 'annual':
-        header = ['Matière / Subject', 'Coeff', 'T1', 'T2', 'T3', 'Moy. Ann.', 'Lettre', 'Appréciation']
-        col_widths = [4.4 * cm, 1.2 * cm, 1.4 * cm, 1.4 * cm, 1.4 * cm, 2.2 * cm, 1.4 * cm, 4.6 * cm]
+        header = [hcell('Matière / Subject', 'LEFT'), hcell('Coeff'), hcell('T1'),
+                  hcell('T2'), hcell('T3'), hcell('Moy. Ann.'), hcell('Lettre'),
+                  hcell('Appréciation')]
+        col_widths = [4.7 * cm, 1.2 * cm, 1.3 * cm, 1.3 * cm, 1.3 * cm, 2.0 * cm,
+                      1.3 * cm, 5.4 * cm]
         rows = _subject_rows_annual(entries)
     else:
-        header = ['Matière / Subject', 'Coeff', 'Notes', 'Moy. /20', 'Moy. Pond.', 'Lettre', 'Appréciation']
-        col_widths = [4.2 * cm, 1.2 * cm, 4.2 * cm, 2 * cm, 2 * cm, 1.4 * cm, 3 * cm]
+        header = [hcell('Matière / Subject', 'LEFT'), hcell('Coeff'), hcell('Notes'),
+                  hcell('Moy. /20'), hcell('Moy. Pond.'), hcell('Lettre'),
+                  hcell('Appréciation')]
+        col_widths = [4.6 * cm, 1.2 * cm, 3.6 * cm, 1.9 * cm, 1.9 * cm, 1.3 * cm, 4.0 * cm]
         rows = _subject_rows_trimester(entries)
 
     section_avg = _weighted_section_average(entries)
     letter, _, _ = get_letter_grade(section_avg)
-    total_row = ([f'MOYENNE DE LA PARTIE', '', '', '', '',
-                  f'{_fmt(section_avg)}/20', letter or '—', get_appreciation(section_avg)]
+    total_label = C('MOYENNE DE LA PARTIE', bold=True)
+    total_row = ([total_label, '', '', '', '',
+                  f'{_fmt(section_avg)}/20', letter or '—',
+                  C(get_appreciation(section_avg), align='CENTER', bold=True)]
                  if period == 'annual' else
-                 [f'MOYENNE DE LA PARTIE', '', '', f'{_fmt(section_avg)}/20', '',
-                  letter or '—', get_appreciation(section_avg)])
+                 [total_label, '', '', f'{_fmt(section_avg)}/20', '',
+                  letter or '—', C(get_appreciation(section_avg), align='CENTER', bold=True)])
 
     full_rows = [header] + rows + [total_row]
     tbl = Table(full_rows, colWidths=col_widths, repeatRows=1)
     style_cmds = [
         ('BACKGROUND', (0, 0), (-1, 0), head_color),
-        ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
         ('FONTSIZE', (0, 0), (-1, -1), 8),
         ('ALIGN', (1, 0), (-1, -1), 'CENTER'),
         ('GRID', (0, 0), (-1, -1), 0.25, colors.lightgrey),
-        ('PADDING', (0, 0), (-1, -1), 4),
+        ('LEFTPADDING', (0, 0), (-1, -1), 4),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 4),
+        ('TOPPADDING', (0, 0), (-1, -1), 2.5),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 2.5),
         ('BACKGROUND', (0, -1), (-1, -1), colors.HexColor('#FEF3C7')),
         ('FONTNAME', (0, -1), (-1, -1), 'Helvetica-Bold'),
     ]
@@ -411,7 +454,7 @@ def _add_language_section(story, title, entries, period, head_color, zebra_color
                            colors.white if i % 2 == 0 else zebra_color))
     tbl.setStyle(TableStyle(style_cmds))
     story.append(tbl)
-    story.append(Spacer(1, 0.35 * cm))
+    story.append(Spacer(1, 0.25 * cm))
     return section_avg
 
 
@@ -430,28 +473,34 @@ def _add_stats_section(story, bilingual_data, class_stats, average, bulletin, pe
     en_letter, _, _ = get_letter_grade(en_avg)
     bi_letter, _, _ = get_letter_grade(bi_avg)
 
-    header = ['Catégorie', 'Moyenne élève', 'Moy. min. classe', 'Moy. max. classe', 'Lettre']
+    def hc(t, align='CENTER'):
+        return C(t, align=align, bold=True, size=8, color=colors.white)
+
+    header = [hc('Catégorie', 'LEFT'), hc('Moyenne élève'), hc('Moy. min. classe'),
+              hc('Moy. max. classe'), hc('Lettre')]
     rows = [
         header,
-        ['Moyenne Française / French Average',
+        [C('Moyenne Française / French Average'),
          f'{_fmt(fr_avg)}/20', _fmt(class_stats.get('fr_min')), _fmt(class_stats.get('fr_max')),
          fr_letter or '—'],
-        ['Moyenne Anglaise / English Average',
+        [C('Moyenne Anglaise / English Average'),
          f'{_fmt(en_avg)}/20', _fmt(class_stats.get('en_min')), _fmt(class_stats.get('en_max')),
          en_letter or '—'],
-        ['Moyenne Bilingue / Bilingual Average ★',
+        [C('Moyenne Bilingue / Bilingual Average ★', bold=True),
          f'{_fmt(bi_avg)}/20', _fmt(class_stats.get('bi_min')), _fmt(class_stats.get('bi_max')),
          bi_letter or '—'],
     ]
-    tbl = Table(rows, colWidths=[6.6 * cm, 3 * cm, 3.2 * cm, 3.2 * cm, 2 * cm])
+    tbl = Table(rows, colWidths=[6.9 * cm, 2.9 * cm, 3.2 * cm, 3.2 * cm, 2.3 * cm])
     tbl.setStyle(TableStyle([
         ('BACKGROUND', (0, 0), (-1, 0), GOLD),
-        ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
         ('FONTSIZE', (0, 0), (-1, -1), 8),
         ('ALIGN', (1, 0), (-1, -1), 'CENTER'),
         ('GRID', (0, 0), (-1, -1), 0.25, colors.lightgrey),
-        ('PADDING', (0, 0), (-1, -1), 4),
+        ('LEFTPADDING', (0, 0), (-1, -1), 4),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 4),
+        ('TOPPADDING', (0, 0), (-1, -1), 3),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
         ('BACKGROUND', (0, 1), (-1, 1), LIGHT),
         ('BACKGROUND', (0, 2), (-1, 2), EN_BG),
         ('BACKGROUND', (0, 3), (-1, 3), colors.HexColor('#FFF3CD')),
@@ -459,42 +508,46 @@ def _add_stats_section(story, bilingual_data, class_stats, average, bulletin, pe
     ]))
     story.append(tbl)
 
-    story.append(Spacer(1, 0.2 * cm))
+    story.append(Spacer(1, 0.15 * cm))
     story.append(P(
         '<font color="#1E3A6E"><b>Formule bilingue / Bilingual formula:</b></font> '
         'Moyenne Bilingue = (Moyenne Française × 60%) + (Moyenne Anglaise × 40%)',
-        fontSize=8, spaceAfter=6,
+        fontSize=8, spaceAfter=5,
     ))
 
     # Bande "moyenne générale" — sans rang (BUG N°2)
     letter, _, _ = get_letter_grade(average)
     summary_data = [[
-        'Moyenne Générale', f'{_fmt(average)}/20',
-        'Lettre', f'{letter or "—"}',
-        'Appréciation', bulletin.appreciation or '—',
+        C('Moyenne Générale', align='CENTER', bold=True, size=9),
+        C(f'{_fmt(average)}/20', align='CENTER', bold=True, size=9, color=PRIMARY),
+        C('Lettre', align='CENTER', bold=True, size=9),
+        C(f'{letter or "—"}', align='CENTER', bold=True, size=9),
+        C('Appréciation', align='CENTER', bold=True, size=9),
+        C(bulletin.appreciation or '—', align='CENTER', bold=True, size=9),
     ]]
-    s_tbl = Table(summary_data, colWidths=[3.6 * cm, 2.8 * cm, 2 * cm, 1.8 * cm, 3 * cm, 4.8 * cm])
+    s_tbl = Table(summary_data, colWidths=[3.5 * cm, 2.7 * cm, 1.7 * cm, 1.6 * cm, 3.0 * cm, 6.0 * cm])
     s_tbl.setStyle(TableStyle([
-        ('FONTNAME', (0, 0), (-1, -1), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, -1), 9),
         ('BACKGROUND', (0, 0), (-1, -1), LIGHT),
         ('GRID', (0, 0), (-1, -1), 0.5, PRIMARY),
-        ('TEXTCOLOR', (1, 0), (1, 0), PRIMARY),
-        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-        ('PADDING', (0, 0), (-1, -1), 5),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('TOPPADDING', (0, 0), (-1, -1), 5),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
     ]))
     story.append(s_tbl)
-    story.append(Spacer(1, 0.4 * cm))
+    story.append(Spacer(1, 0.3 * cm))
 
 
 # ─── STANDARD PDF Template (Primaire/Collège/Lycée) ──────────────────────────
 
 def _build_standard_pdf(buffer, student, period, school_year, subject_data,
                         bilingual_data, class_stats, average, bulletin, logo_path):
+    # Marges 1.2 cm : largeur utile = 21 - 2×1.2 = 18.6 cm. Toutes les tables
+    # sont dimensionnées à ≤ 18.5 cm → marge de sécurité, aucun débordement.
     doc = SimpleDocTemplate(
         buffer, pagesize=A4,
-        rightMargin=1.5 * cm, leftMargin=1.5 * cm,
-        topMargin=1.2 * cm, bottomMargin=1.2 * cm,
+        rightMargin=1.2 * cm, leftMargin=1.2 * cm,
+        topMargin=1.0 * cm, bottomMargin=1.0 * cm,
+        title='Bulletin de notes', author='FEBA School Management System',
     )
     story = []
 
@@ -534,8 +587,9 @@ def _build_maternelle_pdf(buffer, student, period, school_year, subject_data,
                           average, bulletin, logo_path):
     doc = SimpleDocTemplate(
         buffer, pagesize=A4,
-        rightMargin=1.5 * cm, leftMargin=1.5 * cm,
-        topMargin=1.5 * cm, bottomMargin=1.5 * cm,
+        rightMargin=1.2 * cm, leftMargin=1.2 * cm,
+        topMargin=1.0 * cm, bottomMargin=1.0 * cm,
+        title='Bulletin de notes — Maternelle', author='FEBA School Management System',
     )
     story = []
 
@@ -543,21 +597,24 @@ def _build_maternelle_pdf(buffer, student, period, school_year, subject_data,
                 'BULLETIN DE NOTES — MATERNELLE')
     _add_student_info(story, student, period, school_year)
 
-    # Grading key
+    # Grading key — 13 colonnes égales sur la largeur utile (≤ 18.5 cm).
     story.append(P('Grading key / Clé de notation :', fontSize=9,
                    fontName='Helvetica-Bold', textColor=PRIMARY, spaceAfter=2))
     key_data = [['A+ (≥19.5)', 'A (18-19)', 'A- (16-17)', 'B+ (15)', 'B (13-14)', 'B- (12)',
                  'C+ (11)', 'C (10)', 'C- (9)', 'D+ (8)', 'D (6-7)', 'D- (4-5)', 'F (<4)']]
-    key_tbl = Table(key_data, colWidths=[1.4 * cm] * 13)
+    key_tbl = Table(key_data, colWidths=[18.5 / 13 * cm] * 13)
     key_tbl.setStyle(TableStyle([
         ('FONTSIZE', (0, 0), (-1, -1), 6),
         ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
         ('GRID', (0, 0), (-1, -1), 0.25, colors.lightgrey),
         ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor('#F0F4FF')),
-        ('PADDING', (0, 0), (-1, -1), 3),
+        ('LEFTPADDING', (0, 0), (-1, -1), 2),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 2),
+        ('TOPPADDING', (0, 0), (-1, -1), 3),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
     ]))
     story.append(key_tbl)
-    story.append(Spacer(1, 0.4 * cm))
+    story.append(Spacer(1, 0.35 * cm))
 
     # Résultats en lettres, séparés FR / EN (BUG N°1)
     story.append(P('MATIÈRES / SUBJECTS', fontSize=11, fontName='Helvetica-Bold',
@@ -573,30 +630,34 @@ def _build_maternelle_pdf(buffer, student, period, school_year, subject_data,
         for info in rows_list:
             letter, meaning, stars = get_letter_grade(info['average'])
             rows.append([
-                info['subject_name'],
+                C(info['subject_name'], bold=True),
                 letter or '—',
-                meaning or '—',
+                C(meaning or '—', align='CENTER'),
                 stars or '',
             ])
         return rows
 
     all_rows = []
     if fr_rows:
-        all_rows.append(['PARTIE FRANÇAISE / FRENCH SECTION', '', '', ''])
+        all_rows.append([C('PARTIE FRANÇAISE / FRENCH SECTION', bold=True, color=colors.white), '', '', ''])
         all_rows.extend(make_subject_rows(fr_rows))
     if en_rows:
-        all_rows.append(['ENGLISH SECTION / PARTIE ANGLAISE', '', '', ''])
+        all_rows.append([C('ENGLISH SECTION / PARTIE ANGLAISE', bold=True, color=colors.white), '', '', ''])
         all_rows.extend(make_subject_rows(en_rows))
     if other_rows:
-        all_rows.append(['AUTRES MATIÈRES / OTHER SUBJECTS', '', '', ''])
+        all_rows.append([C('AUTRES MATIÈRES / OTHER SUBJECTS', bold=True, color=colors.white), '', '', ''])
         all_rows.extend(make_subject_rows(other_rows))
     if not all_rows:
-        all_rows = [['Aucune matière', '', '', '']]
+        all_rows = [[C('Aucune matière'), '', '', '']]
 
-    header_row = ['MATIÈRE / SUBJECT', 'NOTE / GRADE', 'APPRÉCIATION / COMMENT', 'NIVEAU / LEVEL']
+    def mhcell(t):
+        return C(t, align='CENTER', bold=True, size=8, color=colors.white)
+
+    header_row = [mhcell('MATIÈRE / SUBJECT'), mhcell('NOTE / GRADE'),
+                  mhcell('APPRÉCIATION / COMMENT'), mhcell('NIVEAU / LEVEL')]
     full_rows = [header_row] + all_rows
 
-    g_tbl = Table(full_rows, colWidths=[8 * cm, 2.5 * cm, 5 * cm, 2.5 * cm])
+    g_tbl = Table(full_rows, colWidths=[8.0 * cm, 2.5 * cm, 5.5 * cm, 2.5 * cm])
     style_cmds = [
         ('BACKGROUND', (0, 0), (-1, 0), PRIMARY),
         ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
@@ -631,20 +692,24 @@ def _build_maternelle_pdf(buffer, student, period, school_year, subject_data,
         'Travail de groupe / Group work',
         'Retourne les devoirs / Returns homework',
     ]
-    conduct_data = [['Critère / Criterion', 'Note / Grade', 'Commentaire']]
+    conduct_data = [[C('Critère / Criterion', bold=True, color=colors.white),
+                     C('Note / Grade', align='CENTER', bold=True, color=colors.white),
+                     C('Commentaire', bold=True, color=colors.white)]]
     for item in conduct_items:
-        conduct_data.append([item, '—', ''])
-    c_tbl = Table(conduct_data, colWidths=[8 * cm, 3 * cm, 7 * cm])
+        conduct_data.append([C(item), C('—', align='CENTER'), ''])
+    c_tbl = Table(conduct_data, colWidths=[8.0 * cm, 3.0 * cm, 7.5 * cm])
     c_tbl.setStyle(TableStyle([
         ('BACKGROUND', (0, 0), (-1, 0), PRIMARY),
-        ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
         ('FONTSIZE', (0, 0), (-1, -1), 8),
         ('GRID', (0, 0), (-1, -1), 0.25, colors.lightgrey),
-        ('PADDING', (0, 0), (-1, -1), 4),
+        ('LEFTPADDING', (0, 0), (-1, -1), 4),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 4),
+        ('TOPPADDING', (0, 0), (-1, -1), 3),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
     ]))
     story.append(c_tbl)
-    story.append(Spacer(1, 0.4 * cm))
+    story.append(Spacer(1, 0.3 * cm))
 
     _add_signatures(story, bulletin)
     _add_footer(story, student, school_year)
@@ -655,33 +720,37 @@ def _build_maternelle_pdf(buffer, student, period, school_year, subject_data,
 
 def _add_signatures(story, bulletin):
     story.append(HRFlowable(width='100%', thickness=1, color=colors.lightgrey))
-    story.append(Spacer(1, 0.3 * cm))
+    story.append(Spacer(1, 0.2 * cm))
+    comment = bulletin.general_comment or '(Aucun commentaire / No comment)'
     sig_data = [
-        ['Commentaire du Directeur / Principal\'s Comment', '', 'Signature & Cachet / Stamp'],
-        [bulletin.general_comment or '(Aucun commentaire / No comment)', '', ''],
-        ['', '', ''],
-        ['', '', '________________________'],
-        ['', '', f'Cotonou, le {timezone.now().strftime("%d/%m/%Y")}'],
+        [C('Commentaire du Directeur / Principal\'s Comment', bold=True),
+         '', C('Signature & Cachet / Stamp', bold=True)],
+        [C(comment), '', ''],
+        ['', '', C('________________________', align='CENTER')],
+        ['', '', C(f'Cotonou, le {timezone.now().strftime("%d/%m/%Y")}', align='CENTER')],
     ]
-    sig_tbl = Table(sig_data, colWidths=[9 * cm, 1 * cm, 8 * cm])
+    sig_tbl = Table(sig_data, colWidths=[9.4 * cm, 0.8 * cm, 8.3 * cm],
+                    rowHeights=[0.55 * cm, 1.15 * cm, 0.55 * cm, 0.5 * cm])
     sig_tbl.setStyle(TableStyle([
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
         ('FONTSIZE', (0, 0), (-1, -1), 8),
         ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+        ('VALIGN', (2, 2), (2, 3), 'MIDDLE'),
         ('GRID', (0, 0), (0, -1), 0.25, colors.lightgrey),
-        ('ALIGN', (2, 0), (2, -1), 'CENTER'),
-        ('TOPPADDING', (2, 3), (2, 3), 10),
+        ('LEFTPADDING', (0, 0), (-1, -1), 5),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 5),
+        ('TOPPADDING', (0, 0), (-1, -1), 3),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
     ]))
     story.append(sig_tbl)
-    story.append(Spacer(1, 0.3 * cm))
+    story.append(Spacer(1, 0.25 * cm))
     parent_sig = Table(
-        [['Signature du Parent / Parent\'s Signature:', '', '________________________']],
-        colWidths=[7 * cm, 4 * cm, 7 * cm]
+        [[C('Signature du Parent / Parent\'s Signature:', bold=True), '',
+          C('________________________', align='CENTER')]],
+        colWidths=[7.5 * cm, 3.7 * cm, 7.3 * cm]
     )
     parent_sig.setStyle(TableStyle([
-        ('FONTNAME', (0, 0), (-1, -1), 'Helvetica-Bold'),
         ('FONTSIZE', (0, 0), (-1, -1), 8),
-        ('ALIGN', (2, 0), (2, 0), 'CENTER'),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
     ]))
     story.append(parent_sig)
 
@@ -691,7 +760,7 @@ def _add_footer(story, student=None, school_year=None):
     if student is not None:
         school_name, _ = _school_display_names(student, school_year)
         name = f'FEBA School Management System | {school_name}'
-    story.append(Spacer(1, 0.2 * cm))
+    story.append(Spacer(1, 0.1 * cm))
     story.append(HRFlowable(width='100%', thickness=1, color=colors.lightgrey))
     story.append(P(
         f'{name} | Généré le {timezone.now().strftime("%d/%m/%Y à %H:%M")}',

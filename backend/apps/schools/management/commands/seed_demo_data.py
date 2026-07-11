@@ -72,7 +72,7 @@ class Command(BaseCommand):
                 "address": "Rue des Cocotiers, Akpakpa",
                 "city": "Cotonou", "country": "Bénin",
                 "phone": "+229 97 00 00 00", "email": "contact@feba.bj",
-                "matricule_prefix": "FEBA",  # BUG N°8 : matricules FEBA_26_0001
+                "matricule_prefix": "FEBA",  # matricules FEBA-26-0001
             },
         )
         if not school.matricule_prefix:

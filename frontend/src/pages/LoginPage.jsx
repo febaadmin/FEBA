@@ -14,19 +14,11 @@ const schema = z.object({
   password: z.string().min(4, "Mot de passe requis"),
 });
 
-const demoAccounts = [
-  { role: "Super Admin", email: "superadmin@feba.bj", pwd: "SuperAdmin@2024", color: "from-purple-500 to-pink-500" },
-  { role: "Admin",       email: "admin@feba.bj",       pwd: "Admin@2024",      color: "from-blue-700 to-blue-900" },
-  { role: "Enseignant",  email: "prof.math@feba.bj",   pwd: "Teacher@2024",    color: "from-emerald-500 to-teal-600" },
-  { role: "Parent",      email: "parent1@feba.bj",     pwd: "Parent@2024",     color: "from-amber-500 to-orange-600" },
-  { role: "Élève",       email: "eleve1@feba.bj",      pwd: "Student@2024",    color: "from-sky-500 to-blue-600" },
-];
-
 export default function LoginPage() {
   const [showPwd, setShowPwd] = useState(false);
   const { login } = useAuth();
   const { logoSrc } = useBranding();
-  const { register, handleSubmit, setValue, formState: { errors, isSubmitting } } = useForm({
+  const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm({
     resolver: zodResolver(schema),
   });
 
@@ -36,11 +28,6 @@ export default function LoginPage() {
     } catch (err) {
       toast.error(err.response?.data?.detail || err.response?.data?.[0] || "Identifiants incorrects.");
     }
-  };
-
-  const fillDemo = (acc) => {
-    setValue("email", acc.email);
-    setValue("password", acc.pwd);
   };
 
   return (
@@ -109,19 +96,6 @@ export default function LoginPage() {
               {isSubmitting ? "Connexion…" : "Se connecter"}
             </button>
           </form>
-
-          {/* Demo accounts */}
-          <div className="mt-6 pt-6 border-t border-gray-100">
-            <p className="text-xs text-gray-400 text-center mb-3">Comptes de démonstration</p>
-            <div className="grid grid-cols-2 gap-2">
-              {demoAccounts.map((acc) => (
-                <button key={acc.role} onClick={() => fillDemo(acc)}
-                  className={`text-xs font-medium text-white py-1.5 px-3 rounded-lg bg-gradient-to-r ${acc.color} hover:opacity-90 transition`}>
-                  {acc.role}
-                </button>
-              ))}
-            </div>
-          </div>
         </div>
 
         <p className="text-center text-blue-300 text-xs mt-6 opacity-70">
