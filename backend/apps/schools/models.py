@@ -31,7 +31,7 @@ class School(models.Model):
     email = models.EmailField(blank=True)
     logo = models.ImageField(upload_to="school/", null=True, blank=True)
     description = models.TextField(blank=True)
-    # BUG N°8 : préfixe court des matricules (ex: FEBA → FEBA_26_0001).
+    # Préfixe court des matricules (ex: FEBA → FEBA-26-0001).
     # Vide = dérivé automatiquement du slug de l'établissement.
     matricule_prefix = models.CharField(
         max_length=8, blank=True, default="",

@@ -11,3 +11,7 @@ __pycache__/
 frontend/node_modules/
 frontend/dist/
 dump.rdb
+
+# Environnement de test local jetable (créé pour exécuter la suite sans postgres)
+backend/.venv-test/
+.venv-test/

@@ -297,7 +297,12 @@ class SchoolYearCrudGuardTests(BaseSchoolSetup):
 
 
 class MatriculeTests(TestCase):
-    """BUG N°8 — matricules FEBA_26_0001."""
+    """BUG N°2 — matricules FEBA-YY-NNNN (année système, format à tirets).
+
+    NB : remplace l'ancien format à tirets bas ``FEBA_26_0001``. Tests
+    exhaustifs (années multiples, concurrence, amorçage) dans
+    ``tests/test_matricule.py``.
+    """
 
     def setUp(self):
         self.school = School.objects.create(
@@ -307,13 +312,13 @@ class MatriculeTests(TestCase):
     def test_new_format(self):
         yy = timezone.now().year % 100
         s = Student.objects.create(school=self.school, first_name="A", last_name="B")
-        self.assertEqual(s.matricule, f"FEBA_{yy:02d}_0001")
+        self.assertEqual(s.matricule, f"FEBA-{yy:02d}-0001")
 
     def test_sequential_and_unique(self):
         s1 = Student.objects.create(school=self.school, first_name="A", last_name="B")
         s2 = Student.objects.create(school=self.school, first_name="C", last_name="D")
         self.assertNotEqual(s1.matricule, s2.matricule)
-        self.assertTrue(s2.matricule.endswith("_0002"))
+        self.assertTrue(s2.matricule.endswith("-0002"))
 
     def test_old_matricules_still_compatible(self):
         old = Student.objects.create(
@@ -323,12 +328,12 @@ class MatriculeTests(TestCase):
         self.assertEqual(old.matricule, "GROUPESCOL-2026-0005")
         # La séquence du nouveau format n'est pas polluée par les anciens
         s = Student.objects.create(school=self.school, first_name="A", last_name="B")
-        self.assertTrue(s.matricule.endswith("_0001"))
+        self.assertTrue(s.matricule.endswith("-0001"))
 
     def test_prefix_derived_from_slug_when_not_configured(self):
         other = School.objects.create(name="Groupe Scolaire Demo", address="X")
         s = Student.objects.create(school=other, first_name="A", last_name="B")
-        self.assertTrue(s.matricule.startswith("DEMO_"))
+        self.assertTrue(s.matricule.startswith("DEMO-"))
 
     def test_per_school_sequences_are_independent(self):
         other = School.objects.create(
@@ -336,5 +341,5 @@ class MatriculeTests(TestCase):
         s1 = Student.objects.create(school=self.school, first_name="A", last_name="B")
         s2 = Student.objects.create(school=other, first_name="C", last_name="D")
         # Même préfixe, mais séquences par établissement
-        self.assertTrue(s1.matricule.endswith("_0001"))
-        self.assertTrue(s2.matricule.endswith("_0001"))
+        self.assertTrue(s1.matricule.endswith("-0001"))
+        self.assertTrue(s2.matricule.endswith("-0001"))
