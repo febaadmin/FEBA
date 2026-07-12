@@ -1,4 +1,4 @@
-from django.db import models
+from django.db import models, transaction
 from django.utils import timezone
 from apps.accounts.models import CustomUser
 from apps.schools.models import SchoolYear
@@ -28,37 +28,100 @@ def _school_matricule_prefix(school):
     return "ECOLE"
 
 
-def generate_matricule(school=None):
-    """
-    BUG N°8 — nouvelle génération de matricules : FEBA_26_0001
-      - FEBA : préfixe court de l'établissement (configurable, sinon dérivé) ;
-      - 26   : deux derniers chiffres de l'année d'inscription ;
-      - 0001 : numéro séquentiel PAR établissement et PAR année.
-
-    Garanties :
-      - unique   : séquence calculée sur le max existant + garde-fou de
-                   collision dans Student.save() ;
-      - lisible  : court (FEBA_26_0001 = 12 caractères) ;
-      - séquentiel : 0001, 0002, ... par année ;
-      - compatible : les anciens matricules (GROUPESCOL-2026-0005) restent
-                   valides tels quels — aucun renumérotage, recherche et
-                   unicité par établissement inchangées.
-    """
-    year = timezone.now().year
+def _matricule_base(school, year):
+    """Préfixe complet d'un matricule pour une école et une année : ``FEBA-26-``."""
     prefix = _school_matricule_prefix(school)
-    base = f"{prefix}_{year % 100:02d}_"
+    return f"{prefix}-{year % 100:02d}-"
 
+
+def _seed_last_number(school, base):
+    """
+    Valeur initiale du compteur pour un (établissement, année) donné.
+
+    On repart du plus grand numéro DÉJÀ présent en base pour ce préfixe
+    ``FEBA-26-`` afin de ne jamais entrer en collision avec d'anciens
+    matricules importés/hérités qui partageraient le même format. Renvoie 0
+    si aucun matricule de ce format n'existe encore.
+    """
     qs = Student.objects.filter(matricule__startswith=base)
     if school is not None:
         qs = qs.filter(school=school)
-
     max_seq = 0
     pattern = re.compile(re.escape(base) + r"(\d+)$")
     for matricule in qs.values_list("matricule", flat=True):
         match = pattern.match(matricule)
         if match:
             max_seq = max(max_seq, int(match.group(1)))
-    return f"{base}{max_seq + 1:04d}"
+    return max_seq
+
+
+def generate_matricule(school=None):
+    """
+    Génère un matricule au format officiel ``FEBA-YY-NNNN``.
+
+      - ``FEBA`` : préfixe court de l'établissement (configurable, sinon
+        dérivé du slug) ;
+      - ``YY``   : DEUX DERNIERS CHIFFRES DE L'ANNÉE SYSTÈME au moment de la
+        création (``timezone.now().year``) — jamais une valeur codée en dur ;
+      - ``NNNN`` : numéro séquentiel sur 4 chiffres, redémarrant à 0001
+        pour chaque nouvelle année système et chaque établissement.
+
+    Concurrence : le compteur est matérialisé dans
+    :class:`StudentMatriculeSequence` (unique par établissement + année) et
+    incrémenté sous ``select_for_update()`` dans une transaction atomique.
+    Deux créations simultanées obtiennent donc deux numéros distincts (pas
+    de doublon), contrairement à un ``count() + 1`` naïf.
+
+    Compatibilité : les anciens matricules (``FEBA_25_0005``,
+    ``GROUPESCOL-2026-0005``…) ne sont jamais modifiés ; la séquence est
+    amorcée sur le plus grand numéro existant du même format pour éviter
+    toute collision.
+    """
+    year = timezone.now().year
+    base = _matricule_base(school, year)
+
+    with transaction.atomic():
+        seq, _created = StudentMatriculeSequence.objects.get_or_create(
+            school=school, year=year,
+            defaults={"last_number": _seed_last_number(school, base)},
+        )
+        # Verrou de ligne : sérialise les générations concurrentes pour ce
+        # couple (établissement, année). No-op sous SQLite, effectif sous
+        # PostgreSQL (le SGBD de production).
+        seq = (
+            StudentMatriculeSequence.objects
+            .select_for_update()
+            .get(pk=seq.pk)
+        )
+        seq.last_number += 1
+        seq.save(update_fields=["last_number"])
+        return f"{base}{seq.last_number:04d}"
+
+
+class StudentMatriculeSequence(models.Model):
+    """
+    Compteur séquentiel de matricules, unique par (établissement, année
+    système). Garantit des numéros ``NNNN`` sans trou de doublon même en
+    création concurrente, et un redémarrage automatique à chaque année.
+    """
+    school = models.ForeignKey(
+        "schools.School", on_delete=models.CASCADE, null=True, blank=True,
+        related_name="matricule_sequences",
+    )
+    year = models.PositiveIntegerField(help_text="Année système (ex. 2026).")
+    last_number = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        verbose_name = "Séquence de matricules"
+        verbose_name_plural = "Séquences de matricules"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["school", "year"], name="unique_matricule_sequence_per_school_year"
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.school_id or '—'} / {self.year} → {self.last_number:04d}"
 
 
 class Student(models.Model):
@@ -103,7 +166,7 @@ class Student(models.Model):
         ordering = ["last_name", "first_name"]
         # Le matricule est unique PAR établissement (et non plus
         # globalement) : deux écoles clientes différentes peuvent
-        # légitimement attribuer le même matricule "FEBA-2026-0001"
+        # légitimement attribuer le même matricule "FEBA-26-0001"
         # si elles partagent le même générateur par défaut.
         constraints = [
             models.UniqueConstraint(fields=["school", "matricule"], name="unique_matricule_per_school"),
