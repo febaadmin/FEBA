@@ -9,6 +9,7 @@ import DataTable from "../../components/ui/DataTable";
 import Modal from "../../components/ui/Modal";
 import ConfirmDialog from "../../components/ui/ConfirmDialog";
 import { extractApiError } from "../../utils/errors";
+import { t } from "../../i18n";
 
 const TARGET_OPTIONS = [
   { value: "all", label: "Tous les profils" },
@@ -57,7 +58,7 @@ export default function AdminAnnouncements() {
       const { data, isFile } = buildPayload(d, attachedFile);
       return announcementsAPI.create(data, isFile);
     },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["announcements"] }); toast.success("Annonce publiée !"); closeModal(); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["announcements"] }); toast.success(t("Annonce publiée !")); closeModal(); },
     onError: (e) => toast.error(extractApiError(e)),
   });
   const updateMut = useMutation({
@@ -65,11 +66,11 @@ export default function AdminAnnouncements() {
       const { data, isFile } = buildPayload(d, attachedFile);
       return announcementsAPI.update(id, data, isFile);
     },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["announcements"] }); toast.success("Modifiée !"); closeModal(); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["announcements"] }); toast.success(t("Modifiée !")); closeModal(); },
   });
   const deleteMut = useMutation({
     mutationFn: announcementsAPI.delete,
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["announcements"] }); toast.success("Supprimée."); setDeleteItem(null); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["announcements"] }); toast.success(t("Supprimée.")); setDeleteItem(null); },
   });
 
   const closeModal = () => { setModalOpen(false); setEditItem(null); setAttachedFile(null); reset({ is_published: true }); };
@@ -85,33 +86,33 @@ export default function AdminAnnouncements() {
   };
 
   const cols = [
-    { key: "title", label: "Titre", accessor: "title" },
-    { key: "targets", label: "Destinataires", render: r => (r.target_roles || []).join(", ") },
-    { key: "attachment", label: "Pièce jointe", sortable: false, render: r => r.has_attachment ? (
+    { key: "title", label: t("Titre"), accessor: "title" },
+    { key: "targets", label: t("Destinataires"), render: r => (r.target_roles || []).join(", ") },
+    { key: "attachment", label: t("Pièce jointe"), sortable: false, render: r => r.has_attachment ? (
       <a href={r.attachment} target="_blank" rel="noreferrer" className="flex items-center gap-1 text-xs text-primary hover:underline">
         <FileText className="w-3 h-3" />{r.attachment_name || "Fichier"}
       </a>
     ) : <span className="text-slate-300">—</span> },
-    { key: "status", label: "Statut", render: r => (
+    { key: "status", label: t("Statut"), render: r => (
       <span className={`badge ${r.is_published ? "bg-success-50 text-success" : "bg-slate-100 text-slate-500"}`}>
-        {r.is_published ? "Publiée" : "Brouillon"}
+        {r.is_published ? t("Publiée") : t("Brouillon")}
       </span>
     )},
-    { key: "date", label: "Date", render: r => r.created_at?.slice(0,10) },
+    { key: "date", label: t("Date"), render: r => r.created_at?.slice(0,10) },
   ];
 
   const bulkDeleteMut = useMutation({
     mutationFn: (ids) => announcementsAPI.bulkDelete(ids),
-    onSuccess: (data) => { qc.invalidateQueries({ queryKey: ["announcements"] }); toast.success(`${data?.data?.deleted || ""} élément(s) supprimé(s).`); },
+    onSuccess: (data) => { qc.invalidateQueries({ queryKey: ["announcements"] }); toast.success(t("{n} élément(s) supprimé(s).", { n: data?.data?.deleted || "" })); },
     onError: (e) => toast.error(extractApiError(e)),
   });
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Annonces" subtitle={`${announcements.length} annonce(s)`}
-        action={<button onClick={openCreate} className="btn-primary flex items-center gap-2"><Plus className="w-4 h-4" />Nouvelle annonce</button>} />
+      <PageHeader title={t("Annonces")} subtitle={t("{n} annonce(s)", { n: announcements.length })}
+        action={<button onClick={openCreate} className="btn-primary flex items-center gap-2"><Plus className="w-4 h-4" />{t("Nouvelle annonce")}</button>} />
       <div className="flex items-center gap-3">
-        <label className="text-sm font-semibold text-slate-600">Année scolaire :</label>
+        <label className="text-sm font-semibold text-slate-600">{t("Année scolaire :")}</label>
         <select value={filterYear} onChange={e => setFilterYear(e.target.value)} className="input w-auto text-sm">
           <option value="">— Toutes ({currentYear?.name || "actuelle"}) —</option>
           {years.map(y => <option key={y.id} value={y.id}>{y.name}{y.is_current ? " ✓" : ""}</option>)}
@@ -144,7 +145,7 @@ export default function AdminAnnouncements() {
                 <span key={r} className="badge bg-primary-50 text-primary text-xs px-2 py-0.5 rounded-full">{r}</span>
               ))}
               <span className={`badge text-xs px-2 py-0.5 rounded-full ${viewItem.is_published ? "bg-success-50 text-success" : "bg-slate-100 text-slate-500"}`}>
-                {viewItem.is_published ? "Publiée" : "Brouillon"}
+                {viewItem.is_published ? t("Publiée") : t("Brouillon")}
               </span>
             </div>
             <p className="text-sm text-slate-400">{viewItem.created_at?.slice(0,10)} — {viewItem.author?.first_name} {viewItem.author?.last_name}</p>
@@ -162,25 +163,25 @@ export default function AdminAnnouncements() {
       </Modal>
 
       {/* Create / Edit modal */}
-      <Modal open={modalOpen} onClose={closeModal} title={editItem ? "Modifier l'annonce" : "Nouvelle annonce"} size="lg">
+      <Modal open={modalOpen} onClose={closeModal} title={editItem ? t("Modifier l'annonce") : t("Nouvelle annonce")} size="lg">
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          <div><label className="label">Titre*</label><input {...register("title", { required: true })} className="input" /></div>
-          <div><label className="label">Contenu*</label><textarea {...register("content", { required: true })} className="input" rows={5} /></div>
+          <div><label className="label">{t("Titre*")}</label><input {...register("title", { required: true })} className="input" /></div>
+          <div><label className="label">{t("Contenu*")}</label><textarea {...register("content", { required: true })} className="input" rows={5} /></div>
           <div>
-            <label className="label">Destinataires</label>
+            <label className="label">{t("Destinataires")}</label>
             <select {...register("target_roles")} className="input">
-              {TARGET_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+              {TARGET_OPTIONS.map(o => <option key={o.value} value={o.value}>{t(o.label)}</option>)}
             </select>
           </div>
           <div>
-            <label className="label">Pièce jointe (PDF, Word, image, vidéo…)</label>
+            <label className="label">{t("Pièce jointe (PDF, Word, image, vidéo…)")}</label>
             <div className="flex items-center gap-3">
               <input ref={fileRef} type="file" className="hidden"
                 accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.gif,.mp4,.avi,.xlsx,.pptx"
                 onChange={e => setAttachedFile(e.target.files[0] || null)} />
               <button type="button" onClick={() => fileRef.current?.click()}
                 className="btn-secondary flex items-center gap-2 text-sm">
-                <Paperclip className="w-4 h-4" />{attachedFile ? "Changer le fichier" : "Joindre un fichier"}
+                <Paperclip className="w-4 h-4" />{attachedFile ? t("Changer le fichier") : t("Joindre un fichier")}
               </button>
               {attachedFile && (
                 <div className="flex items-center gap-2 bg-primary-50 rounded-xl px-3 py-1.5 text-xs text-primary">
@@ -194,7 +195,7 @@ export default function AdminAnnouncements() {
             </div>
           </div>
           <div>
-            <label className="label">Année scolaire</label>
+            <label className="label">{t("Année scolaire")}</label>
             <select {...register("school_year")} className="input">
               <option value="">-- Sélectionner --</option>
               {years.map(y => <option key={y.id} value={y.id}>{y.name}{y.is_current ? " (active)" : ""}</option>)}
@@ -202,12 +203,12 @@ export default function AdminAnnouncements() {
           </div>
           <div className="flex items-center gap-2">
             <input {...register("is_published")} type="checkbox" id="pub" className="w-4 h-4 accent-primary" />
-            <label htmlFor="pub" className="text-sm font-medium text-slate-700">Publier immédiatement</label>
+            <label htmlFor="pub" className="text-sm font-medium text-slate-700">{t("Publier immédiatement")}</label>
           </div>
           <div className="flex gap-3 justify-end pt-2">
-            <button type="button" onClick={closeModal} className="btn-secondary">Annuler</button>
+            <button type="button" onClick={closeModal} className="btn-secondary">{t("Annuler")}</button>
             <button type="submit" disabled={createMut.isPending || updateMut.isPending} className="btn-primary">
-              {(createMut.isPending || updateMut.isPending) ? "Publication…" : editItem ? "Mettre à jour" : "Publier"}
+              {(createMut.isPending || updateMut.isPending) ? "Publication…" : editItem ? t("Mettre à jour") : t("Publier")}
             </button>
           </div>
         </form>

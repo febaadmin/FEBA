@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { ChevronUp, ChevronDown, Search, ChevronLeft, ChevronRight, Trash2 } from "lucide-react";
 import { clsx } from "clsx";
+import { t } from "../../i18n";
 
 /**
  * DataTable with optional bulk-select support.
@@ -51,7 +52,7 @@ export default function DataTable({
       <div className="mb-4 flex flex-wrap items-center gap-3 justify-between">
         <div className="relative w-72">
           <Search className="absolute left-3 top-2.5 w-4 h-4 text-slate-400" />
-          <input value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} placeholder="Rechercher..." className="input pl-9" />
+          <input value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} placeholder={t("Rechercher...")} className="input pl-9" />
         </div>
         {selectable && onBulkDelete && selected.size > 0 && (
           <button onClick={() => { if (window.confirm(bulkConfirmMessage ? bulkConfirmMessage(selected.size) : `Supprimer ${selected.size} élément(s) sélectionné(s) ?`)) { onBulkDelete([...selected]); setSelected(new Set()); } }} disabled={bulkDeletePending}
@@ -70,7 +71,7 @@ export default function DataTable({
                 <th className="px-4 py-3 w-10">
                   <input type="checkbox" checked={allPageChecked}
                     ref={el => { if (el) el.indeterminate = someChecked && !allPageChecked; }}
-                    onChange={toggleAll} className="w-4 h-4 accent-blue-600 cursor-pointer" title="Tout sélectionner cette page" />
+                    onChange={toggleAll} className="w-4 h-4 accent-blue-600 cursor-pointer" title={t("Tout sélectionner cette page")} />
                 </th>
               )}
               {columns.map(col => (
@@ -82,7 +83,7 @@ export default function DataTable({
                   </div>
                 </th>
               ))}
-              {actions && <th className="px-4 py-3 text-right font-semibold text-slate-600">Actions</th>}
+              {actions && <th className="px-4 py-3 text-right font-semibold text-slate-600">{t("Actions")}</th>}
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-50">
@@ -111,11 +112,11 @@ export default function DataTable({
 
       {(totalPages > 1 || selected.size > 0) && (
         <div className="flex items-center justify-between mt-4 text-sm text-slate-500">
-          <span>{filtered.length} résultat(s){selected.size > 0 && <span className="ml-2 text-blue-600 font-medium">· {selected.size} sélectionné(s)</span>}</span>
+          <span>{filtered.length} résultat(s){selected.size > 0 && <span className="ml-2 text-blue-600 font-medium">· {selected.size} {t("sélectionné(s)")}</span>}</span>
           {totalPages > 1 && (
             <div className="flex items-center gap-2">
               <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} className="p-1 rounded hover:bg-slate-100 disabled:opacity-40"><ChevronLeft className="w-4 h-4" /></button>
-              <span>Page {page} / {totalPages}</span>
+              <span>{t("Page")} {page} / {totalPages}</span>
               <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages} className="p-1 rounded hover:bg-slate-100 disabled:opacity-40"><ChevronRight className="w-4 h-4" /></button>
             </div>
           )}

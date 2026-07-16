@@ -6,6 +6,7 @@ import { motion } from "framer-motion";
 import { useState } from "react";
 import DataTable from "../../components/ui/DataTable";
 import Modal from "../../components/ui/Modal";
+import { t } from "../../i18n";
 
 export default function TeacherClasses() {
   const [selectedClass, setSelectedClass] = useState(null);
@@ -20,14 +21,14 @@ export default function TeacherClasses() {
   const students = studData?.data || [];
 
   const cols = [
-    { key: "name", label: "Nom", accessor: "full_name" },
-    { key: "matricule", label: "Matricule", accessor: "matricule" },
-    { key: "gender", label: "Genre", accessor: "gender", render: r => r.gender === "M" ? "M" : "F" },
+    { key: "name", label: t("Nom"), accessor: "full_name" },
+    { key: "matricule", label: t("Matricule"), accessor: "matricule" },
+    { key: "gender", label: t("Genre"), accessor: "gender", render: r => r.gender === "M" ? "M" : "F" },
   ];
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Mes Classes" subtitle={`${classes.length} classe(s) assignée(s)`} />
+      <PageHeader title={t("Mes Classes")} subtitle={`${classes.length} classe(s) assignée(s)`} />
 
       {isLoading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -36,7 +37,7 @@ export default function TeacherClasses() {
       ) : classes.length === 0 ? (
         <div className="card text-center py-12 text-slate-400">
           <BookOpen className="w-12 h-12 mx-auto mb-3 opacity-30" />
-          <p>Aucune classe assignée. Contactez l'administration.</p>
+          <p>{t("Aucune classe assignée. Contactez l'administration.")}</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -66,7 +67,7 @@ export default function TeacherClasses() {
           students.length > 0 ? (
             <DataTable columns={cols} data={students} />
           ) : (
-            <p className="text-center text-slate-400 py-8">Aucun élève dans cette classe</p>
+            <p className="text-center text-slate-400 py-8">{t("Aucun élève dans cette classe")}</p>
           )
         ) : (
           <div className="skeleton h-40 rounded-xl" />

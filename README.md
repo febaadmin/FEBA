@@ -1,6 +1,29 @@
-# FEBA School Management — v29
+# FEBA School Management — v3 bilingue (FR/EN)
 
 Plateforme SaaS multi-établissements de gestion scolaire. Conçue à l'origine pour le Groupe Scolaire FEBA (Cotonou, Bénin), désormais architecturée pour héberger plusieurs établissements clients de façon isolée (multi-tenant) : écoles primaires, collèges, lycées, centres de formation.
+
+> 🌍 **Application entièrement bilingue français–anglais** : voir
+> [`AUDIT_REPORT.md`](./AUDIT_REPORT.md), [`CHANGELOG_FIXES.md`](./CHANGELOG_FIXES.md)
+> et [`VERIFICATION_CHECKLIST.md`](./VERIFICATION_CHECKLIST.md).
+
+## Bilinguisme (FR / EN)
+
+- **Page de connexion** : tous les textes sont affichés simultanément en
+  français et en anglais (« Connexion / Login », « Mot de passe / Password »…).
+- **Après connexion** : sélecteur **FR | EN** dans l'en-tête de chaque espace
+  (superadmin, admin, enseignant, parent, élève). Le changement est
+  **immédiat**, sans déconnexion.
+- **Persistance** : le choix est conservé dans le navigateur
+  (localStorage `feba-lang`) **et** dans le profil utilisateur
+  (`preferred_language`, PATCH `/api/auth/me/`). À la reconnexion, la
+  préférence du profil est prioritaire.
+- **Architecture** : un seul système centralisé — `frontend/src/i18n/`
+  (`index.js` : `t()`, `useI18n()`, `tBoth()`, `dateLocale()` ;
+  `translations.js` : dictionnaire FR→EN, la chaîne française est la clé,
+  repli automatique sur le français). Les messages du backend sont localisés
+  via `Accept-Language` (LocaleMiddleware) et le dictionnaire frontend.
+- **Ajouter/corriger une traduction** : éditer
+  `frontend/src/i18n/translations.js` (une ligne par chaîne).
 
 > 📋 **Audit et refonte v29** : voir [`RAPPORT_V29_AUDIT_REFONTE.md`](./RAPPORT_V29_AUDIT_REFONTE.md) pour le détail des failles de sécurité corrigées (isolation multi-tenant), de la refonte du pivot "années scolaires", et du périmètre couvert.
 >
@@ -78,6 +101,47 @@ docker compose exec backend-dev python manage.py migrate
 docker compose exec backend-dev python manage.py seed_demo_data
 docker compose exec backend-dev python manage.py test tests/
 docker compose down -v && docker compose up --build -d
+```
+
+## Mode local SANS Docker (démo / développement léger)
+
+Pour lancer l'application sans PostgreSQL/Redis/Docker (SQLite fichier,
+Celery synchrone) :
+
+```bash
+# Backend (Python 3.12+)
+cd backend
+python -m venv .venv && source .venv/bin/activate
+pip install -r requirements/dev.txt
+export DJANGO_SETTINGS_MODULE=feba_project.settings.dev_sqlite
+python manage.py migrate --run-syncdb   # schéma dérivé des modèles (voir dev_sqlite.py)
+python manage.py seed_demo_data          # comptes de démo (voir tableau ci-dessus)
+python manage.py runserver 8000
+
+# Frontend (Node 20+), autre terminal
+cd frontend
+npm install
+BACKEND_ORIGIN=http://localhost:8000 npm run dev
+# → http://localhost:5173
+```
+
+> Ce mode est réservé à la démonstration : la production utilise PostgreSQL
+> (`settings.prod`). Détail : `backend/feba_project/settings/dev_sqlite.py`.
+
+## Tests
+
+```bash
+# Rapide, sans services externes (SQLite en mémoire)
+cd backend
+DJANGO_SETTINGS_MODULE=feba_project.settings.test_sqlite pytest --no-migrations
+# → 219 passed, 1 skipped (test de concurrence : nécessite un serveur de BD)
+
+# Complet, contre PostgreSQL (stack docker démarrée : make dev)
+DJANGO_SETTINGS_MODULE=feba_project.settings.test_postgres pytest
+# → 220 passed  (identifiants configurables via TEST_DB_* — voir test_postgres.py)
+
+# Frontend
+cd frontend && npm run build
 ```
 
 ## Déploiement PRODUCTION

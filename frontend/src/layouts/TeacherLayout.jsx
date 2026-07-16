@@ -8,6 +8,8 @@ import { clsx } from "clsx";
 import { useState, useEffect } from "react";
 import logoFeba from "../assets/logo_feba.jpeg";
 import { motion, AnimatePresence } from "framer-motion";
+import { t } from "../i18n";
+import LanguageSwitcher from "../components/ui/LanguageSwitcher";
 
 const nav = [
   { label: "Tableau de bord", icon: LayoutDashboard, to: "/teacher/dashboard" },
@@ -74,11 +76,11 @@ export default function TeacherLayout() {
             className={clsx("w-64 bg-[#0F172A] flex flex-col h-full shrink-0 z-20 shadow-2xl", isMobile && "fixed inset-y-0 left-0")}>
             <div className="p-5 flex items-center gap-3 border-b border-white/10">
               <div className="w-9 h-9 rounded-xl overflow-hidden bg-white border-2 border-emerald-400 flex items-center justify-center shrink-0">
-                <img src={logoSrc} alt="FEBA" className="w-full h-full object-contain" />
+                <img src={logoSrc} alt={t("FEBA")} className="w-full h-full object-contain" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-white font-bold text-sm">FEBA</p>
-                <p className="text-slate-400 text-xs">Espace Enseignant</p>
+                <p className="text-white font-bold text-sm">{t("FEBA")}</p>
+                <p className="text-slate-400 text-xs">{t("Espace Enseignant")}</p>
               </div>
               {isMobile && (
                 <button onClick={() => setOpen(false)} className="text-slate-400 hover:text-white">
@@ -92,7 +94,7 @@ export default function TeacherLayout() {
                   className={({ isActive }) => clsx("flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm transition-all",
                     isActive ? "text-white bg-emerald-600/70 shadow-lg" : "text-slate-400 hover:text-white hover:bg-white/10")}>
                   <item.icon className="w-4 h-4 shrink-0" />
-                  <span className="truncate">{item.label}</span>
+                  <span className="truncate">{t(item.label)}</span>
                   {/* FIX: message unread badge on nav item */}
                   {item.to === "/teacher/messages" && msgUnread > 0 && (
                     <span className="ml-auto w-5 h-5 bg-danger text-white text-[10px] rounded-full flex items-center justify-center font-bold shrink-0">
@@ -109,11 +111,11 @@ export default function TeacherLayout() {
                 </div>
                 <div className="min-w-0">
                   <p className="text-white text-xs font-semibold truncate">{user?.first_name} {user?.last_name}</p>
-                  <p className="text-slate-400 text-[10px]">Enseignant</p>
+                  <p className="text-slate-400 text-[10px]">{t("Enseignant")}</p>
                 </div>
               </div>
               <button onClick={logout} className="flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm text-red-400 hover:text-red-300 hover:bg-red-500/10 transition-all w-full">
-                <LogOut className="w-4 h-4" /><span>Déconnexion</span>
+                <LogOut className="w-4 h-4" /><span>{t("Déconnexion")}</span>
               </button>
             </div>
           </motion.aside>
@@ -124,6 +126,7 @@ export default function TeacherLayout() {
         <header className="bg-white border-b border-slate-100 px-3 sm:px-6 py-3 flex items-center justify-between shrink-0">
           <button onClick={() => setOpen(!open)} className="p-2 rounded-xl hover:bg-slate-100 text-slate-600"><Menu className="w-5 h-5" /></button>
           <div className="flex items-center gap-3">
+            <LanguageSwitcher />
             <div className="relative">
               <button onClick={openNotifPanel} className="p-2 rounded-xl hover:bg-slate-100 text-slate-600 relative">
                 <Bell className="w-5 h-5" />
@@ -132,11 +135,11 @@ export default function TeacherLayout() {
               {notifOpen && (
                 <div className="absolute right-0 top-10 w-72 sm:w-80 bg-white rounded-2xl shadow-2xl border border-slate-100 z-50">
                   <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100">
-                    <p className="font-bold text-slate-800 text-sm">Notifications</p>
+                    <p className="font-bold text-slate-800 text-sm">{t("Notifications")}</p>
                     <button onClick={() => setNotifOpen(false)} className="text-slate-400 hover:text-slate-600 text-lg">×</button>
                   </div>
                   <div className="max-h-72 overflow-y-auto divide-y divide-slate-50">
-                    {notifications.length === 0 ? <p className="text-center text-slate-400 py-8 text-sm">Aucune notification</p>
+                    {notifications.length === 0 ? <p className="text-center text-slate-400 py-8 text-sm">{t("Aucune notification")}</p>
                       : notifications.slice(0, 10).map(n => (
                         <div key={n.id} onClick={() => { setNotifOpen(false); if (n.related_url) navigate(n.related_url); }}
                           className={`px-4 py-3 cursor-pointer hover:bg-slate-50 ${!n.is_read ? "bg-primary-50/30" : ""}`}>
@@ -155,7 +158,7 @@ export default function TeacherLayout() {
               </div>
               <div className="hidden sm:block">
                 <p className="text-sm font-semibold text-slate-800 truncate max-w-[120px]">{user?.first_name} {user?.last_name}</p>
-                <p className="text-xs text-slate-400">Enseignant</p>
+                <p className="text-xs text-slate-400">{t("Enseignant")}</p>
               </div>
             </div>
           </div>

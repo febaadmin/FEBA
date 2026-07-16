@@ -11,6 +11,7 @@ import { parentsAPI } from "../../api";
 import PageHeader from "../../components/ui/PageHeader";
 import { GraduationCap, Calendar, Users, Phone, Mail, UserCheck } from "lucide-react";
 import { motion } from "framer-motion";
+import { t } from "../../i18n";
 
 const RELATIONSHIP_LABELS = {
   father: "Père",
@@ -39,7 +40,7 @@ export default function ParentChildren() {
       <div className="w-16 h-16 rounded-2xl bg-amber-50 flex items-center justify-center mx-auto mb-4">
         <Users className="w-8 h-8 text-amber-400" />
       </div>
-      <p className="font-semibold text-slate-700">Profil parent introuvable</p>
+      <p className="font-semibold text-slate-700">{t("Profil parent introuvable")}</p>
       <p className="text-sm mt-1 text-slate-500">
         {error?.response?.data?.error || "Votre profil parent n'est pas encore configuré. Contactez l'administration."}
       </p>
@@ -48,31 +49,31 @@ export default function ParentChildren() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Mes Enfants" subtitle={`${children.length} enfant(s) enregistré(s)`} />
+      <PageHeader title={t("Mes Enfants")} subtitle={t("{n} enfant(s) enregistré(s)", { n: children.length })} />
 
       {/* Bloc contact parent — données réelles */}
       {parent && (
         <div className="card border border-amber-100 bg-amber-50/40">
           <div className="flex items-center gap-3 mb-3">
             <UserCheck className="w-5 h-5 text-amber-600" />
-            <h3 className="font-semibold text-slate-700 text-sm">Votre fiche contact</h3>
+            <h3 className="font-semibold text-slate-700 text-sm">{t("Votre fiche contact")}</h3>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
             <div>
-              <p className="text-xs text-slate-400 mb-0.5">Nom complet</p>
+              <p className="text-xs text-slate-400 mb-0.5">{t("Nom complet")}</p>
               <p className="font-semibold text-slate-800">{parent.full_name || "—"}</p>
             </div>
             <div className="flex items-center gap-2">
               <Phone className="w-4 h-4 text-slate-400 shrink-0" />
               <div>
-                <p className="text-xs text-slate-400 mb-0.5">Téléphone</p>
+                <p className="text-xs text-slate-400 mb-0.5">{t("Téléphone")}</p>
                 <p className="font-medium text-slate-700">{parent.user_phone || "—"}</p>
               </div>
             </div>
             <div className="flex items-center gap-2">
               <Mail className="w-4 h-4 text-slate-400 shrink-0" />
               <div>
-                <p className="text-xs text-slate-400 mb-0.5">Email</p>
+                <p className="text-xs text-slate-400 mb-0.5">{t("Email")}</p>
                 <p className="font-medium text-slate-700 text-xs">{parent.user_email || "—"}</p>
               </div>
             </div>
@@ -83,8 +84,8 @@ export default function ParentChildren() {
       {children.length === 0 ? (
         <div className="card text-center py-12 text-slate-400">
           <Users className="w-12 h-12 mx-auto mb-3 opacity-30" />
-          <p className="font-medium">Aucun enfant associé à votre compte</p>
-          <p className="text-sm mt-1">Contactez l'administration pour lier vos enfants.</p>
+          <p className="font-medium">{t("Aucun enfant associé à votre compte")}</p>
+          <p className="text-sm mt-1">{t("Contactez l'administration pour lier vos enfants.")}</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -107,7 +108,7 @@ export default function ParentChildren() {
                     </p>
                     <p className="text-sm text-slate-500">{relLabel}</p>
                     {link.is_primary_contact && (
-                      <span className="badge bg-amber-100 text-amber-700 mt-1 text-xs">Contact principal</span>
+                      <span className="badge bg-amber-100 text-amber-700 mt-1 text-xs">{t("Contact principal")}</span>
                     )}
                   </div>
                 </div>
@@ -117,7 +118,7 @@ export default function ParentChildren() {
                   <div className="bg-slate-50 rounded-xl p-3">
                     <div className="flex items-center gap-2 mb-1">
                       <GraduationCap className="w-4 h-4 text-slate-400" />
-                      <span className="text-xs font-medium text-slate-500">Classe</span>
+                      <span className="text-xs font-medium text-slate-500">{t("Classe")}</span>
                     </div>
                     <p className="font-semibold text-slate-800">{child.class_name || "—"}</p>
                     <p className="text-xs text-slate-400">{child.school_year_name || "—"}</p>
@@ -125,11 +126,11 @@ export default function ParentChildren() {
                   <div className="bg-slate-50 rounded-xl p-3">
                     <div className="flex items-center gap-2 mb-1">
                       <Calendar className="w-4 h-4 text-slate-400" />
-                      <span className="text-xs font-medium text-slate-500">Matricule</span>
+                      <span className="text-xs font-medium text-slate-500">{t("Matricule")}</span>
                     </div>
                     <p className="font-semibold text-slate-800 text-sm font-mono">{child.matricule || "—"}</p>
                     <p className="text-xs text-slate-400">
-                      {child.gender === "M" ? "Garçon" : child.gender === "F" ? "Fille" : "—"}
+                      {child.gender === "M" ? "Garçon" : child.gender === "F" ? t("Fille") : "—"}
                     </p>
                   </div>
                 </div>
@@ -137,7 +138,7 @@ export default function ParentChildren() {
                 {/* Contact parent — données réelles BUG FIX #3 */}
                 {parent && (
                   <div className="border-t border-slate-100 pt-3">
-                    <p className="text-xs font-medium text-slate-400 mb-2">Contact enregistré</p>
+                    <p className="text-xs font-medium text-slate-400 mb-2">{t("Contact enregistré")}</p>
                     <div className="space-y-1.5">
                       <div className="flex items-center gap-2 text-sm">
                         <UserCheck className="w-3.5 h-3.5 text-slate-400 shrink-0" />
@@ -154,7 +155,7 @@ export default function ParentChildren() {
                       ) : (
                         <div className="flex items-center gap-2 text-sm text-slate-400">
                           <Phone className="w-3.5 h-3.5 shrink-0" />
-                          <span className="text-xs italic">Téléphone non renseigné</span>
+                          <span className="text-xs italic">{t("Téléphone non renseigné")}</span>
                         </div>
                       )}
                       {parent.user_email && (

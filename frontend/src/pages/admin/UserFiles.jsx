@@ -8,6 +8,7 @@ import PageHeader from "../../components/ui/PageHeader";
 import ConfirmDialog from "../../components/ui/ConfirmDialog";
 import Modal from "../../components/ui/Modal";
 import { extractApiError } from "../../utils/errors";
+import { t, dateLocale } from "../../i18n";
 
 function FileIcon({ mime }) {
   if (!mime) return <FileText className="w-8 h-8 text-slate-400" />;
@@ -40,16 +41,16 @@ export default function AdminUserFiles() {
 
   const uploadMut = useMutation({
     mutationFn: (fd) => userFilesAPI.create(fd),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["user-files"] }); toast.success("Fichier uploadé !"); setUploadOpen(false); reset(); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["user-files"] }); toast.success(t("Fichier uploadé !")); setUploadOpen(false); reset(); },
     onError: (e) => toast.error(extractApiError(e)),
   });
   const deleteMut = useMutation({
     mutationFn: userFilesAPI.delete,
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["user-files"] }); toast.success("Supprimé."); setDeleteItem(null); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["user-files"] }); toast.success(t("Supprimé.")); setDeleteItem(null); },
   });
   const replaceMut = useMutation({
     mutationFn: ({ id, fd }) => userFilesAPI.replace(id, fd),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["user-files"] }); toast.success("Fichier remplacé !"); setReplaceItem(null); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["user-files"] }); toast.success(t("Fichier remplacé !")); setReplaceItem(null); },
     onError: (e) => toast.error(extractApiError(e)),
   });
 
@@ -59,14 +60,14 @@ export default function AdminUserFiles() {
     if (d.description) fd.append("description", d.description);
     if (d.user) fd.append("user", d.user);
     const file = fileRef.current?.files?.[0];
-    if (!file) { toast.error("Sélectionnez un fichier"); return; }
+    if (!file) { toast.error(t("Sélectionnez un fichier")); return; }
     fd.append("file", file);
     uploadMut.mutate(fd);
   };
 
   const onReplace = () => {
     const file = replaceRef.current?.files?.[0];
-    if (!file) { toast.error("Sélectionnez un fichier"); return; }
+    if (!file) { toast.error(t("Sélectionnez un fichier")); return; }
     const fd = new FormData();
     fd.append("file", file);
     fd.append("name", replaceItem.name);
@@ -83,17 +84,16 @@ export default function AdminUserFiles() {
       a.click();
       URL.revokeObjectURL(url);
     } catch {
-      toast.error("Téléchargement impossible");
+      toast.error(t("Téléchargement impossible"));
     }
   };
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Fichiers Utilisateurs" subtitle={`${files.length} fichier(s)`}
+      <PageHeader title={t("Fichiers Utilisateurs")} subtitle={t("{n} fichier(s)", { n: files.length })}
         action={
           <button onClick={() => setUploadOpen(true)} className="btn-primary flex items-center gap-2">
-            <Plus className="w-4 h-4" />Ajouter un fichier
-          </button>
+            <Plus className="w-4 h-4" />{t("Ajouter un fichier")}</button>
         } />
 
       {/* Filters */}
@@ -101,11 +101,11 @@ export default function AdminUserFiles() {
         <div className="flex items-center gap-2 bg-slate-100 rounded-xl px-3 py-2 flex-1 min-w-[200px]">
           <Search className="w-4 h-4 text-slate-400" />
           <input value={search} onChange={e => setSearch(e.target.value)}
-            placeholder="Rechercher par nom, description…" className="bg-transparent outline-none text-sm flex-1" />
+            placeholder={t("Rechercher par nom, description…")} className="bg-transparent outline-none text-sm flex-1" />
           {search && <button onClick={() => setSearch("")}><X className="w-4 h-4 text-slate-400" /></button>}
         </div>
         <select value={filterUser} onChange={e => setFilterUser(e.target.value)} className="input max-w-xs">
-          <option value="">Tous les utilisateurs</option>
+          <option value="">{t("Tous les utilisateurs")}</option>
           {users.map(u => <option key={u.id} value={u.id}>{u.first_name} {u.last_name} ({u.email})</option>)}
         </select>
       </div>
@@ -118,7 +118,7 @@ export default function AdminUserFiles() {
       ) : files.length === 0 ? (
         <div className="card text-center py-16 text-slate-400">
           <FileText className="w-12 h-12 mx-auto mb-3 opacity-30" />
-          <p className="font-medium">Aucun fichier trouvé</p>
+          <p className="font-medium">{t("Aucun fichier trouvé")}</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
@@ -136,25 +136,25 @@ export default function AdminUserFiles() {
               <div className="flex-1">
                 <p className="font-semibold text-slate-800 text-sm truncate" title={file.name}>{file.name}</p>
                 <p className="text-xs text-slate-400 mt-0.5">{file.uploader_name}</p>
-                <p className="text-xs text-slate-400">{file.file_size_display} · {new Date(file.uploaded_at).toLocaleDateString("fr-FR")}</p>
+                <p className="text-xs text-slate-400">{file.file_size_display} · {new Date(file.uploaded_at).toLocaleDateString(dateLocale())}</p>
               </div>
               {/* Actions */}
               <div className="flex gap-1.5">
                 {file.mime_type?.startsWith("image/") && (
-                  <button onClick={() => setPreviewItem(file)} title="Prévisualiser"
+                  <button onClick={() => setPreviewItem(file)} title={t("Prévisualiser")}
                     className="p-1.5 rounded-lg hover:bg-blue-50 text-slate-400 hover:text-blue-500 transition-colors">
                     <Eye className="w-4 h-4" />
                   </button>
                 )}
-                <button onClick={() => handleDownload(file)} title="Télécharger"
+                <button onClick={() => handleDownload(file)} title={t("Télécharger")}
                   className="p-1.5 rounded-lg hover:bg-green-50 text-slate-400 hover:text-success transition-colors">
                   <Download className="w-4 h-4" />
                 </button>
-                <button onClick={() => setReplaceItem(file)} title="Remplacer"
+                <button onClick={() => setReplaceItem(file)} title={t("Remplacer")}
                   className="p-1.5 rounded-lg hover:bg-amber-50 text-slate-400 hover:text-amber-500 transition-colors">
                   <RefreshCw className="w-4 h-4" />
                 </button>
-                <button onClick={() => setDeleteItem(file)} title="Supprimer"
+                <button onClick={() => setDeleteItem(file)} title={t("Supprimer")}
                   className="p-1.5 rounded-lg hover:bg-danger-50 text-slate-400 hover:text-danger transition-colors ml-auto">
                   <Trash2 className="w-4 h-4" />
                 </button>
@@ -165,39 +165,38 @@ export default function AdminUserFiles() {
       )}
 
       {/* Upload modal */}
-      <Modal open={uploadOpen} onClose={() => { setUploadOpen(false); reset(); }} title="Ajouter un fichier" size="md">
+      <Modal open={uploadOpen} onClose={() => { setUploadOpen(false); reset(); }} title={t("Ajouter un fichier")} size="md">
         <form onSubmit={handleSubmit(onUpload)} className="space-y-4">
           <div>
-            <label className="label">Nom du fichier *</label>
-            <input {...register("name", { required: true })} className="input" placeholder="Ex: Acte de naissance" />
+            <label className="label">{t("Nom du fichier *")}</label>
+            <input {...register("name", { required: true })} className="input" placeholder={t("Ex: Acte de naissance")} />
           </div>
           <div>
-            <label className="label">Description</label>
-            <textarea {...register("description")} className="input" rows={2} placeholder="Description optionnelle" />
+            <label className="label">{t("Description")}</label>
+            <textarea {...register("description")} className="input" rows={2} placeholder={t("Description optionnelle")} />
           </div>
           <div>
-            <label className="label">Utilisateur cible</label>
+            <label className="label">{t("Utilisateur cible")}</label>
             <select {...register("user")} className="input">
               <option value="">— Moi-même —</option>
               {users.map(u => <option key={u.id} value={u.id}>{u.first_name} {u.last_name} ({u.role})</option>)}
             </select>
           </div>
           <div>
-            <label className="label">Fichier *</label>
+            <label className="label">{t("Fichier *")}</label>
             <div className="flex items-center gap-3">
               <input ref={fileRef} type="file" className="hidden"
                 accept=".jpg,.jpeg,.png,.gif,.webp,.pdf,.doc,.docx,.xls,.xlsx,.txt,.csv,.zip" />
               <button type="button" onClick={() => fileRef.current?.click()}
                 className="btn-secondary flex items-center gap-2 text-sm">
-                <Upload className="w-4 h-4" />Choisir un fichier
-              </button>
+                <Upload className="w-4 h-4" />{t("Choisir un fichier")}</button>
             </div>
-            <p className="text-xs text-slate-400 mt-1">Images, PDF, Word, Excel, CSV, ZIP — max 5 MB</p>
+            <p className="text-xs text-slate-400 mt-1">{t("Images, PDF, Word, Excel, CSV, ZIP — max 5 MB")}</p>
           </div>
           <div className="flex gap-3 justify-end pt-2">
-            <button type="button" onClick={() => { setUploadOpen(false); reset(); }} className="btn-secondary">Annuler</button>
+            <button type="button" onClick={() => { setUploadOpen(false); reset(); }} className="btn-secondary">{t("Annuler")}</button>
             <button type="submit" disabled={uploadMut.isPending} className="btn-primary">
-              {uploadMut.isPending ? "Upload…" : "Enregistrer"}
+              {uploadMut.isPending ? t("Upload…") : t("Enregistrer")}
             </button>
           </div>
         </form>
@@ -209,21 +208,20 @@ export default function AdminUserFiles() {
           <div className="absolute inset-0 bg-black/40" onClick={() => setReplaceItem(null)} />
           <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 space-y-4">
             <div className="flex items-center justify-between">
-              <h2 className="font-bold text-slate-800">Remplacer le fichier</h2>
+              <h2 className="font-bold text-slate-800">{t("Remplacer le fichier")}</h2>
               <button onClick={() => setReplaceItem(null)} className="text-slate-400 text-2xl leading-none">×</button>
             </div>
-            <p className="text-sm text-slate-500">Fichier actuel : <strong>{replaceItem.name}</strong></p>
+            <p className="text-sm text-slate-500">{t("Fichier actuel :")} <strong>{replaceItem.name}</strong></p>
             <div>
               <input ref={replaceRef} type="file" className="hidden"
                 accept=".jpg,.jpeg,.png,.gif,.webp,.pdf,.doc,.docx,.xls,.xlsx,.txt,.csv,.zip" />
               <button type="button" onClick={() => replaceRef.current?.click()} className="btn-secondary flex items-center gap-2 text-sm">
-                <Upload className="w-4 h-4" />Choisir le nouveau fichier
-              </button>
+                <Upload className="w-4 h-4" />{t("Choisir le nouveau fichier")}</button>
             </div>
             <div className="flex gap-3 justify-end pt-2">
-              <button onClick={() => setReplaceItem(null)} className="btn-secondary">Annuler</button>
+              <button onClick={() => setReplaceItem(null)} className="btn-secondary">{t("Annuler")}</button>
               <button onClick={onReplace} disabled={replaceMut.isPending} className="btn-primary">
-                {replaceMut.isPending ? "Remplacement…" : "Remplacer"}
+                {replaceMut.isPending ? t("Remplacement…") : t("Remplacer")}
               </button>
             </div>
           </div>

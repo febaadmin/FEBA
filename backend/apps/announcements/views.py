@@ -43,8 +43,8 @@ class AnnouncementViewSet(BulkDeleteMixin, viewsets.ModelViewSet):
         # Non-admin: published announcements targeted to this role
         qs = qs.filter(is_published=True)
         role = user.role
-        from django.db.models import Q
-        qs = qs.filter(Q(target_roles__contains=[role]) | Q(target_roles__contains=["all"]))
+        from .utils import filter_targets_role
+        qs = filter_targets_role(qs, role)
         if school_year_id:
             qs = qs.filter(school_year_id=school_year_id)
         elif not all_years:

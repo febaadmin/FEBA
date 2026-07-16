@@ -8,6 +8,7 @@ import PageHeader from "../../components/ui/PageHeader";
 import Modal from "../../components/ui/Modal";
 import ConfirmDialog from "../../components/ui/ConfirmDialog";
 import { extractApiError } from "../../utils/errors";
+import { t } from "../../i18n";
 
 export default function AdminLevels() {
   const qc = useQueryClient();
@@ -23,17 +24,17 @@ export default function AdminLevels() {
 
   const createMut = useMutation({
     mutationFn: schoolsAPI.createLevel,
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["levels"] }); toast.success("Niveau créé !"); closeModal(); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["levels"] }); toast.success(t("Niveau créé !")); closeModal(); },
     onError: (e) => toast.error(extractApiError(e)),
   });
   const updateMut = useMutation({
     mutationFn: ({ id, data }) => schoolsAPI.updateLevel(id, data),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["levels"] }); toast.success("Modifié !"); closeModal(); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["levels"] }); toast.success(t("Modifié !")); closeModal(); },
     onError: (e) => toast.error(extractApiError(e)),
   });
   const deleteMut = useMutation({
     mutationFn: schoolsAPI.deleteLevel,
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["levels"] }); toast.success("Supprimé."); setDeleteItem(null); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["levels"] }); toast.success(t("Supprimé.")); setDeleteItem(null); },
   });
 
   const closeModal = () => { setModalOpen(false); setEditItem(null); reset(); };
@@ -47,32 +48,31 @@ export default function AdminLevels() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Niveaux scolaires"
-        subtitle={`${levels.length} niveau(x) — CI, CP, CM1, CM2, 6ème…`}
+        title={t("Niveaux scolaires")}
+        subtitle={t("{n} niveau(x) — CI, CP, CM1, CM2, 6ème…", { n: levels.length })}
         action={
           <button onClick={openCreate} className="btn-primary flex items-center gap-2">
-            <Plus className="w-4 h-4" />Nouveau niveau
-          </button>
+            <Plus className="w-4 h-4" />{t("Nouveau niveau")}</button>
         }
       />
 
       <div className="card">
         {isLoading ? (
-          <div className="py-12 text-center text-slate-400">Chargement…</div>
+          <div className="py-12 text-center text-slate-400">{t("Chargement…")}</div>
         ) : levels.length === 0 ? (
           <div className="py-16 text-center text-slate-400">
             <Layers className="w-12 h-12 mx-auto mb-3 opacity-30" />
-            <p className="font-medium">Aucun niveau configuré</p>
-            <p className="text-sm mt-1">Créez les niveaux CI, CP, CM1, CM2, etc. avant de créer des classes.</p>
+            <p className="font-medium">{t("Aucun niveau configuré")}</p>
+            <p className="text-sm mt-1">{t("Créez les niveaux CI, CP, CM1, CM2, etc. avant de créer des classes.")}</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-slate-100">
-                  <th className="text-left py-3 px-4 font-semibold text-slate-500 text-xs uppercase tracking-wider">Ordre</th>
-                  <th className="text-left py-3 px-4 font-semibold text-slate-500 text-xs uppercase tracking-wider">Nom du niveau</th>
-                  <th className="text-left py-3 px-4 font-semibold text-slate-500 text-xs uppercase tracking-wider">École</th>
+                  <th className="text-left py-3 px-4 font-semibold text-slate-500 text-xs uppercase tracking-wider">{t("Ordre")}</th>
+                  <th className="text-left py-3 px-4 font-semibold text-slate-500 text-xs uppercase tracking-wider">{t("Nom du niveau")}</th>
+                  <th className="text-left py-3 px-4 font-semibold text-slate-500 text-xs uppercase tracking-wider">{t("École")}</th>
                   <th className="py-3 px-4 w-20" />
                 </tr>
               </thead>
@@ -106,20 +106,20 @@ export default function AdminLevels() {
         )}
       </div>
 
-      <Modal open={modalOpen} onClose={closeModal} title={editItem ? "Modifier le niveau" : "Nouveau niveau"}>
+      <Modal open={modalOpen} onClose={closeModal} title={editItem ? t("Modifier le niveau") : t("Nouveau niveau")}>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div>
-            <label className="label">Nom du niveau*</label>
-            <input {...register("name", { required: true })} placeholder="ex: CI, CP, CM1, CM2, 6ème…" className="input" />
-            {errors.name && <p className="text-danger text-xs mt-1">Requis</p>}
+            <label className="label">{t("Nom du niveau*")}</label>
+            <input {...register("name", { required: true })} placeholder={t("ex: CI, CP, CM1, CM2, 6ème…")} className="input" />
+            {errors.name && <p className="text-danger text-xs mt-1">{t("Requis")}</p>}
           </div>
           <div>
-            <label className="label">Ordre d'affichage</label>
+            <label className="label">{t("Ordre d'affichage")}</label>
             <input {...register("order", { valueAsNumber: true })} type="number" min="0" className="input" />
           </div>
           {!editItem && (
             <div>
-              <label className="label">École*</label>
+              <label className="label">{t("École*")}</label>
               <select {...register("school", { required: true })} className="input">
                 <option value="">-- Sélectionner --</option>
                 {schools.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
@@ -127,9 +127,9 @@ export default function AdminLevels() {
             </div>
           )}
           <div className="flex gap-3 justify-end pt-2">
-            <button type="button" onClick={closeModal} className="btn-secondary">Annuler</button>
+            <button type="button" onClick={closeModal} className="btn-secondary">{t("Annuler")}</button>
             <button type="submit" disabled={createMut.isPending || updateMut.isPending} className="btn-primary">
-              {(createMut.isPending || updateMut.isPending) ? "Enregistrement…" : "Enregistrer"}
+              {(createMut.isPending || updateMut.isPending) ? t("Enregistrement…") : t("Enregistrer")}
             </button>
           </div>
         </form>

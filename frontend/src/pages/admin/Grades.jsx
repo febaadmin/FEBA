@@ -22,6 +22,7 @@ import PageHeader from "../../components/ui/PageHeader";
 import Modal from "../../components/ui/Modal";
 import SearchableSelect from "../../components/ui/SearchableSelect";
 import { extractApiError } from "../../utils/errors";
+import { t, dateLocale } from "../../i18n";
 
 const PERIODS = [
   { value: "T1", label: "Trimestre 1" },
@@ -90,7 +91,7 @@ export default function AdminGrades() {
       "Commentaire":    g.comment || "",
       "Justification":  g.deleted_justification || "",
       "Supprimé par":   g.deleted_by_name || "",
-      "Date suppression": g.deleted_at ? new Date(g.deleted_at).toLocaleDateString("fr-FR") : "",
+      "Date suppression": g.deleted_at ? new Date(g.deleted_at).toLocaleDateString(dateLocale()) : "",
       "Année":          g.school_year_name || "",
     }));
     exportCSV(rows, `notes_supprimees_${new Date().toISOString().slice(0,10)}.csv`);
@@ -109,7 +110,7 @@ export default function AdminGrades() {
       "Lettre":        r.letter || "",
       "Commentaire":   r.comment || "",
       "Année":         r.school_year_name || "",
-      "Date saisie":   r.created_at ? new Date(r.created_at).toLocaleDateString("fr-FR") : "",
+      "Date saisie":   r.created_at ? new Date(r.created_at).toLocaleDateString(dateLocale()) : "",
     }));
     const fileName = `notes_${filterYear || "toutes"}_${filterPeriod || "toutes"}_${new Date().toISOString().slice(0,10)}.csv`;
     exportCSV(rows, fileName);
@@ -207,26 +208,26 @@ export default function AdminGrades() {
 
   const restoreMut = useMutation({
     mutationFn: (id) => gradesAPI.restore(id),
-    onSuccess: () => { toast.success("Note restaurée !"); qc.invalidateQueries({ queryKey: ["grades"] }); qc.invalidateQueries({ queryKey: ["grades-deleted"] }); },
+    onSuccess: () => { toast.success(t("Note restaurée !")); qc.invalidateQueries({ queryKey: ["grades"] }); qc.invalidateQueries({ queryKey: ["grades-deleted"] }); },
     onError: (e) => toast.error(extractApiError(e)),
   });
 
   const addMut = useMutation({
     mutationFn: (d) => gradesAPI.create(d),
-    onSuccess: () => { toast.success("Note ajoutée !"); setAddOpen(false); reset(); qc.invalidateQueries({ queryKey: ["grades"] }); qc.invalidateQueries({ queryKey: ["grades-deleted"] }); },
+    onSuccess: () => { toast.success(t("Note ajoutée !")); setAddOpen(false); reset(); qc.invalidateQueries({ queryKey: ["grades"] }); qc.invalidateQueries({ queryKey: ["grades-deleted"] }); },
     onError: (e) => toast.error(extractApiError(e)),
   });
 
   const editMut = useMutation({
     mutationFn: ({ id, data }) => gradesAPI.update(id, data),
-    onSuccess: () => { toast.success("Note modifiée !"); setAddOpen(false); setEditItem(null); reset(); qc.invalidateQueries({ queryKey: ["grades"] }); qc.invalidateQueries({ queryKey: ["grades-deleted"] }); },
+    onSuccess: () => { toast.success(t("Note modifiée !")); setAddOpen(false); setEditItem(null); reset(); qc.invalidateQueries({ queryKey: ["grades"] }); qc.invalidateQueries({ queryKey: ["grades-deleted"] }); },
     onError: (e) => toast.error(extractApiError(e)),
   });
 
   const delMut = useMutation({
     mutationFn: ({ id, justification }) => gradesAPI.delete(id, justification),
     onSuccess: () => {
-      toast.success("Note supprimée");
+      toast.success(t("Note supprimée"));
       // FIX v33 : nettoyage complet de l'état après suppression —
       // le panneau "Détail de la note" et l'historique référencaient
       // encore la note supprimée (erreurs 404 "ressource introuvable").
@@ -241,7 +242,7 @@ export default function AdminGrades() {
 
   const bulkDelMut = useMutation({
     mutationFn: (ids) => gradesAPI.bulkDelete(ids),
-    onSuccess: (data) => { toast.success(`${data?.data?.deleted || ""} note(s) supprimée(s) — visibles dans l'onglet 'Supprimées'.`); setBulkSelected(new Set()); setSelectedRow(null); setHistItem(null); qc.invalidateQueries({ queryKey: ["grades"] }); qc.invalidateQueries({ queryKey: ["grades-deleted"] }); },
+    onSuccess: (data) => { toast.success(t("{n} note(s) supprimée(s) — visibles dans l'onglet Supprimées.", { n: data?.data?.deleted || "" })); setBulkSelected(new Set()); setSelectedRow(null); setHistItem(null); qc.invalidateQueries({ queryKey: ["grades"] }); qc.invalidateQueries({ queryKey: ["grades-deleted"] }); },
     onError: (e) => toast.error(extractApiError(e)),
   });
 
@@ -267,30 +268,30 @@ export default function AdminGrades() {
   };
 
   const cols = [
-    { key: "student", label: "Élève",   render: r => r.student_name || r.student },
-    { key: "class",   label: "Classe",  render: r => r.student_class || r.class_name || "—" },
-    { key: "subject", label: "Matière", render: r => r.subject_name || r.subject },
-    { key: "period",  label: "Période", accessor: "period" },
-    { key: "type",    label: "Type",    render: r => r.note_type_display || r.note_type },
-    { key: "value", label: "Note", render: r => (
+    { key: "student", label: t("Élève"),   render: r => r.student_name || r.student },
+    { key: "class",   label: t("Classe"),  render: r => r.student_class || r.class_name || "—" },
+    { key: "subject", label: t("Matière"), render: r => r.subject_name || r.subject },
+    { key: "period",  label: t("Période"), accessor: "period" },
+    { key: "type",    label: t("Type"),    render: r => r.note_type_display || r.note_type },
+    { key: "value", label: t("Note"), render: r => (
       <div className="flex items-center gap-2">
         <span className="font-semibold">{parseFloat(r.value).toFixed(2)}/20</span>
         <LetterBadge letter={r.letter} />
       </div>
     )},
-    { key: "coeff", label: "Coeff note", render: r => r.note_coefficient || 1 },
-    { key: "year", label: "Année", render: r => r.school_year_name || r.school_year },
+    { key: "coeff", label: t("Coeff note"), render: r => r.note_coefficient || 1 },
+    { key: "year", label: t("Année"), render: r => r.school_year_name || r.school_year },
     { key: "actions", label: "", render: r => (
       <div className="flex items-center gap-1">
-        <button title="Modifier" onClick={() => { setEditItem(r); reset({ student: r.student_id || r.student, subject: r.subject_id || r.subject, period: r.period, value: r.value, note_type: r.note_type, note_coefficient: r.note_coefficient || 1, comment: r.comment, school_year: r.school_year_id || r.school_year || currentYear?.id, justification: "" }); setAddOpen(true); }}
+        <button title={t("Modifier")} onClick={() => { setEditItem(r); reset({ student: r.student_id || r.student, subject: r.subject_id || r.subject, period: r.period, value: r.value, note_type: r.note_type, note_coefficient: r.note_coefficient || 1, comment: r.comment, school_year: r.school_year_id || r.school_year || currentYear?.id, justification: "" }); setAddOpen(true); }}
           className="p-1.5 rounded-lg hover:bg-blue-50 text-slate-400 hover:text-blue-600">
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536M9 13l6.768-6.768a2 2 0 012.828 2.828L11.828 15.828a2 2 0 01-.707.414l-3.535.707.707-3.536A2 2 0 019 13z" /></svg>
         </button>
-        <button title="Historique" onClick={() => setHistItem(r)}
+        <button title={t("Historique")} onClick={() => setHistItem(r)}
           className="p-1.5 rounded-lg hover:bg-amber-50 text-slate-400 hover:text-amber-600">
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
         </button>
-        <button title="Supprimer" onClick={() => setDeleteConfirm(r)}
+        <button title={t("Supprimer")} onClick={() => setDeleteConfirm(r)}
           className="p-1.5 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-600">
           <Trash2 className="w-4 h-4" />
         </button>
@@ -300,7 +301,7 @@ export default function AdminGrades() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Notes" subtitle={`Gestion des notes — ${currentYear?.name || "Année active"}`}
+      <PageHeader title={t("Notes")} subtitle={t("Gestion des notes — {y}", { y: currentYear?.name || "" })}
         action={
           <div className="flex gap-2 flex-wrap">
             {view === "list" && grades.length > 0 && (
@@ -311,7 +312,7 @@ export default function AdminGrades() {
               </button>
             )}
             <button onClick={() => { reset({ school_year: currentYear?.id || "" }); setAddOpen(true); }}
-              className="btn-primary flex items-center gap-2"><Plus className="w-4 h-4" />Ajouter une note</button>
+              className="btn-primary flex items-center gap-2"><Plus className="w-4 h-4" />{t("Ajouter une note")}</button>
           </div>
         }
       />
@@ -322,11 +323,11 @@ export default function AdminGrades() {
           se cassent plus (whitespace-nowrap). */}
       <div className="flex flex-wrap gap-1 bg-gray-100 rounded-xl p-1 w-fit max-w-full">
         {[
-          { key: "list", label: "Liste", icon: BookOpen },
-          { key: "summary", label: "Résumé par élève", icon: User },
-          { key: "bilingual", label: "Bilingue", icon: Globe },
-          { key: "deleted", label: "Supprimées", icon: Trash2 },
-          { key: "allhistory", label: "Historique", icon: History },
+          { key: "list", label: t("Liste"), icon: BookOpen },
+          { key: "summary", label: t("Résumé par élève"), icon: User },
+          { key: "bilingual", label: t("Bilingue"), icon: Globe },
+          { key: "deleted", label: t("Supprimées"), icon: Trash2 },
+          { key: "allhistory", label: t("Historique"), icon: History },
         ].map(({ key, label, icon: Icon }) => (
           <button key={key} onClick={() => setView(key)}
             className={`flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition ${view === key ? "bg-white shadow text-blue-700" : "text-gray-600 hover:text-gray-800"}`}>
@@ -340,21 +341,21 @@ export default function AdminGrades() {
         {view !== "summary" && (
           <select value={filterYear} onChange={e => setFilterYear(e.target.value)}
             className="border border-gray-200 rounded-lg px-3 py-2 text-sm">
-            <option value="">Année scolaire</option>
+            <option value="">{t("Année scolaire")}</option>
             {years.map(y => <option key={y.id} value={y.id}>{y.name}{y.is_current ? " ★" : ""}</option>)}
           </select>
         )}
         {view === "list" && (
           <select value={filterPeriod} onChange={e => setFilterPeriod(e.target.value)}
             className="border border-gray-200 rounded-lg px-3 py-2 text-sm">
-            <option value="">Toutes périodes</option>
-            {PERIODS.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
+            <option value="">{t("Toutes périodes")}</option>
+            {PERIODS.map(p => <option key={p.value} value={p.value}>{t(p.label)}</option>)}
           </select>
         )}
         {view === "list" && (
           <select value={filterClass} onChange={e => setFilterClass(e.target.value)}
             className="border border-gray-200 rounded-lg px-3 py-2 text-sm">
-            <option value="">Toutes classes</option>
+            <option value="">{t("Toutes classes")}</option>
             {classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
         )}
@@ -363,7 +364,7 @@ export default function AdminGrades() {
           <div className="min-w-48">
             <select value={filterStudent} onChange={e => setFilterStudent(e.target.value)}
               className="border border-gray-200 rounded-lg px-3 py-2 text-sm w-full">
-              <option value="">Tous les élèves</option>
+              <option value="">{t("Tous les élèves")}</option>
               {students.map(s => <option key={s.id} value={s.id}>{s.full_name || `${s.first_name} ${s.last_name}`}</option>)}
             </select>
           </div>
@@ -373,7 +374,7 @@ export default function AdminGrades() {
           <div className="min-w-48">
             <select value={filterSubject} onChange={e => setFilterSubject(e.target.value)}
               className="border border-gray-200 rounded-lg px-3 py-2 text-sm w-full">
-              <option value="">Toutes matières</option>
+              <option value="">{t("Toutes matières")}</option>
               {subjects.map(s => <option key={s.id} value={s.id}>{s.name}{s.language ? ` (${s.language?.toUpperCase()})` : ""}</option>)}
             </select>
           </div>
@@ -382,7 +383,7 @@ export default function AdminGrades() {
         {view === "list" && (
           <select value={filterLanguage} onChange={e => setFilterLanguage(e.target.value)}
             className="border border-gray-200 rounded-lg px-3 py-2 text-sm">
-            <option value="">FR + EN</option>
+            <option value="">{t("FR + EN")}</option>
             <option value="fr">🇫🇷 Français</option>
             <option value="en">🇬🇧 Anglais</option>
           </select>
@@ -394,12 +395,12 @@ export default function AdminGrades() {
                 options={studentOpts}
                 value={selectedStudent}
                 onChange={setSelectedStudent}
-                placeholder="Choisir un élève..."
+                placeholder={t("Choisir un élève...")}
               />
             </div>
             <select value={selectedPeriod} onChange={e => setSelectedPeriod(e.target.value)}
               className="border border-gray-200 rounded-lg px-3 py-2 text-sm">
-              {PERIODS.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
+              {PERIODS.map(p => <option key={p.value} value={p.value}>{t(p.label)}</option>)}
             </select>
           </>
         )}
@@ -422,13 +423,13 @@ export default function AdminGrades() {
                 validateDOMNesting). Déplacé au-dessus du tableau. */}
             {bulkSelected.size > 0 && (
               <div className="flex items-center gap-3 mb-3 px-2 py-2 bg-blue-50 rounded-xl border border-blue-200 flex-wrap">
-                <span className="text-sm text-blue-700 font-medium">{bulkSelected.size} note(s) sélectionnée(s)</span>
+                <span className="text-sm text-blue-700 font-medium">{bulkSelected.size} {t("note(s) sélectionnée(s)")}</span>
                 <button onClick={() => bulkDelMut.mutate([...bulkSelected])} disabled={bulkDelMut.isPending}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-600 text-white text-xs font-medium hover:bg-red-700 disabled:opacity-50">
                   <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                  {bulkDelMut.isPending ? "Suppression…" : "Supprimer la sélection"}
+                  {bulkDelMut.isPending ? t("Suppression…") : t("Supprimer la sélection")}
                 </button>
-                <button onClick={() => setBulkSelected(new Set())} className="text-xs text-blue-500 hover:underline">Désélectionner</button>
+                <button onClick={() => setBulkSelected(new Set())} className="text-xs text-blue-500 hover:underline">{t("Désélectionner")}</button>
               </div>
             )}
             <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
@@ -443,21 +444,21 @@ export default function AdminGrades() {
                         onChange={e => { const n = new Set(bulkSelected); grades.forEach(r => e.target.checked ? n.add(r.id) : n.delete(r.id)); setBulkSelected(n); }}
                       />
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500">Élève</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500">Matière</th>
-                    <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500">Période</th>
-                    <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500">Type</th>
-                    <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500">Note</th>
-                    <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500">Coeff</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500">Année</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500">{t("Élève")}</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500">{t("Matière")}</th>
+                    <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500">{t("Période")}</th>
+                    <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500">{t("Type")}</th>
+                    <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500">{t("Note")}</th>
+                    <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500">{t("Coeff")}</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500">{t("Année")}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
                   {isLoading && (
-                    <tr><td colSpan={8} className="px-4 py-8 text-center text-gray-400">Chargement…</td></tr>
+                    <tr><td colSpan={8} className="px-4 py-8 text-center text-gray-400">{t("Chargement…")}</td></tr>
                   )}
                   {!isLoading && grades.length === 0 && (
-                    <tr><td colSpan={8} className="px-4 py-8 text-center text-gray-400">Aucune note pour cette sélection.</td></tr>
+                    <tr><td colSpan={8} className="px-4 py-8 text-center text-gray-400">{t("Aucune note pour cette sélection.")}</td></tr>
                   )}
                   {grades.slice((gradePage-1)*GRADES_PER_PAGE, gradePage*GRADES_PER_PAGE).map(r => (
                     <tr
@@ -475,7 +476,7 @@ export default function AdminGrades() {
                       <td className="px-4 py-3 text-center">
                         <span className="text-xs font-medium px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full">{r.period}</span>
                       </td>
-                      <td className="px-4 py-3 text-center text-xs text-gray-500">{r.note_type_display || r.note_type}</td>
+                      <td className="px-4 py-3 text-center text-xs text-gray-500">{t(r.note_type_display || r.note_type)}</td>
                       <td className="px-4 py-3 text-center">
                         <div className="flex items-center justify-center gap-1.5">
                           <span className="font-semibold">{parseFloat(r.value).toFixed(2)}/20</span>
@@ -533,7 +534,7 @@ export default function AdminGrades() {
               `}>
                 <div className="bg-white rounded-t-2xl lg:rounded-2xl border border-blue-200 shadow-2xl overflow-hidden w-full lg:max-w-md lg:pointer-events-auto">
                   <div className="bg-blue-600 px-4 py-3 flex items-center justify-between">
-                    <span className="text-white font-semibold text-sm">Détail de la note</span>
+                    <span className="text-white font-semibold text-sm">{t("Détail de la note")}</span>
                     <button onClick={() => setSelectedRow(null)} className="text-blue-200 hover:text-white transition">
                       <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
                     </button>
@@ -544,11 +545,11 @@ export default function AdminGrades() {
                   </div>
                   <div className="p-4 space-y-3 max-h-[70vh] lg:max-h-[75vh] overflow-y-auto">
                     {[
-                      { label: "Élève",    value: selectedRow.student_name },
-                      { label: "Matière",  value: selectedRow.subject_name },
-                      { label: "Période",  value: selectedRow.period },
-                      { label: "Type",     value: selectedRow.note_type_display || selectedRow.note_type },
-                      { label: "Année",    value: selectedRow.school_year_name },
+                      { label: t("Élève"),    value: selectedRow.student_name },
+                      { label: t("Matière"),  value: selectedRow.subject_name },
+                      { label: t("Période"),  value: selectedRow.period },
+                      { label: t("Type"),     value: selectedRow.note_type_display || selectedRow.note_type },
+                      { label: t("Année"),    value: selectedRow.school_year_name },
                     ].map(({ label, value }) => (
                       <div key={label} className="flex justify-between py-1.5 border-b border-gray-50 text-sm">
                         <span className="text-gray-500">{label}</span>
@@ -556,14 +557,14 @@ export default function AdminGrades() {
                       </div>
                     ))}
                     <div className="flex justify-between py-1.5 border-b border-gray-50 text-sm">
-                      <span className="text-gray-500">Note</span>
+                      <span className="text-gray-500">{t("Note")}</span>
                       <div className="flex items-center gap-2">
                         <span className="font-bold text-gray-900">{parseFloat(selectedRow.value).toFixed(2)}/20</span>
                         <LetterBadge letter={selectedRow.letter} />
                       </div>
                     </div>
                     <div className="flex justify-between py-1.5 border-b border-gray-50 text-sm">
-                      <span className="text-gray-500">Coefficient</span>
+                      <span className="text-gray-500">{t("Coefficient")}</span>
                       <span className="font-medium">{selectedRow.note_coefficient || 1}</span>
                     </div>
                     {selectedRow.comment && (
@@ -579,23 +580,17 @@ export default function AdminGrades() {
                         }}
                         className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition"
                       >
-                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536M9 13l6.768-6.768a2 2 0 012.828 2.828L11.828 15.828a2 2 0 01-.707.414l-3.535.707.707-3.536A2 2 0 019 13z" /></svg>
-                        Modifier
-                      </button>
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536M9 13l6.768-6.768a2 2 0 012.828 2.828L11.828 15.828a2 2 0 01-.707.414l-3.535.707.707-3.536A2 2 0 019 13z" /></svg>{t("Modifier")}</button>
                       <button
                         onClick={() => setHistItem(selectedRow)}
                         className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg bg-amber-50 text-amber-700 text-sm font-medium hover:bg-amber-100 transition border border-amber-200"
                       >
-                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                        Voir l'historique
-                      </button>
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>{t("Voir l'historique")}</button>
                       <button
                         onClick={() => setDeleteConfirm(selectedRow)}
                         className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg bg-red-50 text-red-600 text-sm font-medium hover:bg-red-100 transition border border-red-200"
                       >
-                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                        Supprimer
-                      </button>
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>{t("Supprimer")}</button>
                     </div>
                   </div>
                 </div>
@@ -611,24 +606,20 @@ export default function AdminGrades() {
           {!selectedStudent ? (
             <div className="bg-white rounded-xl border border-gray-200 p-12 text-center text-gray-400">
               <User className="w-12 h-12 mx-auto mb-3 text-gray-300" />
-              <p>Sélectionnez un élève pour voir son résumé</p>
+              <p>{t("Sélectionnez un élève pour voir son résumé")}</p>
             </div>
           ) : summaryLoading ? (
             <div className="bg-white rounded-xl border border-gray-200 p-8 text-center text-gray-400">
-              <div className="animate-spin w-6 h-6 border-2 border-blue-400 border-t-transparent rounded-full mx-auto mb-2" />
-              Chargement du résumé…
-            </div>
+              <div className="animate-spin w-6 h-6 border-2 border-blue-400 border-t-transparent rounded-full mx-auto mb-2" />{t("Chargement du résumé…")}</div>
           ) : summaryError ? (
             <div className="bg-white rounded-xl border border-red-200 p-8 text-center text-red-400">
-              <p className="font-semibold mb-1">Erreur lors du chargement du résumé</p>
+              <p className="font-semibold mb-1">{t("Erreur lors du chargement du résumé")}</p>
               <p className="text-sm text-red-300">
                 {summaryError?.response?.data?.error || "Vérifiez que cet élève existe et a une classe assignée."}
               </p>
             </div>
           ) : !summary ? (
-            <div className="bg-white rounded-xl border border-gray-200 p-8 text-center text-gray-400">
-              Sélectionnez un élève et une période pour voir le résumé de ses notes.
-            </div>
+            <div className="bg-white rounded-xl border border-gray-200 p-8 text-center text-gray-400">{t("Sélectionnez un élève et une période pour voir le résumé de ses notes.")}</div>
           ) : (
             <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
               <div className="p-4 bg-blue-900 text-white flex items-center gap-4">
@@ -639,18 +630,18 @@ export default function AdminGrades() {
                 </div>
                 <div className="ml-auto text-right">
                   <div className="text-2xl font-bold text-yellow-400">{summary.average ? `${parseFloat(summary.average).toFixed(2)}/20` : "—"}</div>
-                  <div className="text-blue-200 text-xs">Rang : {summary.rank || "—"}</div>
+                  <div className="text-blue-200 text-xs">{t("Rang")} : {summary.rank || "—"}</div>
                 </div>
               </div>
               <table className="w-full">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500">Matière</th>
-                    <th className="px-4 py-2 text-center text-xs font-semibold text-gray-500">Coeff</th>
-                    <th className="px-4 py-2 text-center text-xs font-semibold text-gray-500">Langue</th>
-                    <th className="px-4 py-2 text-center text-xs font-semibold text-gray-500">Moyenne</th>
-                    <th className="px-4 py-2 text-center text-xs font-semibold text-gray-500">Lettre</th>
-                    <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500">Notes</th>
+                    <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500">{t("Matière")}</th>
+                    <th className="px-4 py-2 text-center text-xs font-semibold text-gray-500">{t("Coeff")}</th>
+                    <th className="px-4 py-2 text-center text-xs font-semibold text-gray-500">{t("Langue")}</th>
+                    <th className="px-4 py-2 text-center text-xs font-semibold text-gray-500">{t("Moyenne")}</th>
+                    <th className="px-4 py-2 text-center text-xs font-semibold text-gray-500">{t("Lettre")}</th>
+                    <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500">{t("Notes")}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
@@ -685,50 +676,43 @@ export default function AdminGrades() {
           {!selectedStudent ? (
             <div className="bg-white rounded-xl border border-gray-200 p-12 text-center text-gray-400">
               <Globe className="w-12 h-12 mx-auto mb-3 text-gray-300" />
-              <p>Sélectionnez un élève pour voir ses moyennes bilingues</p>
+              <p>{t("Sélectionnez un élève pour voir ses moyennes bilingues")}</p>
             </div>
           ) : bilingualLoading ? (
             <div className="bg-white rounded-xl border border-gray-200 p-8 text-center text-gray-400">
-              <div className="animate-spin w-6 h-6 border-2 border-purple-400 border-t-transparent rounded-full mx-auto mb-2" />
-              Calcul des moyennes bilingues…
-            </div>
+              <div className="animate-spin w-6 h-6 border-2 border-purple-400 border-t-transparent rounded-full mx-auto mb-2" />{t("Calcul des moyennes bilingues…")}</div>
           ) : bilingualError ? (
             <div className="bg-white rounded-xl border border-orange-200 p-8 text-center text-orange-500">
               <Globe className="w-10 h-10 mx-auto mb-3 text-orange-300" />
-              <p className="font-semibold mb-1">Calcul bilingue indisponible</p>
+              <p className="font-semibold mb-1">{t("Calcul bilingue indisponible")}</p>
               <p className="text-sm text-orange-400">
                 {bilingualError?.response?.data?.error || "Vérifiez que cet élève a une classe avec des matières FR et EN assignées."}
               </p>
             </div>
           ) : !bilingual ? (
-            <div className="bg-white rounded-xl border border-gray-200 p-8 text-center text-gray-400">Aucune donnée bilingue disponible pour cet élève.</div>
+            <div className="bg-white rounded-xl border border-gray-200 p-8 text-center text-gray-400">{t("Aucune donnée bilingue disponible pour cet élève.")}</div>
           ) : (!bilingual.has_fr_subjects && !bilingual.has_en_subjects) ? (
             <div className="bg-white rounded-xl border border-slate-200 p-8 text-center text-slate-500">
               <Globe className="w-10 h-10 mx-auto mb-3 text-slate-300" />
-              <p className="font-semibold mb-1">Pas de calcul bilingue pour cette sélection</p>
-              <p className="text-sm text-slate-400">
-                Cet élève n'a pas de classe avec des matières FR et EN assignées
-                pour l'année sélectionnée. Vérifiez son inscription et les matières
-                de sa classe dans cette année.
-              </p>
+              <p className="font-semibold mb-1">{t("Pas de calcul bilingue pour cette sélection")}</p>
+              <p className="text-sm text-slate-400">{t("Cet élève n'a pas de classe avec des matières FR et EN assignées pour l'année sélectionnée. Vérifiez son inscription et les matières de sa classe dans cette année.")}</p>
             </div>
           ) : (
             <>
               {/* Bilingual formula explanation */}
               <div className="bg-gradient-to-r from-blue-900 to-blue-800 rounded-xl p-4 text-white">
-                <h3 className="font-bold text-yellow-400 mb-1">Système Bilingue FEBA</h3>
+                <h3 className="font-bold text-yellow-400 mb-1">{t("Système Bilingue FEBA")}</h3>
                 <p className="text-blue-200 text-sm">
-                  <strong className="text-white">Formule :</strong> Moyenne Bilingue = (Moyenne Française × 60%) + (Moyenne Anglaise × 40%)
-                </p>
+                  <strong className="text-white">{t("Formule :")}</strong> {t("Moyenne Bilingue = (Moyenne Française × 60%) + (Moyenne Anglaise × 40%)")}</p>
               </div>
 
               {/* Bilingual averages for current period */}
               {selectedPeriod !== 'annual' ? (
                 <div className="grid grid-cols-3 gap-4">
                   {[
-                    { label: "Moyenne Française", value: bilingual.fr_average, lang: "FR", color: "blue" },
-                    { label: "Moyenne Anglaise", value: bilingual.en_average, lang: "EN", color: "green" },
-                    { label: "Moyenne Bilingue", value: bilingual.bilingual_average, lang: "BI", color: "purple" },
+                    { label: t("Moyenne Française"), value: bilingual.fr_average, lang: "FR", color: "blue" },
+                    { label: t("Moyenne Anglaise"), value: bilingual.en_average, lang: "EN", color: "green" },
+                    { label: t("Moyenne Bilingue"), value: bilingual.bilingual_average, lang: "BI", color: "purple" },
                   ].map(item => {
                     const letter = item.value != null ? null : null;
                     return (
@@ -755,23 +739,23 @@ export default function AdminGrades() {
                 /* Annual bilingual table */
                 <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
                   <div className="p-4 border-b border-gray-100">
-                    <h3 className="font-semibold text-gray-800">Moyennes Bilingues Annuelles</h3>
+                    <h3 className="font-semibold text-gray-800">{t("Moyennes Bilingues Annuelles")}</h3>
                   </div>
                   <table className="w-full">
                     <thead className="bg-gray-50">
                       <tr>
-                        <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500">Trimestre</th>
-                        <th className="px-4 py-2 text-center text-xs font-semibold text-blue-600">Moy. FR</th>
-                        <th className="px-4 py-2 text-center text-xs font-semibold text-green-600">Moy. EN</th>
-                        <th className="px-4 py-2 text-center text-xs font-semibold text-purple-600">Moy. Bilingue</th>
+                        <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500">{t("Trimestre")}</th>
+                        <th className="px-4 py-2 text-center text-xs font-semibold text-blue-600">{t("Moy. FR")}</th>
+                        <th className="px-4 py-2 text-center text-xs font-semibold text-green-600">{t("Moy. EN")}</th>
+                        <th className="px-4 py-2 text-center text-xs font-semibold text-purple-600">{t("Moy. Bilingue")}</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
-                      {['T1','T2','T3'].map(t => {
-                        const td = bilingual[t] || {};
+                      {['T1','T2','T3'].map(per => {
+                        const td = bilingual[per] || {};
                         return (
-                          <tr key={t}>
-                            <td className="px-4 py-2 font-medium text-gray-700">{t}</td>
+                          <tr key={per}>
+                            <td className="px-4 py-2 font-medium text-gray-700">{per}</td>
                             <td className="px-4 py-2 text-center text-blue-700">{td.fr_average != null ? parseFloat(td.fr_average).toFixed(2) : "—"}</td>
                             <td className="px-4 py-2 text-center text-green-700">{td.en_average != null ? parseFloat(td.en_average).toFixed(2) : "—"}</td>
                             <td className="px-4 py-2 text-center font-semibold text-purple-700">{td.bilingual_average != null ? parseFloat(td.bilingual_average).toFixed(2) : "—"}</td>
@@ -779,7 +763,7 @@ export default function AdminGrades() {
                         );
                       })}
                       <tr className="bg-yellow-50 font-bold">
-                        <td className="px-4 py-2 text-gray-800">ANNUELLE ★</td>
+                        <td className="px-4 py-2 text-gray-800">{t("ANNUELLE ★")}</td>
                         <td className="px-4 py-2 text-center text-blue-800">{bilingual.annual?.fr_average != null ? parseFloat(bilingual.annual.fr_average).toFixed(2) : "—"}</td>
                         <td className="px-4 py-2 text-center text-green-800">{bilingual.annual?.en_average != null ? parseFloat(bilingual.annual.en_average).toFixed(2) : "—"}</td>
                         <td className="px-4 py-2 text-center text-purple-800 text-lg">{bilingual.annual?.bilingual_average != null ? parseFloat(bilingual.annual.bilingual_average).toFixed(2) : "—"}</td>
@@ -799,32 +783,30 @@ export default function AdminGrades() {
           <div className="mb-4 flex items-center justify-between gap-2 flex-wrap">
             <div className="flex items-center gap-2">
               <Trash2 className="w-5 h-5 text-red-500" />
-              <h3 className="font-semibold text-slate-800">Notes supprimées (soft-deleted)</h3>
+              <h3 className="font-semibold text-slate-800">{t("Notes supprimées (soft-deleted)")}</h3>
             </div>
             <button onClick={exportDeletedCSV}
               className="btn-secondary flex items-center gap-2 text-sm">
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-              Exporter
-            </button>
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>{t("Exporter")}</button>
           </div>
           <div className="overflow-x-auto">
           <table className="w-full text-sm min-w-[600px]">
             <thead className="bg-red-50 text-red-700">
               <tr>
-                <th className="px-4 py-2 text-left">Élève</th>
-                <th className="px-4 py-2 text-left">Matière</th>
-                <th className="px-4 py-2 text-left">Période</th>
-                <th className="px-4 py-2 text-right">Note</th>
-                <th className="px-4 py-2 text-left">Supprimée par</th>
-                <th className="px-4 py-2 text-left">Actions</th>
+                <th className="px-4 py-2 text-left">{t("Élève")}</th>
+                <th className="px-4 py-2 text-left">{t("Matière")}</th>
+                <th className="px-4 py-2 text-left">{t("Période")}</th>
+                <th className="px-4 py-2 text-right">{t("Note")}</th>
+                <th className="px-4 py-2 text-left">{t("Supprimée par")}</th>
+                <th className="px-4 py-2 text-left">{t("Actions")}</th>
               </tr>
             </thead>
             <tbody>
               {deletedLoading && (
-                <tr><td colSpan={6} className="px-4 py-8 text-center text-slate-400">Chargement…</td></tr>
+                <tr><td colSpan={6} className="px-4 py-8 text-center text-slate-400">{t("Chargement…")}</td></tr>
               )}
               {!deletedLoading && deletedGrades.length === 0 && (
-                <tr><td colSpan={6} className="px-4 py-8 text-center text-slate-400">Aucune note supprimée.</td></tr>
+                <tr><td colSpan={6} className="px-4 py-8 text-center text-slate-400">{t("Aucune note supprimée.")}</td></tr>
               )}
               {deletedGrades.map(g => (
                 <tr key={g.id} className="border-t border-red-100 hover:bg-red-50/50">
@@ -835,9 +817,7 @@ export default function AdminGrades() {
                   <td className="px-4 py-2 text-slate-400 text-xs">{g.deleted_by_name || "—"}</td>
                   <td className="px-4 py-2">
                     <button onClick={() => restoreMut.mutate(g.id)}
-                      className="px-2 py-1 rounded bg-green-100 text-green-700 text-xs hover:bg-green-200">
-                      Restaurer
-                    </button>
+                      className="px-2 py-1 rounded bg-green-100 text-green-700 text-xs hover:bg-green-200">{t("Restaurer")}</button>
                   </td>
                 </tr>
               ))}
@@ -853,18 +833,18 @@ export default function AdminGrades() {
           <div className="mb-4 flex flex-wrap items-center gap-3">
             <div className="flex items-center gap-2">
               <History className="w-5 h-5 text-blue-500" />
-              <h3 className="font-semibold text-slate-800">Historique global des modifications</h3>
-              <span className="text-xs text-slate-500 bg-blue-50 px-2 py-0.5 rounded-full">{allHistRows.length} entrée(s)</span>
+              <h3 className="font-semibold text-slate-800">{t("Historique global des modifications")}</h3>
+              <span className="text-xs text-slate-500 bg-blue-50 px-2 py-0.5 rounded-full">{allHistRows.length} {t("entrée(s)")}</span>
             </div>
             <div className="flex gap-2 ml-auto flex-wrap">
               <select value={histFilterStudent} onChange={e => setHistFilterStudent(e.target.value)}
                 className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm">
-                <option value="">Tous les élèves</option>
+                <option value="">{t("Tous les élèves")}</option>
                 {students.map(s => <option key={s.id} value={s.id}>{s.full_name || `${s.first_name} ${s.last_name}`}</option>)}
               </select>
               <select value={histFilterYear} onChange={e => setHistFilterYear(e.target.value)}
                 className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm">
-                <option value="">Toutes les années</option>
+                <option value="">{t("Toutes les années")}</option>
                 {years.map(y => <option key={y.id} value={y.id}>{y.name}</option>)}
               </select>
             </div>
@@ -873,28 +853,28 @@ export default function AdminGrades() {
             <table className="w-full text-sm min-w-[700px]">
               <thead className="bg-blue-50 text-blue-700">
                 <tr>
-                  <th className="px-4 py-2 text-left">Date</th>
-                  <th className="px-4 py-2 text-left">Élève</th>
-                  <th className="px-4 py-2 text-left">Matière</th>
-                  <th className="px-4 py-2 text-center">Période</th>
-                  <th className="px-4 py-2 text-center">Action</th>
-                  <th className="px-4 py-2 text-center">Ancienne valeur</th>
-                  <th className="px-4 py-2 text-center">Nouvelle valeur</th>
-                  <th className="px-4 py-2 text-left">Justification</th>
-                  <th className="px-4 py-2 text-left">Par</th>
+                  <th className="px-4 py-2 text-left">{t("Date")}</th>
+                  <th className="px-4 py-2 text-left">{t("Élève")}</th>
+                  <th className="px-4 py-2 text-left">{t("Matière")}</th>
+                  <th className="px-4 py-2 text-center">{t("Période")}</th>
+                  <th className="px-4 py-2 text-center">{t("Action")}</th>
+                  <th className="px-4 py-2 text-center">{t("Ancienne valeur")}</th>
+                  <th className="px-4 py-2 text-center">{t("Nouvelle valeur")}</th>
+                  <th className="px-4 py-2 text-left">{t("Justification")}</th>
+                  <th className="px-4 py-2 text-left">{t("Par")}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {allHistLoading && (
-                  <tr><td colSpan={9} className="px-4 py-8 text-center text-gray-400">Chargement…</td></tr>
+                  <tr><td colSpan={9} className="px-4 py-8 text-center text-gray-400">{t("Chargement…")}</td></tr>
                 )}
                 {!allHistLoading && allHistRows.length === 0 && (
-                  <tr><td colSpan={9} className="px-4 py-8 text-center text-gray-400">Aucun historique trouvé.</td></tr>
+                  <tr><td colSpan={9} className="px-4 py-8 text-center text-gray-400">{t("Aucun historique trouvé.")}</td></tr>
                 )}
                 {allHistRows.map(h => (
                   <tr key={h.id} className="hover:bg-gray-50">
                     <td className="px-4 py-2 text-xs text-gray-500 whitespace-nowrap">
-                      {h.changed_at ? new Date(h.changed_at).toLocaleString("fr-FR") : "—"}
+                      {h.changed_at ? new Date(h.changed_at).toLocaleString(dateLocale()) : "—"}
                     </td>
                     <td className="px-4 py-2 font-medium text-gray-800">{h.student_name}</td>
                     <td className="px-4 py-2 text-gray-600">{h.subject_name}</td>
@@ -919,73 +899,73 @@ export default function AdminGrades() {
       )}
 
       {/* ADD NOTE MODAL */}
-      <Modal open={addOpen} onClose={() => { setAddOpen(false); setEditItem(null); reset(); }} title={editItem ? "Modifier la note" : "Ajouter une note"} size="md">
+      <Modal open={addOpen} onClose={() => { setAddOpen(false); setEditItem(null); reset(); }} title={editItem ? t("Modifier la note") : t("Ajouter une note")} size="md">
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           {/* In edit mode: show read-only context, no reselection needed */}
           {editItem ? (
             <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 text-sm">
-              <div className="font-semibold text-blue-800 mb-1">Note sélectionnée — modification</div>
+              <div className="font-semibold text-blue-800 mb-1">{t("Note sélectionnée — modification")}</div>
               <div className="text-blue-700 space-y-0.5">
-                <div><span className="text-blue-500">Élève :</span> {editItem.student_name}</div>
-                <div><span className="text-blue-500">Matière :</span> {editItem.subject_name}</div>
-                <div><span className="text-blue-500">Période :</span> {editItem.period}</div>
+                <div><span className="text-blue-500">{t("Élève :")}</span> {editItem.student_name}</div>
+                <div><span className="text-blue-500">{t("Matière :")}</span> {editItem.subject_name}</div>
+                <div><span className="text-blue-500">{t("Période :")}</span> {editItem.period}</div>
               </div>
             </div>
           ) : (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Élève *</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t("Élève *")}</label>
               <Controller name="student" control={control} rules={{ required: true }}
                 render={({ field }) => (
                   <SearchableSelect options={studentOpts} value={field.value}
-                    onChange={(v) => field.onChange(v)} placeholder="Choisir un élève..." />
+                    onChange={(v) => field.onChange(v)} placeholder={t("Choisir un élève...")} />
                 )} />
             </div>
           )}
           {!editItem && (
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Matière *</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t("Matière *")}</label>
                 <select {...register("subject", { required: true })} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm">
-                  <option value="">Choisir...</option>
+                  <option value="">{t("Choisir...")}</option>
                   {subjects.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Période *</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t("Période *")}</label>
                 <select {...register("period", { required: true })} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm">
-                  {PERIODS.filter(p => p.value !== 'annual').map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
+                  {PERIODS.filter(p => p.value !== 'annual').map(p => <option key={p.value} value={p.value}>{t(p.label)}</option>)}
                 </select>
               </div>
             </div>
           )}
           <div className="grid grid-cols-3 gap-3">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Note (/20) *</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t("Note (/20) *")}</label>
               <input {...register("value", { required: true, min: 0, max: 20 })}
                 type="number" step="0.25" min="0" max="20"
                 className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Type *</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t("Type *")}</label>
               <select {...register("note_type")} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm">
-                {NOTE_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+                {NOTE_TYPES.map(nt => <option key={nt.value} value={nt.value}>{t(nt.label)}</option>)}
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Coeff. note</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t("Coeff. note")}</label>
               <input {...register("note_coefficient")} type="number" min="1" defaultValue="1"
                 className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm" />
             </div>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Commentaire</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{t("Commentaire")}</label>
             <textarea {...register("comment")} rows={2}
               className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm" />
           </div>
           <div className="flex gap-3 pt-2">
-            <button type="button" onClick={() => setAddOpen(false)} className="btn-secondary flex-1">Annuler</button>
+            <button type="button" onClick={() => setAddOpen(false)} className="btn-secondary flex-1">{t("Annuler")}</button>
             <button type="submit" disabled={addMut.isPending || editMut.isPending} className="btn-primary flex-1">
-              {addMut.isPending || editMut.isPending ? "Enregistrement…" : editItem ? "Modifier" : "Ajouter la note"}
+              {addMut.isPending || editMut.isPending ? "Enregistrement…" : editItem ? t("Modifier") : t("Ajouter la note")}
             </button>
           </div>
           {/* Hidden: school_year pre-filled by reset() */}
@@ -993,18 +973,17 @@ export default function AdminGrades() {
         </form>
       </Modal>
       {/* DELETE CONFIRM MODAL */}
-      <Modal open={!!deleteConfirm} onClose={() => setDeleteConfirm(null)} title="Supprimer la note" size="sm">
+      <Modal open={!!deleteConfirm} onClose={() => setDeleteConfirm(null)} title={t("Supprimer la note")} size="sm">
         <div className="space-y-4">
-          <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-sm text-red-700">
-            Supprimer <strong>{deleteConfirm && parseFloat(deleteConfirm.value || 0).toFixed(2)}/20</strong> de <strong>{deleteConfirm?.student_name}</strong> ?
+          <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-sm text-red-700">{t("Supprimer")} <strong>{deleteConfirm && parseFloat(deleteConfirm.value || 0).toFixed(2)}/20</strong> de <strong>{deleteConfirm?.student_name}</strong> ?
             Cette action est irréversible.
           </div>
           <div>
-            <label className="label">Justification de suppression*</label>
-            <textarea id="del-just" className="input" rows={2} placeholder="Motif obligatoire : erreur de saisie, doublon…" />
+            <label className="label">{t("Justification de suppression*")}</label>
+            <textarea id="del-just" className="input" rows={2} placeholder={t("Motif obligatoire : erreur de saisie, doublon…")} />
           </div>
           <div className="flex gap-3 justify-end">
-            <button type="button" onClick={() => setDeleteConfirm(null)} className="btn-secondary">Annuler</button>
+            <button type="button" onClick={() => setDeleteConfirm(null)} className="btn-secondary">{t("Annuler")}</button>
             <button type="button" onClick={() => {
               const just = document.getElementById("del-just")?.value?.trim() || "";
               if (!just) {
@@ -1015,7 +994,7 @@ export default function AdminGrades() {
               delMut.mutate({ id: deleteConfirm.id, justification: just });
             }} disabled={delMut.isPending}
               className="px-4 py-2 rounded-xl bg-red-600 text-white text-sm font-medium hover:bg-red-700 disabled:opacity-60">
-              {delMut.isPending ? "Suppression…" : "Supprimer"}
+              {delMut.isPending ? t("Suppression…") : t("Supprimer")}
             </button>
           </div>
         </div>
@@ -1025,12 +1004,10 @@ export default function AdminGrades() {
         <div className="space-y-3">
           {histData === undefined && histItem && (
             <div className="flex items-center justify-center py-8 text-slate-400">
-              <div className="animate-spin w-5 h-5 border-2 border-blue-400 border-t-transparent rounded-full mr-2" />
-              Chargement de l'historique…
-            </div>
+              <div className="animate-spin w-5 h-5 border-2 border-blue-400 border-t-transparent rounded-full mr-2" />{t("Chargement de l'historique…")}</div>
           )}
           {historyEntries.length === 0 && histData !== undefined && (
-            <p className="text-center py-6 text-slate-400">Aucun historique disponible pour cette note.</p>
+            <p className="text-center py-6 text-slate-400">{t("Aucun historique disponible pour cette note.")}</p>
           )}
           {historyEntries.map((h, i) => (
             <div key={h.id || i} className="border border-slate-100 rounded-xl p-4 bg-slate-50">
@@ -1045,21 +1022,21 @@ export default function AdminGrades() {
               </div>
               <div className="grid grid-cols-2 gap-3 text-sm">
                 <div>
-                  <span className="text-slate-500">Ancienne valeur :</span>
+                  <span className="text-slate-500">{t("Ancienne valeur :")}</span>
                   <span className="ml-1 font-semibold text-red-600">{h.old_value != null ? `${h.old_value}/20` : '—'}</span>
                 </div>
                 <div>
-                  <span className="text-slate-500">Nouvelle valeur :</span>
+                  <span className="text-slate-500">{t("Nouvelle valeur :")}</span>
                   <span className="ml-1 font-semibold text-green-700">{h.new_value != null ? `${h.new_value}/20` : '—'}</span>
                 </div>
               </div>
               {h.justification && (
                 <div className="mt-2 text-xs text-slate-600 bg-white rounded-lg p-2 border border-slate-100">
-                  <span className="font-semibold">Justification :</span> {h.justification}
+                  <span className="font-semibold">{t("Justification :")}</span> {h.justification}
                 </div>
               )}
               {h.changed_by_name && (
-                <div className="mt-1 text-xs text-slate-400">Par : {h.changed_by_name}</div>
+                <div className="mt-1 text-xs text-slate-400">{t("Par")} : {h.changed_by_name}</div>
               )}
             </div>
           ))}

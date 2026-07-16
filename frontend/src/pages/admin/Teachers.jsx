@@ -21,6 +21,7 @@ import ConfirmDialog from "../../components/ui/ConfirmDialog";
 import SearchableSelect from "../../components/ui/SearchableSelect";
 import { extractApiError } from "../../utils/errors";
 import { resolveMediaUrl } from "../../utils/media";
+import { t } from "../../i18n";
 
 /* ── MultiSelect simple (sans mutation — ne référence plus qc) ────────────── */
 function MultiSelect({ options, value = [], onChange, placeholder }) {
@@ -70,34 +71,34 @@ export default function AdminTeachers() {
 
   const createMut = useMutation({
     mutationFn: (d) => teachersAPI.create(d),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["teachers"] }); toast.success("Enseignant créé !"); closeModal(); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["teachers"] }); toast.success(t("Enseignant créé !")); closeModal(); },
     onError: (e) => toast.error(extractApiError(e)),
   });
   const updateMut = useMutation({
     mutationFn: ({ id, data }) => teachersAPI.update(id, data),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["teachers"] }); toast.success("Modifié !"); closeModal(); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["teachers"] }); toast.success(t("Modifié !")); closeModal(); },
     onError: (e) => toast.error(extractApiError(e)),
   });
   const deleteMut = useMutation({
     mutationFn: teachersAPI.delete,
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["teachers"] }); toast.success("Supprimé."); setDeleteItem(null); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["teachers"] }); toast.success(t("Supprimé.")); setDeleteItem(null); },
   });
   /* FIX: bulkDeleteMut CORRECT dans AdminTeachers (non dans MultiSelect) */
   const bulkDeleteMut = useMutation({
     mutationFn: (ids) => teachersAPI.bulkDelete(ids),
-    onSuccess: (data) => { qc.invalidateQueries({ queryKey: ["teachers"] }); toast.success(`${data?.data?.deleted || ""} enseignant(s) supprimé(s).`); },
+    onSuccess: (data) => { qc.invalidateQueries({ queryKey: ["teachers"] }); toast.success(t("{n} enseignant(s) supprimé(s).", { n: data?.data?.deleted || "" })); },
     onError: (e) => toast.error(extractApiError(e)),
   });
 
   const closeModal = () => { setModalOpen(false); setEditItem(null); reset(); };
   const openCreate = () => { reset({ contract_type: "permanent", class_ids: [], subject_ids: [] }); setModalOpen(true); };
-  const openEdit = (t) => {
-    setEditItem(t);
+  const openEdit = (tch) => {
+    setEditItem(tch);
     reset({
-      specialization: t.specialization, hire_date: t.hire_date,
-      contract_type: t.contract_type, bio: t.bio,
-      class_ids:   (t.classes_detail  || []).map(c => c.id),
-      subject_ids: (t.subjects_detail || []).map(s => s.id),
+      specialization: tch.specialization, hire_date: tch.hire_date,
+      contract_type: tch.contract_type, bio: tch.bio,
+      class_ids:   (tch.classes_detail  || []).map(c => c.id),
+      subject_ids: (tch.subjects_detail || []).map(s => s.id),
     });
     setModalOpen(true);
   };
@@ -110,19 +111,19 @@ export default function AdminTeachers() {
   };
 
   const cols = [
-    { key: "id",       label: "ID employé",  accessor: "employee_id" },
-    { key: "name",     label: "Nom",         render: r => `${r.user_first_name || ""} ${r.user_last_name || ""}`.trim() || "—" },
-    { key: "email",    label: "Email",       accessor: "user_email" },
-    { key: "spec",     label: "Spécialité",  accessor: "specialization" },
-    { key: "contract", label: "Contrat",     accessor: "contract_type" },
-    { key: "classes",  label: "Classes",     render: r => (r.classes_detail || []).map(c => c.name).join(", ") || "—" },
-    { key: "status",   label: "Statut",      render: r => <StatusBadge status={r.user_is_active === false ? "inactive" : "active"} /> },
+    { key: "id",       label: t("ID employé"),  accessor: "employee_id" },
+    { key: "name",     label: t("Nom"),         render: r => `${r.user_first_name || ""} ${r.user_last_name || ""}`.trim() || "—" },
+    { key: "email",    label: t("Email"),       accessor: "user_email" },
+    { key: "spec",     label: t("Spécialité"),  accessor: "specialization" },
+    { key: "contract", label: t("Contrat"),     accessor: "contract_type" },
+    { key: "classes",  label: t("Classes"),     render: r => (r.classes_detail || []).map(c => c.name).join(", ") || "—" },
+    { key: "status",   label: t("Statut"),      render: r => <StatusBadge status={r.user_is_active === false ? "inactive" : "active"} /> },
   ];
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Enseignants" subtitle={`${teachers.length} enseignant(s)`}
-        action={<button onClick={openCreate} className="btn-primary flex items-center gap-2"><Plus className="w-4 h-4" />Ajouter</button>} />
+      <PageHeader title={t("Enseignants")} subtitle={t("{n} enseignant(s)", { n: teachers.length })}
+        action={<button onClick={openCreate} className="btn-primary flex items-center gap-2"><Plus className="w-4 h-4" />{t("Ajouter")}</button>} />
 
       <div className="card">
         <DataTable
@@ -136,7 +137,7 @@ export default function AdminTeachers() {
           actions={row => (
             <div className="flex items-center gap-1 justify-end">
               <button onClick={(e) => { e.stopPropagation(); setViewItem(row); }}
-                className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600" title="Voir le détail">
+                className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600" title={t("Voir le détail")}>
                 <Eye className="w-4 h-4" />
               </button>
               <button onClick={(e) => { e.stopPropagation(); openEdit(row); }}
@@ -158,7 +159,7 @@ export default function AdminTeachers() {
           <div className="absolute inset-0 bg-black/40" onClick={() => setViewItem(null)} />
           <div className="relative bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6 space-y-4 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between">
-              <h2 className="font-bold text-slate-800 text-lg">Fiche Enseignant</h2>
+              <h2 className="font-bold text-slate-800 text-lg">{t("Fiche Enseignant")}</h2>
               <button onClick={() => setViewItem(null)} className="text-slate-400 hover:text-slate-600 text-2xl leading-none">×</button>
             </div>
             <div className="flex items-center gap-4">
@@ -176,12 +177,12 @@ export default function AdminTeachers() {
               </div>
             </div>
             <div className="space-y-2 text-sm divide-y divide-slate-50">
-              <div className="flex justify-between py-2"><span className="text-slate-500">Spécialité</span><span className="font-medium">{viewItem.specialization || "—"}</span></div>
-              <div className="flex justify-between py-2"><span className="text-slate-500">Téléphone</span><span className="font-medium">{viewItem.user_phone || "—"}</span></div>
-              <div className="flex justify-between py-2"><span className="text-slate-500">Type de contrat</span><span className="capitalize">{viewItem.contract_type || "—"}</span></div>
-              <div className="flex justify-between py-2"><span className="text-slate-500">Date d'embauche</span><span>{viewItem.hire_date || "—"}</span></div>
+              <div className="flex justify-between py-2"><span className="text-slate-500">{t("Spécialité")}</span><span className="font-medium">{viewItem.specialization || "—"}</span></div>
+              <div className="flex justify-between py-2"><span className="text-slate-500">{t("Téléphone")}</span><span className="font-medium">{viewItem.user_phone || "—"}</span></div>
+              <div className="flex justify-between py-2"><span className="text-slate-500">{t("Type de contrat")}</span><span className="capitalize">{viewItem.contract_type || "—"}</span></div>
+              <div className="flex justify-between py-2"><span className="text-slate-500">{t("Date d'embauche")}</span><span>{viewItem.hire_date || "—"}</span></div>
               <div className="py-2">
-                <div className="flex items-center gap-1 text-slate-500 mb-1"><BookOpen className="w-3.5 h-3.5" />Matières enseignées</div>
+                <div className="flex items-center gap-1 text-slate-500 mb-1"><BookOpen className="w-3.5 h-3.5" />{t("Matières enseignées")}</div>
                 <div className="flex flex-wrap gap-1.5 mt-1">
                   {(viewItem.subjects_detail || []).length > 0
                     ? (viewItem.subjects_detail || []).map(s => (
@@ -191,7 +192,7 @@ export default function AdminTeachers() {
                 </div>
               </div>
               <div className="py-2">
-                <div className="flex items-center gap-1 text-slate-500 mb-1"><Users className="w-3.5 h-3.5" />Classes assignées</div>
+                <div className="flex items-center gap-1 text-slate-500 mb-1"><Users className="w-3.5 h-3.5" />{t("Classes assignées")}</div>
                 <div className="flex flex-wrap gap-1.5 mt-1">
                   {(viewItem.classes_detail || []).length > 0
                     ? (viewItem.classes_detail || []).map(c => (
@@ -201,57 +202,56 @@ export default function AdminTeachers() {
                 </div>
               </div>
               {viewItem.bio && (
-                <div className="py-2"><span className="text-slate-500 block mb-1">Bio</span><p className="text-slate-700 text-sm">{viewItem.bio}</p></div>
+                <div className="py-2"><span className="text-slate-500 block mb-1">{t("Bio")}</span><p className="text-slate-700 text-sm">{viewItem.bio}</p></div>
               )}
             </div>
             <div className="flex justify-end pt-2">
               <button onClick={() => { setViewItem(null); openEdit(viewItem); }} className="btn-primary text-sm">
-                <Pencil className="w-4 h-4 inline mr-1" />Modifier
-              </button>
+                <Pencil className="w-4 h-4 inline mr-1" />{t("Modifier")}</button>
             </div>
           </div>
         </div>
       )}
 
-      <Modal open={modalOpen} onClose={closeModal} title={editItem ? "Modifier l'enseignant" : "Nouvel enseignant"} size="md">
+      <Modal open={modalOpen} onClose={closeModal} title={editItem ? t("Modifier l'enseignant") : t("Nouvel enseignant")} size="md">
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           {!editItem && (
             <div>
-              <label className="label">Compte utilisateur (rôle teacher)*</label>
+              <label className="label">{t("Compte utilisateur (rôle teacher)*")}</label>
               <Controller name="user_write" control={control} rules={{ required: !editItem }}
                 render={({ field }) => (
                   <SearchableSelect options={userOptions} value={field.value} onChange={field.onChange}
-                    placeholder="Rechercher un utilisateur enseignant…" />
+                    placeholder={t("Rechercher un utilisateur enseignant…")} />
                 )} />
             </div>
           )}
-          <div><label className="label">Spécialité</label><input {...register("specialization")} className="input" /></div>
+          <div><label className="label">{t("Spécialité")}</label><input {...register("specialization")} className="input" /></div>
           <div className="grid grid-cols-2 gap-4">
-            <div><label className="label">Date d'embauche</label><input {...register("hire_date")} type="date" className="input" /></div>
+            <div><label className="label">{t("Date d'embauche")}</label><input {...register("hire_date")} type="date" className="input" /></div>
             <div>
-              <label className="label">Type de contrat</label>
+              <label className="label">{t("Type de contrat")}</label>
               <select {...register("contract_type")} className="input">
-                <option value="permanent">Permanent</option>
-                <option value="contractuel">Contractuel</option>
-                <option value="vacataire">Vacataire</option>
+                <option value="permanent">{t("Permanent")}</option>
+                <option value="contractuel">{t("Contractuel")}</option>
+                <option value="vacataire">{t("Vacataire")}</option>
               </select>
             </div>
           </div>
           <div>
-            <label className="label">Classes assignées</label>
+            <label className="label">{t("Classes assignées")}</label>
             <Controller name="class_ids" control={control}
-              render={({ field }) => <MultiSelect options={classOptions} value={field.value} onChange={field.onChange} placeholder="Ajouter une classe…" />} />
+              render={({ field }) => <MultiSelect options={classOptions} value={field.value} onChange={field.onChange} placeholder={t("Ajouter une classe…")} />} />
           </div>
           <div>
-            <label className="label">Matières assignées</label>
+            <label className="label">{t("Matières assignées")}</label>
             <Controller name="subject_ids" control={control}
-              render={({ field }) => <MultiSelect options={subjectOptions} value={field.value} onChange={field.onChange} placeholder="Ajouter une matière…" />} />
+              render={({ field }) => <MultiSelect options={subjectOptions} value={field.value} onChange={field.onChange} placeholder={t("Ajouter une matière…")} />} />
           </div>
-          <div><label className="label">Bio</label><textarea {...register("bio")} className="input" rows={2} /></div>
+          <div><label className="label">{t("Bio")}</label><textarea {...register("bio")} className="input" rows={2} /></div>
           <div className="flex gap-3 justify-end pt-2">
-            <button type="button" onClick={closeModal} className="btn-secondary">Annuler</button>
+            <button type="button" onClick={closeModal} className="btn-secondary">{t("Annuler")}</button>
             <button type="submit" disabled={createMut.isPending || updateMut.isPending} className="btn-primary">
-              {(createMut.isPending || updateMut.isPending) ? "Enregistrement…" : "Enregistrer"}
+              {(createMut.isPending || updateMut.isPending) ? t("Enregistrement…") : t("Enregistrer")}
             </button>
           </div>
         </form>
@@ -259,7 +259,7 @@ export default function AdminTeachers() {
 
       <ConfirmDialog open={!!deleteItem} onClose={() => setDeleteItem(null)}
         onConfirm={() => deleteMut.mutate(deleteItem?.id)} loading={deleteMut.isPending}
-        message="Supprimer cet enseignant ?" />
+        message={t("Supprimer cet enseignant ?")} />
     </div>
   );
 }

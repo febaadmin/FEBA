@@ -7,6 +7,7 @@ import PageHeader from "../../components/ui/PageHeader";
 import AvatarUpload from "../../components/ui/AvatarUpload";
 import { Save, Lock, User, Eye, EyeOff, GraduationCap, Calendar } from "lucide-react";
 import { extractApiError } from "../../utils/errors";
+import { t } from "../../i18n";
 
 export default function ParentProfile() {
   const qc = useQueryClient();
@@ -36,13 +37,13 @@ export default function ParentProfile() {
 
   const updateMut = useMutation({
     mutationFn: (d) => authAPI.updateMe(d),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["me"] }); toast.success("Profil mis à jour !"); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["me"] }); toast.success(t("Profil mis à jour !")); },
     onError: (e) => toast.error(extractApiError(e)),
   });
 
   const pwdMut = useMutation({
     mutationFn: authAPI.changePassword,
-    onSuccess: () => { toast.success("Mot de passe changé !"); resetPwd(); },
+    onSuccess: () => { toast.success(t("Mot de passe changé !")); resetPwd(); },
     onError: (e) => toast.error(extractApiError(e)),
   });
 
@@ -50,7 +51,7 @@ export default function ParentProfile() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Mon Profil" subtitle={`Année scolaire ${currentYear?.name || "en cours"}`} />
+      <PageHeader title={t("Mon Profil")} subtitle={t("Année scolaire {y}", { y: currentYear?.name || "" })} />
 
       {/* Avatar */}
       <div className="card flex flex-col items-center gap-3 py-6">
@@ -58,32 +59,32 @@ export default function ParentProfile() {
         <div className="text-center">
           <p className="font-bold text-slate-800 text-xl">{user?.first_name} {user?.last_name}</p>
           <p className="text-sm text-slate-500 mt-0.5">{user?.email}</p>
-          <span className="mt-2 inline-block text-xs bg-amber-50 text-amber-700 px-3 py-0.5 rounded-full font-medium">Parent</span>
+          <span className="mt-2 inline-block text-xs bg-amber-50 text-amber-700 px-3 py-0.5 rounded-full font-medium">{t("Parent")}</span>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Edit info */}
         <div className="card">
-          <h3 className="font-semibold text-slate-800 mb-4">Informations personnelles</h3>
+          <h3 className="font-semibold text-slate-800 mb-4">{t("Informations personnelles")}</h3>
           <form onSubmit={handleSubmit(d => updateMut.mutate(d))} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
-              <div><label className="label">Prénom</label><input {...register("first_name")} className="input" /></div>
-              <div><label className="label">Nom</label><input {...register("last_name")} className="input" /></div>
+              <div><label className="label">{t("Prénom")}</label><input {...register("first_name")} className="input" /></div>
+              <div><label className="label">{t("Nom")}</label><input {...register("last_name")} className="input" /></div>
             </div>
-            <div><label className="label">Téléphone</label><input {...register("phone")} className="input" /></div>
+            <div><label className="label">{t("Téléphone")}</label><input {...register("phone")} className="input" /></div>
             <div>
-              <label className="label">Email</label>
+              <label className="label">{t("Email")}</label>
               <input value={user?.email || ""} disabled className="input bg-slate-50 text-slate-400 cursor-not-allowed" />
             </div>
             {parent && (
               <>
-                <div><label className="label">Profession</label><input value={parent.profession || "—"} disabled className="input bg-slate-50 text-slate-400" /></div>
-                <div><label className="label">Adresse</label><input value={parent.address || "—"} disabled className="input bg-slate-50 text-slate-400" /></div>
+                <div><label className="label">{t("Profession")}</label><input value={parent.profession || "—"} disabled className="input bg-slate-50 text-slate-400" /></div>
+                <div><label className="label">{t("Adresse")}</label><input value={parent.address || "—"} disabled className="input bg-slate-50 text-slate-400" /></div>
               </>
             )}
             <button type="submit" disabled={updateMut.isPending} className="btn-primary flex items-center gap-2">
-              <Save className="w-4 h-4" />{updateMut.isPending ? "Enregistrement…" : "Enregistrer"}
+              <Save className="w-4 h-4" />{updateMut.isPending ? t("Enregistrement…") : t("Enregistrer")}
             </button>
           </form>
         </div>
@@ -126,14 +127,13 @@ export default function ParentProfile() {
         {/* Change password */}
         <div className="card">
           <h3 className="font-semibold text-slate-800 mb-4 flex items-center gap-2">
-            <Lock className="w-4 h-4" />Changer le mot de passe
-          </h3>
+            <Lock className="w-4 h-4" />{t("Changer le mot de passe")}</h3>
           <form onSubmit={hsPwd(d => pwdMut.mutate(d))} className="space-y-4">
-            <div><label className="label">Mot de passe actuel</label><div className="relative"><input {...regPwd("old_password", { required: true })} type={showOldPwd ? "text" : "password"} className="input pr-10" /><button type="button" onClick={() => setShowOldPwd(v => !v)} className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600">{showOldPwd ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}</button></div></div>
-            <div><label className="label">Nouveau mot de passe</label><div className="relative"><input {...regPwd("new_password", { required: true, minLength: 8 })} type={showNewPwd ? "text" : "password"} className="input pr-10" /><button type="button" onClick={() => setShowNewPwd(v => !v)} className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600">{showNewPwd ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}</button></div></div>
-            <div><label className="label">Confirmer</label><div className="relative"><input {...regPwd("confirm_password", { required: true })} type={showConfirmPwd ? "text" : "password"} className="input pr-10" /><button type="button" onClick={() => setShowConfirmPwd(v => !v)} className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600">{showConfirmPwd ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}</button></div></div>
+            <div><label className="label">{t("Mot de passe actuel")}</label><div className="relative"><input {...regPwd("old_password", { required: true })} type={showOldPwd ? "text" : "password"} className="input pr-10" /><button type="button" onClick={() => setShowOldPwd(v => !v)} className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600">{showOldPwd ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}</button></div></div>
+            <div><label className="label">{t("Nouveau mot de passe")}</label><div className="relative"><input {...regPwd("new_password", { required: true, minLength: 8 })} type={showNewPwd ? "text" : "password"} className="input pr-10" /><button type="button" onClick={() => setShowNewPwd(v => !v)} className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600">{showNewPwd ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}</button></div></div>
+            <div><label className="label">{t("Confirmer")}</label><div className="relative"><input {...regPwd("confirm_password", { required: true })} type={showConfirmPwd ? "text" : "password"} className="input pr-10" /><button type="button" onClick={() => setShowConfirmPwd(v => !v)} className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600">{showConfirmPwd ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}</button></div></div>
             <button type="submit" disabled={pwdMut.isPending} className="btn-primary flex items-center gap-2">
-              <Save className="w-4 h-4" />{pwdMut.isPending ? "Enregistrement…" : "Changer"}
+              <Save className="w-4 h-4" />{pwdMut.isPending ? t("Enregistrement…") : t("Changer")}
             </button>
           </form>
         </div>

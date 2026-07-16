@@ -3,6 +3,7 @@ import { attendanceAPI } from "../../api";
 import PageHeader from "../../components/ui/PageHeader";
 import DataTable from "../../components/ui/DataTable";
 import StatusBadge from "../../components/ui/StatusBadge";
+import { t } from "../../i18n";
 
 export default function StudentAttendance() {
   const { data, isLoading } = useQuery({ queryKey: ["student-attendance"], queryFn: () => attendanceAPI.list() });
@@ -11,19 +12,19 @@ export default function StudentAttendance() {
   const late = records.filter(r => r.status === "late").length;
 
   const cols = [
-    { key: "date", label: "Date", accessor: "date" },
-    { key: "status", label: "Statut", accessor: "status", render: r => <StatusBadge status={r.status} /> },
-    { key: "justification", label: "Justification", accessor: "justification", render: r => r.justification || "—" },
+    { key: "date", label: t("Date"), accessor: "date" },
+    { key: "status", label: t("Statut"), accessor: "status", render: r => <StatusBadge status={r.status} /> },
+    { key: "justification", label: t("Justification"), accessor: "justification", render: r => r.justification || "—" },
   ];
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Mes Absences" subtitle={`${absent} absence(s) • ${late} retard(s)`} />
+      <PageHeader title={t("Mes Absences")} subtitle={t("{a} absence(s) • {b} retard(s)", { a: absent, b: late })} />
       <div className="grid grid-cols-3 gap-4">
         {[
-          { label: "Total", value: records.length, color: "text-slate-700" },
-          { label: "Absences", value: absent, color: "text-danger" },
-          { label: "Retards", value: late, color: "text-amber-600" },
+          { label: t("Total"), value: records.length, color: "text-slate-700" },
+          { label: t("Absences"), value: absent, color: "text-danger" },
+          { label: t("Retards"), value: late, color: "text-amber-600" },
         ].map(stat => (
           <div key={stat.label} className="card text-center">
             <p className={`text-3xl font-bold ${stat.color}`}>{stat.value}</p>

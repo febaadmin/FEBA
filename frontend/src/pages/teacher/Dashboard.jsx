@@ -6,6 +6,7 @@ import StatCard from "../../components/ui/StatCard";
 import { BookOpen, Users, FileText, Calendar, ClipboardList, Megaphone } from "lucide-react";
 import { motion } from "framer-motion";
 import AnnouncementModal from "../../components/ui/AnnouncementModal";
+import { t } from "../../i18n";
 
 export default function TeacherDashboard() {
   const [selectedAnn, setSelectedAnn] = useState(null);
@@ -26,20 +27,20 @@ export default function TeacherDashboard() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Mon Tableau de Bord" subtitle="Vue d'ensemble de mes activités" />
+      <PageHeader title={t("Mon Tableau de Bord")} subtitle={t("Vue d'ensemble de mes activités")} />
 
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-        <StatCard title="Mes classes"       value={kpis.my_classes ?? 0}        icon={BookOpen}     color="success"   delay={0} />
-        <StatCard title="Mes élèves"        value={kpis.my_students ?? 0}       icon={Users}        color="primary"   delay={0.1} />
-        <StatCard title="Devoirs en cours"  value={kpis.pending_homework ?? 0}  icon={FileText}     color="accent"    delay={0.2} />
-        <StatCard title="Absences (7j)"     value={kpis.absences_this_week ?? 0} icon={Calendar}   color="danger"    delay={0.3} />
-        <StatCard title="Notes ce mois"     value={kpis.grades_this_month ?? 0} icon={ClipboardList} color="secondary" delay={0.4} />
+        <StatCard title={t("Mes classes")}       value={kpis.my_classes ?? 0}        icon={BookOpen}     color="success"   delay={0} />
+        <StatCard title={t("Mes élèves")}        value={kpis.my_students ?? 0}       icon={Users}        color="primary"   delay={0.1} />
+        <StatCard title={t("Devoirs en cours")}  value={kpis.pending_homework ?? 0}  icon={FileText}     color="accent"    delay={0.2} />
+        <StatCard title={t("Absences (7j)")}     value={kpis.absences_this_week ?? 0} icon={Calendar}   color="danger"    delay={0.3} />
+        <StatCard title={t("Notes ce mois")}     value={kpis.grades_this_month ?? 0} icon={ClipboardList} color="secondary" delay={0.4} />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {(d?.my_classes || []).length > 0 && (
           <div className="card">
-            <h3 className="font-semibold text-slate-800 mb-4">Mes Classes</h3>
+            <h3 className="font-semibold text-slate-800 mb-4">{t("Mes Classes")}</h3>
             <div className="space-y-2">
               {d.my_classes.map((cls, i) => (
                 <motion.div key={cls.id} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }}
@@ -60,7 +61,7 @@ export default function TeacherDashboard() {
 
         {(d?.recent_grades || []).length > 0 && (
           <div className="card">
-            <h3 className="font-semibold text-slate-800 mb-4">Dernières Notes Saisies</h3>
+            <h3 className="font-semibold text-slate-800 mb-4">{t("Dernières Notes Saisies")}</h3>
             <div className="space-y-2">
               {d.recent_grades.map((g, i) => {
                 const color = g.value >= 14 ? "text-success" : g.value >= 10 ? "text-amber-600" : "text-danger";
@@ -82,8 +83,7 @@ export default function TeacherDashboard() {
       {announcements.length > 0 && (
         <div className="card">
           <h3 className="font-semibold text-slate-800 mb-4 flex items-center gap-2">
-            <Megaphone className="w-4 h-4 text-primary" />Annonces récentes
-          </h3>
+            <Megaphone className="w-4 h-4 text-primary" />{t("Annonces récentes")}</h3>
           <div className="space-y-2">
             {announcements.slice(0, 4).map(a => (
               <div key={a.id} onClick={() => setSelectedAnn(a)}

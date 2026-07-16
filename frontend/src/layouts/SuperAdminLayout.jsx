@@ -12,6 +12,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useQuery } from "@tanstack/react-query";
 import logoFeba from "../assets/logo_feba.jpeg";
 import { useAuthStore } from "../store/authStore";
+import { t } from "../i18n";
+import LanguageSwitcher from "../components/ui/LanguageSwitcher";
 
 const nav = [
   { section: "SuperAdmin", items: [
@@ -19,6 +21,7 @@ const nav = [
     { label: "Tous les utilisateurs", icon: Users,            to: "/superadmin/users" },
     { label: "Gestion Admins",        icon: Shield,           to: "/superadmin/admins" },
     { label: "Messages",              icon: MessageSquare,    to: "/superadmin/messages", badge: true },
+    { label: "Mon profil",            icon: UserCog,          to: "/superadmin/profile" },
   ]},
   { section: "Gestion École", items: [
     { label: "Élèves",            icon: GraduationCap, to: "/superadmin/students" },
@@ -98,11 +101,11 @@ export default function SuperAdminLayout() {
           >
             <div className="p-5 flex items-center gap-3 border-b border-white/10">
               <div className="w-9 h-9 rounded-xl overflow-hidden bg-white border-2 border-purple-400 flex items-center justify-center shrink-0">
-                <img src={logoSrc} alt="FEBA" className="w-full h-full object-contain" />
+                <img src={logoSrc} alt={t("FEBA")} className="w-full h-full object-contain" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-white font-bold text-sm leading-tight">FEBA</p>
-                <p className="text-purple-400 text-xs font-semibold tracking-wide">SUPER ADMIN</p>
+                <p className="text-white font-bold text-sm leading-tight">{t("FEBA")}</p>
+                <p className="text-purple-400 text-xs font-semibold tracking-wide">{t("SUPER ADMIN")}</p>
               </div>
               {isMobile && (
                 <button onClick={() => setOpen(false)} className="text-slate-400 hover:text-white ml-auto">
@@ -113,9 +116,9 @@ export default function SuperAdminLayout() {
 
             <nav className="flex-1 p-3 overflow-y-auto space-y-4">
               {nav.map(section => (
-                <div key={section.section}>
+                <div key={t(section.section)}>
                   <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500 px-4 mb-1">
-                    {section.section}
+                    {t(section.section)}
                   </p>
                   <div className="space-y-0.5">
                     {section.items.map(item => (
@@ -132,7 +135,7 @@ export default function SuperAdminLayout() {
                         }
                       >
                         <item.icon className="w-4 h-4 shrink-0" />
-                        <span className="flex-1 truncate">{item.label}</span>
+                        <span className="flex-1 truncate">{t(item.label)}</span>
                         {item.badge && unreadCount > 0 && (
                           <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center shrink-0">
                             {unreadCount}
@@ -152,11 +155,11 @@ export default function SuperAdminLayout() {
                 </div>
                 <div className="min-w-0">
                   <p className="text-white text-xs font-semibold truncate">{user?.first_name} {user?.last_name}</p>
-                  <p className="text-purple-400 text-[10px]">Super Administrateur</p>
+                  <p className="text-purple-400 text-[10px]">{t("Super Administrateur")}</p>
                 </div>
               </div>
               <button onClick={logout} className="flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm text-red-400 hover:text-red-300 hover:bg-red-500/10 transition-all w-full">
-                <LogOut className="w-4 h-4" /><span>Déconnexion</span>
+                <LogOut className="w-4 h-4" /><span>{t("Déconnexion")}</span>
               </button>
             </div>
           </motion.aside>
@@ -169,6 +172,7 @@ export default function SuperAdminLayout() {
             <Menu className="w-5 h-5" />
           </button>
           <div className="flex items-center gap-3">
+            <LanguageSwitcher />
             <span className="text-xs font-bold px-3 py-1 rounded-full bg-gradient-to-r from-purple-100 to-pink-100 text-purple-700">
               🛡️ Super Admin
             </span>
@@ -178,7 +182,7 @@ export default function SuperAdminLayout() {
               </div>
               <div>
                 <p className="text-sm font-semibold text-slate-800 truncate max-w-[120px]">{user?.first_name} {user?.last_name}</p>
-                <p className="text-xs text-slate-400">Super Admin</p>
+                <p className="text-xs text-slate-400">{t("Super Admin")}</p>
               </div>
             </div>
           </div>

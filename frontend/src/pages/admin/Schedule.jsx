@@ -9,6 +9,7 @@ import Modal from "../../components/ui/Modal";
 import ConfirmDialog from "../../components/ui/ConfirmDialog";
 import { clsx } from "clsx";
 import SearchableSelect from "../../components/ui/SearchableSelect";
+import { t } from "../../i18n";
 
 const DAYS = ["Lundi","Mardi","Mercredi","Jeudi","Vendredi","Samedi"];
 const COLORS = ["bg-primary-50 border-primary/20 text-primary","bg-emerald-50 border-emerald-200 text-emerald-700","bg-amber-50 border-amber-200 text-amber-700","bg-rose-50 border-rose-200 text-rose-700","bg-sky-50 border-sky-200 text-sky-700","bg-violet-50 border-violet-200 text-violet-700"];
@@ -38,12 +39,12 @@ export default function AdminSchedule() {
   const currentYear = years.find(y => y.is_current);
   const classOptions = classes.map(c => ({ value: c.id, label: c.name }));
   const subjectOptions = subjects.map(s => ({ value: s.id, label: s.name }));
-  const teacherOptions = teachers.map(t => ({ value: t.id, label: `${t.user_first_name || ""} ${t.user_last_name || ""}`.trim() }));
+  const teacherOptions = teachers.map(tc => ({ value: tc.id, label: `${tc.user_first_name || ""} ${tc.user_last_name || ""}`.trim() }));
   const roomOptions = rooms.map(r => ({ value: r.name, label: `${r.name} (${r.room_type_label || r.room_type})` }));
 
-  const createMut = useMutation({ mutationFn: scheduleAPI.create, onSuccess: () => { qc.invalidateQueries({ queryKey: ["schedule"] }); toast.success("Créneau créé!"); closeModal(); }, onError: (e) => toast.error("Erreur serveur") });
-  const updateMut = useMutation({ mutationFn: ({ id, data }) => scheduleAPI.update(id, data), onSuccess: () => { qc.invalidateQueries({ queryKey: ["schedule"] }); toast.success("Modifié!"); closeModal(); } });
-  const deleteMut = useMutation({ mutationFn: scheduleAPI.delete, onSuccess: () => { qc.invalidateQueries({ queryKey: ["schedule"] }); toast.success("Supprimé."); setDeleteItem(null); } });
+  const createMut = useMutation({ mutationFn: scheduleAPI.create, onSuccess: () => { qc.invalidateQueries({ queryKey: ["schedule"] }); toast.success(t("Créneau créé!")); closeModal(); }, onError: (e) => toast.error(t("Erreur serveur")) });
+  const updateMut = useMutation({ mutationFn: ({ id, data }) => scheduleAPI.update(id, data), onSuccess: () => { qc.invalidateQueries({ queryKey: ["schedule"] }); toast.success(t("Modifié!")); closeModal(); } });
+  const deleteMut = useMutation({ mutationFn: scheduleAPI.delete, onSuccess: () => { qc.invalidateQueries({ queryKey: ["schedule"] }); toast.success(t("Supprimé.")); setDeleteItem(null); } });
 
   const closeModal = () => { setModalOpen(false); setEditItem(null); reset(); };
   const openCreate = () => { reset({ day_of_week: 0, school_year: currentYear?.id || "" }); setModalOpen(true); };
@@ -65,19 +66,19 @@ export default function AdminSchedule() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Emploi du Temps" subtitle={`${schedules.length} créneau(x)`}
+      <PageHeader title={t("Emploi du Temps")} subtitle={t("{n} créneau(x)", { n: schedules.length })}
         action={<div className="flex gap-2">
           <div className="flex rounded-xl border border-slate-200 overflow-hidden">
-            <button onClick={() => setView("grid")} className={clsx("px-3 py-1.5 text-xs font-medium", view === "grid" ? "bg-primary text-white" : "bg-white text-slate-600")}>Grille</button>
-            <button onClick={() => setView("list")} className={clsx("px-3 py-1.5 text-xs font-medium border-l", view === "list" ? "bg-primary text-white" : "bg-white text-slate-600")}>Liste</button>
+            <button onClick={() => setView("grid")} className={clsx("px-3 py-1.5 text-xs font-medium", view === "grid" ? "bg-primary text-white" : "bg-white text-slate-600")}>{t("Grille")}</button>
+            <button onClick={() => setView("list")} className={clsx("px-3 py-1.5 text-xs font-medium border-l", view === "list" ? "bg-primary text-white" : "bg-white text-slate-600")}>{t("Liste")}</button>
           </div>
-          <button onClick={openCreate} className="btn-primary flex items-center gap-2"><Plus className="w-4 h-4" />Nouveau créneau</button>
+          <button onClick={openCreate} className="btn-primary flex items-center gap-2"><Plus className="w-4 h-4" />{t("Nouveau créneau")}</button>
         </div>} />
 
       {/* Class filter */}
       <div className="card flex gap-2 items-center flex-wrap">
-        <span className="text-sm font-medium text-slate-600">Classe :</span>
-        <button onClick={() => setClassFilter("")} className={clsx("px-3 py-1.5 rounded-xl text-xs font-medium", !classFilter ? "bg-primary text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200")}>Toutes</button>
+        <span className="text-sm font-medium text-slate-600">{t("Classe :")}</span>
+        <button onClick={() => setClassFilter("")} className={clsx("px-3 py-1.5 rounded-xl text-xs font-medium", !classFilter ? "bg-primary text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200")}>{t("Toutes")}</button>
         {classes.map(c => (
           <button key={c.id} onClick={() => setClassFilter(c.id.toString())}
             className={clsx("px-3 py-1.5 rounded-xl text-xs font-medium", classFilter === c.id.toString() ? "bg-primary text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200")}>
@@ -94,9 +95,9 @@ export default function AdminSchedule() {
               <div className={`grid grid-cols-${Math.min(daySchedules.filter(d => d.items.length).length + 1, 7)} gap-0`}
                 style={{ gridTemplateColumns: `80px repeat(${DAYS.length}, 1fr)` }}>
                 {/* Header row */}
-                <div className="bg-slate-50 border border-slate-200 p-2 text-xs font-bold text-slate-500 text-center">Horaire</div>
+                <div className="bg-slate-50 border border-slate-200 p-2 text-xs font-bold text-slate-500 text-center">{t("Horaire")}</div>
                 {DAYS.map(day => (
-                  <div key={day} className="bg-primary-50 border border-slate-200 p-2 text-xs font-bold text-primary text-center">{day}</div>
+                  <div key={day} className="bg-primary-50 border border-slate-200 p-2 text-xs font-bold text-primary text-center">{t(day)}</div>
                 ))}
                 {/* Rows by time */}
                 {timeSlots.map(slot => {
@@ -125,7 +126,7 @@ export default function AdminSchedule() {
                   ];
                 })}
               </div>
-              {timeSlots.length === 0 && <div className="text-center py-12 text-slate-400"><CalendarDays className="w-12 h-12 mx-auto mb-3 opacity-30" /><p>Aucun créneau défini.</p></div>}
+              {timeSlots.length === 0 && <div className="text-center py-12 text-slate-400"><CalendarDays className="w-12 h-12 mx-auto mb-3 opacity-30" /><p>{t("Aucun créneau défini.")}</p></div>}
             </div>
           </div>
         )
@@ -133,7 +134,7 @@ export default function AdminSchedule() {
         /* LIST VIEW */
         <div className="card">
           <div className="divide-y divide-slate-50">
-            {schedules.length === 0 ? <div className="text-center py-12 text-slate-400">Aucun créneau</div> :
+            {schedules.length === 0 ? <div className="text-center py-12 text-slate-400">{t("Aucun créneau")}</div> :
               schedules.map(item => (
                 <div key={item.id} className="flex items-center justify-between py-3">
                   <div className="flex items-center gap-3">
@@ -153,26 +154,26 @@ export default function AdminSchedule() {
         </div>
       )}
 
-      <Modal open={modalOpen} onClose={closeModal} title={editItem ? "Modifier le créneau" : "Nouveau créneau"} size="md">
+      <Modal open={modalOpen} onClose={closeModal} title={editItem ? t("Modifier le créneau") : t("Nouveau créneau")} size="md">
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           {!editItem && (
             <>
               <div className="grid grid-cols-2 gap-4">
-                <div><label className="label">Classe*</label>
+                <div><label className="label">{t("Classe*")}</label>
                   <Controller name="cls" control={control} rules={{ required: true }}
-                    render={({ field }) => <SearchableSelect options={classOptions} value={field.value} onChange={field.onChange} placeholder="Sélectionner une classe…" />} />
+                    render={({ field }) => <SearchableSelect options={classOptions} value={field.value} onChange={field.onChange} placeholder={t("Sélectionner une classe…")} />} />
                 </div>
-                <div><label className="label">Matière*</label>
+                <div><label className="label">{t("Matière*")}</label>
                   <Controller name="subject" control={control} rules={{ required: true }}
-                    render={({ field }) => <SearchableSelect options={subjectOptions} value={field.value} onChange={field.onChange} placeholder="Sélectionner une matière…" />} />
+                    render={({ field }) => <SearchableSelect options={subjectOptions} value={field.value} onChange={field.onChange} placeholder={t("Sélectionner une matière…")} />} />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
-                <div><label className="label">Enseignant</label>
+                <div><label className="label">{t("Enseignant")}</label>
                   <Controller name="teacher" control={control}
-                    render={({ field }) => <SearchableSelect options={teacherOptions} value={field.value} onChange={field.onChange} placeholder="Sélectionner un enseignant…" />} />
+                    render={({ field }) => <SearchableSelect options={teacherOptions} value={field.value} onChange={field.onChange} placeholder={t("Sélectionner un enseignant…")} />} />
                 </div>
-                <div><label className="label">Année scolaire*</label>
+                <div><label className="label">{t("Année scolaire*")}</label>
                   <select {...register("school_year", { required: true })} className="input">
                     <option value="">-- Sélectionner --</option>
                     {years.map(y => <option key={y.id} value={y.id}>{y.name}{y.is_current ? " ✓" : ""}</option>)}
@@ -181,27 +182,27 @@ export default function AdminSchedule() {
               </div>
             </>
           )}
-          <div><label className="label">Jour*</label>
+          <div><label className="label">{t("Jour*")}</label>
             <select {...register("day_of_week", { required: true })} className="input">
               {DAYS.map((d,i) => <option key={i} value={i}>{d}</option>)}
             </select>
           </div>
           <div className="grid grid-cols-2 gap-4">
-            <div><label className="label">Heure début*</label><input {...register("start_time", { required: true })} type="time" className="input" /></div>
-            <div><label className="label">Heure fin*</label><input {...register("end_time", { required: true })} type="time" className="input" /></div>
+            <div><label className="label">{t("Heure début*")}</label><input {...register("start_time", { required: true })} type="time" className="input" /></div>
+            <div><label className="label">{t("Heure fin*")}</label><input {...register("end_time", { required: true })} type="time" className="input" /></div>
           </div>
           <div>
-            <label className="label">Salle</label>
+            <label className="label">{t("Salle")}</label>
             <Controller name="room" control={control}
-            render={({ field }) => <SearchableSelect options={roomOptions} value={field.value} onChange={field.onChange} placeholder="Sélectionner une salle…" />} />
+            render={({ field }) => <SearchableSelect options={roomOptions} value={field.value} onChange={field.onChange} placeholder={t("Sélectionner une salle…")} />} />
           </div>
           <div className="flex gap-3 justify-end pt-2">
-            <button type="button" onClick={closeModal} className="btn-secondary">Annuler</button>
-            <button type="submit" disabled={createMut.isPending || updateMut.isPending} className="btn-primary">Enregistrer</button>
+            <button type="button" onClick={closeModal} className="btn-secondary">{t("Annuler")}</button>
+            <button type="submit" disabled={createMut.isPending || updateMut.isPending} className="btn-primary">{t("Enregistrer")}</button>
           </div>
         </form>
       </Modal>
-      <ConfirmDialog open={!!deleteItem} onClose={() => setDeleteItem(null)} onConfirm={() => deleteMut.mutate(deleteItem?.id)} loading={deleteMut.isPending} message="Supprimer ce créneau ?" />
+      <ConfirmDialog open={!!deleteItem} onClose={() => setDeleteItem(null)} onConfirm={() => deleteMut.mutate(deleteItem?.id)} loading={deleteMut.isPending} message={t("Supprimer ce créneau ?")} />
     </div>
   );
 }

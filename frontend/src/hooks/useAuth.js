@@ -2,6 +2,7 @@ import { useAuthStore } from "../store/authStore";
 import { authAPI } from "../api";
 import { useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
+import { getLang, setLang, translate } from "../i18n";
 import toast from "react-hot-toast";
 
 export function useAuth() {
@@ -16,13 +17,18 @@ export function useAuth() {
     setAuth(null, data.access, data.refresh);
     const me = await authAPI.me();
     setAuth(me.data, data.access, data.refresh);
+    // La préférence enregistrée dans le profil est PRIORITAIRE à la
+    // reconnexion (exigence bilinguisme) : elle écrase le choix local.
+    if (me.data.preferred_language && me.data.preferred_language !== getLang()) {
+      setLang(me.data.preferred_language);
+    }
     const role = me.data.role;
     if (role === "superadmin") navigate("/superadmin/dashboard");
     else if (role === "admin")   navigate("/admin/dashboard");
     else if (role === "teacher") navigate("/teacher/dashboard");
     else if (role === "parent")  navigate("/parent/home");
     else navigate("/student/home");
-    toast.success(`Bienvenue, ${me.data.first_name}!`);
+    toast.success(translate("Bienvenue, {name}!", { name: me.data.first_name }));
   };
 
   const logout = async () => {
@@ -34,7 +40,7 @@ export function useAuth() {
     queryClient.clear();
     clearAuth();
     navigate("/login");
-    toast.success("Déconnexion réussie.");
+    toast.success(translate("Déconnexion réussie."));
   };
 
   return { user, isAuthenticated: !!accessToken, login, logout };

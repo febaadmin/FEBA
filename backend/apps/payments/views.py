@@ -135,12 +135,23 @@ class PaymentViewSet(BulkDeleteMixin, viewsets.ModelViewSet):
             is_confirmed_after=payment.is_confirmed,
         )
         try:
-            from apps.notifications.utils import create_notification
+            from apps.notifications.utils import create_notification, notification_path
             if payment.student.user:
                 create_notification(
                     payment.student.user, "payment",
                     f"Paiement enregistré : {payment.amount} FCFA",
                     f"Référence {payment.reference_number} — {payment.get_payment_type_display()}",
+                    related_url=notification_path(payment.student.user, "payments"),
+                )
+            # FIX (notifications) : les paiements concernent au premier chef
+            # les parents (ce sont eux qui paient) — ils n'étaient jamais
+            # notifiés.
+            for ps in payment.student.parents.select_related("parent__user").all():
+                create_notification(
+                    ps.parent.user, "payment",
+                    f"Paiement enregistré pour {payment.student.get_full_name()} : {payment.amount} FCFA",
+                    f"Référence {payment.reference_number} — {payment.get_payment_type_display()}",
+                    related_url=notification_path(ps.parent.user, "payments"),
                 )
         except Exception as exc:
             logger.warning("Erreur non bloquante ignorée : %s", exc, exc_info=True)

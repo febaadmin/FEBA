@@ -4,6 +4,7 @@ import { authAPI } from "../../api";
 import StatCard from "../../components/ui/StatCard";
 import PageHeader from "../../components/ui/PageHeader";
 import { motion } from "framer-motion";
+import { t } from "../../i18n";
 
 export default function SuperAdminDashboard() {
   const { data, isLoading } = useQuery({
@@ -17,8 +18,8 @@ export default function SuperAdminDashboard() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Super Admin — Vue globale"
-        subtitle="Contrôle total du système FEBA"
+        title={t("Super Admin — Vue globale")}
+        subtitle={t("Contrôle total du système FEBA")}
       />
 
       {isLoading ? (
@@ -27,25 +28,25 @@ export default function SuperAdminDashboard() {
         </div>
       ) : (
         <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-          <StatCard title="Total utilisateurs" value={users.length} icon={Users} color="secondary" delay={0} />
-          <StatCard title="Administrateurs"   value={countByRole("admin")}   icon={Shield}       color="primary"   delay={0.1} />
-          <StatCard title="Enseignants"       value={countByRole("teacher")} icon={UserCheck}    color="success"   delay={0.2} />
-          <StatCard title="Parents"           value={countByRole("parent")}  icon={Users2}       color="accent"    delay={0.3} />
-          <StatCard title="Élèves"            value={countByRole("student")} icon={GraduationCap} color="primary"  delay={0.4} />
-          <StatCard title="Comptes actifs"    value={users.filter(u => u.is_active).length} icon={Activity} color="success" delay={0.5} />
+          <StatCard title={t("Total utilisateurs")} value={users.length} icon={Users} color="secondary" delay={0} />
+          <StatCard title={t("Administrateurs")}   value={countByRole("admin")}   icon={Shield}       color="primary"   delay={0.1} />
+          <StatCard title={t("Enseignants")}       value={countByRole("teacher")} icon={UserCheck}    color="success"   delay={0.2} />
+          <StatCard title={t("Parents")}           value={countByRole("parent")}  icon={Users2}       color="accent"    delay={0.3} />
+          <StatCard title={t("Élèves")}            value={countByRole("student")} icon={GraduationCap} color="primary"  delay={0.4} />
+          <StatCard title={t("Comptes actifs")}    value={users.filter(u => u.is_active).length} icon={Activity} color="success" delay={0.5} />
         </div>
       )}
 
       <div className="card">
-        <h3 className="font-semibold text-slate-800 mb-4">Répartition des rôles</h3>
+        <h3 className="font-semibold text-slate-800 mb-4">{t("Répartition des rôles")}</h3>
         {isLoading ? <div className="skeleton h-40" /> : (
           <div className="space-y-3">
             {[
-              { role: "superadmin", label: "Super Admin", color: "from-purple-500 to-pink-500" },
-              { role: "admin",      label: "Admin",       color: "from-primary to-primary-700" },
-              { role: "teacher",    label: "Enseignant",  color: "from-emerald-500 to-teal-600" },
-              { role: "parent",     label: "Parent",      color: "from-amber-500 to-orange-600" },
-              { role: "student",    label: "Élève",       color: "from-sky-500 to-blue-600" },
+              { role: "superadmin", label: t("Super Admin"), color: "from-purple-500 to-pink-500" },
+              { role: "admin",      label: t("Admin"),       color: "from-primary to-primary-700" },
+              { role: "teacher",    label: t("Enseignant"),  color: "from-emerald-500 to-teal-600" },
+              { role: "parent",     label: t("Parent"),      color: "from-amber-500 to-orange-600" },
+              { role: "student",    label: t("Élève"),       color: "from-sky-500 to-blue-600" },
             ].map(({ role, label, color }) => {
               const count = countByRole(role);
               const pct = users.length ? Math.round(count / users.length * 100) : 0;

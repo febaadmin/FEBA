@@ -18,6 +18,7 @@ import DataTable from "../../components/ui/DataTable";
 import Modal from "../../components/ui/Modal";
 import SearchableSelect from "../../components/ui/SearchableSelect";
 import { extractApiError } from "../../utils/errors";
+import { t } from "../../i18n";
 
 const PERIODS = [
   { value: "T1", label: "Trimestre 1" },
@@ -63,7 +64,7 @@ export default function AdminBulletins() {
     onSuccess: (res) => {
       const resData = res.data;
       if (resData?.pdf_url || resData?.pdf_file || resData?.student) {
-        toast.success("Bulletin généré avec succès ! PDF disponible.");
+        toast.success(t("Bulletin généré avec succès ! PDF disponible."));
       } else {
         toast.success(resData?.detail || "Bulletin(s) en cours de génération…");
       }
@@ -84,47 +85,42 @@ export default function AdminBulletins() {
   };
 
   const cols = [
-    { key: "student",      label: "Élève",        accessor: "student_name" },
-    { key: "class",        label: "Classe",        accessor: "student_class" },
-    { key: "period",       label: "Période",       accessor: "period_label" },
-    { key: "year",         label: "Année",         accessor: "school_year_name" },
-    { key: "avg",          label: "Moyenne",       render: r => r.average ? `${parseFloat(r.average).toFixed(2)}/20` : "—" },
-    { key: "appreciation", label: "Appréciation",  accessor: "appreciation" },
-    { key: "date",         label: "Généré le",     render: r => r.generated_at?.slice(0, 10) },
+    { key: "student",      label: t("Élève"),        accessor: "student_name" },
+    { key: "class",        label: t("Classe"),        accessor: "student_class" },
+    { key: "period",       label: t("Période"),       accessor: "period_label" },
+    { key: "year",         label: t("Année"),         accessor: "school_year_name" },
+    { key: "avg",          label: t("Moyenne"),       render: r => r.average ? `${parseFloat(r.average).toFixed(2)}/20` : "—" },
+    { key: "appreciation", label: t("Appréciation"),  accessor: "appreciation" },
+    { key: "date",         label: t("Généré le"),     render: r => r.generated_at?.slice(0, 10) },
   ];
 
   const bulkDeleteMut = useMutation({
     mutationFn: (ids) => bulletinsAPI.bulkDelete(ids),
-    onSuccess: (data) => { qc.invalidateQueries({ queryKey: ["bulletins"] }); toast.success(`${data?.data?.deleted || ""} élément(s) supprimé(s).`); },
+    onSuccess: (data) => { qc.invalidateQueries({ queryKey: ["bulletins"] }); toast.success(t("{n} élément(s) supprimé(s).", { n: data?.data?.deleted || "" })); },
     onError: (e) => toast.error(extractApiError(e)),
   });
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Bulletins" subtitle="Génération et archive des bulletins PDF"
+      <PageHeader title={t("Bulletins")} subtitle={t("Génération et archive des bulletins PDF")}
         action={
           <div className="flex gap-2 flex-wrap">
             <button onClick={() => refetch()} className="btn-secondary flex items-center gap-2">
-              <RefreshCw className="w-4 h-4" />Rafraîchir
-            </button>
+              <RefreshCw className="w-4 h-4" />{t("Rafraîchir")}</button>
             <button onClick={() => { reset({ school_year_id: currentYear?.id || "" }); setGenMode("student"); setGenOpen(true); }}
               className="btn-primary flex items-center gap-2">
-              <FileText className="w-4 h-4" />Générer un bulletin
-            </button>
+              <FileText className="w-4 h-4" />{t("Générer un bulletin")}</button>
             <button onClick={() => { reset({ school_year_id: currentYear?.id || "" }); setGenMode("class"); setGenOpen(true); }}
               className="btn-secondary flex items-center gap-2">
-              <Users className="w-4 h-4" />Par classe
-            </button>
+              <Users className="w-4 h-4" />{t("Par classe")}</button>
             <button onClick={() => { reset({ school_year_id: currentYear?.id || "" }); setGenMode("all"); setGenOpen(true); }}
-              className="btn-secondary flex items-center gap-2 text-xs">
-              Tous les élèves
-            </button>
+              className="btn-secondary flex items-center gap-2 text-xs">{t("Tous les élèves")}</button>
           </div>
         } />
 
       {/* FIX v20 : Filtre par année scolaire */}
       <div className="card flex gap-2 items-center flex-wrap">
-        <span className="text-sm font-medium text-slate-600">Filtrer par année :</span>
+        <span className="text-sm font-medium text-slate-600">{t("Filtrer par année :")}</span>
         <button onClick={() => setFilterYear("")}
           className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all ${filterYear === "" ? "bg-primary text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}>
           Année active {currentYear ? `(${currentYear.name})` : ""}
@@ -136,9 +132,7 @@ export default function AdminBulletins() {
           </button>
         ))}
         <button onClick={() => setFilterYear("all")}
-          className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all ${filterYear === "all" ? "bg-slate-700 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}>
-          Toutes les années
-        </button>
+          className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all ${filterYear === "all" ? "bg-slate-700 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}>{t("Toutes les années")}</button>
       </div>
 
       <div className="card">
@@ -157,34 +151,33 @@ export default function AdminBulletins() {
             (row.pdf_url || row.pdf_file) ? (
               <a href={row.pdf_url || row.pdf_file} target="_blank" rel="noreferrer"
                 className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs bg-primary-50 text-primary hover:bg-primary-100 font-medium">
-                <Download className="w-3 h-3" />PDF
-              </a>
-            ) : <span className="text-xs text-slate-400">En cours…</span>
+                <Download className="w-3 h-3" />{t("PDF")}</a>
+            ) : <span className="text-xs text-slate-400">{t("En cours…")}</span>
           )} />
       </div>
 
       <Modal open={genOpen} onClose={() => { setGenOpen(false); reset(); }}
-        title={genMode === "class" ? "Générer bulletins d'une classe" : genMode === "all" ? "Générer tous les bulletins" : "Générer un bulletin"}>
+        title={genMode === "class" ? "Générer bulletins d'une classe" : genMode === "all" ? t("Générer tous les bulletins") : t("Générer un bulletin")}>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           {genMode === "all" && (
             <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-sm text-amber-700">
-              ⚠️ Génération des bulletins PDF de <strong>tous les élèves actifs</strong>.
+              ⚠️ Génération des bulletins PDF de <strong>{t("tous les élèves actifs")}</strong>.
               Les bulletins existants seront remplacés.
             </div>
           )}
           {genMode === "student" && (
             <div>
-              <label className="label">Élève*</label>
+              <label className="label">{t("Élève*")}</label>
               <Controller name="student_id" control={control} rules={{ required: true }}
                 render={({ field }) => (
                   <SearchableSelect options={studentOpts} value={field.value} onChange={field.onChange}
-                    placeholder="Rechercher un élève…" />
+                    placeholder={t("Rechercher un élève…")} />
                 )} />
             </div>
           )}
           {genMode === "class" && (
             <div>
-              <label className="label">Classe*</label>
+              <label className="label">{t("Classe*")}</label>
               <select {...register("class_id", { required: true })} className="input">
                 <option value="">-- Sélectionner --</option>
                 {classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
@@ -192,22 +185,22 @@ export default function AdminBulletins() {
             </div>
           )}
           <div>
-            <label className="label">Période*</label>
+            <label className="label">{t("Période*")}</label>
             <select {...register("period", { required: true })} className="input">
-              {PERIODS.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
+              {PERIODS.map(p => <option key={p.value} value={p.value}>{t(p.label)}</option>)}
             </select>
           </div>
           <div>
-            <label className="label">Année scolaire*</label>
+            <label className="label">{t("Année scolaire*")}</label>
             <select {...register("school_year_id", { required: true })} className="input">
               <option value="">-- Sélectionner --</option>
               {years.map(y => <option key={y.id} value={y.id}>{y.name}{y.is_current ? " ✓" : ""}</option>)}
             </select>
           </div>
           <div className="flex gap-3 justify-end pt-2">
-            <button type="button" onClick={() => { setGenOpen(false); reset(); }} className="btn-secondary">Annuler</button>
+            <button type="button" onClick={() => { setGenOpen(false); reset(); }} className="btn-secondary">{t("Annuler")}</button>
             <button type="submit" disabled={genMut.isPending} className="btn-primary">
-              {genMut.isPending ? "Génération…" : "Générer"}
+              {genMut.isPending ? t("Génération…") : t("Générer")}
             </button>
           </div>
         </form>

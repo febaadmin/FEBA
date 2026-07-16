@@ -109,12 +109,19 @@ class ConversationViewSet(viewsets.ModelViewSet):
 
         # Send notification
         try:
-            from apps.notifications.utils import create_notification
+            from apps.notifications.utils import create_notification, notification_path
             create_notification(
                 recipient, "message",
                 f"Nouveau message de {request.user.get_full_name()}",
                 subject,
-                related_url=f"/messages/{conv.id}/",
+                # FIX (redirections notifications) : "/messages/{id}/" ne
+                # correspondait à AUCUNE route déclarée côté frontend (les
+                # routes sont "/<role>/messages", sans segment id) — la
+                # navigation tombait systématiquement dans le catch-all et
+                # renvoyait l'utilisateur vers /login. La page Messages lit
+                # désormais le paramètre ?conversation= pour ouvrir le bon
+                # fil directement.
+                related_url=notification_path(recipient, f"messages?conversation={conv.id}"),
             )
         except Exception as exc:
             logger.warning("Erreur non bloquante ignorée : %s", exc, exc_info=True)
@@ -163,12 +170,12 @@ class ConversationViewSet(viewsets.ModelViewSet):
 
         # Notify the other participant
         try:
-            from apps.notifications.utils import create_notification
+            from apps.notifications.utils import create_notification, notification_path
             create_notification(
                 other, "message",
                 f"Réponse de {request.user.get_full_name()}",
                 conv.subject,
-                related_url=f"/messages/{conv.id}/",
+                related_url=notification_path(other, f"messages?conversation={conv.id}"),
             )
         except Exception as exc:
             logger.warning("Erreur non bloquante ignorée : %s", exc, exc_info=True)

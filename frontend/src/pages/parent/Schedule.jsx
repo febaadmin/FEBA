@@ -12,6 +12,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Calendar, BookOpen, User, Clock, MapPin, ChevronLeft, ChevronRight } from "lucide-react";
 import { parentsAPI, scheduleAPI } from "../../api";
+import { t } from "../../i18n";
 
 const DAYS = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi"];
 const DAY_SHORT = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam"];
@@ -73,7 +74,7 @@ function WeekGrid({ schedules }) {
     return (
       <div className="text-center py-10 text-slate-400">
         <BookOpen className="w-10 h-10 mx-auto mb-2 opacity-30" />
-        <p className="text-sm">Aucun créneau disponible.</p>
+        <p className="text-sm">{t("Aucun créneau disponible.")}</p>
       </div>
     );
   }
@@ -85,7 +86,7 @@ function WeekGrid({ schedules }) {
         <table className="w-full text-xs border-collapse">
           <thead>
             <tr className="bg-slate-50">
-              <th className="border border-slate-200 px-3 py-2 text-left font-semibold text-slate-500 w-24">Horaire</th>
+              <th className="border border-slate-200 px-3 py-2 text-left font-semibold text-slate-500 w-24">{t("Horaire")}</th>
               {DAYS.map((d, i) => (
                 <th key={i} className="border border-slate-200 px-3 py-2 text-center font-semibold text-slate-600 min-w-[120px]">
                   {d}
@@ -134,7 +135,7 @@ function WeekGrid({ schedules }) {
           return (
             <div key={di}>
               <p className="font-bold text-slate-700 mb-2 text-sm uppercase tracking-wide border-b border-slate-100 pb-1">
-                {day}
+                {t(day)}
               </p>
               <div className="space-y-2">
                 {dayItems.map((item, k) => (
@@ -215,8 +216,8 @@ export default function ParentSchedule() {
           <Calendar className="w-5 h-5 text-primary" />
         </div>
         <div>
-          <h1 className="text-2xl font-bold text-slate-800">Emplois du temps</h1>
-          <p className="text-sm text-slate-500">Planning hebdomadaire de mes enfants</p>
+          <h1 className="text-2xl font-bold text-slate-800">{t("Emplois du temps")}</h1>
+          <p className="text-sm text-slate-500">{t("Planning hebdomadaire de mes enfants")}</p>
         </div>
       </div>
 
@@ -231,8 +232,8 @@ export default function ParentSchedule() {
       {!isLoading && children.length === 0 && (
         <div className="card text-center py-16 text-slate-400">
           <User className="w-12 h-12 mx-auto mb-3 opacity-30" />
-          <p className="font-medium">Aucun enfant enregistré</p>
-          <p className="text-sm mt-1">Contactez l'administration pour associer vos enfants à votre compte.</p>
+          <p className="font-medium">{t("Aucun enfant enregistré")}</p>
+          <p className="text-sm mt-1">{t("Contactez l'administration pour associer vos enfants à votre compte.")}</p>
         </div>
       )}
 
@@ -314,7 +315,7 @@ export default function ParentSchedule() {
           {/* Résumé rapide par matière */}
           {currentChild && currentChild.schedules.length > 0 && (
             <div className="card">
-              <h3 className="font-semibold text-slate-700 mb-3 text-sm">Matières enseignées</h3>
+              <h3 className="font-semibold text-slate-700 mb-3 text-sm">{t("Matières enseignées")}</h3>
               <div className="flex flex-wrap gap-2">
                 {[...new Set(currentChild.schedules.map(s => s.subject_name))].map((subj, i) => (
                   <span key={subj} className={`px-3 py-1 rounded-full text-xs font-medium border ${SUBJECT_COLORS[i % SUBJECT_COLORS.length]}`}>

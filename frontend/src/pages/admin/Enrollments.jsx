@@ -28,6 +28,7 @@ import { studentsAPI, schoolsAPI, classesAPI } from "../../api";
 import { extractApiError } from "../../utils/errors";
 import PageHeader from "../../components/ui/PageHeader";
 import SearchableSelect from "../../components/ui/SearchableSelect";
+import { t, dateLocale } from "../../i18n";
 
 /* ── Promotion status labels ──────────────────────────────────────────────── */
 const PROMOTION_STATUSES = [
@@ -84,8 +85,7 @@ function ResultBanner({ result, onClear }) {
   const neutral = !result.error && enrolled === 0;
   const nothingHint =
     neutral && result.enrolled === 0 &&
-    (result.skipped ? "Tous ces élèves étaient déjà inscrits dans l'année cible." :
-      "Aucun élève trouvé pour ce critère. Vérifiez la classe/année source sélectionnée.");
+    (result.skipped ? t("Tous ces élèves étaient déjà inscrits dans l'année cible.") : t("Aucun élève trouvé pour ce critère. Vérifiez la classe/année source sélectionnée."));
   return (
     <div className={`flex items-start gap-3 rounded-xl p-4 text-sm ${
       ok ? "bg-emerald-50 border border-emerald-200 text-emerald-800"
@@ -98,17 +98,17 @@ function ResultBanner({ result, onClear }) {
       <div className="flex-1 space-y-1">
         {result.error && <p className="font-medium">{result.error}</p>}
         {result.enrolled !== undefined && (
-          <p><strong>{result.enrolled}</strong> élève(s) inscrit(s)</p>
+          <p><strong>{result.enrolled}</strong> {t("élève(s) inscrit(s)")}</p>
         )}
         {nothingHint && <p className="text-sm">{nothingHint}</p>}
         {result.skipped !== undefined && result.skipped > 0 && (
           <p className="text-sm opacity-75">{result.skipped} déjà inscrit(s) — ignoré(s)</p>
         )}
         {result.succeeded !== undefined && (
-          <p><strong>{result.succeeded}/{result.total}</strong> décision(s) appliquée(s)</p>
+          <p><strong>{result.succeeded}/{result.total}</strong> {t("décision(s) appliquée(s)")}</p>
         )}
         {result.generated !== undefined && (
-          <p><strong>{result.generated}</strong> bulletin(s) généré(s)</p>
+          <p><strong>{result.generated}</strong> {t("bulletin(s) généré(s)")}</p>
         )}
         {Array.isArray(result.failed) && result.failed.length > 0 && (
           <details className="mt-1 text-xs">
@@ -163,8 +163,8 @@ export default function AdminEnrollments() {
       setByYearResult(r.data);
       qc.invalidateQueries({ queryKey: ["students-all"] });
       const n = r.data?.enrolled ?? 0;
-      n > 0 ? toast.success(`Passage de niveau : ${n} élève(s) inscrit(s).`)
-            : toast(r.data?.skipped ? "Tous déjà inscrits dans l'année cible." : "Aucun élève à inscrire.", { icon: "ℹ️" });
+      n > 0 ? toast.success(t("Passage de niveau : {n} élève(s) inscrit(s).", { n }))
+            : toast(r.data?.skipped ? t("Tous déjà inscrits dans l'année cible.") : t("Aucun élève à inscrire."), { icon: "ℹ️" });
     },
     onError: (e) => {
       setByYearResult({ error: extractApiError(e) });
@@ -188,8 +188,8 @@ export default function AdminEnrollments() {
       setByClassResult(r.data);
       qc.invalidateQueries({ queryKey: ["students-all"] });
       const n = r.data?.enrolled ?? 0;
-      n > 0 ? toast.success(`Passage par classe : ${n} élève(s) inscrit(s).`)
-            : toast(r.data?.skipped ? "Tous déjà inscrits dans l'année cible." : "Aucun élève trouvé pour cette classe.", { icon: "ℹ️" });
+      n > 0 ? toast.success(t("Passage par classe : {n} élève(s) inscrit(s).", { n }))
+            : toast(r.data?.skipped ? t("Tous déjà inscrits dans l'année cible.") : t("Aucun élève trouvé pour cette classe."), { icon: "ℹ️" });
     },
     onError: (e) => {
       setByClassResult({ error: extractApiError(e) });
@@ -215,7 +215,7 @@ export default function AdminEnrollments() {
     onSuccess: (r) => {
       setIndivResult({ enrolled: 1 });
       qc.invalidateQueries({ queryKey: ["students-all"] });
-      toast.success("Élève inscrit avec succès !");
+      toast.success(t("Élève inscrit avec succès !"));
       setIndivStudent(""); setIndivClass(""); setIndivNote("");
     },
     onError: (e) => {
@@ -234,9 +234,9 @@ export default function AdminEnrollments() {
   const [eoyResult,    setEoyResult]    = useState(null);
 
   const addEoyDecision = () => {
-    if (!eoyStudentId) return toast.error("Sélectionnez un élève.");
+    if (!eoyStudentId) return toast.error(t("Sélectionnez un élève."));
     if (eoyDecisions.find(d => d.student_id === Number(eoyStudentId)))
-      return toast.error("Décision déjà ajoutée pour cet élève.");
+      return toast.error(t("Décision déjà ajoutée pour cet élève."));
     const student = students.find(s => String(s.id) === String(eoyStudentId));
     setEoyDecisions(prev => [...prev, {
       student_id: Number(eoyStudentId),
@@ -261,7 +261,7 @@ export default function AdminEnrollments() {
       setEoyResult(r.data);
       setEoyDecisions([]);
       qc.invalidateQueries({ queryKey: ["students-all"] });
-      toast.success(`${r.data.succeeded}/${r.data.total} décision(s) appliquée(s) !`);
+      toast.success(t("{a}/{b} décision(s) appliquée(s) !", { a: r.data.succeeded, b: r.data.total }));
     },
     onError: (e) => {
       setEoyResult({ error: extractApiError(e) });
@@ -308,7 +308,7 @@ export default function AdminEnrollments() {
   const statusBadge = (status) => {
     const s = PROMOTION_STATUSES.find(x => x.value === status);
     return s ? (
-      <span className={`text-xs font-medium ${s.color}`}>{s.label}</span>
+      <span className={`text-xs font-medium ${s.color}`}>{t(s.label)}</span>
     ) : <span className="text-xs text-slate-400">{status}</span>;
   };
 
@@ -323,25 +323,25 @@ export default function AdminEnrollments() {
   };
 
   const TABS = [
-    { id: "bulk-year",  label: "Passage de niveau",       icon: RefreshCw },
-    { id: "bulk-class", label: "Passage par classe",       icon: School },
-    { id: "individual", label: "Inscription individuelle", icon: Users },
-    { id: "eoy",        label: "Assistant fin d'année",    icon: GraduationCap },
-    { id: "history",    label: "Historique élève",         icon: History },
+    { id: "bulk-year",  label: t("Passage de niveau"),       icon: RefreshCw },
+    { id: "bulk-class", label: t("Passage par classe"),       icon: School },
+    { id: "individual", label: t("Inscription individuelle"), icon: Users },
+    { id: "eoy",        label: t("Assistant fin d'année"),    icon: GraduationCap },
+    { id: "history",    label: t("Historique élève"),         icon: History },
   ];
 
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Admissions & Passages en classe"
-        subtitle="Gérez les inscriptions, transferts et passages de niveau"
+        title={t("Admissions & Passages en classe")}
+        subtitle={t("Gérez les inscriptions, transferts et passages de niveau")}
       />
 
       {/* Année active */}
       {activeYear && (
         <div className="flex items-center gap-2 text-sm bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-2.5">
           <CheckCircle className="w-4 h-4 text-emerald-600" />
-          <span className="text-emerald-800 font-medium">Année active : {activeYear.name}</span>
+          <span className="text-emerald-800 font-medium">{t("Année active")} : {activeYear.name}</span>
           <span className="text-emerald-600 ml-1">({activeYear.start_date} → {activeYear.end_date})</span>
         </div>
       )}
@@ -367,19 +367,16 @@ export default function AdminEnrollments() {
       {/* ── Tab 1 : Passage de niveau ──────────────────────────────────────── */}
       {tab === "bulk-year" && (
         <div className="card space-y-4">
-          <h3 className="font-bold text-slate-800">Passage de niveau — Toute une année</h3>
+          <h3 className="font-bold text-slate-800">{t("Passage de niveau — Toute une année")}</h3>
           <p className="text-sm text-slate-500">
-            <strong>Réinscription globale.</strong> Inscrit automatiquement TOUS les élèves de
-            l'année source dans l'année cible, dans une classe du même nom lorsqu'elle existe.
-            Chaque élève conserve ses données historiques. Idéal pour ouvrir une nouvelle année d'un coup.
-          </p>
+            <strong>{t("Réinscription globale.")}</strong> {t("Inscrit automatiquement TOUS les élèves de l'année source dans l'année cible, dans une classe du même nom lorsqu'elle existe. Chaque élève conserve ses données historiques. Idéal pour ouvrir une nouvelle année d'un coup.")}</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="label">Année source (départ)</label>
+              <label className="label">{t("Année source (départ)")}</label>
               <SearchableSelect options={yearOptions} value={byYearSrc} onChange={setByYearSrc} placeholder="— Sélectionner —" />
             </div>
             <div>
-              <label className="label">Année cible (arrivée)</label>
+              <label className="label">{t("Année cible (arrivée)")}</label>
               <SearchableSelect options={yearOptions} value={byYearDst} onChange={setByYearDst} placeholder="— Sélectionner —" />
             </div>
           </div>
@@ -387,15 +384,15 @@ export default function AdminEnrollments() {
           <button
             type="button"
             onClick={() => {
-              if (!byYearSrc || !byYearDst) return toast.error("Sélectionnez les deux années.");
-              if (byYearSrc === byYearDst) return toast.error("Les deux années doivent être différentes.");
+              if (!byYearSrc || !byYearDst) return toast.error(t("Sélectionnez les deux années."));
+              if (byYearSrc === byYearDst) return toast.error(t("Les deux années doivent être différentes."));
               bulkYearMut.mutate();
             }}
             disabled={bulkYearMut.isPending}
             className="btn-primary w-full sm:w-auto flex items-center gap-2"
           >
             <RefreshCw className={`w-4 h-4 ${bulkYearMut.isPending ? "animate-spin" : ""}`} />
-            {bulkYearMut.isPending ? "Passage en cours..." : "Lancer le passage de niveau"}
+            {bulkYearMut.isPending ? t("Passage en cours...") : t("Lancer le passage de niveau")}
           </button>
         </div>
       )}
@@ -403,23 +400,20 @@ export default function AdminEnrollments() {
       {/* ── Tab 2 : Passage par classe ─────────────────────────────────────── */}
       {tab === "bulk-class" && (
         <div className="card space-y-4">
-          <h3 className="font-bold text-slate-800">Passage par classe</h3>
+          <h3 className="font-bold text-slate-800">{t("Passage par classe")}</h3>
           <p className="text-sm text-slate-500">
-            <strong>Promotion d'une classe entière.</strong> Inscrit tous les élèves d'UNE classe
-            précise dans une nouvelle année, avec affectation optionnelle à une nouvelle classe.
-            Les élèves sans autre décision suivent tous le même parcours.
-          </p>
+            <strong>{t("Promotion d'une classe entière.")}</strong> {t("Inscrit tous les élèves d'UNE classe précise dans une nouvelle année, avec affectation optionnelle à une nouvelle classe. Les élèves sans autre décision suivent tous le même parcours.")}</p>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
-              <label className="label">Classe source</label>
+              <label className="label">{t("Classe source")}</label>
               <SearchableSelect options={classOptionsAllYears} value={byClassSrc} onChange={setByClassSrc} placeholder="— Sélectionner —" />
             </div>
             <div>
-              <label className="label">Année cible</label>
+              <label className="label">{t("Année cible")}</label>
               <SearchableSelect options={yearOptions} value={byClassYear} onChange={(v) => { setByClassYear(v); setByClassDst(""); }} placeholder="— Sélectionner —" />
             </div>
             <div>
-              <label className="label">Nouvelle classe (optionnel)</label>
+              <label className="label">{t("Nouvelle classe (optionnel)")}</label>
               <SearchableSelect
                 options={byClassYear ? classOptionsForYear(byClassYear) : []}
                 value={byClassDst} onChange={setByClassDst}
@@ -430,14 +424,14 @@ export default function AdminEnrollments() {
           <button
             type="button"
             onClick={() => {
-              if (!byClassSrc || !byClassYear) return toast.error("Classe source et année cible requises.");
+              if (!byClassSrc || !byClassYear) return toast.error(t("Classe source et année cible requises."));
               bulkClassMut.mutate();
             }}
             disabled={bulkClassMut.isPending}
             className="btn-primary flex items-center gap-2"
           >
             <School className={`w-4 h-4 ${bulkClassMut.isPending ? "animate-spin" : ""}`} />
-            {bulkClassMut.isPending ? "Passage en cours..." : "Passer cette classe"}
+            {bulkClassMut.isPending ? t("Passage en cours...") : t("Passer cette classe")}
           </button>
         </div>
       )}
@@ -445,61 +439,57 @@ export default function AdminEnrollments() {
       {/* ── Tab 3 : Inscription individuelle ──────────────────────────────── */}
       {tab === "individual" && (
         <div className="card space-y-4">
-          <h3 className="font-bold text-slate-800">Inscription individuelle</h3>
+          <h3 className="font-bold text-slate-800">{t("Inscription individuelle")}</h3>
           <p className="text-sm text-slate-500">
-            <strong>Un seul élève à la fois.</strong> Inscrivez un nouvel élève, réinscrivez un
-            élève existant dans une nouvelle année, ou transférez-le vers une autre classe.
-            Pour promouvoir une classe ou un niveau entier, utilisez plutôt
-            « Passage par classe », « Passage de niveau » ou « Assistant fin d'année ».
-          </p>
+            <strong>{t("Un seul élève à la fois.")}</strong> {t("Inscrivez un nouvel élève, réinscrivez un élève existant dans une nouvelle année, ou transférez-le vers une autre classe. Pour promouvoir une classe ou un niveau entier, utilisez plutôt « Passage par classe », « Passage de niveau » ou « Assistant fin d'année ».")}</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="label">Élève *</label>
+              <label className="label">{t("Élève *")}</label>
               <SearchableSelect options={studentOptions} value={indivStudent} onChange={setIndivStudent} placeholder="— Sélectionner un élève —" />
             </div>
             <div>
-              <label className="label">Année scolaire cible *</label>
+              <label className="label">{t("Année scolaire cible *")}</label>
               <SearchableSelect options={yearOptions} value={indivYear} onChange={(v) => { setIndivYear(v); setIndivClass(""); }} placeholder="— Sélectionner —" />
             </div>
             <div>
-              <label className="label">Classe cible (optionnel)</label>
+              <label className="label">{t("Classe cible (optionnel)")}</label>
               <SearchableSelect
                 options={indivYear ? classOptionsForYear(indivYear) : []}
                 value={indivClass} onChange={setIndivClass}
                 placeholder={indivYear ? "— Sans classe —" : "— Choisir d'abord l'année cible —"} />
             </div>
             <div>
-              <label className="label">Statut de passage</label>
+              <label className="label">{t("Statut de passage")}</label>
               <select value={indivStatus} onChange={e => setIndivStatus(e.target.value)} className="input">
                 {PROMOTION_STATUSES.map(s => (
-                  <option key={s.value} value={s.value}>{s.label}</option>
+                  <option key={s.value} value={s.value}>{t(s.label)}</option>
                 ))}
               </select>
             </div>
           </div>
           <div>
-            <label className="label">Note / Observation (optionnel)</label>
+            <label className="label">{t("Note / Observation (optionnel)")}</label>
             <textarea
               value={indivNote}
               onChange={e => setIndivNote(e.target.value)}
               rows={2}
               className="input resize-none"
-              placeholder="Raison du transfert, mention spéciale..."
+              placeholder={t("Raison du transfert, mention spéciale...")}
             />
           </div>
           <ResultBanner result={indivResult} onClear={() => setIndivResult(null)} />
           <button
             type="button"
             onClick={() => {
-              if (!indivStudent) return toast.error("Sélectionnez un élève.");
-              if (!indivYear)    return toast.error("Sélectionnez une année scolaire.");
+              if (!indivStudent) return toast.error(t("Sélectionnez un élève."));
+              if (!indivYear)    return toast.error(t("Sélectionnez une année scolaire."));
               indivMut.mutate();
             }}
             disabled={indivMut.isPending}
             className="btn-primary flex items-center gap-2"
           >
             <Users className={`w-4 h-4 ${indivMut.isPending ? "animate-spin" : ""}`} />
-            {indivMut.isPending ? "Inscription en cours..." : "Inscrire cet élève"}
+            {indivMut.isPending ? t("Inscription en cours...") : t("Inscrire cet élève")}
           </button>
         </div>
       )}
@@ -508,14 +498,11 @@ export default function AdminEnrollments() {
       {tab === "eoy" && (
         <div className="space-y-4">
           <div className="card space-y-4">
-            <h3 className="font-bold text-slate-800">Assistant de fin d'année</h3>
-            <p className="text-sm text-slate-500">
-              Gérez en une seule opération les décisions de passage, redoublement,
-              exclusion ou départ pour plusieurs élèves simultanément.
-            </p>
+            <h3 className="font-bold text-slate-800">{t("Assistant de fin d'année")}</h3>
+            <p className="text-sm text-slate-500">{t("Gérez en une seule opération les décisions de passage, redoublement, exclusion ou départ pour plusieurs élèves simultanément.")}</p>
 
             <div>
-              <label className="label">Année scolaire cible (nouvelle année) *</label>
+              <label className="label">{t("Année scolaire cible (nouvelle année) *")}</label>
               <div className="sm:w-1/2">
                 <SearchableSelect options={yearOptions} value={eoyYear} onChange={(v) => { setEoyYear(v); setEoyClass(""); }} placeholder="— Sélectionner —" />
               </div>
@@ -523,29 +510,29 @@ export default function AdminEnrollments() {
 
             {/* Formulaire d'ajout de décision */}
             <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-3">
-              <h4 className="text-sm font-semibold text-slate-700">Ajouter une décision</h4>
+              <h4 className="text-sm font-semibold text-slate-700">{t("Ajouter une décision")}</h4>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
-                  <label className="label">Élève</label>
+                  <label className="label">{t("Élève")}</label>
                   <SearchableSelect options={studentOptions} value={eoyStudentId} onChange={setEoyStudentId} placeholder="— Sélectionner un élève —" />
                 </div>
                 <div>
-                  <label className="label">Action</label>
+                  <label className="label">{t("Action")}</label>
                   <select value={eoyAction} onChange={e => setEoyAction(e.target.value)} className="input">
                     {[
-                      { value: "promote",  label: "Passage normal" },
-                      { value: "honor",    label: "Passage avec mention" },
-                      { value: "repeat",   label: "Redoublement" },
-                      { value: "transfer", label: "Transfert de filière" },
-                      { value: "graduate", label: "Diplômation" },
-                      { value: "depart",   label: "Départ (retraite)" },
-                      { value: "exclude",  label: "Exclusion" },
+                      { value: "promote",  label: t("Passage normal") },
+                      { value: "honor",    label: t("Passage avec mention") },
+                      { value: "repeat",   label: t("Redoublement") },
+                      { value: "transfer", label: t("Transfert de filière") },
+                      { value: "graduate", label: t("Diplômation") },
+                      { value: "depart",   label: t("Départ (retraite)") },
+                      { value: "exclude",  label: t("Exclusion") },
                     ].map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                   </select>
                 </div>
                 {["promote", "honor", "repeat", "transfer"].includes(eoyAction) && (
                   <div>
-                    <label className="label">Nouvelle classe (optionnel)</label>
+                    <label className="label">{t("Nouvelle classe (optionnel)")}</label>
                     <SearchableSelect
                       options={eoyYear ? classOptionsForYear(eoyYear) : []}
                       value={eoyClass} onChange={setEoyClass}
@@ -555,12 +542,12 @@ export default function AdminEnrollments() {
               </div>
               {["depart", "exclude", "graduate"].includes(eoyAction) && (
                 <div>
-                  <label className="label">Motif (optionnel)</label>
+                  <label className="label">{t("Motif (optionnel)")}</label>
                   <input
                     value={eoyReason}
                     onChange={e => setEoyReason(e.target.value)}
                     className="input"
-                    placeholder="Raison ou observations..."
+                    placeholder={t("Raison ou observations...")}
                   />
                 </div>
               )}
@@ -613,8 +600,8 @@ export default function AdminEnrollments() {
             <button
               type="button"
               onClick={() => {
-                if (!eoyYear)               return toast.error("Sélectionnez une année cible.");
-                if (eoyDecisions.length === 0) return toast.error("Ajoutez au moins une décision.");
+                if (!eoyYear)               return toast.error(t("Sélectionnez une année cible."));
+                if (eoyDecisions.length === 0) return toast.error(t("Ajoutez au moins une décision."));
                 eoyMut.mutate();
               }}
               disabled={eoyMut.isPending || eoyDecisions.length === 0}
@@ -632,7 +619,7 @@ export default function AdminEnrollments() {
       {/* ── Tab 5 : Historique ────────────────────────────────────────────── */}
       {tab === "history" && (
         <div className="card space-y-4">
-          <h3 className="font-bold text-slate-800">Parcours académique d'un élève</h3>
+          <h3 className="font-bold text-slate-800">{t("Parcours académique d'un élève")}</h3>
           <div className="flex gap-3">
             <div className="flex-1">
               <SearchableSelect options={studentOptions} value={histStudent} onChange={setHistStudent} placeholder="— Sélectionner un élève —" />
@@ -643,9 +630,7 @@ export default function AdminEnrollments() {
               disabled={!histStudent || histLoading}
               className="btn-secondary flex items-center gap-2"
             >
-              <RefreshCw className={`w-4 h-4 ${histLoading ? "animate-spin" : ""}`} />
-              Consulter
-            </button>
+              <RefreshCw className={`w-4 h-4 ${histLoading ? "animate-spin" : ""}`} />{t("Consulter")}</button>
           </div>
 
           {history.length > 0 ? (
@@ -663,37 +648,35 @@ export default function AdminEnrollments() {
                     </div>
                     <div className="flex-1 grid grid-cols-2 sm:grid-cols-4 gap-2">
                       <div>
-                        <p className="text-xs text-slate-400">Année</p>
+                        <p className="text-xs text-slate-400">{t("Année")}</p>
                         <p className="font-medium text-slate-800">{e.school_year_name || `Année #${e.school_year}`}</p>
                       </div>
                       <div>
-                        <p className="text-xs text-slate-400">Classe</p>
+                        <p className="text-xs text-slate-400">{t("Classe")}</p>
                         <p className="font-medium text-slate-800">{e.class_name || "—"}</p>
                       </div>
                       <div>
-                        <p className="text-xs text-slate-400">Décision</p>
+                        <p className="text-xs text-slate-400">{t("Décision")}</p>
                         {statusBadge(e.promotion_status)}
                       </div>
                       <div>
-                        <p className="text-xs text-slate-400">Inscrit le</p>
+                        <p className="text-xs text-slate-400">{t("Inscrit le")}</p>
                         <p className="text-slate-600">{e.enrolled_at?.slice(0, 10) || "—"}</p>
                       </div>
                     </div>
                     {e.is_current_year && (
-                      <span className="text-xs bg-emerald-600 text-white rounded-full px-2 py-0.5 font-medium">
-                        Année active
-                      </span>
+                      <span className="text-xs bg-emerald-600 text-white rounded-full px-2 py-0.5 font-medium">{t("Année active")}</span>
                     )}
                   </div>
                   {e.stats && (
                     <div className="mt-3 pt-3 border-t border-slate-200/70 grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2 text-xs">
-                      <div><p className="text-slate-400">Moyenne</p><p className="font-semibold text-slate-800">{e.stats.grades_average != null ? `${e.stats.grades_average}/20` : "—"}</p></div>
-                      <div><p className="text-slate-400">Notes</p><p className="font-semibold text-slate-800">{e.stats.grades_count}</p></div>
-                      <div><p className="text-slate-400">Absences</p><p className="font-semibold text-slate-800">{e.stats.absences}</p></div>
-                      <div><p className="text-slate-400">Retards</p><p className="font-semibold text-slate-800">{e.stats.lates}</p></div>
-                      <div><p className="text-slate-400">Paiements</p><p className="font-semibold text-slate-800">{e.stats.payments_total ? `${e.stats.payments_total.toLocaleString("fr-FR")} FCFA` : "0 FCFA"}</p></div>
-                      <div><p className="text-slate-400">Bulletins</p><p className="font-semibold text-slate-800">{e.stats.bulletins_count}</p></div>
-                      <div><p className="text-slate-400">Devoirs</p><p className="font-semibold text-slate-800">{e.stats.homework_count}</p></div>
+                      <div><p className="text-slate-400">{t("Moyenne")}</p><p className="font-semibold text-slate-800">{e.stats.grades_average != null ? `${e.stats.grades_average}/20` : "—"}</p></div>
+                      <div><p className="text-slate-400">{t("Notes")}</p><p className="font-semibold text-slate-800">{e.stats.grades_count}</p></div>
+                      <div><p className="text-slate-400">{t("Absences")}</p><p className="font-semibold text-slate-800">{e.stats.absences}</p></div>
+                      <div><p className="text-slate-400">{t("Retards")}</p><p className="font-semibold text-slate-800">{e.stats.lates}</p></div>
+                      <div><p className="text-slate-400">{t("Paiements")}</p><p className="font-semibold text-slate-800">{e.stats.payments_total ? `${e.stats.payments_total.toLocaleString(dateLocale())} FCFA` : "0 FCFA"}</p></div>
+                      <div><p className="text-slate-400">{t("Bulletins")}</p><p className="font-semibold text-slate-800">{e.stats.bulletins_count}</p></div>
+                      <div><p className="text-slate-400">{t("Devoirs")}</p><p className="font-semibold text-slate-800">{e.stats.homework_count}</p></div>
                     </div>
                   )}
                 </div>
@@ -702,7 +685,7 @@ export default function AdminEnrollments() {
           ) : histStudent && !histLoading ? (
             <div className="text-center py-8 text-slate-400">
               <History className="w-10 h-10 mx-auto mb-2 opacity-40" />
-              <p>Aucun historique trouvé pour cet élève.</p>
+              <p>{t("Aucun historique trouvé pour cet élève.")}</p>
             </div>
           ) : null}
         </div>

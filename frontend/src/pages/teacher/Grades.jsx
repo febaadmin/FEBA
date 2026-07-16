@@ -19,6 +19,7 @@ import Modal from "../../components/ui/Modal";
 import SearchableSelect from "../../components/ui/SearchableSelect";
 import ConfirmDialog from "../../components/ui/ConfirmDialog";
 import { extractApiError } from "../../utils/errors";
+import { t, dateLocale } from "../../i18n";
 
 const NOTE_TYPES = [
   { value: "devoir",        label: "Devoir" },
@@ -91,7 +92,7 @@ export default function TeacherGrades() {
     mutationFn: gradesAPI.create,
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["teacher-grades"] });
-      toast.success("Note enregistrée !");
+      toast.success(t("Note enregistrée !"));
       setModalOpen(false);
       reset({ period: "T1", note_type: "devoir", note_coefficient: 1 });
     },
@@ -102,7 +103,7 @@ export default function TeacherGrades() {
     mutationFn: ({ id, data }) => gradesAPI.update(id, data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["teacher-grades"] });
-      toast.success("Note modifiée !");
+      toast.success(t("Note modifiée !"));
       setEditItem(null); setModalOpen(false);
       reset({ period: "T1", note_type: "devoir", note_coefficient: 1 });
     },
@@ -111,13 +112,13 @@ export default function TeacherGrades() {
 
   const deleteMut = useMutation({
     mutationFn: gradesAPI.delete,
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["teacher-grades"] }); toast.success("Note supprimée."); setDeleteItem(null); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["teacher-grades"] }); toast.success(t("Note supprimée.")); setDeleteItem(null); },
     onError: (e) => toast.error(extractApiError(e)),
   });
 
   const restoreMut = useMutation({
     mutationFn: gradesAPI.restore,
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["teacher-grades"] }); toast.success("Note restaurée !"); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["teacher-grades"] }); toast.success(t("Note restaurée !")); },
   });
 
   /* ── Helpers ───────────────────────────────────────────────────────────── */
@@ -146,37 +147,36 @@ export default function TeacherGrades() {
   };
 
   const cols = [
-    { key: "student",          label: "Élève",        accessor: "student_name" },
-    { key: "class",            label: "Classe",        render: r => r.student_class || r.class_name || "—" },
-    { key: "subject",          label: "Matière",      accessor: "subject_name" },
-    { key: "period",           label: "Période",      accessor: "period" },
-    { key: "note_type",        label: "Type",         render: r => r.note_type_label || r.note_type || "—" },
-    { key: "note_coefficient", label: "Poids",        render: r => r.note_coefficient || 1 },
-    { key: "value",            label: "Note",         render: r => <span className={nc(r.value)}>{r.value}/20</span> },
-    { key: "appr",             label: "Appréciation", accessor: "appreciation" },
+    { key: "student",          label: t("Élève"),        accessor: "student_name" },
+    { key: "class",            label: t("Classe"),        render: r => r.student_class || r.class_name || "—" },
+    { key: "subject",          label: t("Matière"),      accessor: "subject_name" },
+    { key: "period",           label: t("Période"),      accessor: "period" },
+    { key: "note_type",        label: t("Type"),         render: r => r.note_type_label || r.note_type || "—" },
+    { key: "note_coefficient", label: t("Poids"),        render: r => r.note_coefficient || 1 },
+    { key: "value",            label: t("Note"),         render: r => <span className={nc(r.value)}>{r.value}/20</span> },
+    { key: "appr",             label: t("Appréciation"), accessor: "appreciation" },
   ];
 
   const histCols = [
-    { key: "action", label: "Action",  render: r => <span className={r.action === "create" ? "text-green-600" : "text-amber-600"}>{r.action === "create" ? "Création" : "Modification"}</span> },
-    { key: "old",    label: "Anc.",    render: r => r.old_value != null ? `${r.old_value}/20` : "—" },
-    { key: "new",    label: "Nouv.",   render: r => `${r.new_value}/20` },
-    { key: "by",     label: "Par",     accessor: "changed_by_name" },
-    { key: "just",   label: "Justif.", accessor: "justification" },
-    { key: "at",     label: "Date",    render: r => new Date(r.changed_at).toLocaleString("fr-FR") },
+    { key: "action", label: t("Action"),  render: r => <span className={r.action === "create" ? "text-green-600" : "text-amber-600"}>{r.action === "create" ? t("Création") : t("Modification")}</span> },
+    { key: "old",    label: t("Anc."),    render: r => r.old_value != null ? `${r.old_value}/20` : "—" },
+    { key: "new",    label: t("Nouv."),   render: r => `${r.new_value}/20` },
+    { key: "by",     label: t("Par"),     accessor: "changed_by_name" },
+    { key: "just",   label: t("Justif."), accessor: "justification" },
+    { key: "at",     label: t("Date"),    render: r => new Date(r.changed_at).toLocaleString(dateLocale()) },
   ];
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Mes Notes" subtitle={`${grades.length} note(s) — ${period === "all" ? "Toutes périodes" : period} — ${currentYear?.name || "…"}`}
+      <PageHeader title={t("Mes Notes")} subtitle={`${grades.length} note(s) — ${period === "all" ? "Toutes périodes" : period} — ${currentYear?.name || "…"}`}
         action={
           <div className="flex gap-2">
             <button onClick={() => setShowDeleted(!showDeleted)}
               className={`btn-secondary text-sm ${showDeleted ? "ring-2 ring-amber-400" : ""}`}>
-              {showDeleted ? "Masquer supprimées" : "Voir supprimées"}
+              {showDeleted ? t("Masquer supprimées") : t("Voir supprimées")}
             </button>
             <button onClick={openCreate} className="btn-primary flex items-center gap-2">
-              <Plus className="w-4 h-4" />Saisir une note
-            </button>
+              <Plus className="w-4 h-4" />{t("Saisir une note")}</button>
           </div>
         } />
 
@@ -185,15 +185,15 @@ export default function TeacherGrades() {
         <div className="card flex items-start gap-3 bg-amber-50 border border-amber-200 text-amber-700">
           <AlertCircle className="w-5 h-5 mt-0.5 shrink-0" />
           <div>
-            <p className="font-semibold">Aucun élève trouvé</p>
-            <p className="text-sm">Assurez-vous que votre profil enseignant a des classes assignées. Contactez l'administrateur si nécessaire.</p>
+            <p className="font-semibold">{t("Aucun élève trouvé")}</p>
+            <p className="text-sm">{t("Assurez-vous que votre profil enseignant a des classes assignées. Contactez l'administrateur si nécessaire.")}</p>
           </div>
         </div>
       )}
 
       {/* Filtres */}
       <div className="card flex gap-3 flex-wrap items-center">
-        <span className="text-sm font-medium text-slate-600">Période :</span>
+        <span className="text-sm font-medium text-slate-600">{t("Période :")}</span>
         {["all","T1","T2","T3","exam"].map(p => (
           <button key={p} onClick={() => setPeriod(p)}
             className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all ${period === p ? "bg-primary text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}>
@@ -203,7 +203,7 @@ export default function TeacherGrades() {
         <div className="ml-auto min-w-48">
           <select value={filterClass} onChange={e => setFilterClass(e.target.value)}
             className="input text-sm w-full">
-            <option value="">Toutes classes</option>
+            <option value="">{t("Toutes classes")}</option>
             {classOpts.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
           </select>
         </div>
@@ -222,7 +222,7 @@ export default function TeacherGrades() {
               )}
               {row.is_deleted && (
                 <button onClick={() => restoreMut.mutate(row.id)}
-                  className="px-2 py-1 text-xs rounded-lg bg-green-100 text-green-600 hover:bg-green-200">Restaurer</button>
+                  className="px-2 py-1 text-xs rounded-lg bg-green-100 text-green-600 hover:bg-green-200">{t("Restaurer")}</button>
               )}
             </div>
           )} />
@@ -234,7 +234,7 @@ export default function TeacherGrades() {
           <div className="absolute inset-0 bg-black/40" onClick={() => setViewItem(null)} />
           <div className="relative bg-white rounded-2xl shadow-2xl max-w-2xl w-full p-6 max-h-[80vh] overflow-y-auto space-y-4">
             <div className="flex items-center justify-between">
-              <h2 className="font-bold text-slate-800">Historique — {viewItem.student_name} / {viewItem.subject_name}</h2>
+              <h2 className="font-bold text-slate-800">{t("Historique")} — {viewItem.student_name} / {viewItem.subject_name}</h2>
               <button onClick={() => setViewItem(null)} className="text-slate-400 hover:text-slate-600 text-2xl">×</button>
             </div>
             <DataTable columns={histCols} data={history} />
@@ -245,31 +245,31 @@ export default function TeacherGrades() {
       {/* Modal saisie / modification */}
       <Modal open={modalOpen}
         onClose={() => { setModalOpen(false); setEditItem(null); reset({ period: "T1", note_type: "devoir", note_coefficient: 1 }); }}
-        title={editItem ? "Modifier la note" : "Saisir une note"}>
+        title={editItem ? t("Modifier la note") : t("Saisir une note")}>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           {!editItem && (
             <>
               <div>
-                <label className="label">Classe (filtre élèves)</label>
+                <label className="label">{t("Classe (filtre élèves)")}</label>
                 <select className="input" onChange={e => setFilterClass(e.target.value)} value={filterClass}>
-                  <option value="">Toutes mes classes</option>
+                  <option value="">{t("Toutes mes classes")}</option>
                   {classOpts.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
                 </select>
               </div>
               <div>
-                <label className="label">Élève *</label>
+                <label className="label">{t("Élève *")}</label>
                 <Controller name="student" control={control} rules={{ required: true }}
-                  render={({ field }) => <SearchableSelect options={studentOpts} value={field.value} onChange={field.onChange} placeholder="Rechercher un élève…" />} />
-                {errors.student && <p className="text-red-500 text-xs mt-1">Requis</p>}
+                  render={({ field }) => <SearchableSelect options={studentOpts} value={field.value} onChange={field.onChange} placeholder={t("Rechercher un élève…")} />} />
+                {errors.student && <p className="text-red-500 text-xs mt-1">{t("Requis")}</p>}
               </div>
               <div>
-                <label className="label">Matière * <span className="text-xs text-slate-400">(vos matières assignées)</span></label>
+                <label className="label">{t("Matière *")} <span className="text-xs text-slate-400">(vos matières assignées)</span></label>
                 <Controller name="subject" control={control} rules={{ required: true }}
-                  render={({ field }) => <SearchableSelect options={subjectOpts} value={field.value} onChange={field.onChange} placeholder="Sélectionner la matière…" />} />
-                {errors.subject && <p className="text-red-500 text-xs mt-1">Requis</p>}
+                  render={({ field }) => <SearchableSelect options={subjectOpts} value={field.value} onChange={field.onChange} placeholder={t("Sélectionner la matière…")} />} />
+                {errors.subject && <p className="text-red-500 text-xs mt-1">{t("Requis")}</p>}
               </div>
               <div>
-                <label className="label">Année scolaire</label>
+                <label className="label">{t("Année scolaire")}</label>
                 <select {...register("school_year")} className="input">
                   {years.map(y => <option key={y.id} value={y.id}>{y.name}{y.is_current ? " ✓" : ""}</option>)}
                 </select>
@@ -278,49 +278,48 @@ export default function TeacherGrades() {
           )}
 
           {editItem && (
-            <div className="bg-slate-50 rounded-xl px-4 py-3 text-sm text-slate-600">
-              Modification de <strong>{editItem.student_name}</strong> en <strong>{editItem.subject_name}</strong>
+            <div className="bg-slate-50 rounded-xl px-4 py-3 text-sm text-slate-600">{t("Modification de")} <strong>{editItem.student_name}</strong> en <strong>{editItem.subject_name}</strong>
             </div>
           )}
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="label">Note (0–20) *</label>
+              <label className="label">{t("Note (0–20) *")}</label>
               <input {...register("value", { required: true, min: 0, max: 20 })} type="number" step="0.25" className="input" />
             </div>
             <div>
-              <label className="label">Période *</label>
+              <label className="label">{t("Période *")}</label>
               <select {...register("period", { required: true })} className="input">
-                <option value="T1">T1</option>
-                <option value="T2">T2</option>
-                <option value="T3">T3</option>
-                <option value="exam">Examen</option>
+                <option value="T1">{t("T1")}</option>
+                <option value="T2">{t("T2")}</option>
+                <option value="T3">{t("T3")}</option>
+                <option value="exam">{t("Examen")}</option>
               </select>
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="label">Type de note *</label>
+              <label className="label">{t("Type de note *")}</label>
               <select {...register("note_type", { required: true })} className="input">
-                {NOTE_TYPES.map(nt => <option key={nt.value} value={nt.value}>{nt.label}</option>)}
+                {NOTE_TYPES.map(nt => <option key={nt.value} value={nt.value}>{t(nt.label)}</option>)}
               </select>
             </div>
             <div>
-              <label className="label">Coefficient (poids) *</label>
+              <label className="label">{t("Coefficient (poids) *")}</label>
               <input {...register("note_coefficient", { required: true, min: 1 })} type="number" min="1" max="10" step="1" defaultValue={1} className="input" />
-              <p className="text-xs text-slate-400 mt-1">Examen = 3, devoir = 1</p>
+              <p className="text-xs text-slate-400 mt-1">{t("Examen = 3, devoir = 1")}</p>
             </div>
           </div>
 
-          <div><label className="label">Commentaire</label><textarea {...register("comment")} className="input" rows={2} /></div>
-          <div><label className="label">Justification</label><textarea {...register("justification")} className="input" rows={2} placeholder="Raison de la saisie ou modification…" /></div>
+          <div><label className="label">{t("Commentaire")}</label><textarea {...register("comment")} className="input" rows={2} /></div>
+          <div><label className="label">{t("Justification")}</label><textarea {...register("justification")} className="input" rows={2} placeholder={t("Raison de la saisie ou modification…")} /></div>
 
           <div className="flex gap-3 justify-end pt-2">
-            <button type="button" onClick={() => { setModalOpen(false); setEditItem(null); reset({ period: "T1", note_type: "devoir", note_coefficient: 1 }); }} className="btn-secondary">Annuler</button>
+            <button type="button" onClick={() => { setModalOpen(false); setEditItem(null); reset({ period: "T1", note_type: "devoir", note_coefficient: 1 }); }} className="btn-secondary">{t("Annuler")}</button>
             <button type="submit" disabled={createMut.isPending || updateMut.isPending} className="btn-primary flex items-center gap-2">
               <Save className="w-4 h-4" />
-              {(createMut.isPending || updateMut.isPending) ? "Enregistrement…" : (editItem ? "Modifier" : "Enregistrer")}
+              {(createMut.isPending || updateMut.isPending) ? "Enregistrement…" : (editItem ? t("Modifier") : t("Enregistrer"))}
             </button>
           </div>
         </form>

@@ -36,6 +36,21 @@ class PaymentSerializer(serializers.ModelSerializer):
         fields = "__all__"
         read_only_fields = ["reference_number", "received_by"]
 
+    def validate_amount(self, value):
+        if value is None or value <= 0:
+            raise serializers.ValidationError(
+                "Le montant doit être strictement positif."
+            )
+        return value
+
+    def validate_payment_date(self, value):
+        from django.utils import timezone
+        if value and value > timezone.localdate():
+            raise serializers.ValidationError(
+                "La date de paiement ne peut pas être dans le futur."
+            )
+        return value
+
     def get_student_class(self, obj):
         if obj.student.current_class:
             return obj.student.current_class.name

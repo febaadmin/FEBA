@@ -1,159 +1,193 @@
-# TEST_REPORT — FEBA School Management
+# TEST_REPORT — itération « bilinguisation + hotfix page blanche Parent » (16/07/2026)
 
-Sorties **réelles** des commandes exécutées pour valider les deux corrections
-prioritaires (bulletins PDF, matricules). Aucune commande n'est déclarée réussie
-sans avoir été lancée.
+## Commandes réellement exécutées et résultats
 
-## Environnement d'exécution
-
-- OS : macOS (darwin), Python **3.14**.
-- Le dépôt cible **PostgreSQL** (dev/prod) et **WeasyPrint** n'est pas utilisé par
-  le bulletin (moteur = ReportLab). Postgres/Docker n'étant pas disponibles en
-  local, un module de réglages de test **SQLite** a été ajouté
-  (`backend/feba_project/settings/test_sqlite.py`) et la suite est lancée avec
-  `--no-migrations` (schéma construit depuis les modèles — les migrations
-  `RunSQL … IF NOT EXISTS` sont spécifiques PostgreSQL).
-- Venv de test jetable : `backend/.venv-test` (ignoré par git). Sous Python 3.14,
-  `Pillow`/`reportlab` sont installés en version compatible 3.14 (les épingles de
-  `requirements` visent 3.11/3.12) ; cela n'affecte que l'exécution locale des
-  tests, pas le code livré.
-
-Commande type :
-```
+```bash
+# Backend — SQLite (sans services externes)
 cd backend
-DJANGO_SETTINGS_MODULE=feba_project.settings.test_sqlite \
-  .venv-test/bin/python -m pytest --no-migrations
+DJANGO_SETTINGS_MODULE=feba_project.settings.test_sqlite pytest --no-migrations -q
+#  → 219 passed, 1 skipped (concurrence : nécessite un serveur de BD ; vert sur PostgreSQL)
+
+# Backend — PostgreSQL (docker dev up, migrations incluses — avant l'arrêt de Docker)
+DJANGO_SETTINGS_MODULE=feba_project.settings.test_postgres pytest -q
+#  → 220 passed
+
+# Backend — depuis la copie propre extraite du ZIP livré
+#  → 219 passed, 1 skipped
+
+# Frontend — tests unitaires (Vitest + Testing Library, nouveau)
+cd frontend && npx vitest run
+#  → 3 fichiers, 22 tests, 22 passed
+#     · src/pages/parent/Home.test.jsx  (10) — rendu ParentHome, dont le
+#       scénario exact du crash « t2 is not a function » (moyennes T1/T2/T3)
+#     · src/i18n/i18n.test.js           (12) — t/tBoth/interpolation/repli/persistance
+#     · src/test/no-t-shadowing.test.js (1)  — garde statique anti-shadowing de t
+
+# Frontend — build production
+npm run build
+#  → ✓ built (aucune erreur)
 ```
+
+## Vérification navigateur (serveurs réels : Django runserver + Vite)
+
+| Scénario | Résultat observé |
+|---|---|
+| Connexion parent1@feba.bj | 200, redirection `/parent/home` |
+| `/parent/home` | **Page complète** : 2 enfants, moyenne générale 12.62/20 & 12.68/20, Moy. T1/T2/T3, Français/Anglais, progression — plus de page blanche |
+| Console navigateur | **0 erreur** (plus de « t2 is not a function ») |
+| Rechargement direct `/parent/home` | OK |
+| `/parent/grades` puis retour | OK — cartes Moy. Générale/Française/Anglaise/Bilingue remplies pour chaque enfant |
+| Notification réelle (nouvelle note créée par l'enseignant via API) | Cloche → clic → navigation `/parent/grades`, session conservée, pas de déconnexion |
+| Déconnexion (bouton UI) | Retour `/login`, jetons purgés |
+| Connexion eleve1@feba.bj | `/student/home` complet (moyennes T1/T2/T3, annuelle, FR/EN) |
+| Bascule FR ↔ EN (parent + admin) | Immédiate, persistée (PATCH `/auth/me/` 200) |
+| Changement de mot de passe admin (API) | mauvais ancien → 400 ; bon → 200 ; login avec nouveau → 200 ; restauré |
+| Réseau | Tous les endpoints du dashboard parent en 200, aucune boucle de requêtes |
 
 ---
 
-## 1. Vérifications Django
+# (Itérations précédentes ci-dessous)
+
+# TEST_REPORT — Itération courante (notifications / moyennes / mot de passe)
+
+Toutes les commandes ci-dessous ont été **réellement exécutées** dans
+l'environnement de travail (pas de résultat inventé). Voir `CORRECTIONS.md`
+pour le détail des corrections associées. Le rapport de l'itération
+précédente (bulletins/matricules) a été renommé `TEST_REPORT_PREVIOUS.md`.
+
+## 1. Backend — suite complète (PostgreSQL réel)
 
 ```
-$ python manage.py check
-System check identified no issues (0 silenced).
+$ DJANGO_SETTINGS_MODULE=feba_project.settings.test_postgres python manage.py migrate --no-input
+... (toutes les migrations appliquées sans erreur, y compris les migrations
+     multi-tenant v29 qui utilisent une syntaxe PostgreSQL réelle)
+
+$ DJANGO_SETTINGS_MODULE=feba_project.settings.test_postgres python -m pytest tests/ -q --reuse-db
+====================== 192 passed, 143 warnings in 7.53s =======================
 ```
 
-```
-$ python manage.py makemigrations students --check --dry-run
-# La NOUVELLE table de séquence est déjà couverte par students/0005 :
-# seule subsiste une dérive PRÉ-EXISTANTE, hors sujet, sur exit_notes :
-Migrations for 'students':
-  apps/students/migrations/0006_alter_student_exit_notes.py
-    - Alter field exit_notes on student
-```
-> `makemigrations --check` global échoue à cause de dérives **pré-existantes**
-> (parents, subjects, attendance, bulletins, grades, payments, students.exit_notes)
-> présentes **avant** cette intervention et non liées aux deux corrections.
-> Ma modification ajoute exactement **une** migration propre (`students 0005`).
+175 tests pré-existants + 17 nouveaux (`tests/test_priority_fixes.py`) = 192.
+**0 échec, 0 erreur.**
 
----
-
-## 2. Tests — matricules (`tests/test_matricule.py`)
+## 2. Détail des 17 nouveaux tests (`tests/test_priority_fixes.py`)
 
 ```
-$ pytest --no-migrations tests/test_matricule.py
-tests/test_matricule.py ................                                 [100%]
-16 passed, 1 warning in 0.45s
+tests/test_priority_fixes.py::NotificationPathTests::test_all_roles_get_correct_prefix PASSED
+tests/test_priority_fixes.py::NotificationPathTests::test_create_notification_stores_related_url_verbatim PASSED
+tests/test_priority_fixes.py::NotificationPathTests::test_leading_slash_in_path_is_normalized PASSED
+tests/test_priority_fixes.py::NotificationPathTests::test_unknown_role_returns_empty_string_not_broken_url PASSED
+tests/test_priority_fixes.py::GradeNotificationRedirectTests::test_grade_creation_notifies_parent_with_parent_prefixed_url PASSED
+tests/test_priority_fixes.py::GradeNotificationRedirectTests::test_grade_creation_notifies_student_with_student_prefixed_url PASSED
+tests/test_priority_fixes.py::AttendanceAndPaymentNotificationTests::test_absence_notifies_parent_and_student_with_correct_prefixes PASSED
+tests/test_priority_fixes.py::AttendanceAndPaymentNotificationTests::test_payment_notifies_parent_and_student_with_correct_prefixes PASSED
+tests/test_priority_fixes.py::DashboardSubjectAveragesTests::test_annual_subject_averages_helper_groups_by_subject PASSED
+tests/test_priority_fixes.py::DashboardSubjectAveragesTests::test_parent_dashboard_exposes_subject_and_bilingual_averages_per_child PASSED
+tests/test_priority_fixes.py::DashboardSubjectAveragesTests::test_student_dashboard_exposes_subject_and_bilingual_averages PASSED
+tests/test_priority_fixes.py::DashboardSubjectAveragesTests::test_student_with_no_grades_at_all_dashboard_does_not_crash PASSED
+tests/test_priority_fixes.py::DashboardSubjectAveragesTests::test_subject_without_grades_reports_none_not_zero PASSED
+tests/test_priority_fixes.py::AdminPasswordChangeTests::test_admin_can_change_own_password PASSED
+tests/test_priority_fixes.py::AdminPasswordChangeTests::test_superadmin_can_change_own_password PASSED
+tests/test_priority_fixes.py::AdminPasswordChangeTests::test_weak_new_password_rejected_for_admin PASSED
+tests/test_priority_fixes.py::AdminPasswordChangeTests::test_wrong_old_password_rejected_for_admin PASSED
 ```
 
-Scénarios couverts :
-| Scénario | Attendu | Résultat |
-|---|---|---|
-| Année système 2023 | `FEBA-23-0001` | ✅ |
-| Année système 2025 | `FEBA-25-0001` | ✅ |
-| Année système 2026 | `FEBA-26-0001` | ✅ |
-| Année système 2027 | `FEBA-27-0001` | ✅ |
-| Format à tirets (pas de `_`) | 2 tirets, `FEBA-26-0001` | ✅ |
-| Séquence même année | 0001, 0002, 0003 | ✅ |
-| Redémarrage par année | 25→0002 puis 26→0001 | ✅ |
-| Suppression d'un élève | pas de réutilisation de numéro (→0003) | ✅ |
-| Indépendance par établissement | `FEBA-26-0001` / `AEC-26-0001` | ✅ |
-| Amorçage anti-collision (héritage) | `FEBA-26-0007` → suivant `-0008` | ✅ |
-| Ancien matricule intact | `FEBA_25_0005` conservé | ✅ |
-| Anti-hardcode | suffixe dérivé de `year % 100` | ✅ |
+## 3. Non-régression — tests des itérations précédentes
 
-Test complémentaire mis à jour au nouveau format à tirets :
-`tests/test_bug_fixes_v45.py::MatriculeTests` (5 tests) — ✅.
+Toujours verts, sans modification :
+- `tests/test_bulletin_layout.py` — 7/7
+- `tests/test_matricule.py` — 16/16
+- `tests/test_averages_and_notifications.py` (endpoint `/api/grades/averages/`,
+  déjà présent) — inchangé, toujours vert.
 
----
-
-## 3. Tests — mise en page bulletin (`tests/test_bulletin_layout.py`)
+## 4. Frontend — build de production
 
 ```
-$ pytest --no-migrations tests/test_bulletin_layout.py
-7 passed, 1 warning in 0.47s
+$ npm install
+added 398 packages in 7s
+
+$ npm run build
+✓ 3751 modules transformed.
+✓ built in 13.39s
 ```
 
-| Scénario | Vérifié | Résultat |
-|---|---|---|
-| Peu de matières (1 FR / 1 EN) | 1 page A4 | ✅ |
-| 10 matières (6 FR / 4 EN) | 1 page A4 | ✅ |
-| Intitulés longs FR/EN | 1 page, pas d'exception, repli | ✅ |
-| « Mot » sans espace très long | 1 page (repli CJK) | ✅ |
-| Page A4 portrait | 595 × 842 pt | ✅ |
-| Bulletin annuel (intitulés longs) | 1 page A4 | ✅ |
-| Maternelle (intitulés longs) | 1 page A4 | ✅ |
+Aucune erreur de compilation. Un avertissement pré-existant sur la taille du
+bundle principal (>500 kB) subsiste — non lié à cette itération, non
+corrigé (hors périmètre : découpage en chunks à faire dans une itération
+dédiée à la performance).
 
-### Validation visuelle (rendu réel des PDF)
-PDF générés puis rastérisés en PNG et inspectés (`docs/bulletin_captures/`) :
-- `avant_matieres_longues.png` — **AVANT** : le texte long chevauche les colonnes
-  Coeff/Notes et déborde.
-- `avant_page2_involontaire.png` — **AVANT** : bloc signatures seul en page 2.
-- `apres_matieres_longues.png` — **APRÈS** : intitulés repliés, cadré, 1 page.
-- `apres_10_matieres.png` — **APRÈS** : 10 matières + signatures, 1 page.
-- `apres_maternelle.png` — **APRÈS** : template maternelle, clé 13 colonnes cadrée.
-
-Contrôles effectués sur chaque rendu : pas de débordement gauche/droite, aucune
-colonne coupée, marges régulières, texte lisible, pas de 2ᵉ page involontaire.
-
----
-
-## 4. Suite backend complète (non-régression)
-
-```
-$ pytest --no-migrations
-2 failed, 173 passed, 133 warnings in 4.82s
-```
-
-Les **2 échecs sont des artefacts du backend SQLite local**, présents **avant**
-mes modifications, et **verts sous PostgreSQL** (SGBD réel) :
-1. `test_bug_fixes_v45.py::DashboardTests::test_student_dashboard_average` —
-   `NotSupportedError: contains lookup is not supported` : lookup `__contains`
-   sur un `JSONField`, **non supporté par SQLite** (OK sous PostgreSQL).
-2. `test_parent_student.py::ParentStudentConcurrencyTest::test_concurrent_assignment_both_succeed` —
-   `database table is locked` : test de concurrence multi-thread, **SQLite
-   sérialise/verrouille** les écritures (OK sous PostgreSQL). Intermittent.
-
-Aucune régression introduite par les corrections (les modules touchés — students,
-bulletins — passent à 100 % hors ces limitations SQLite).
-
----
-
-## 5. Frontend
+## 5. Frontend — lint
 
 ```
 $ npm run lint
 ✖ 60 problems (0 errors, 60 warnings)
 ```
-0 **erreur** (warnings pré-existants : hooks/vars inutilisées).
+
+**0 erreur.** Les 60 avertissements sont très majoritairement pré-existants
+(imports inutilisés dans des fichiers non touchés, dépendances de hooks
+`useEffect`/`useMemo` déjà présentes avant cette itération). Un seul
+avertissement nouveau, dans le fichier créé
+`frontend/src/pages/shared/AccountProfile.jsx` :
+`Compilation Skipped: Use of incompatible library` sur `watchPwd(...)` —
+avertissement du React Compiler concernant `react-hook-form`, présent à
+l'identique dans les formulaires teacher/parent/student déjà livrés
+(`Profile.jsx`, `Admins.jsx`) ; **pas une erreur**, comportement déjà
+accepté dans le reste du projet.
+
+## 6. Vérification de la dérive de migrations
 
 ```
-$ npm run build
-✓ built in 7.13s
-dist/index.html                     0.81 kB
-dist/assets/index-*.css            52.90 kB
-dist/assets/index-*.js          1,430.50 kB
+$ DJANGO_SETTINGS_MODULE=feba_project.settings.test_postgres python manage.py makemigrations --check --dry-run
+Migrations for 'parents': ...
+Migrations for 'students': ...
+Migrations for 'subjects': ...
+Migrations for 'attendance': ...
+Migrations for 'bulletins': ...
+Migrations for 'grades': ...
+Migrations for 'payments': ...
 ```
-Build réussi (avertissements pré-existants : taille de chunk, import dynamique).
 
----
+Dérive **déjà présente avant cette itération** (déjà documentée dans
+`CORRECTIONS_PREVIOUS.md`). Aucun champ de modèle n'a été modifié dans
+cette itération — seule une méthode a été ajoutée à `Grade`
+(`get_annual_subject_averages`), qui ne génère aucune migration. Vérifié en
+comparant la sortie ci-dessus avant/après mes changements : identique.
 
-## 6. Limites restantes / non fait
+## 7. Lint Python (ruff) sur les fichiers modifiés
 
-- **Non exécuté sous PostgreSQL réel** (indisponible localement) : les 2 échecs
-  ci-dessus doivent être reconfirmés verts en CI Postgres.
-- **`makemigrations --check` global** reste rouge à cause de dérives
-  **pré-existantes** hors sujet (voir §1) — non corrigées ici volontairement.
-- **Audit exhaustif des ~25 modules** : non réalisé dans cette itération.
-- **ZIP final** : non généré (conditionné à l'audit complet par le contrat).
+```
+$ ruff check apps/notifications/utils.py apps/dashboard/views.py apps/grades/models.py \
+    apps/grades/views.py apps/attendance/views.py apps/payments/views.py \
+    apps/messaging/views.py tests/test_priority_fixes.py --select F
+```
+
+6 problèmes détectés, **tous pré-existants** (imports inutilisés, variable
+non utilisée) situés dans des sections de code non touchées par cette
+itération — vérifié ligne par ligne, aucun n'est dans le code que j'ai
+ajouté ou modifié.
+
+## 8. Ce qui n'a PAS pu être testé (déclaré honnêtement)
+
+- **Rendu réel dans un navigateur** (clic effectif sur une notification, un
+  bouton, navigation visuelle) : aucun outil E2E (Cypress/Playwright)
+  n'existe dans le projet, et Docker n'est pas disponible dans cet
+  environnement d'exécution sandboxé — impossible de démarrer
+  simultanément le backend Django, le frontend Vite, Redis, MinIO et un
+  navigateur piloté. Les corrections ont donc été validées au niveau API
+  (backend) et build/lint (frontend), pas via un scénario utilisateur
+  complet dans un navigateur.
+- **Redis / Celery / MinIO / Jitsi** : non démarrés dans cet environnement
+  (pas nécessaires pour les trois corrections de cette itération, qui ne
+  touchent ni fichiers, ni tâches asynchrones, ni visio).
+- **Audit exhaustif des ~25 modules** demandé dans le cahier des charges :
+  non mené (voir « Audit global — état honnête » dans `CORRECTIONS.md`).
+
+## Environnement utilisé
+
+- PostgreSQL 16 installé et démarré localement (`apt-get install postgresql`),
+  base `feba_test`, migrations appliquées normalement.
+- Python 3.12, dépendances installées via
+  `pip install -r requirements/dev.txt` + `psycopg2-binary`.
+- Node.js 22, npm 10, dépendances installées via `npm install`.
+- Paramètres de test : `feba_project/settings/test_postgres.py` (nouveau,
+  cache en mémoire, rate-limit désactivé pour éviter les échecs en cascade
+  documentés dans `dev.py`).

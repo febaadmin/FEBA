@@ -4,6 +4,7 @@ import { attendanceAPI, parentsAPI } from "../../api";
 import PageHeader from "../../components/ui/PageHeader";
 import DataTable from "../../components/ui/DataTable";
 import StatusBadge from "../../components/ui/StatusBadge";
+import { t } from "../../i18n";
 
 export default function ParentAttendance() {
   const [selectedChild, setSelectedChild] = useState("");
@@ -24,11 +25,11 @@ export default function ParentAttendance() {
   const records = data?.data?.results || data?.data || [];
 
   const cols = [
-    { key: "student", label: "Élève", accessor: "student_name" },
-    { key: "date", label: "Date", accessor: "date" },
-    { key: "status", label: "Statut", render: r => <StatusBadge status={r.status} /> },
-    { key: "subject", label: "Matière", render: r => r.subject_name || "—" },
-    { key: "justification", label: "Justification", render: r => r.justification || "—" },
+    { key: "student", label: t("Élève"), accessor: "student_name" },
+    { key: "date", label: t("Date"), accessor: "date" },
+    { key: "status", label: t("Statut"), render: r => <StatusBadge status={r.status} /> },
+    { key: "subject", label: t("Matière"), render: r => r.subject_name || "—" },
+    { key: "justification", label: t("Justification"), render: r => r.justification || "—" },
   ];
 
   const absentCount = records.filter(r => r.status === "absent").length;
@@ -36,15 +37,13 @@ export default function ParentAttendance() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Absences de mes enfants"
+      <PageHeader title={t("Absences de mes enfants")}
         subtitle={`${absentCount} absence(s) · ${lateCount} retard(s) · ${records.length} enregistrement(s) total`} />
 
       {children.length > 1 && (
         <div className="card flex gap-2 flex-wrap">
           <button onClick={() => setSelectedChild("")}
-            className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${!selectedChild ? "bg-amber-500 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}>
-            Tous les enfants
-          </button>
+            className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${!selectedChild ? "bg-amber-500 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}>{t("Tous les enfants")}</button>
           {children.map(c => (
             <button key={c.id} onClick={() => setSelectedChild(String(c.id))}
               className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${selectedChild === String(c.id) ? "bg-amber-500 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}>
@@ -58,9 +57,9 @@ export default function ParentAttendance() {
       {records.length > 0 && (
         <div className="grid grid-cols-3 gap-3">
           {[
-            { label: "Présences", count: records.filter(r => r.status === "present").length, color: "text-emerald-600" },
-            { label: "Absences", count: absentCount, color: "text-red-600" },
-            { label: "Retards", count: lateCount, color: "text-amber-600" },
+            { label: t("Présences"), count: records.filter(r => r.status === "present").length, color: "text-emerald-600" },
+            { label: t("Absences"), count: absentCount, color: "text-red-600" },
+            { label: t("Retards"), count: lateCount, color: "text-amber-600" },
           ].map(s => (
             <div key={s.label} className="card text-center py-3">
               <p className={`text-2xl font-bold ${s.color}`}>{s.count}</p>

@@ -8,6 +8,7 @@ import Modal from "../../components/ui/Modal";
 import logoFeba from "../../assets/logo_feba.jpeg";
 import { extractApiError } from "../../utils/errors";
 import { resolveMediaUrl } from "../../utils/media";
+import { t } from "../../i18n";
 
 export default function AdminBranding() {
   const qc = useQueryClient();
@@ -36,7 +37,7 @@ export default function AdminBranding() {
   const uploadMut = useMutation({
     mutationFn: (formData) => schoolsAPI.uploadBranding(formData),
     onSuccess: () => {
-      toast.success("Logo uploadé et activé avec succès ! Propagé dans toute l'application.");
+      toast.success(t("Logo uploadé et activé avec succès ! Propagé dans toute l'application."));
       qc.invalidateQueries({ queryKey: ["branding"] });
       qc.invalidateQueries({ queryKey: ["branding-active"] });
       setUploadOpen(false);
@@ -50,7 +51,7 @@ export default function AdminBranding() {
   const activateMut = useMutation({
     mutationFn: (id) => schoolsAPI.activateBranding(id),
     onSuccess: () => {
-      toast.success("Logo activé avec succès !");
+      toast.success(t("Logo activé avec succès !"));
       qc.invalidateQueries({ queryKey: ["branding"] });
       qc.invalidateQueries({ queryKey: ["branding-active"] });
     },
@@ -60,7 +61,7 @@ export default function AdminBranding() {
   const deleteMut = useMutation({
     mutationFn: (id) => schoolsAPI.deleteBranding(id),
     onSuccess: () => {
-      toast.success("Version supprimée.");
+      toast.success(t("Version supprimée."));
       qc.invalidateQueries({ queryKey: ["branding"] });
       qc.invalidateQueries({ queryKey: ["branding-active"] });
     },
@@ -75,7 +76,7 @@ export default function AdminBranding() {
   };
 
   const handleUpload = () => {
-    if (!selectedFile) { toast.error("Veuillez sélectionner un fichier"); return; }
+    if (!selectedFile) { toast.error(t("Veuillez sélectionner un fichier")); return; }
     const fd = new FormData();
     fd.append("logo", selectedFile);
     fd.append("label", label || `Logo ${new Date().toLocaleDateString()}`);
@@ -88,14 +89,12 @@ export default function AdminBranding() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Gestion du Branding & Logo"
-        subtitle="Gestion centralisée du logo officiel de l'école FEBA — propagé automatiquement dans toute l'application"
+        title={t("Gestion du Branding & Logo")}
+        subtitle={t("Gestion centralisée du logo officiel de l'école FEBA — propagé automatiquement dans toute l'application")}
         action={
           <button onClick={() => setUploadOpen(true)}
             className="btn-primary flex items-center gap-2">
-            <Upload className="w-4 h-4" />
-            Uploader un nouveau logo
-          </button>
+            <Upload className="w-4 h-4" />{t("Uploader un nouveau logo")}</button>
         }
       />
 
@@ -103,23 +102,21 @@ export default function AdminBranding() {
       <div className="bg-gradient-to-r from-blue-900 to-blue-800 rounded-xl p-6 text-white flex items-center gap-6">
         <div className="w-24 h-24 rounded-xl overflow-hidden bg-white border-4 border-yellow-400 shadow-xl flex-shrink-0">
           {active?.logo_url ? (
-            <img src={resolveMediaUrl(active.logo_url)} alt="Logo actif" className="w-full h-full object-contain" />
+            <img src={resolveMediaUrl(active.logo_url)} alt={t("Logo actif")} className="w-full h-full object-contain" />
           ) : (
-            <img src={logoFeba} alt="Logo FEBA par défaut" className="w-full h-full object-contain" />
+            <img src={logoFeba} alt={t("Logo FEBA par défaut")} className="w-full h-full object-contain" />
           )}
         </div>
         <div className="flex-1">
           <div className="flex items-center gap-2 mb-2">
             <CheckCircle className="w-5 h-5 text-green-400" />
-            <span className="font-bold text-lg">Logo actuellement actif</span>
+            <span className="font-bold text-lg">{t("Logo actuellement actif")}</span>
           </div>
           <p className="text-blue-200 text-sm">{active?.label || "Logo FEBA officiel"}</p>
-          <p className="text-blue-300 text-xs mt-1">
-            Affiché sur : Page de connexion • Tableaux de bord • Bulletins PDF • Tous les documents
-          </p>
+          <p className="text-blue-300 text-xs mt-1">{t("Affiché sur : Page de connexion • Tableaux de bord • Bulletins PDF • Tous les documents")}</p>
         </div>
         <div className="text-right text-xs text-blue-300">
-          <p>Propagation automatique</p>
+          <p>{t("Propagation automatique")}</p>
           <p className="text-green-400 font-medium mt-1">✓ Active partout</p>
         </div>
       </div>
@@ -127,10 +124,10 @@ export default function AdminBranding() {
       {/* Propagation Info */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
-          { label: "Page de connexion", icon: "🔐", status: "✓ Actif" },
-          { label: "Tableaux de bord", icon: "📊", status: "✓ Actif" },
-          { label: "Bulletins PDF", icon: "📄", status: "✓ Actif" },
-          { label: "Documents exports", icon: "📤", status: "✓ Actif" },
+          { label: t("Page de connexion"), icon: "🔐", status: "✓ Actif" },
+          { label: t("Tableaux de bord"), icon: "📊", status: "✓ Actif" },
+          { label: t("Bulletins PDF"), icon: "📄", status: "✓ Actif" },
+          { label: t("Documents exports"), icon: "📤", status: "✓ Actif" },
         ].map((item) => (
           <div key={item.label} className="bg-white rounded-xl border border-gray-200 p-4 text-center">
             <div className="text-2xl mb-2">{item.icon}</div>
@@ -145,23 +142,22 @@ export default function AdminBranding() {
         <div className="p-4 border-b border-gray-200 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Image className="w-5 h-5 text-blue-600" />
-            <h3 className="font-semibold text-gray-800">Historique des versions</h3>
+            <h3 className="font-semibold text-gray-800">{t("Historique des versions")}</h3>
             <span className="bg-blue-100 text-blue-700 text-xs font-medium px-2 py-0.5 rounded-full">
               {brands.length} version(s)
             </span>
           </div>
           <button onClick={() => refetch()} className="btn-secondary flex items-center gap-1 text-sm">
-            <RefreshCw className="w-3.5 h-3.5" />Rafraîchir
-          </button>
+            <RefreshCw className="w-3.5 h-3.5" />{t("Rafraîchir")}</button>
         </div>
 
         {isLoading ? (
-          <div className="p-8 text-center text-gray-400">Chargement…</div>
+          <div className="p-8 text-center text-gray-400">{t("Chargement…")}</div>
         ) : brands.length === 0 ? (
           <div className="p-8 text-center">
             <Image className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-            <p className="text-gray-500 text-sm">Aucune version uploadée.</p>
-            <p className="text-gray-400 text-xs mt-1">Le logo FEBA par défaut est utilisé.</p>
+            <p className="text-gray-500 text-sm">{t("Aucune version uploadée.")}</p>
+            <p className="text-gray-400 text-xs mt-1">{t("Le logo FEBA par défaut est utilisé.")}</p>
           </div>
         ) : (
           <div className="divide-y divide-gray-100">
@@ -181,8 +177,7 @@ export default function AdminBranding() {
                     <span className="font-medium text-gray-800">{brand.label || "Logo sans titre"}</span>
                     {brand.is_active && (
                       <span className="inline-flex items-center gap-1 bg-green-100 text-green-700 text-xs font-medium px-2 py-0.5 rounded-full">
-                        <CheckCircle className="w-3 h-3" />Actif
-                      </span>
+                        <CheckCircle className="w-3 h-3" />{t("Actif")}</span>
                     )}
                   </div>
                   <p className="text-xs text-gray-400 mt-0.5">
@@ -204,8 +199,7 @@ export default function AdminBranding() {
                       onClick={() => activateMut.mutate(brand.id)}
                       disabled={activateMut.isPending}
                       className="text-xs btn-secondary px-3 py-1.5 flex items-center gap-1">
-                      <CheckCircle className="w-3 h-3" />Activer
-                    </button>
+                      <CheckCircle className="w-3 h-3" />{t("Activer")}</button>
                   )}
                   {!brand.is_active && (
                     <button
@@ -224,35 +218,35 @@ export default function AdminBranding() {
       </div>
 
       {/* Upload Modal */}
-      <Modal open={uploadOpen} onClose={() => setUploadOpen(false)} title="Uploader un nouveau logo" size="md">
+      <Modal open={uploadOpen} onClose={() => setUploadOpen(false)} title={t("Uploader un nouveau logo")} size="md">
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Libellé de la version</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{t("Libellé de la version")}</label>
             <input
               type="text"
               value={label}
               onChange={(e) => setLabel(e.target.value)}
-              placeholder="Ex: Logo officiel 2024-2025"
+              placeholder={t("Ex: Logo officiel 2024-2025")}
               className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Fichier logo</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">{t("Fichier logo")}</label>
             <div
               onClick={() => fileRef.current?.click()}
               className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition">
               {previewUrl ? (
                 <div className="flex flex-col items-center gap-3">
-                  <img src={previewUrl} alt="Aperçu" className="max-h-32 max-w-full object-contain rounded-lg shadow" />
+                  <img src={previewUrl} alt={t("Aperçu")} className="max-h-32 max-w-full object-contain rounded-lg shadow" />
                   <p className="text-sm text-gray-600">{selectedFile?.name}</p>
-                  <p className="text-xs text-gray-400">Cliquer pour changer</p>
+                  <p className="text-xs text-gray-400">{t("Cliquer pour changer")}</p>
                 </div>
               ) : (
                 <div className="flex flex-col items-center gap-2">
                   <Upload className="w-8 h-8 text-gray-400" />
-                  <p className="text-gray-600 text-sm font-medium">Cliquer pour sélectionner</p>
-                  <p className="text-gray-400 text-xs">PNG, JPG, SVG — Max 5MB</p>
+                  <p className="text-gray-600 text-sm font-medium">{t("Cliquer pour sélectionner")}</p>
+                  <p className="text-gray-400 text-xs">{t("PNG, JPG, SVG — Max 5MB")}</p>
                 </div>
               )}
             </div>
@@ -260,16 +254,14 @@ export default function AdminBranding() {
           </div>
 
           <div className="bg-blue-50 rounded-lg p-3 text-xs text-blue-700">
-            <strong>Propagation automatique :</strong> Le nouveau logo sera immédiatement visible sur la page de connexion,
-            les tableaux de bord, et tous les bulletins PDF générés après cet upload.
-          </div>
+            <strong>{t("Propagation automatique :")}</strong> {t("Le nouveau logo sera immédiatement visible sur la page de connexion, les tableaux de bord, et tous les bulletins PDF générés après cet upload.")}</div>
 
           <div className="flex gap-3 pt-2">
-            <button onClick={() => setUploadOpen(false)} className="btn-secondary flex-1">Annuler</button>
+            <button onClick={() => setUploadOpen(false)} className="btn-secondary flex-1">{t("Annuler")}</button>
             <button onClick={handleUpload} disabled={!selectedFile || uploadMut.isPending}
               className="btn-primary flex-1 flex items-center justify-center gap-2">
               {uploadMut.isPending ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
-              {uploadMut.isPending ? "Upload en cours…" : "Uploader & Activer"}
+              {uploadMut.isPending ? t("Upload en cours…") : t("Uploader & Activer")}
             </button>
           </div>
         </div>

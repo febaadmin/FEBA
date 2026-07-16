@@ -11,6 +11,7 @@ import ConfirmDialog from "../../components/ui/ConfirmDialog";
 import StatusBadge from "../../components/ui/StatusBadge";
 import SearchableSelect from "../../components/ui/SearchableSelect";
 import { extractApiError } from "../../utils/errors";
+import { t } from "../../i18n";
 
 export default function TeacherAttendance() {
   const qc = useQueryClient();
@@ -47,16 +48,16 @@ export default function TeacherAttendance() {
 
   const createMut = useMutation({
     mutationFn: (d) => attendanceAPI.create(buildPayload(d)),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["teacher-attendance"] }); toast.success("Présence enregistrée !"); closeModal(); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["teacher-attendance"] }); toast.success(t("Présence enregistrée !")); closeModal(); },
     onError: (e) => toast.error(extractApiError(e)),
   });
   const updateMut = useMutation({
     mutationFn: ({ id, data }) => attendanceAPI.update(id, data),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["teacher-attendance"] }); toast.success("Modifiée !"); closeModal(); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["teacher-attendance"] }); toast.success(t("Modifiée !")); closeModal(); },
   });
   const deleteMut = useMutation({
     mutationFn: attendanceAPI.delete,
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["teacher-attendance"] }); toast.success("Supprimée."); setDeleteItem(null); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["teacher-attendance"] }); toast.success(t("Supprimée.")); setDeleteItem(null); },
   });
 
   const closeModal = () => { setModalOpen(false); setEditItem(null); setJustFile(null); reset(); };
@@ -65,21 +66,20 @@ export default function TeacherAttendance() {
   const onSubmit = (d) => { if (editItem) updateMut.mutate({ id: editItem.id, data: d }); else createMut.mutate(d); };
 
   const cols = [
-    { key: "student", label: "Élève", accessor: "student_name" },
-    { key: "date", label: "Date", accessor: "date" },
-    { key: "status", label: "Statut", render: r => <StatusBadge status={r.status} /> },
-    { key: "justification", label: "Justification", render: r => r.justification || "—" },
-    { key: "file", label: "Justificatif", sortable: false, render: r => r.justification_file ? (
+    { key: "student", label: t("Élève"), accessor: "student_name" },
+    { key: "date", label: t("Date"), accessor: "date" },
+    { key: "status", label: t("Statut"), render: r => <StatusBadge status={r.status} /> },
+    { key: "justification", label: t("Justification"), render: r => r.justification || "—" },
+    { key: "file", label: t("Justificatif"), sortable: false, render: r => r.justification_file ? (
       <a href={r.justification_file} target="_blank" rel="noreferrer" className="flex items-center gap-1 text-xs text-primary hover:underline">
-        <FileText className="w-3 h-3" />Voir
-      </a>
+        <FileText className="w-3 h-3" />{t("Voir")}</a>
     ) : "—" },
   ];
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Présences & Absences" subtitle={`${records.length} enregistrement(s)`}
-        action={<button onClick={openCreate} className="btn-primary flex items-center gap-2"><Plus className="w-4 h-4" />Enregistrer</button>} />
+      <PageHeader title={t("Présences & Absences")} subtitle={`${records.length} enregistrement(s)`}
+        action={<button onClick={openCreate} className="btn-primary flex items-center gap-2"><Plus className="w-4 h-4" />{t("Enregistrer")}</button>} />
       <div className="card">
         <DataTable columns={cols} data={records} loading={isLoading} actions={row => (
           <div className="flex items-center gap-1 justify-end">
@@ -88,37 +88,37 @@ export default function TeacherAttendance() {
           </div>
         )} />
       </div>
-      <Modal open={modalOpen} onClose={closeModal} title={editItem ? "Modifier" : "Nouvelle présence"} size="md">
+      <Modal open={modalOpen} onClose={closeModal} title={editItem ? t("Modifier") : t("Nouvelle présence")} size="md">
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           {!editItem && (
             <div>
-              <label className="label">Élève*</label>
+              <label className="label">{t("Élève*")}</label>
               <Controller name="student" control={control} rules={{ required: true }}
                 render={({ field }) => (
-                  <SearchableSelect options={studentOpts} value={field.value} onChange={field.onChange} placeholder="Rechercher un élève…" />
+                  <SearchableSelect options={studentOpts} value={field.value} onChange={field.onChange} placeholder={t("Rechercher un élève…")} />
                 )} />
             </div>
           )}
           <div className="grid grid-cols-2 gap-4">
-            <div><label className="label">Date*</label><input {...register("date", { required: true })} type="date" className="input" /></div>
+            <div><label className="label">{t("Date*")}</label><input {...register("date", { required: true })} type="date" className="input" /></div>
             <div>
-              <label className="label">Statut*</label>
+              <label className="label">{t("Statut*")}</label>
               <select {...register("status", { required: true })} className="input">
-                <option value="present">Présent</option>
-                <option value="absent">Absent</option>
-                <option value="late">En retard</option>
-                <option value="excused">Excusé</option>
+                <option value="present">{t("Présent")}</option>
+                <option value="absent">{t("Absent")}</option>
+                <option value="late">{t("En retard")}</option>
+                <option value="excused">{t("Excusé")}</option>
               </select>
             </div>
           </div>
-          <div><label className="label">Justification</label><textarea {...register("justification")} className="input" rows={2} /></div>
+          <div><label className="label">{t("Justification")}</label><textarea {...register("justification")} className="input" rows={2} /></div>
           <div>
-            <label className="label">Justificatif (image, PDF…)</label>
+            <label className="label">{t("Justificatif (image, PDF…)")}</label>
             <div className="flex items-center gap-3">
               <input ref={fileRef} type="file" className="hidden" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
                 onChange={e => setJustFile(e.target.files[0] || null)} />
               <button type="button" onClick={() => fileRef.current?.click()} className="btn-secondary flex items-center gap-2 text-sm">
-                <Paperclip className="w-4 h-4" />{justFile ? "Changer" : "Joindre un justificatif"}
+                <Paperclip className="w-4 h-4" />{justFile ? t("Changer") : t("Joindre un justificatif")}
               </button>
               {justFile && (
                 <div className="flex items-center gap-1.5 bg-primary-50 text-primary text-xs rounded-xl px-2.5 py-1.5">
@@ -130,14 +130,14 @@ export default function TeacherAttendance() {
             </div>
           </div>
           <div className="flex gap-3 justify-end pt-2">
-            <button type="button" onClick={closeModal} className="btn-secondary">Annuler</button>
+            <button type="button" onClick={closeModal} className="btn-secondary">{t("Annuler")}</button>
             <button type="submit" disabled={createMut.isPending || updateMut.isPending} className="btn-primary">
-              {(createMut.isPending || updateMut.isPending) ? "Enregistrement…" : "Enregistrer"}
+              {(createMut.isPending || updateMut.isPending) ? t("Enregistrement…") : t("Enregistrer")}
             </button>
           </div>
         </form>
       </Modal>
-      <ConfirmDialog open={!!deleteItem} onClose={() => setDeleteItem(null)} onConfirm={() => deleteMut.mutate(deleteItem?.id)} loading={deleteMut.isPending} message="Supprimer cet enregistrement ?" />
+      <ConfirmDialog open={!!deleteItem} onClose={() => setDeleteItem(null)} onConfirm={() => deleteMut.mutate(deleteItem?.id)} loading={deleteMut.isPending} message={t("Supprimer cet enregistrement ?")} />
     </div>
   );
 }

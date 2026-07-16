@@ -20,6 +20,7 @@ import Modal from "../../components/ui/Modal";
 import ConfirmDialog from "../../components/ui/ConfirmDialog";
 import StatusBadge from "../../components/ui/StatusBadge";
 import { resolveMediaUrl } from "../../utils/media";
+import { t } from "../../i18n";
 
 const ADMIN_ALLOWED_ROLES = [
   { value: "teacher", label: "Enseignant" },
@@ -66,7 +67,7 @@ export default function AdminUsers() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["admin-users"] });
-      toast.success("Utilisateur créé avec succès !");
+      toast.success(t("Utilisateur créé avec succès !"));
       closeModal();
     },
     onError: (e) => {
@@ -80,7 +81,7 @@ export default function AdminUsers() {
     mutationFn: ({ id, data }) => authAPI.updateUser(id, data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["admin-users"] });
-      toast.success("Utilisateur modifié !");
+      toast.success(t("Utilisateur modifié !"));
       closeModal();
     },
     onError: (e) => {
@@ -94,7 +95,7 @@ export default function AdminUsers() {
     mutationFn: authAPI.deleteUser,
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["admin-users"] });
-      toast.success("Utilisateur supprimé.");
+      toast.success(t("Utilisateur supprimé."));
       setDeleteItem(null);
     },
     onError: (e) => toast.error(extractApiErrors(e)[0]),
@@ -158,11 +159,11 @@ export default function AdminUsers() {
   };
 
   const cols = [
-    { key: "name",   label: "Nom",     render: r => `${r.first_name} ${r.last_name}` },
-    { key: "email",  label: "Email",   accessor: "email" },
-    { key: "role",   label: "Rôle",    render: r => roleBadge(r.role) },
-    { key: "status", label: "Statut",  render: r => <StatusBadge status={r.is_active ? "active" : "inactive"} /> },
-    { key: "date",   label: "Créé le", render: r => r.created_at?.slice(0, 10) },
+    { key: "name",   label: t("Nom"),     render: r => `${r.first_name} ${r.last_name}` },
+    { key: "email",  label: t("Email"),   accessor: "email" },
+    { key: "role",   label: t("Rôle"),    render: r => roleBadge(r.role) },
+    { key: "status", label: t("Statut"),  render: r => <StatusBadge status={r.is_active ? "active" : "inactive"} /> },
+    { key: "date",   label: t("Créé le"), render: r => r.created_at?.slice(0, 10) },
   ];
 
   const isPending = createMut.isPending || updateMut.isPending;
@@ -170,18 +171,17 @@ export default function AdminUsers() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Gestion Utilisateurs"
-        subtitle="Enseignants, Parents, Élèves"
+        title={t("Gestion Utilisateurs")}
+        subtitle={t("Enseignants, Parents, Élèves")}
         action={
           <button onClick={openCreate} className="btn-primary flex items-center gap-2">
-            <Plus className="w-4 h-4" /> Nouvel utilisateur
-          </button>
+            <Plus className="w-4 h-4" /> {t("Nouvel utilisateur")}</button>
         }
       />
 
       {/* Filtres de rôle */}
       <div className="flex gap-2 flex-wrap">
-        {[{ value: "", label: "Tous" }, ...ADMIN_ALLOWED_ROLES].map(opt => (
+        {[{ value: "", label: t("Tous") }, ...ADMIN_ALLOWED_ROLES].map(opt => (
           <button
             key={opt.value}
             onClick={() => setRoleFilter(opt.value)}
@@ -191,7 +191,7 @@ export default function AdminUsers() {
                 : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50"
             }`}
           >
-            {opt.label}
+            {t(opt.label)}
           </button>
         ))}
       </div>
@@ -207,7 +207,7 @@ export default function AdminUsers() {
               <button
                 onClick={() => toggleMut.mutate(row.id)}
                 className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400"
-                title={row.is_active ? "Désactiver" : "Activer"}
+                title={row.is_active ? t("Désactiver") : t("Activer")}
               >
                 {row.is_active
                   ? <ToggleRight className="w-4 h-4 text-success" />
@@ -216,14 +216,14 @@ export default function AdminUsers() {
               <button
                 onClick={() => openEdit(row)}
                 className="p-1.5 rounded-lg hover:bg-primary-50 text-slate-400 hover:text-primary"
-                title="Modifier"
+                title={t("Modifier")}
               >
                 <Pencil className="w-4 h-4" />
               </button>
               <button
                 onClick={() => setDeleteItem(row)}
                 className="p-1.5 rounded-lg hover:bg-danger-50 text-slate-400 hover:text-danger"
-                title="Supprimer"
+                title={t("Supprimer")}
               >
                 <Trash2 className="w-4 h-4" />
               </button>
@@ -236,7 +236,7 @@ export default function AdminUsers() {
       <Modal
         open={modalOpen}
         onClose={closeModal}
-        title={editItem ? "Modifier l'utilisateur" : "Nouvel utilisateur"}
+        title={editItem ? t("Modifier l'utilisateur") : t("Nouvel utilisateur")}
         size="md"
       >
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
@@ -255,22 +255,22 @@ export default function AdminUsers() {
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="label">Prénom *</label>
+              <label className="label">{t("Prénom *")}</label>
               <input
                 {...register("first_name", { required: "Le prénom est obligatoire." })}
                 className={`input ${errors.first_name ? "border-red-400" : ""}`}
-                placeholder="Jean"
+                placeholder={t("Jean")}
               />
               {errors.first_name && (
                 <p className="mt-1 text-xs text-red-600">{errors.first_name.message}</p>
               )}
             </div>
             <div>
-              <label className="label">Nom *</label>
+              <label className="label">{t("Nom *")}</label>
               <input
                 {...register("last_name", { required: "Le nom est obligatoire." })}
                 className={`input ${errors.last_name ? "border-red-400" : ""}`}
-                placeholder="Dupont"
+                placeholder={t("Dupont")}
               />
               {errors.last_name && (
                 <p className="mt-1 text-xs text-red-600">{errors.last_name.message}</p>
@@ -279,7 +279,7 @@ export default function AdminUsers() {
           </div>
 
           <div>
-            <label className="label">Email *</label>
+            <label className="label">{t("Email *")}</label>
             <input
               {...register("email", {
                 required: "L'email est obligatoire.",
@@ -299,7 +299,7 @@ export default function AdminUsers() {
           </div>
 
           <div>
-            <label className="label">Téléphone</label>
+            <label className="label">{t("Téléphone")}</label>
             <input
               {...register("phone")}
               className="input"
@@ -308,13 +308,13 @@ export default function AdminUsers() {
           </div>
 
           <div>
-            <label className="label">Rôle *</label>
+            <label className="label">{t("Rôle *")}</label>
             <select
               {...register("role", { required: "Le rôle est obligatoire." })}
               className={`input ${errors.role ? "border-red-400" : ""}`}
             >
               {ADMIN_ALLOWED_ROLES.map(o => (
-                <option key={o.value} value={o.value}>{o.label}</option>
+                <option key={o.value} value={o.value}>{t(o.label)}</option>
               ))}
             </select>
             {errors.role && (
@@ -326,7 +326,7 @@ export default function AdminUsers() {
           {!editItem && (
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="label">Mot de passe *</label>
+                <label className="label">{t("Mot de passe *")}</label>
                 <div className="relative">
                   <input
                     {...register("password", {
@@ -355,7 +355,7 @@ export default function AdminUsers() {
               </div>
 
               <div>
-                <label className="label">Confirmer *</label>
+                <label className="label">{t("Confirmer *")}</label>
                 <div className="relative">
                   <input
                     {...register("password2", {
@@ -384,15 +384,13 @@ export default function AdminUsers() {
           )}
 
           <div className="flex gap-3 justify-end pt-2 border-t border-slate-100">
-            <button type="button" onClick={closeModal} className="btn-secondary">
-              Annuler
-            </button>
+            <button type="button" onClick={closeModal} className="btn-secondary">{t("Annuler")}</button>
             <button
               type="submit"
               disabled={isPending}
               className="btn-primary min-w-[120px]"
             >
-              {isPending ? "Enregistrement..." : "Enregistrer"}
+              {isPending ? t("Enregistrement...") : t("Enregistrer")}
             </button>
           </div>
         </form>
@@ -402,7 +400,7 @@ export default function AdminUsers() {
       {deleteItem && (
         <ConfirmDialog
           open
-          title="Supprimer l'utilisateur"
+          title={t("Supprimer l'utilisateur")}
           message={`Supprimer définitivement ${deleteItem.first_name} ${deleteItem.last_name} (${deleteItem.email}) ?`}
           onConfirm={() => deleteMut.mutate(deleteItem.id)}
           onClose={() => setDeleteItem(null)}
@@ -416,7 +414,7 @@ export default function AdminUsers() {
           <div className="absolute inset-0 bg-black/40" onClick={() => setViewItem(null)} />
           <div className="relative bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 space-y-4">
             <div className="flex items-center justify-between">
-              <h2 className="font-bold text-slate-800 text-lg">Détail utilisateur</h2>
+              <h2 className="font-bold text-slate-800 text-lg">{t("Détail utilisateur")}</h2>
               <button onClick={() => setViewItem(null)} className="text-slate-400 hover:text-slate-600 text-2xl leading-none">×</button>
             </div>
             <div className="flex items-center gap-4">
@@ -435,25 +433,21 @@ export default function AdminUsers() {
             </div>
             <div className="space-y-2 text-sm">
               <div className="flex justify-between py-1 border-b border-slate-50">
-                <span className="text-slate-500">Rôle</span>
+                <span className="text-slate-500">{t("Rôle")}</span>
                 {roleBadge(viewItem.role)}
               </div>
               <div className="flex justify-between py-1 border-b border-slate-50">
-                <span className="text-slate-500">Statut</span>
+                <span className="text-slate-500">{t("Statut")}</span>
                 <StatusBadge status={viewItem.is_active ? "active" : "inactive"} />
               </div>
               <div className="flex justify-between py-1">
-                <span className="text-slate-500">Créé le</span>
+                <span className="text-slate-500">{t("Créé le")}</span>
                 <span className="text-slate-700">{viewItem.created_at?.slice(0, 10)}</span>
               </div>
             </div>
             <div className="flex gap-2 pt-2">
-              <button onClick={() => { setViewItem(null); openEdit(viewItem); }} className="btn-secondary flex-1">
-                Modifier
-              </button>
-              <button onClick={() => setViewItem(null)} className="btn-primary flex-1">
-                Fermer
-              </button>
+              <button onClick={() => { setViewItem(null); openEdit(viewItem); }} className="btn-secondary flex-1">{t("Modifier")}</button>
+              <button onClick={() => setViewItem(null)} className="btn-primary flex-1">{t("Fermer")}</button>
             </div>
           </div>
         </div>

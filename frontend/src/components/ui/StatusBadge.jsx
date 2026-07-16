@@ -1,5 +1,8 @@
 import { clsx } from "clsx";
+import { t } from "../../i18n";
 
+// Labels en français « source » ; la traduction est appliquée AU RENDU
+// (t() au niveau module serait figé à la langue du chargement initial).
 const configs = {
   present: { label: "Présent", class: "bg-success-50 text-success-500" },
   absent: { label: "Absent", class: "bg-danger-50 text-danger" },
@@ -17,5 +20,5 @@ const configs = {
 
 export default function StatusBadge({ status, label }) {
   const cfg = configs[status] || { label: label || status, class: "bg-slate-100 text-slate-600" };
-  return <span className={clsx("badge", cfg.class)}>{label || cfg.label}</span>;
+  return <span className={clsx("badge", cfg.class)}>{t(label || cfg.label)}</span>;
 }

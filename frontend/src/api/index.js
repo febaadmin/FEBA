@@ -1,14 +1,17 @@
 import axios from "axios";
 import { useAuthStore } from "../store/authStore";
+import { getLang } from "../i18n";
 
 const API_URL = import.meta.env.VITE_API_URL || "/api";
 
 const api = axios.create({ baseURL: API_URL, headers: { "Content-Type": "application/json" } });
 
-// Attach JWT
+// Attach JWT + langue courante (LocaleMiddleware côté Django localise les
+// messages du framework selon cet en-tête)
 api.interceptors.request.use((config) => {
   const token = useAuthStore.getState().accessToken;
   if (token) config.headers.Authorization = `Bearer ${token}`;
+  config.headers["Accept-Language"] = getLang();
   return config;
 });
 

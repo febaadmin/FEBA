@@ -11,6 +11,7 @@
  * UX: single panel — list on left, thread on right.
  */
 import { useState, useRef, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Send, Inbox, MessageSquare, ArrowLeft, Paperclip, X, FileText,
@@ -24,11 +25,18 @@ import Modal from "../../components/ui/Modal";
 import SearchableSelect from "../../components/ui/SearchableSelect";
 import { useAuthStore } from "../../store/authStore";
 import { extractApiError } from "../../utils/errors";
+import { t, dateLocale } from "../../i18n";
 
 export default function MessagesPage() {
   const qc = useQueryClient();
   const { user } = useAuthStore();
-  const [selectedId, setSelectedId] = useState(null);
+  // FIX (redirections notifications) : une notification de message pointe
+  // vers "messages?conversation=<id>" — on ouvre directement ce fil au
+  // chargement de la page, au lieu de forcer l'utilisateur à le retrouver
+  // manuellement dans la liste.
+  const [searchParams] = useSearchParams();
+  const conversationParam = searchParams.get("conversation");
+  const [selectedId, setSelectedId] = useState(conversationParam ? Number(conversationParam) : null);
   const [composeOpen, setComposeOpen] = useState(false);
   const [composeFile, setComposeFile] = useState(null);
   const [replyFile, setReplyFile] = useState(null);
@@ -108,7 +116,7 @@ export default function MessagesPage() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["conversations"] });
-      toast.success("Message envoyé !");
+      toast.success(t("Message envoyé !"));
       setComposeOpen(false);
       setComposeFile(null);
       composeForm.reset();
@@ -127,7 +135,7 @@ export default function MessagesPage() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["conversation", selectedId] });
       qc.invalidateQueries({ queryKey: ["conversations"] });
-      toast.success("Réponse envoyée !");
+      toast.success(t("Réponse envoyée !"));
       replyForm.reset();
       setReplyFile(null);
     },
@@ -140,15 +148,14 @@ export default function MessagesPage() {
   return (
     <div className="space-y-4">
       <PageHeader
-        title="Messages"
+        title={t("Messages")}
         subtitle={totalUnread > 0 ? `${totalUnread} non lu(s)` : "Messagerie"}
         action={
           <button
             onClick={() => setComposeOpen(true)}
             className="btn-primary flex items-center gap-2"
           >
-            <Plus className="w-4 h-4" /> Nouveau message
-          </button>
+            <Plus className="w-4 h-4" /> {t("Nouveau message")}</button>
         }
       />
 
@@ -164,14 +171,12 @@ export default function MessagesPage() {
 
           <div className="flex-1 overflow-y-auto divide-y divide-slate-50">
             {listLoading && (
-              <div className="py-12 text-center text-slate-400 text-sm">
-                Chargement…
-              </div>
+              <div className="py-12 text-center text-slate-400 text-sm">{t("Chargement…")}</div>
             )}
             {!listLoading && conversations.length === 0 && (
               <div className="py-12 text-center text-slate-400">
                 <MessageSquare className="w-8 h-8 mx-auto mb-2 opacity-30" />
-                <p className="text-sm">Aucune conversation</p>
+                <p className="text-sm">{t("Aucune conversation")}</p>
               </div>
             )}
             {conversations.map((conv) => {
@@ -198,7 +203,7 @@ export default function MessagesPage() {
                       </p>
                       {latest && (
                         <span className="text-xs text-slate-400 shrink-0">
-                          {new Date(latest.sent_at).toLocaleDateString("fr-FR", { day:"2-digit", month:"2-digit" })}
+                          {new Date(latest.sent_at).toLocaleDateString(dateLocale(), { day:"2-digit", month:"2-digit" })}
                         </span>
                       )}
                     </div>
@@ -227,11 +232,11 @@ export default function MessagesPage() {
           {!selectedId ? (
             <div className="flex-1 flex flex-col items-center justify-center text-slate-400 gap-3">
               <MessageSquare className="w-12 h-12 opacity-20" />
-              <p className="text-sm">Sélectionnez une conversation</p>
+              <p className="text-sm">{t("Sélectionnez une conversation")}</p>
             </div>
           ) : !thread ? (
             <div className="flex-1 flex items-center justify-center">
-              <div className="animate-pulse text-slate-400 text-sm">Chargement…</div>
+              <div className="animate-pulse text-slate-400 text-sm">{t("Chargement…")}</div>
             </div>
           ) : (
             <>
@@ -257,7 +262,7 @@ export default function MessagesPage() {
                   <button
                     onClick={() => markReadMut.mutate(thread.id)}
                     className="p-1.5 text-primary hover:bg-primary-50 rounded-lg"
-                    title="Tout marquer comme lu"
+                    title={t("Tout marquer comme lu")}
                   >
                     <CheckCheck className="w-4 h-4" />
                   </button>
@@ -293,7 +298,7 @@ export default function MessagesPage() {
                             {mine ? "Moi" : `${msg.sender?.first_name} ${msg.sender?.last_name}`}
                           </span>
                           <span className={`text-xs ml-auto ${mine ? "text-white/60" : "text-slate-400"}`}>
-                            {new Date(msg.sent_at).toLocaleString("fr-FR", {
+                            {new Date(msg.sent_at).toLocaleString(dateLocale(), {
                               day: "2-digit", month: "2-digit",
                               hour: "2-digit", minute: "2-digit",
                             })}
@@ -333,7 +338,7 @@ export default function MessagesPage() {
                   <div className="flex-1">
                     <textarea
                       {...replyForm.register("body", { required: true })}
-                      placeholder="Écrire une réponse…"
+                      placeholder={t("Écrire une réponse…")}
                       className="input w-full resize-none"
                       rows={2}
                     />
@@ -362,7 +367,7 @@ export default function MessagesPage() {
                       type="button"
                       onClick={() => replyFileRef.current?.click()}
                       className="p-2 rounded-lg hover:bg-slate-100 text-slate-400"
-                      title="Joindre un fichier"
+                      title={t("Joindre un fichier")}
                     >
                       <Paperclip className="w-4 h-4" />
                     </button>
@@ -385,7 +390,7 @@ export default function MessagesPage() {
       <Modal
         open={composeOpen}
         onClose={() => { setComposeOpen(false); setComposeFile(null); composeForm.reset(); }}
-        title="Nouveau message"
+        title={t("Nouveau message")}
         size="md"
       >
         <form
@@ -393,7 +398,7 @@ export default function MessagesPage() {
           className="space-y-4"
         >
           <div>
-            <label className="label">Destinataire *</label>
+            <label className="label">{t("Destinataire *")}</label>
             <Controller
               name="recipient"
               control={composeForm.control}
@@ -404,27 +409,27 @@ export default function MessagesPage() {
                   value={field.value}
                   onChange={field.onChange}
                   placeholder={
-                    recipients.length === 0 ? "Chargement…" : "Rechercher…"
+                    recipients.length === 0 ? t("Chargement…") : t("Rechercher…")
                   }
                 />
               )}
             />
           </div>
           <div>
-            <label className="label">Sujet *</label>
+            <label className="label">{t("Sujet *")}</label>
             <input
               {...composeForm.register("subject", { required: true })}
               className="input"
-              placeholder="Objet du message"
+              placeholder={t("Objet du message")}
             />
           </div>
           <div>
-            <label className="label">Message *</label>
+            <label className="label">{t("Message *")}</label>
             <textarea
               {...composeForm.register("body", { required: true })}
               className="input"
               rows={6}
-              placeholder="Votre message…" style={{resize:"vertical",minHeight:"120px"}}
+              placeholder={t("Votre message…")} style={{resize:"vertical",minHeight:"120px"}}
             />
           </div>
           <div className="flex items-center gap-2">
@@ -457,16 +462,14 @@ export default function MessagesPage() {
               type="button"
               onClick={() => { setComposeOpen(false); composeForm.reset(); }}
               className="btn-secondary"
-            >
-              Annuler
-            </button>
+            >{t("Annuler")}</button>
             <button
               type="submit"
               disabled={composeMut.isPending}
               className="btn-primary flex items-center gap-2"
             >
               <Send className="w-4 h-4" />
-              {composeMut.isPending ? "Envoi…" : "Envoyer"}
+              {composeMut.isPending ? t("Envoi…") : t("Envoyer")}
             </button>
           </div>
         </form>
