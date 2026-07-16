@@ -12,6 +12,8 @@ import { notificationsAPI, conversationsAPI } from "../api";
 import { motion, AnimatePresence } from "framer-motion";
 import { clsx } from "clsx";
 import { useAuthStore } from "../store/authStore";
+import LanguageSwitcher from "../components/ui/LanguageSwitcher";
+import { t } from "../i18n";
 import logoFeba from "../assets/logo_feba.jpeg"; // fallback only
 
 const nav = [
@@ -35,6 +37,7 @@ const nav = [
   { label: "Fichiers",         icon: FolderOpen,       to: "/admin/user-files" },
   { label: "Branding & Logo",  icon: School,           to: "/admin/branding" },
   { label: "Paramètres",      icon: Settings,         to: "/admin/settings" },
+  { label: "Mon profil",      icon: UserCog,          to: "/admin/profile" },
 ];
 
 // Responsive: start open on desktop, closed on mobile
@@ -120,11 +123,11 @@ export default function AdminLayout() {
             )}>
             <div className="p-5 flex items-center gap-3 border-b border-white/10">
               <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-yellow-400 shrink-0 bg-white">
-                <img src={logoSrc} alt="FEBA" className="w-full h-full object-contain" />
+                <img src={logoSrc} alt={t("FEBA")} className="w-full h-full object-contain" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-white font-bold text-sm leading-tight">FEBA Academy</p>
-                <p className="text-yellow-400 text-xs">Administrateur</p>
+                <p className="text-white font-bold text-sm leading-tight">{t("FEBA Academy")}</p>
+                <p className="text-yellow-400 text-xs">{t("Administrateur")}</p>
               </div>
               {isMobile && (
                 <button onClick={() => setSidebarOpen(false)} className="text-slate-400 hover:text-white ml-auto">
@@ -143,7 +146,7 @@ export default function AdminLayout() {
                       : "text-slate-400 hover:text-white hover:bg-white/10"
                   )}>
                   <item.icon className="w-4 h-4 shrink-0" />
-                  <span className="truncate">{item.label}</span>
+                  <span className="truncate">{t(item.label)}</span>
                   {/* Message badge on nav item */}
                   {item.to === "/admin/messages" && msgUnread > 0 && (
                     <span className="ml-auto w-5 h-5 bg-danger text-white text-[10px] rounded-full flex items-center justify-center font-bold shrink-0">
@@ -160,11 +163,11 @@ export default function AdminLayout() {
                 </div>
                 <div className="min-w-0">
                   <p className="text-white text-xs font-semibold truncate">{user?.first_name} {user?.last_name}</p>
-                  <p className="text-slate-400 text-[10px]">Administrateur</p>
+                  <p className="text-slate-400 text-[10px]">{t("Administrateur")}</p>
                 </div>
               </div>
               <button onClick={logout} className="flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm text-red-400 hover:text-red-300 hover:bg-red-500/10 transition-all w-full">
-                <LogOut className="w-4 h-4" /><span>Déconnexion</span>
+                <LogOut className="w-4 h-4" /><span>{t("Déconnexion")}</span>
               </button>
             </div>
           </motion.aside>
@@ -178,6 +181,7 @@ export default function AdminLayout() {
             <Menu className="w-5 h-5" />
           </button>
           <div className="flex items-center gap-3">
+            <LanguageSwitcher />
             <div className="relative">
               <button onClick={openNotifPanel} className="p-2 rounded-xl hover:bg-slate-100 text-slate-600 relative">
                 <Bell className="w-5 h-5" />
@@ -190,12 +194,12 @@ export default function AdminLayout() {
               {notifOpen && (
                 <div className="absolute right-0 top-10 w-72 sm:w-80 bg-white rounded-2xl shadow-2xl border border-slate-100 z-50">
                   <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100">
-                    <p className="font-bold text-slate-800 text-sm">Notifications</p>
+                    <p className="font-bold text-slate-800 text-sm">{t("Notifications")}</p>
                     <button onClick={() => setNotifOpen(false)} className="text-slate-400 hover:text-slate-600 text-lg leading-none">×</button>
                   </div>
                   <div className="max-h-72 overflow-y-auto divide-y divide-slate-50">
                     {notifications.length === 0 ? (
-                      <p className="text-center text-slate-400 py-8 text-sm">Aucune notification</p>
+                      <p className="text-center text-slate-400 py-8 text-sm">{t("Aucune notification")}</p>
                     ) : notifications.slice(0, 10).map(n => (
                       <div key={n.id} onClick={() => { setNotifOpen(false); if (n.related_url) navigate(n.related_url); }}
                         className={`px-4 py-3 cursor-pointer hover:bg-slate-50 transition-colors ${!n.is_read ? "bg-primary-50/30" : ""}`}>
@@ -208,7 +212,7 @@ export default function AdminLayout() {
                   <div className="p-3 border-t border-slate-100">
                     <button onClick={() => { setNotifOpen(false); navigate("/admin/announcements"); }}
                       className="w-full text-center text-xs text-primary font-medium hover:underline">
-                      Voir toutes les annonces →
+                      {t("Voir toutes les annonces →")}
                     </button>
                   </div>
                 </div>
@@ -220,7 +224,7 @@ export default function AdminLayout() {
               </div>
               <div className="hidden sm:block">
                 <p className="text-sm font-semibold text-slate-800 truncate max-w-[120px]">{user?.first_name} {user?.last_name}</p>
-                <p className="text-xs text-slate-400">Administrateur</p>
+                <p className="text-xs text-slate-400">{t("Administrateur")}</p>
               </div>
             </div>
           </div>

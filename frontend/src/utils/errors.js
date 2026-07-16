@@ -17,6 +17,8 @@
  *   onError: (e) => toast.error(extractApiError(e))
  */
 
+import { t } from "../i18n";
+
 const FIELD_LABELS = {
   email:      "Email",
   password:   "Mot de passe",
@@ -45,9 +47,9 @@ export function extractApiError(axiosError, fallback = "Une erreur inattendue s'
   // Erreur réseau (pas de réponse HTTP)
   if (!axiosError.response) {
     if (axiosError.message?.includes("Network Error"))
-      return "Impossible de joindre le serveur. Vérifiez votre connexion réseau.";
+      return t("Impossible de joindre le serveur. Vérifiez votre connexion réseau.");
     if (axiosError.message?.includes("timeout"))
-      return "La requête a expiré. Réessayez dans quelques instants.";
+      return t("La requête a expiré. Réessayez dans quelques instants.");
     return axiosError.message || fallback;
   }
 
@@ -55,27 +57,27 @@ export function extractApiError(axiosError, fallback = "Une erreur inattendue s'
   const data   = axiosError.response.data;
 
   // Erreurs HTTP communes
-  if (status === 401) return "Votre session a expiré. Reconnectez-vous.";
-  if (status === 403) return "Vous n'avez pas la permission d'effectuer cette action.";
-  if (status === 404) return "La ressource demandée est introuvable.";
-  if (status === 429) return "Trop de tentatives. Attendez quelques secondes avant de réessayer.";
-  if (status >= 500)  return "Erreur interne du serveur. L'équipe technique a été notifiée.";
+  if (status === 401) return t("Votre session a expiré. Reconnectez-vous.");
+  if (status === 403) return t("Vous n'avez pas la permission d'effectuer cette action.");
+  if (status === 404) return t("La ressource demandée est introuvable.");
+  if (status === 429) return t("Trop de tentatives. Attendez quelques secondes avant de réessayer.");
+  if (status >= 500)  return t("Erreur interne du serveur. L'équipe technique a été notifiée.");
 
-  if (!data) return fallback;
+  if (!data) return t(fallback);
 
   // String brute
-  if (typeof data === "string") return data || fallback;
+  if (typeof data === "string") return t(data) || t(fallback);
 
   // { detail: "..." }
-  if (typeof data.detail === "string") return data.detail;
+  if (typeof data.detail === "string") return t(data.detail);
 
   // { non_field_errors: ["..."] }
   if (Array.isArray(data.non_field_errors) && data.non_field_errors.length > 0) {
-    return String(data.non_field_errors[0]);
+    return t(String(data.non_field_errors[0]));
   }
 
   // { error: "..." }  ← format FEBA views
-  if (typeof data.error === "string") return data.error;
+  if (typeof data.error === "string") return t(data.error);
 
   // { email: ["..."], password: ["..."], ... }  ← format DRF field errors
   if (typeof data === "object") {
@@ -83,12 +85,12 @@ export function extractApiError(axiosError, fallback = "Une erreur inattendue s'
       const msg  = Array.isArray(messages) ? messages[0] : messages;
       const label = FIELD_LABELS[field];
       if (msg && typeof msg === "string") {
-        return label ? `${label} : ${msg}` : String(msg);
+        return label ? `${t(label)} : ${t(msg)}` : t(String(msg));
       }
     }
   }
 
-  return fallback;
+  return t(fallback);
 }
 
 /**
@@ -102,10 +104,10 @@ export function extractApiErrors(axiosError) {
   const data = axiosError.response.data;
   const errors = [];
 
-  if (typeof data === "string") return [data];
-  if (typeof data.detail === "string") return [data.detail];
+  if (typeof data === "string") return [t(data)];
+  if (typeof data.detail === "string") return [t(data.detail)];
   if (Array.isArray(data.non_field_errors))
-    return data.non_field_errors.map(String);
+    return data.non_field_errors.map((x) => t(String(x)));
 
   if (typeof data === "object") {
     for (const [field, messages] of Object.entries(data)) {
@@ -113,7 +115,7 @@ export function extractApiErrors(axiosError) {
       const label = FIELD_LABELS[field];
       for (const msg of msgs) {
         if (msg && typeof msg === "string") {
-          errors.push(label ? `${label} : ${msg}` : String(msg));
+          errors.push(label ? `${t(label)} : ${t(msg)}` : t(String(msg)));
         }
       }
     }

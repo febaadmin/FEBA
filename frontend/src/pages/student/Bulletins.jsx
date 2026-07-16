@@ -4,6 +4,7 @@ import { bulletinsAPI, schoolsAPI } from "../../api";
 import PageHeader from "../../components/ui/PageHeader";
 import { Download, FileText, Award } from "lucide-react";
 import { motion } from "framer-motion";
+import { t } from "../../i18n";
 
 const PERIOD_LABELS = { T1: "Trimestre 1", T2: "Trimestre 2", T3: "Trimestre 3", annual: "Annuel" };
 
@@ -33,14 +34,14 @@ export default function StudentBulletins() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Mes Bulletins"
-        subtitle={`${bulletins.length} bulletin(s)${activeYear ? ` — ${activeYear.name}` : ""}`}
+        title={t("Mes Bulletins")}
+        subtitle={t("{n} bulletin(s)", { n: bulletins.length }) + (activeYear ? ` — ${activeYear.name}` : "")}
       />
 
       {/* Year selector */}
       {years.length > 1 && (
         <div className="card flex gap-2 flex-wrap items-center">
-          <span className="text-sm font-medium text-slate-600">Année :</span>
+          <span className="text-sm font-medium text-slate-600">{t("Année :")}</span>
           <button onClick={() => setSelectedYear("")}
             className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${!selectedYear ? "bg-primary text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}>
             {activeYear?.name || "Active"}
@@ -57,8 +58,8 @@ export default function StudentBulletins() {
       {bulletins.length === 0 ? (
         <div className="card text-center py-12 text-slate-400">
           <FileText className="w-12 h-12 mx-auto mb-3 opacity-30" />
-          <p>Aucun bulletin disponible</p>
-          <p className="text-xs mt-1">Les bulletins sont générés par l'administration après chaque trimestre.</p>
+          <p>{t("Aucun bulletin disponible")}</p>
+          <p className="text-xs mt-1">{t("Les bulletins sont générés par l'administration après chaque trimestre.")}</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -99,10 +100,9 @@ export default function StudentBulletins() {
                   {(b.pdf_url || b.pdf_file) ? (
                     <a href={b.pdf_url || b.pdf_file} target="_blank" rel="noreferrer"
                       className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-primary text-white text-xs font-semibold hover:bg-primary/90 transition-colors flex-shrink-0">
-                      <Download className="w-3.5 h-3.5" />PDF
-                    </a>
+                      <Download className="w-3.5 h-3.5" />{t("PDF")}</a>
                   ) : (
-                    <span className="text-xs text-slate-400 px-2">En cours...</span>
+                    <span className="text-xs text-slate-400 px-2">{t("En cours...")}</span>
                   )}
                 </div>
               </motion.div>

@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { Search, ChevronDown, X } from "lucide-react";
 import { clsx } from "clsx";
+import { t } from "../../i18n";
 
 export default function SearchableSelect({
   options = [],
@@ -96,14 +97,14 @@ export default function SearchableSelect({
                 value={search}
                 onChange={e => setSearch(e.target.value)}
                 onKeyDown={onKeyDown}
-                placeholder="Rechercher..."
+                placeholder={t("Rechercher...")}
                 className="input pl-8 py-1.5 text-sm w-full"
               />
             </div>
           </div>
           <div className="overflow-y-auto flex-1">
             {filtered.length === 0 ? (
-              <div className="px-4 py-3 text-sm text-slate-400 text-center">Aucun résultat</div>
+              <div className="px-4 py-3 text-sm text-slate-400 text-center">{t("Aucun résultat")}</div>
             ) : (
               filtered.map((opt, i) => (
                 <button

@@ -232,12 +232,65 @@ class Grade(models.Model):
         return result
 
     @classmethod
+    def get_annual_subject_averages(cls, student, school_year):
+        """
+        Moyenne annuelle PAR MATIÈRE = moyenne des moyennes trimestrielles de
+        cette matière (même convention que calculate_annual_average() et
+        get_annual_bilingual() : moyenne des trimestres effectivement notés,
+        pas un recalcul pondéré sur l'ensemble des notes brutes).
+
+        NE PAS appeler get_subject_averages(student, school_year, period=None) :
+        les notes ont toujours un period='T1'/'T2'/'T3' réel, jamais None —
+        period=None ne retourne donc jamais aucune note.
+        """
+        per_period = {t: cls.get_subject_averages(student, school_year, t) for t in ('T1', 'T2', 'T3')}
+
+        # Union des matières apparues dans au moins un trimestre.
+        all_subjects = {}
+        for t, subj_map in per_period.items():
+            for sid, info in subj_map.items():
+                all_subjects.setdefault(sid, info)
+
+        result = {}
+        for sid, base_info in all_subjects.items():
+            period_avgs = [
+                per_period[t][sid]['average']
+                for t in ('T1', 'T2', 'T3')
+                if sid in per_period[t] and per_period[t][sid]['average'] is not None
+            ]
+            avg = round(sum(period_avgs) / len(period_avgs), 2) if period_avgs else None
+            result[sid] = {
+                'subject_id':   base_info['subject_id'],
+                'subject_name': base_info['subject_name'],
+                'coefficient':  base_info['coefficient'],
+                'language':     base_info['language'],
+                'average':      avg,
+                'has_notes':    bool(period_avgs),
+            }
+        return result
+
+    @classmethod
     def calculate_average(cls, student, school_year, period=None):
         """
         Moyenne générale pondérée par coefficient matière.
         period='annual' → délégué à calculate_annual_average().
+
+        FIX (moyennes Parent absentes) : le champ Grade.period n'est JAMAIS
+        NULL en base (CharField à choix obligatoire : 'T1'/'T2'/'T3'). Un
+        appel avec period=None ou period='' déléguait donc à
+        get_subject_averages(..., period=None), qui filtrait sur
+        period=None et ne correspondait à AUCUNE note réelle → la moyenne
+        renvoyée était toujours None. C'est exactement le cas de la page
+        Parent (filtre par défaut « Toutes périodes » → period='' côté
+        frontend → aucun paramètre `period` envoyé à l'API).
+        « Aucune période précisée » doit avoir le même sens que « Annuel »
+        (déjà le comportement de get_annual_bilingual/bilingual_averages_view
+        pour la moyenne bilingue) : on délègue donc aussi à
+        calculate_annual_average() dans ce cas, pour que les 4 cartes
+        (générale, française, anglaise, bilingue) restent cohérentes entre
+        elles quelle que soit la période sélectionnée.
         """
-        if period == 'annual':
+        if not period or period == 'annual':
             return cls.calculate_annual_average(student, school_year)
 
         subject_avgs = cls.get_subject_averages(student, school_year, period)

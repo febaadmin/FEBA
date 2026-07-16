@@ -298,6 +298,17 @@ class ParentStudentMultipleParentsDbTest(TestCase):
         self.assertEqual(ParentStudent.objects.filter(student=student).count(), 2)
 
 
+import unittest
+from django.db import connection
+
+
+@unittest.skipIf(
+    connection.vendor == "sqlite",
+    "Test de concurrence multi-threads : SQLite en mémoire verrouille la "
+    "table entière (« database table is locked ») — nécessite un vrai serveur "
+    "de base de données. Exécuté sur PostgreSQL (settings.test_postgres / "
+    "stack docker).",
+)
 class ParentStudentConcurrencyTest(TransactionTestCase):
     """
     Test 7: Concurrence — deux parents différents tentent de se lier au

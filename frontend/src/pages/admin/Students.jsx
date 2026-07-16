@@ -10,9 +10,10 @@ import Modal from "../../components/ui/Modal";
 import StatusBadge from "../../components/ui/StatusBadge";
 import SearchableSelect from "../../components/ui/SearchableSelect";
 import { extractApiError } from "../../utils/errors";
+import { t } from "../../i18n";
 
 function exportCSV(rows, filename) {
-  if (!rows.length) { toast.error("Aucune donnée à exporter."); return; }
+  if (!rows.length) { toast.error(t("Aucune donnée à exporter.")); return; }
   const headers = Object.keys(rows[0]);
   const lines = [
     headers.join(";"),
@@ -120,7 +121,7 @@ export default function AdminStudents() {
 
   const createMut = useMutation({
     mutationFn: (d) => studentsAPI.create(buildPayload(d, false)),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["students"] }); toast.success("Élève créé !"); closeModal(); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["students"] }); toast.success(t("Élève créé !")); closeModal(); },
     onError: (e) => {
       const err = e.response?.data;
       toast.error(err?.detail || err?.first_name?.[0] || err?.last_name?.[0] || Object.values(err || {})?.[0]?.[0] || "Erreur");
@@ -128,7 +129,7 @@ export default function AdminStudents() {
   });
   const updateMut = useMutation({
     mutationFn: ({ id, data }) => studentsAPI.update(id, buildPayload(data, true)),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["students"] }); toast.success("Modifié !"); closeModal(); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["students"] }); toast.success(t("Modifié !")); closeModal(); },
     onError: (e) => { const err = e.response?.data; toast.error(err?.detail || Object.values(err || {})?.[0]?.[0] || "Erreur"); },
   });
   // FIX v34 — trois niveaux de suppression, l'historique multi-années
@@ -145,7 +146,7 @@ export default function AdminStudents() {
   });
   const hardDeleteMut = useMutation({
     mutationFn: studentsAPI.hardDelete,
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["students"] }); toast.success("Suppression définitive effectuée."); setDeleteItem(null); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["students"] }); toast.success(t("Suppression définitive effectuée.")); setDeleteItem(null); },
     onError: (e) => toast.error(extractApiError(e)),
   });
   // FIX v35 (vidéos) : la suppression EN MASSE depuis une année précise ne
@@ -200,10 +201,10 @@ export default function AdminStudents() {
     const yearName = years.find(y => y.id === yearFilter)?.name || "toutes";
     const rows = students.map(s => ({
       "Matricule": s.matricule || "", "Prénom": s.first_name || "", "Nom": s.last_name || "",
-      "Genre": s.gender === "M" ? "Masculin" : "Féminin",
+      "Genre": s.gender === "M" ? t("Masculin") : t("Féminin"),
       "Date de naissance": s.date_of_birth || "", "Niveau": s.class_level || "",
       "Classe": s.class_name || "", "Année scolaire": s.school_year_name || "",
-      "Adresse": s.address || "", "Statut": s.is_active ? "Actif" : "Inactif",
+      "Adresse": s.address || "", "Statut": s.is_active ? t("Actif") : t("Inactif"),
       "Date inscription": s.enrollment_date || "",
     }));
     exportCSV(rows, `eleves_${yearName}_${new Date().toISOString().slice(0, 10)}.csv`);
@@ -213,12 +214,12 @@ export default function AdminStudents() {
     { key: "photo", label: "", sortable: false, render: r => r.photo
       ? <img src={r.photo} className="w-8 h-8 rounded-lg object-cover" alt="" />
       : <div className="w-8 h-8 rounded-lg bg-primary-50 flex items-center justify-center text-primary text-xs font-bold">{r.first_name?.[0]}{r.last_name?.[0]}</div> },
-    { key: "matricule", label: "Matricule", accessor: "matricule" },
-    { key: "name",    label: "Nom complet",    accessor: "full_name" },
-    { key: "class",   label: "Classe",         accessor: "class_name" },
-    { key: "year",    label: "Année",          accessor: "school_year_name" },
-    { key: "gender",  label: "Genre",          render: r => r.gender === "M" ? "Masculin" : "Féminin" },
-    { key: "status",  label: "Statut",         sortable: false, render: r => <StatusBadge status={r.is_active ? "active" : "inactive"} /> },
+    { key: "matricule", label: t("Matricule"), accessor: "matricule" },
+    { key: "name",    label: t("Nom complet"),    accessor: "full_name" },
+    { key: "class",   label: t("Classe"),         accessor: "class_name" },
+    { key: "year",    label: t("Année"),          accessor: "school_year_name" },
+    { key: "gender",  label: t("Genre"),          render: r => r.gender === "M" ? t("Masculin") : t("Féminin") },
+    { key: "status",  label: t("Statut"),         sortable: false, render: r => <StatusBadge status={r.is_active ? "active" : "inactive"} /> },
   ];
 
   const { register: re, handleSubmit: he, reset: resetEnroll, watch: watchEnroll } = useForm();
@@ -234,9 +235,9 @@ export default function AdminStudents() {
     onSuccess: (res) => {
       const data = res?.data;
       if (data?.enrolled !== undefined) {
-        toast.success(`${data.enrolled} élève(s) inscrit(s)${data.skipped ? `, ${data.skipped} déjà inscrit(s)` : ""}.`);
+        toast.success(t("{n} élève(s) inscrit(s)", { n: data.enrolled }) + (data.skipped ? t(", {n} déjà inscrit(s)", { n: data.skipped }) : "") + ".");
       } else {
-        toast.success("Élève inscrit pour la nouvelle année !");
+        toast.success(t("Élève inscrit pour la nouvelle année !"));
       }
       setEnrollModal(null); resetEnroll(); qc.invalidateQueries({ queryKey: ["students"] });
     },
@@ -246,30 +247,26 @@ export default function AdminStudents() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Élèves"
-        subtitle={`${students.length} élève(s) — ${years.find(y => y.id === yearFilter)?.name || (yearFilter === "all" ? "Toutes les années" : "")}`}
+        title={t("Élèves")}
+        subtitle={t("{n} élève(s)", { n: students.length }) + " — " + (years.find(y => y.id === yearFilter)?.name || (yearFilter === "all" ? t("Toutes les années") : ""))}
         action={
           <div className="flex items-center gap-2 flex-wrap justify-end">
             <button onClick={exportStudents} className="btn-secondary flex items-center gap-2 text-sm">
-              <FileSpreadsheet className="w-4 h-4" />Export Excel
-            </button>
+              <FileSpreadsheet className="w-4 h-4" />{t("Export Excel")}</button>
             <button onClick={() => setEnrollModal({ _mode: "all", full_name: "Tous les élèves" })}
               className="btn-secondary flex items-center gap-2 text-sm">
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
-              </svg>
-              Inscrire tous
-            </button>
+              </svg>{t("Inscrire tous")}</button>
             <button onClick={openCreate} className="btn-primary flex items-center gap-2">
-              <Plus className="w-4 h-4" />Ajouter un élève
-            </button>
+              <Plus className="w-4 h-4" />{t("Ajouter un élève")}</button>
           </div>
         }
       />
 
       {years.length > 0 && (
         <div className="card flex gap-2 flex-wrap items-center">
-          <span className="text-xs text-slate-500 font-medium mr-1">Année :</span>
+          <span className="text-xs text-slate-500 font-medium mr-1">{t("Année :")}</span>
           {years.map(y => (
             <button key={y.id} onClick={() => setYearFilter(y.id)}
               className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all ${yearFilter === y.id ? "bg-primary text-white shadow" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}>
@@ -277,9 +274,7 @@ export default function AdminStudents() {
             </button>
           ))}
           <button onClick={() => setYearFilter("all")}
-            className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all ${yearFilter === "all" ? "bg-slate-700 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}>
-            Toutes
-          </button>
+            className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all ${yearFilter === "all" ? "bg-slate-700 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}>{t("Toutes")}</button>
         </div>
       )}
 
@@ -300,7 +295,7 @@ export default function AdminStudents() {
           actions={row => (
             <div className="flex items-center gap-1 justify-end">
               <button onClick={(e) => { e.stopPropagation(); setViewItem(row); }}
-                className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600" title="Voir">
+                className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600" title={t("Voir")}>
                 <Eye className="w-4 h-4" />
               </button>
               <button onClick={(e) => { e.stopPropagation(); openEdit(row); }}
@@ -322,12 +317,12 @@ export default function AdminStudents() {
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setViewItem(null)} />
           <div className="relative bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6 space-y-4 max-h-[90vh] overflow-y-auto z-10">
             <div className="flex items-center justify-between">
-              <h2 className="font-bold text-slate-800 text-lg">Fiche Élève</h2>
+              <h2 className="font-bold text-slate-800 text-lg">{t("Fiche Élève")}</h2>
               <button onClick={() => setViewItem(null)} className="text-slate-400 hover:text-slate-600 text-2xl leading-none">×</button>
             </div>
             <div className="flex items-center gap-4">
               {viewItem.photo
-                ? <img src={viewItem.photo} className="w-20 h-20 rounded-xl object-cover border border-slate-100" alt="Photo" />
+                ? <img src={viewItem.photo} className="w-20 h-20 rounded-xl object-cover border border-slate-100" alt={t("Photo")} />
                 : <div className="w-20 h-20 rounded-xl bg-primary-50 flex items-center justify-center text-primary text-2xl font-bold">{viewItem.first_name?.[0]}{viewItem.last_name?.[0]}</div>}
               <div>
                 <p className="font-bold text-slate-800 text-xl">{viewItem.full_name}</p>
@@ -337,7 +332,7 @@ export default function AdminStudents() {
             </div>
             <div className="space-y-0 text-sm divide-y divide-slate-100">
               {[
-                ["Genre",          viewItem.gender === "M" ? "Masculin" : "Féminin"],
+                ["Genre",          viewItem.gender === "M" ? t("Masculin") : t("Féminin")],
                 ["Date naissance", viewItem.date_of_birth || "—"],
                 ["Niveau",         viewItem.class_level || "—"],
                 ["Classe",         viewItem.class_name || "—"],
@@ -354,45 +349,42 @@ export default function AdminStudents() {
             {viewItem.photo && (
               <a href={viewItem.photo} download target="_blank" rel="noreferrer"
                 className="inline-flex items-center gap-2 btn-secondary text-sm">
-                <Download className="w-4 h-4" />Télécharger la photo
-              </a>
+                <Download className="w-4 h-4" />{t("Télécharger la photo")}</a>
             )}
             <div className="flex justify-end gap-2 pt-2">
               <button onClick={() => setEnrollModal(viewItem)}
                 className="btn-secondary text-sm flex items-center gap-1">
-                <Plus className="w-4 h-4" />Nouvelle année
-              </button>
+                <Plus className="w-4 h-4" />{t("Nouvelle année")}</button>
               <button onClick={() => { setViewItem(null); openEdit(viewItem); }} className="btn-primary text-sm">
-                <Pencil className="w-4 h-4 inline mr-1" />Modifier
-              </button>
+                <Pencil className="w-4 h-4 inline mr-1" />{t("Modifier")}</button>
             </div>
           </div>
         </div>
       )}
 
       {/* Create / Edit modal */}
-      <Modal open={modalOpen} onClose={closeModal} title={editItem ? "Modifier l'élève" : "Nouvel élève"} size="lg">
+      <Modal open={modalOpen} onClose={closeModal} title={editItem ? t("Modifier l'élève") : t("Nouvel élève")} size="lg">
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
 
           <div>
-            <label className="label">Compte utilisateur élève{!editItem && " *"}</label>
+            <label className="label">{t("Compte utilisateur élève")}{!editItem && " *"}</label>
             <Controller name="user" control={control} rules={!editItem ? { required: true } : {}}
               render={({ field }) => (
                 <SearchableSelect options={studentUserOpts} value={field.value} onChange={field.onChange}
-                  placeholder="Rechercher un utilisateur (rôle élève)…" />
+                  placeholder={t("Rechercher un utilisateur (rôle élève)…")} />
               )} />
-            {errors.user && <p className="text-danger text-xs mt-1">Requis</p>}
-            {selectedUser && <p className="text-xs text-slate-400 mt-1">Auto-rempli : {selectedUser.first_name} {selectedUser.last_name}</p>}
+            {errors.user && <p className="text-danger text-xs mt-1">{t("Requis")}</p>}
+            {selectedUser && <p className="text-xs text-slate-400 mt-1">{t("Auto-rempli")} : {selectedUser.first_name} {selectedUser.last_name}</p>}
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="label">Prénom {!selectedUser && !editItem && "*"}</label>
+              <label className="label">{t("Prénom")} {!selectedUser && !editItem && "*"}</label>
               <input {...register("first_name", { required: !selectedUser && !editItem })} className="input"
                 placeholder={selectedUser?.first_name || ""} readOnly={!!selectedUser} />
             </div>
             <div>
-              <label className="label">Nom {!selectedUser && !editItem && "*"}</label>
+              <label className="label">{t("Nom")} {!selectedUser && !editItem && "*"}</label>
               <input {...register("last_name", { required: !selectedUser && !editItem })} className="input"
                 placeholder={selectedUser?.last_name || ""} readOnly={!!selectedUser} />
             </div>
@@ -400,13 +392,13 @@ export default function AdminStudents() {
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="label">Genre</label>
+              <label className="label">{t("Genre")}</label>
               <select {...register("gender")} className="input">
-                <option value="M">Masculin</option><option value="F">Féminin</option>
+                <option value="M">{t("Masculin")}</option><option value="F">{t("Féminin")}</option>
               </select>
             </div>
             <div>
-              <label className="label">Date de naissance</label>
+              <label className="label">{t("Date de naissance")}</label>
               <input {...register("date_of_birth")} type="date" className="input" />
             </div>
           </div>
@@ -414,67 +406,67 @@ export default function AdminStudents() {
           {/* FIX v34 : workflow exigé — 1. année scolaire, 2. classes de
               CETTE année chargées dynamiquement, 3. classe. */}
           <div>
-            <label className="label">Année scolaire *</label>
+            <label className="label">{t("Année scolaire *")}</label>
             <Controller name="school_year" control={control}
               render={({ field }) => (
                 <SearchableSelect
                   options={years.map(y => ({ value: y.id, label: `${y.name}${y.is_current ? " ✓ Active" : ""}` }))}
-                  value={field.value} onChange={field.onChange} placeholder="Sélectionner une année…"
+                  value={field.value} onChange={field.onChange} placeholder={t("Sélectionner une année…")}
                 />
               )} />
-            <p className="text-xs text-slate-400 mt-1">Détermine les classes proposées ci-dessous</p>
+            <p className="text-xs text-slate-400 mt-1">{t("Détermine les classes proposées ci-dessous")}</p>
           </div>
 
           {/* Niveau → filtre les classes */}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="label">Niveau académique</label>
+              <label className="label">{t("Niveau académique")}</label>
               <Controller name="level_filter" control={control}
                 render={({ field }) => (
                   <SearchableSelect
                     options={[{ value: "", label: "— Tous les niveaux —" }, ...levelOpts]}
                     value={field.value}
                     onChange={(val) => { field.onChange(val); setValue("current_class", ""); }}
-                    placeholder="Filtrer par niveau…"
+                    placeholder={t("Filtrer par niveau…")}
                   />
                 )} />
-              <p className="text-xs text-slate-400 mt-1">Filtre les classes disponibles</p>
+              <p className="text-xs text-slate-400 mt-1">{t("Filtre les classes disponibles")}</p>
             </div>
             <div>
-              <label className="label">Classe</label>
+              <label className="label">{t("Classe")}</label>
               <Controller name="current_class" control={control}
                 render={({ field }) => (
                   <SearchableSelect
                     options={filteredClassOpts}
                     value={field.value}
                     onChange={field.onChange}
-                    placeholder={selectedLevelId ? "Choisir une classe…" : "Toutes les classes…"}
+                    placeholder={selectedLevelId ? t("Choisir une classe…") : t("Toutes les classes…")}
                   />
                 )} />
             </div>
           </div>
 
           <div>
-            <label className="label">Adresse</label>
+            <label className="label">{t("Adresse")}</label>
             <textarea {...register("address")} className="input" rows={2} />
           </div>
 
           <div>
-            <label className="label">Photo (optionnel)</label>
+            <label className="label">{t("Photo (optionnel)")}</label>
             <input ref={photoRef} type="file" accept="image/*" className="hidden"
               onChange={e => setPhotoFile(e.target.files[0] || null)} />
             <div className="flex items-center gap-3">
               <button type="button" onClick={() => photoRef.current?.click()} className="btn-secondary text-sm">
                 {photoFile ? photoFile.name : "Choisir une photo"}
               </button>
-              {photoFile && <button type="button" onClick={() => setPhotoFile(null)} className="text-danger text-sm">Retirer</button>}
+              {photoFile && <button type="button" onClick={() => setPhotoFile(null)} className="text-danger text-sm">{t("Retirer")}</button>}
             </div>
           </div>
 
           <div className="flex gap-3 justify-end pt-2">
-            <button type="button" onClick={closeModal} className="btn-secondary">Annuler</button>
+            <button type="button" onClick={closeModal} className="btn-secondary">{t("Annuler")}</button>
             <button type="submit" disabled={createMut.isPending || updateMut.isPending} className="btn-primary">
-              {(createMut.isPending || updateMut.isPending) ? "Enregistrement…" : "Enregistrer"}
+              {(createMut.isPending || updateMut.isPending) ? t("Enregistrement…") : t("Enregistrer")}
             </button>
           </div>
         </form>
@@ -482,10 +474,7 @@ export default function AdminStudents() {
 
       <Modal open={!!deleteItem} onClose={() => setDeleteItem(null)} title={`Supprimer ${deleteItem?.full_name || ""} ?`} size="md">
         <div className="space-y-3">
-          <p className="text-sm text-slate-600">
-            Choisissez la portée de la suppression. L'historique des autres années
-            n'est <strong>jamais</strong> affecté par les deux premières options.
-          </p>
+          <p className="text-sm text-slate-600">{t("Choisissez la portée de la suppression. L'historique des autres années n'est")} <strong>jamais</strong> {t("affecté par les deux premières options.")}</p>
           {yearFilter && yearFilter !== "all" && (
             <button
               onClick={() => removeYearMut.mutate({ id: deleteItem.id, yearId: yearFilter })}
@@ -506,10 +495,8 @@ export default function AdminStudents() {
             disabled={deleteMut.isPending}
             className="w-full text-left rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 p-3 transition"
           >
-            <p className="font-semibold text-slate-800 text-sm">Désactiver l'élève (toutes années)</p>
-            <p className="text-xs text-slate-500 mt-0.5">
-              L'élève disparaît des listes actives ; tout son historique est conservé et il peut être réactivé.
-            </p>
+            <p className="font-semibold text-slate-800 text-sm">{t("Désactiver l'élève (toutes années)")}</p>
+            <p className="text-xs text-slate-500 mt-0.5">{t("L'élève disparaît des listes actives ; tout son historique est conservé et il peut être réactivé.")}</p>
           </button>
           <button
             onClick={() => {
@@ -520,13 +507,11 @@ export default function AdminStudents() {
             disabled={hardDeleteMut.isPending}
             className="w-full text-left rounded-xl border border-red-200 bg-red-50 hover:bg-red-100 p-3 transition"
           >
-            <p className="font-semibold text-red-700 text-sm">Suppression définitive</p>
-            <p className="text-xs text-red-600 mt-0.5">
-              Refusée automatiquement si des notes, paiements ou inscriptions existent encore.
-            </p>
+            <p className="font-semibold text-red-700 text-sm">{t("Suppression définitive")}</p>
+            <p className="text-xs text-red-600 mt-0.5">{t("Refusée automatiquement si des notes, paiements ou inscriptions existent encore.")}</p>
           </button>
           <div className="flex justify-end pt-1">
-            <button onClick={() => setDeleteItem(null)} className="btn-secondary">Annuler</button>
+            <button onClick={() => setDeleteItem(null)} className="btn-secondary">{t("Annuler")}</button>
           </div>
         </div>
       </Modal>
@@ -537,11 +522,11 @@ export default function AdminStudents() {
           <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setEnrollModal(null)} />
           <div className="relative bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6 space-y-4 max-h-[90vh] overflow-y-auto z-10">
             <div className="flex items-center justify-between">
-              <h2 className="font-bold text-slate-800 text-lg">Inscrire — nouvelle année</h2>
+              <h2 className="font-bold text-slate-800 text-lg">{t("Inscrire — nouvelle année")}</h2>
               <button onClick={() => setEnrollModal(null)} className="text-slate-400 hover:text-slate-600 text-2xl">×</button>
             </div>
             <div className="grid grid-cols-3 gap-2">
-              {[{ key: "single", label: "Un élève" }, { key: "class", label: "Une classe" }, { key: "all", label: "Toute l'année" }].map(m => (
+              {[{ key: "single", label: t("Un élève") }, { key: "class", label: t("Une classe") }, { key: "all", label: t("Toute l'année") }].map(m => (
                 <button key={m.key} onClick={() => setEnrollModal(p => ({ ...p, _mode: m.key }))}
                   className={`py-2 px-3 rounded-xl border text-sm font-medium transition ${(enrollModal._mode || "single") === m.key ? "bg-blue-600 text-white border-blue-600" : "border-gray-200 text-gray-600 hover:bg-gray-50"}`}>
                   {m.label}
@@ -555,37 +540,36 @@ export default function AdminStudents() {
               else addEnrollMut.mutate({ _bulk: "all", source_year_id: d.source_year, target_year_id: d.school_year });
             })} className="space-y-4">
               {(enrollModal._mode || "single") === "single" && (
-                <div className="bg-blue-50 rounded-xl px-4 py-3 text-sm text-blue-800">
-                  Élève : <span className="font-semibold">{enrollModal.full_name}</span>
+                <div className="bg-blue-50 rounded-xl px-4 py-3 text-sm text-blue-800">{t("Élève :")} <span className="font-semibold">{enrollModal.full_name}</span>
                 </div>
               )}
               {enrollModal._mode === "class" && (
                 <div>
-                  <label className="label">Classe source *</label>
+                  <label className="label">{t("Classe source *")}</label>
                   <select {...re("class_id", { required: true })} className="input" style={{ minHeight: "2.5rem" }}>
-                    <option value="">Choisir une classe...</option>
+                    <option value="">{t("Choisir une classe...")}</option>
                     {classes.map(c => <option key={c.id} value={c.id}>{c.name}{c.level_name ? ` — ${c.level_name}` : ""}</option>)}
                   </select>
                 </div>
               )}
               {enrollModal._mode === "all" && (
                 <div>
-                  <label className="label">Année source *</label>
+                  <label className="label">{t("Année source *")}</label>
                   <select {...re("source_year", { required: true })} className="input" style={{ minHeight: "2.5rem" }}>
-                    <option value="">Choisir l'année source...</option>
+                    <option value="">{t("Choisir l'année source...")}</option>
                     {years.map(y => <option key={y.id} value={y.id}>{y.name}</option>)}
                   </select>
                 </div>
               )}
               <div>
-                <label className="label">Année cible *</label>
+                <label className="label">{t("Année cible *")}</label>
                 <select {...re("school_year", { required: true })} className="input" style={{ minHeight: "2.5rem" }}>
-                  <option value="">Choisir une année...</option>
+                  <option value="">{t("Choisir une année...")}</option>
                   {years.map(y => <option key={y.id} value={y.id}>{y.name}{y.is_current ? " ✓" : ""}</option>)}
                 </select>
               </div>
               <div>
-                <label className="label">Nouvelle classe (optionnel)</label>
+                <label className="label">{t("Nouvelle classe (optionnel)")}</label>
                 <select {...re("class_obj")} className="input" style={{ minHeight: "2.5rem" }}>
                   <option value="">— Pas encore affecté —</option>
                   {(enrollTargetYear
@@ -599,9 +583,9 @@ export default function AdminStudents() {
                 </select>
               </div>
               <div className="flex gap-3 justify-end pt-2">
-                <button type="button" onClick={() => setEnrollModal(null)} className="btn-secondary">Annuler</button>
+                <button type="button" onClick={() => setEnrollModal(null)} className="btn-secondary">{t("Annuler")}</button>
                 <button type="submit" disabled={addEnrollMut.isPending} className="btn-primary">
-                  {addEnrollMut.isPending ? "Inscription…" : "Inscrire"}
+                  {addEnrollMut.isPending ? t("Inscription…") : t("Inscrire")}
                 </button>
               </div>
             </form>

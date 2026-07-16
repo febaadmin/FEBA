@@ -18,6 +18,7 @@ import Modal from "../../components/ui/Modal";
 import ConfirmDialog from "../../components/ui/ConfirmDialog";
 import SearchableSelect from "../../components/ui/SearchableSelect";
 import { extractApiError } from "../../utils/errors";
+import { t } from "../../i18n";
 
 /* ── MultiStudentSelect sans mutation (ne référence plus qc) ─────────────── */
 function MultiStudentSelect({ options, value = [], onChange, placeholder }) {
@@ -112,13 +113,13 @@ export default function AdminParents() {
       }
       return res;
     },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["parents"] }); toast.success("Parent créé !"); closeModal(); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["parents"] }); toast.success(t("Parent créé !")); closeModal(); },
     onError:   (e) => toast.error(e.message || e.response?.data?.detail || "Erreur création.", { duration: 6000 }),
   });
 
   const updateMut = useMutation({
     mutationFn: ({ id, data }) => parentsAPI.update(id, data),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["parents"] }); toast.success("Modifié !"); closeModal(); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["parents"] }); toast.success(t("Modifié !")); closeModal(); },
     onError: (e) => toast.error(extractApiError(e)),
   });
 
@@ -149,25 +150,23 @@ export default function AdminParents() {
   };
 
   const cols = [
-    { key: "name",       label: "Nom",       render: r => `${r.user_first_name || ""} ${r.user_last_name || ""}`.trim() || r.full_name || "—" },
-    { key: "email",      label: "Email",     render: r => r.user_email || "—" },
-    { key: "profession", label: "Profession", accessor: "profession" },
-    { key: "children",   label: "Enfants",   render: r => `${r.children_count ?? 0} enfant(s)` },
+    { key: "name",       label: t("Nom"),       render: r => `${r.user_first_name || ""} ${r.user_last_name || ""}`.trim() || r.full_name || "—" },
+    { key: "email",      label: t("Email"),     render: r => r.user_email || "—" },
+    { key: "profession", label: t("Profession"), accessor: "profession" },
+    { key: "children",   label: t("Enfants"),   render: r => `${r.children_count ?? 0} enfant(s)` },
   ];
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Parents" subtitle={`${parents.length} parent(s)`}
-        action={<button onClick={openCreate} className="btn-primary flex items-center gap-2"><Plus className="w-4 h-4" />Ajouter</button>} />
+      <PageHeader title={t("Parents")} subtitle={t("{n} parent(s)", { n: parents.length })}
+        action={<button onClick={openCreate} className="btn-primary flex items-center gap-2"><Plus className="w-4 h-4" />{t("Ajouter")}</button>} />
 
       {/* Filtre année */}
       {years.length > 0 && (
         <div className="card flex gap-3 items-center flex-wrap">
-          <span className="text-sm font-medium text-slate-600">Année :</span>
+          <span className="text-sm font-medium text-slate-600">{t("Année :")}</span>
           <button onClick={() => setFilterYear("")}
-            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${!filterYear ? "bg-primary text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}>
-            Toutes
-          </button>
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${!filterYear ? "bg-primary text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}>{t("Toutes")}</button>
           {years.map(y => (
             <button key={y.id} onClick={() => setFilterYear(String(y.id))}
               className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${filterYear === String(y.id) ? "bg-primary text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}>
@@ -203,31 +202,31 @@ export default function AdminParents() {
       </div>
 
       {/* Modal création/modification */}
-      <Modal open={modalOpen} onClose={closeModal} title={editItem ? "Modifier le parent" : "Nouveau parent"} size="md">
+      <Modal open={modalOpen} onClose={closeModal} title={editItem ? t("Modifier le parent") : t("Nouveau parent")} size="md">
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           {!editItem && (
             <div>
-              <label className="label">Compte utilisateur (rôle parent) *</label>
+              <label className="label">{t("Compte utilisateur (rôle parent) *")}</label>
               <Controller name="user_id" control={control} rules={{ required: !editItem }}
                 render={({ field }) => (
-                  <SearchableSelect options={userOptions} value={field.value} onChange={field.onChange} placeholder="Rechercher un utilisateur parent…" />
+                  <SearchableSelect options={userOptions} value={field.value} onChange={field.onChange} placeholder={t("Rechercher un utilisateur parent…")} />
                 )} />
             </div>
           )}
-          <div><label className="label">Profession</label><input {...register("profession")} className="input" /></div>
-          <div><label className="label">Adresse</label><textarea {...register("address")} className="input" rows={2} /></div>
+          <div><label className="label">{t("Profession")}</label><input {...register("profession")} className="input" /></div>
+          <div><label className="label">{t("Adresse")}</label><textarea {...register("address")} className="input" rows={2} /></div>
           {!editItem && (
             <div>
-              <label className="label">Élèves associés</label>
+              <label className="label">{t("Élèves associés")}</label>
               <Controller name="student_ids" control={control}
                 render={({ field }) => (
-                  <MultiStudentSelect options={studentOptions} value={field.value} onChange={field.onChange} placeholder="Ajouter un élève…" />
+                  <MultiStudentSelect options={studentOptions} value={field.value} onChange={field.onChange} placeholder={t("Ajouter un élève…")} />
                 )} />
             </div>
           )}
           <div className="flex gap-3 justify-end pt-2">
-            <button type="button" onClick={closeModal} className="btn-secondary">Annuler</button>
-            <button type="submit" disabled={createMut.isPending || updateMut.isPending} className="btn-primary">Enregistrer</button>
+            <button type="button" onClick={closeModal} className="btn-secondary">{t("Annuler")}</button>
+            <button type="submit" disabled={createMut.isPending || updateMut.isPending} className="btn-primary">{t("Enregistrer")}</button>
           </div>
         </form>
       </Modal>
@@ -238,17 +237,17 @@ export default function AdminParents() {
           <div className="absolute inset-0 bg-black/40" onClick={() => setSelectedParent(null)} />
           <div className="relative bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6 space-y-4 max-h-[80vh] overflow-y-auto">
             <div className="flex items-center justify-between">
-              <h2 className="font-bold text-slate-800 text-lg">Détail du parent</h2>
+              <h2 className="font-bold text-slate-800 text-lg">{t("Détail du parent")}</h2>
               <button onClick={() => setSelectedParent(null)} className="text-slate-400 hover:text-slate-600 text-2xl leading-none">×</button>
             </div>
             <div className="space-y-2 text-sm">
-              <div className="flex justify-between py-2 border-b border-slate-50"><span className="text-slate-500">Nom complet</span><span className="font-bold text-slate-800">{`${selectedParent.user_first_name || ""} ${selectedParent.user_last_name || ""}`.trim() || "—"}</span></div>
-              <div className="flex justify-between py-2 border-b border-slate-50"><span className="text-slate-500">Email</span><span>{selectedParent.user_email || "—"}</span></div>
-              <div className="flex justify-between py-2 border-b border-slate-50"><span className="text-slate-500">Téléphone</span><span>{selectedParent.user_phone || "—"}</span></div>
-              <div className="flex justify-between py-2 border-b border-slate-50"><span className="text-slate-500">Profession</span><span>{selectedParent.profession || "—"}</span></div>
-              <div className="flex justify-between py-2 border-b border-slate-50"><span className="text-slate-500">Adresse</span><span>{selectedParent.address || "—"}</span></div>
+              <div className="flex justify-between py-2 border-b border-slate-50"><span className="text-slate-500">{t("Nom complet")}</span><span className="font-bold text-slate-800">{`${selectedParent.user_first_name || ""} ${selectedParent.user_last_name || ""}`.trim() || "—"}</span></div>
+              <div className="flex justify-between py-2 border-b border-slate-50"><span className="text-slate-500">{t("Email")}</span><span>{selectedParent.user_email || "—"}</span></div>
+              <div className="flex justify-between py-2 border-b border-slate-50"><span className="text-slate-500">{t("Téléphone")}</span><span>{selectedParent.user_phone || "—"}</span></div>
+              <div className="flex justify-between py-2 border-b border-slate-50"><span className="text-slate-500">{t("Profession")}</span><span>{selectedParent.profession || "—"}</span></div>
+              <div className="flex justify-between py-2 border-b border-slate-50"><span className="text-slate-500">{t("Adresse")}</span><span>{selectedParent.address || "—"}</span></div>
               <div className="py-2">
-                <p className="text-slate-500 font-medium mb-2">Enfants associés ({selectedParent.children_count ?? 0})</p>
+                <p className="text-slate-500 font-medium mb-2">{t("Enfants associés")} ({selectedParent.children_count ?? 0})</p>
                 {selectedParent.children_links?.length > 0 ? (
                   <div className="space-y-1">
                     {selectedParent.children_links.map(link => (
@@ -261,12 +260,12 @@ export default function AdminParents() {
                       </div>
                     ))}
                   </div>
-                ) : <p className="text-slate-400 text-xs">Aucun enfant associé</p>}
+                ) : <p className="text-slate-400 text-xs">{t("Aucun enfant associé")}</p>}
               </div>
             </div>
             <div className="flex gap-2 pt-2">
-              <button onClick={() => { setSelectedParent(null); openEdit(selectedParent); }} className="btn-secondary text-sm flex-1">Modifier</button>
-              <button onClick={() => setSelectedParent(null)} className="btn-primary text-sm flex-1">Fermer</button>
+              <button onClick={() => { setSelectedParent(null); openEdit(selectedParent); }} className="btn-secondary text-sm flex-1">{t("Modifier")}</button>
+              <button onClick={() => setSelectedParent(null)} className="btn-primary text-sm flex-1">{t("Fermer")}</button>
             </div>
           </div>
         </div>
@@ -274,7 +273,7 @@ export default function AdminParents() {
 
       <ConfirmDialog open={!!deleteItem} onClose={() => setDeleteItem(null)}
         onConfirm={() => deleteMut.mutate(deleteItem?.id)} loading={deleteMut.isPending}
-        message="Désactiver ce parent ? Ses liens familiaux et son historique multi-années sont conservés (réactivation possible). La suppression définitive n’est possible qu’après retrait de tous ses liens élèves." />
+        message={t("Désactiver ce parent ? Ses liens familiaux et son historique multi-années sont conservés (réactivation possible). La suppression définitive n’est possible qu’après retrait de tous ses liens élèves.")} />
     </div>
   );
 }

@@ -10,6 +10,7 @@ import Modal from "../../components/ui/Modal";
 import SearchableSelect from "../../components/ui/SearchableSelect";
 import ConfirmDialog from "../../components/ui/ConfirmDialog";
 import { extractApiError } from "../../utils/errors";
+import { t } from "../../i18n";
 
 export default function TeacherHomework() {
   const qc = useQueryClient();
@@ -41,7 +42,7 @@ export default function TeacherHomework() {
       attachments.forEach(f => fd.append("attachments", f));
       return homeworkAPI.create(fd);
     },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["homework"] }); toast.success("Devoir créé !"); closeModal(); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["homework"] }); toast.success(t("Devoir créé !")); closeModal(); },
     onError: (e) => toast.error(extractApiError(e)),
   });
   const updateMut = useMutation({
@@ -54,11 +55,11 @@ export default function TeacherHomework() {
       }
       return homeworkAPI.update(id, data);
     },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["homework"] }); toast.success("Modifié !"); closeModal(); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["homework"] }); toast.success(t("Modifié !")); closeModal(); },
   });
   const deleteMut = useMutation({
     mutationFn: homeworkAPI.delete,
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["homework"] }); toast.success("Supprimé."); setDeleteItem(null); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["homework"] }); toast.success(t("Supprimé.")); setDeleteItem(null); },
   });
 
   const closeModal = () => { setModalOpen(false); setEditItem(null); setAttachments([]); reset(); };
@@ -78,10 +79,10 @@ export default function TeacherHomework() {
   const removeFile = (i) => setAttachments(prev => prev.filter((_, idx) => idx !== i));
 
   const cols = [
-    { key: "title", label: "Titre", accessor: "title" },
-    { key: "class", label: "Classe", accessor: "class_name" },
-    { key: "subject", label: "Matière", accessor: "subject_name" },
-    { key: "att", label: "Pièces jointes", sortable: false, render: r => (r.attachments?.length > 0) ? (
+    { key: "title", label: t("Titre"), accessor: "title" },
+    { key: "class", label: t("Classe"), accessor: "class_name" },
+    { key: "subject", label: t("Matière"), accessor: "subject_name" },
+    { key: "att", label: t("Pièces jointes"), sortable: false, render: r => (r.attachments?.length > 0) ? (
       <div className="flex flex-wrap gap-1">
         {r.attachments.map(a => (
           <a key={a.id} href={a.file} target="_blank" rel="noreferrer" className="text-xs text-primary underline flex items-center gap-1">
@@ -90,7 +91,7 @@ export default function TeacherHomework() {
         ))}
       </div>
     ) : "—" },
-    { key: "due", label: "Date limite", render: r => (
+    { key: "due", label: t("Date limite"), render: r => (
       <span className={(new Date(r.due_date) < new Date()) ? "text-danger font-medium" : "text-slate-700"}>
         <CalendarClock className="w-3 h-3 inline mr-1" />{r.due_date}
       </span>
@@ -99,8 +100,8 @@ export default function TeacherHomework() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Devoirs" subtitle={`${homework.length} devoir(s) — matières de votre profil uniquement`}
-        action={<button onClick={openCreate} className="btn-primary flex items-center gap-2"><Plus className="w-4 h-4" />Nouveau devoir</button>} />
+      <PageHeader title={t("Devoirs")} subtitle={`${homework.length} devoir(s) — matières de votre profil uniquement`}
+        action={<button onClick={openCreate} className="btn-primary flex items-center gap-2"><Plus className="w-4 h-4" />{t("Nouveau devoir")}</button>} />
       <div className="card">
         <DataTable columns={cols} data={homework} loading={isLoading} actions={row => (
           <div className="flex items-center gap-1 justify-end">
@@ -110,50 +111,50 @@ export default function TeacherHomework() {
         )} />
       </div>
 
-      <Modal open={modalOpen} onClose={closeModal} title={editItem ? "Modifier le devoir" : "Nouveau devoir"} size="md">
+      <Modal open={modalOpen} onClose={closeModal} title={editItem ? t("Modifier le devoir") : t("Nouveau devoir")} size="md">
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div>
-            <label className="label">Titre*</label>
+            <label className="label">{t("Titre*")}</label>
             <input {...register("title", { required: true })} className="input" />
-            {errors.title && <p className="text-danger text-xs mt-1">Requis</p>}
+            {errors.title && <p className="text-danger text-xs mt-1">{t("Requis")}</p>}
           </div>
           <div>
-            <label className="label">Description*</label>
+            <label className="label">{t("Description*")}</label>
             <textarea {...register("description", { required: true })} className="input" rows={3} />
           </div>
           {!editItem && (
             <>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="label">Classe* (vos classes)</label>
+                  <label className="label">{t("Classe* (vos classes)")}</label>
                   <Controller name="cls" control={control} rules={{ required: true }}
                     render={({ field }) => (
                       <SearchableSelect
                         options={classes.map(c => ({ value: c.id, label: c.name }))}
                         value={field.value}
                         onChange={field.onChange}
-                        placeholder="Sélectionner une classe…"
+                        placeholder={t("Sélectionner une classe…")}
                       />
                     )} />
-                  {errors.cls && <p className="text-danger text-xs mt-1">Requis</p>}
+                  {errors.cls && <p className="text-danger text-xs mt-1">{t("Requis")}</p>}
                 </div>
                 <div>
                   {/* BUG FIX: Only teacher's own subjects shown here */}
-                  <label className="label">Matière* (vos matières)</label>
+                  <label className="label">{t("Matière* (vos matières)")}</label>
                   <Controller name="subject" control={control} rules={{ required: true }}
                     render={({ field }) => (
                       <SearchableSelect
                         options={subjects.map(s => ({ value: s.id, label: s.name }))}
                         value={field.value}
                         onChange={field.onChange}
-                        placeholder="Sélectionner une matière…"
+                        placeholder={t("Sélectionner une matière…")}
                       />
                     )} />
-                  {errors.subject && <p className="text-danger text-xs mt-1">Requis</p>}
+                  {errors.subject && <p className="text-danger text-xs mt-1">{t("Requis")}</p>}
                 </div>
               </div>
               <div>
-                <label className="label">Année scolaire</label>
+                <label className="label">{t("Année scolaire")}</label>
                 <select {...register("school_year")} className="input">
                   {years.map(y => <option key={y.id} value={y.id}>{y.name}{y.is_current ? " ✓" : ""}</option>)}
                 </select>
@@ -161,22 +162,21 @@ export default function TeacherHomework() {
             </>
           )}
           <div>
-            <label className="label">Date limite*</label>
+            <label className="label">{t("Date limite*")}</label>
             <input {...register("due_date", { required: true })} type="date" className="input" />
           </div>
           <div>
-            <label className="label">Pièces jointes (doc, pdf, image…)</label>
+            <label className="label">{t("Pièces jointes (doc, pdf, image…)")}</label>
             <input ref={fileRef} type="file" className="hidden" multiple
               accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.gif,.xlsx,.pptx,.zip"
               onChange={e => addFiles(e.target.files)} />
             <button type="button" onClick={() => fileRef.current?.click()}
               className="btn-secondary flex items-center gap-2 text-sm">
-              <Paperclip className="w-4 h-4" />Ajouter des fichiers
-            </button>
+              <Paperclip className="w-4 h-4" />{t("Ajouter des fichiers")}</button>
             {/* Show existing attachments on edit */}
             {editItem?.attachments?.length > 0 && (
               <div className="mt-2">
-                <p className="text-xs text-slate-500 mb-1">Fichiers existants :</p>
+                <p className="text-xs text-slate-500 mb-1">{t("Fichiers existants :")}</p>
                 <div className="flex flex-wrap gap-2">
                   {editItem.attachments.map(a => (
                     <a key={a.id} href={a.file} target="_blank" rel="noreferrer"
@@ -200,9 +200,9 @@ export default function TeacherHomework() {
             )}
           </div>
           <div className="flex gap-3 justify-end pt-2">
-            <button type="button" onClick={closeModal} className="btn-secondary">Annuler</button>
+            <button type="button" onClick={closeModal} className="btn-secondary">{t("Annuler")}</button>
             <button type="submit" disabled={createMut.isPending || updateMut.isPending} className="btn-primary">
-              {(createMut.isPending || updateMut.isPending) ? "Enregistrement…" : "Enregistrer"}
+              {(createMut.isPending || updateMut.isPending) ? t("Enregistrement…") : t("Enregistrer")}
             </button>
           </div>
         </form>

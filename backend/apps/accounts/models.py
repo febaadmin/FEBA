@@ -20,10 +20,21 @@ class CustomUser(AbstractUser):
         'student': 10,
     }
 
+    LANGUAGE_CHOICES = [
+        ('fr', 'Français'),
+        ('en', 'English'),
+    ]
+
     email = models.EmailField(unique=True)
     role = models.CharField(max_length=12, choices=ROLE_CHOICES, default='student')
     role_level = models.PositiveSmallIntegerField(default=10)
     phone = models.CharField(max_length=20, blank=True)
+    # Préférence linguistique de l'interface (fr/en). Prioritaire sur le
+    # choix local du navigateur lorsque l'utilisateur se reconnecte.
+    preferred_language = models.CharField(
+        max_length=5, choices=LANGUAGE_CHOICES, default='fr',
+        help_text="Langue préférée de l'interface / Preferred interface language.",
+    )
     avatar = models.ImageField(upload_to='avatars/', null=True, blank=True)
     is_active = models.BooleanField(default=True)
     # Tenant : établissement de rattachement. Obligatoire pour tout rôle

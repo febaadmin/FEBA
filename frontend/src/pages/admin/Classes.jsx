@@ -10,6 +10,7 @@ import Modal from "../../components/ui/Modal";
 import ConfirmDialog from "../../components/ui/ConfirmDialog";
 import SearchableSelect from "../../components/ui/SearchableSelect";
 import { extractApiError } from "../../utils/errors";
+import { t } from "../../i18n";
 
 export default function AdminClasses() {
   const qc = useQueryClient();
@@ -48,15 +49,15 @@ export default function AdminClasses() {
 
   const createMut = useMutation({
     mutationFn: classesAPI.create,
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["classes"] }); toast.success("Classe créée !"); closeModal(); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["classes"] }); toast.success(t("Classe créée !")); closeModal(); },
     onError: (e) => toast.error(extractApiError(e)),
   });
   const updateMut = useMutation({
     mutationFn: ({ id, data }) => classesAPI.update(id, data),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["classes"] }); toast.success("Classe modifiée !"); closeModal(); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["classes"] }); toast.success(t("Classe modifiée !")); closeModal(); },
     onError: (e) => {
       const status = e?.response?.status;
-      if (status === 404) toast.error("Cette classe n'existe plus (liste actualisée).");
+      if (status === 404) toast.error(t("Cette classe n'existe plus (liste actualisée)."));
       else toast.error(extractApiError(e));
       qc.invalidateQueries({ queryKey: ["classes"] });
       closeModal();
@@ -64,13 +65,13 @@ export default function AdminClasses() {
   });
   const deleteMut = useMutation({
     mutationFn: classesAPI.delete,
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["classes"] }); toast.success("Classe supprimée."); setDeleteItem(null); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["classes"] }); toast.success(t("Classe supprimée.")); setDeleteItem(null); },
     onError: (e) => {
       // FIX v40 : si la classe n'existe plus (404) ou dépend de l'historique
       // (409), on informe clairement et on rafraîchit la liste au lieu de
       // réessayer en boucle.
       const status = e?.response?.status;
-      if (status === 404) toast.error("Cette classe n'existe plus (liste actualisée).");
+      if (status === 404) toast.error(t("Cette classe n'existe plus (liste actualisée)."));
       else toast.error(extractApiError(e));
       qc.invalidateQueries({ queryKey: ["classes"] });
       setDeleteItem(null);
@@ -80,7 +81,7 @@ export default function AdminClasses() {
     mutationFn: ({ id, subject_ids }) => classesAPI.setSubjects(id, subject_ids),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["classes"] });
-      toast.success("Matières mises à jour !");
+      toast.success(t("Matières mises à jour !"));
       setSubjectModal(null);
     }
   });
@@ -147,36 +148,36 @@ export default function AdminClasses() {
     const frSelected = selectedSubjects.filter(id => frSubjects.some(s => s.id === id));
     const enSelected = selectedSubjects.filter(id => enSubjects.some(s => s.id === id));
     if (frSelected.length === 0) {
-      toast.error("Sélectionnez au moins une matière française.");
+      toast.error(t("Sélectionnez au moins une matière française."));
       return;
     }
     if (enSelected.length === 0) {
-      toast.error("Sélectionnez au moins une matière anglaise.");
+      toast.error(t("Sélectionnez au moins une matière anglaise."));
       return;
     }
     subjectsMut.mutate({ id: subjectModal.id, subject_ids: selectedSubjects });
   };
 
   const cols = [
-    { key: "name", label: "Classe", accessor: "name" },
-    { key: "level", label: "Niveau", accessor: "level_name" },
-    { key: "year", label: "Année", accessor: "school_year_name" },
+    { key: "name", label: t("Classe"), accessor: "name" },
+    { key: "level", label: t("Niveau"), accessor: "level_name" },
+    { key: "year", label: t("Année"), accessor: "school_year_name" },
     {
-      key: "students", label: "Élèves", render: r => (
+      key: "students", label: t("Élèves"), render: r => (
         <span className="flex items-center gap-1 text-sm">
           <Users className="w-3 h-3" />{r.student_count || 0}/{r.max_students}
         </span>
       )
     },
     {
-      key: "bilingual", label: "Bilingue", render: r => (
+      key: "bilingual", label: t("Bilingue"), render: r => (
         r.has_bilingual
-          ? <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full"><CheckCircle className="w-3 h-3" />FR+EN</span>
-          : <span className="inline-flex items-center gap-1 text-xs font-medium text-orange-700 bg-orange-50 px-2 py-0.5 rounded-full"><AlertCircle className="w-3 h-3" />Incomplet</span>
+          ? <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full"><CheckCircle className="w-3 h-3" />{t("FR+EN")}</span>
+          : <span className="inline-flex items-center gap-1 text-xs font-medium text-orange-700 bg-orange-50 px-2 py-0.5 rounded-full"><AlertCircle className="w-3 h-3" />{t("Incomplet")}</span>
       )
     },
     {
-      key: "subjects_count", label: "Matières", render: r => (
+      key: "subjects_count", label: t("Matières"), render: r => (
         <span className="text-xs text-slate-500">
           🇫🇷 {r.fr_subject_count || 0} · 🇬🇧 {r.en_subject_count || 0}
         </span>
@@ -187,23 +188,21 @@ export default function AdminClasses() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Classes"
-        subtitle={`${classes.length} classe(s)`}
+        title={t("Classes")}
+        subtitle={t("{n} classe(s)", { n: classes.length })}
         action={
           <div className="flex items-center gap-2">
             <button onClick={openCopy} className="btn-secondary flex items-center gap-2">
-              <Copy className="w-4 h-4" />Copier depuis une année
-            </button>
+              <Copy className="w-4 h-4" />{t("Copier depuis une année")}</button>
             <button onClick={openCreate} className="btn-primary flex items-center gap-2">
-              <Plus className="w-4 h-4" />Nouvelle classe
-            </button>
+              <Plus className="w-4 h-4" />{t("Nouvelle classe")}</button>
           </div>
         }
       />
 
       {/* FIX v34/v38 : chaque année gère SES classes — année active par défaut */}
       <div className="flex items-center gap-2 flex-wrap bg-white rounded-xl border border-slate-200 p-3">
-        <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider mr-1">Année :</span>
+        <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider mr-1">{t("Année :")}</span>
         <button onClick={() => setYearFilter("")}
           className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all ${!yearFilter ? "bg-primary text-white shadow" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}>
           Année active{activeYear ? ` (${activeYear.name})` : ""}
@@ -231,7 +230,7 @@ export default function AdminClasses() {
             <div className="flex items-center gap-1 justify-end">
               <button
                 onClick={() => openSubjects(row)}
-                title="Gérer les matières"
+                title={t("Gérer les matières")}
                 className="p-1.5 rounded-lg hover:bg-emerald-50 text-slate-400 hover:text-emerald-600"
               >
                 <BookOpen className="w-4 h-4" />
@@ -248,74 +247,68 @@ export default function AdminClasses() {
       </div>
 
       {/* Modal create/edit class */}
-      <Modal open={copyOpen} onClose={() => setCopyOpen(false)} title="Copier les classes d'une année" size="md">
+      <Modal open={copyOpen} onClose={() => setCopyOpen(false)} title={t("Copier les classes d'une année")} size="md">
         <div className="space-y-4">
-          <p className="text-sm text-slate-500">
-            Duplique les classes (nom, niveau, capacité, matières FR/EN) d'une année
-            vers une autre. Les classes homonymes déjà présentes sont ignorées ;
-            aucun élève n'est copié (utilisez ensuite les Inscriptions/Passages).
-          </p>
+          <p className="text-sm text-slate-500">{t("Duplique les classes (nom, niveau, capacité, matières FR/EN) d'une année vers une autre. Les classes homonymes déjà présentes sont ignorées ; aucun élève n'est copié (utilisez ensuite les Inscriptions/Passages).")}</p>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="label">Année source *</label>
+              <label className="label">{t("Année source *")}</label>
               <SearchableSelect
                 options={years.filter(y => String(y.id) !== String(copyTarget)).map(y => ({ value: y.id, label: y.name }))}
                 value={copySource} onChange={setCopySource} placeholder="— Sélectionner —" />
             </div>
             <div>
-              <label className="label">Année cible *</label>
+              <label className="label">{t("Année cible *")}</label>
               <SearchableSelect
                 options={years.map(y => ({ value: y.id, label: `${y.name}${y.is_current ? " ✓ Active" : ""}` }))}
                 value={copyTarget} onChange={setCopyTarget} placeholder="— Sélectionner —" />
             </div>
           </div>
           <div className="flex gap-3 justify-end pt-2">
-            <button type="button" onClick={() => setCopyOpen(false)} className="btn-secondary">Annuler</button>
+            <button type="button" onClick={() => setCopyOpen(false)} className="btn-secondary">{t("Annuler")}</button>
             <button type="button" disabled={!copySource || !copyTarget || copyMut.isPending}
               onClick={() => copyMut.mutate()} className="btn-primary">
-              {copyMut.isPending ? "Copie…" : "Copier les classes"}
+              {copyMut.isPending ? t("Copie…") : t("Copier les classes")}
             </button>
           </div>
         </div>
       </Modal>
 
-      <Modal open={modalOpen} onClose={closeModal} title={editItem ? "Modifier la classe" : "Nouvelle classe"}>
+      <Modal open={modalOpen} onClose={closeModal} title={editItem ? t("Modifier la classe") : t("Nouvelle classe")}>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div>
-            <label className="label">Nom de la classe*</label>
-            <input {...register("name", { required: true })} placeholder="ex: CM2-A" className="input" />
+            <label className="label">{t("Nom de la classe*")}</label>
+            <input {...register("name", { required: true })} placeholder={t("ex: CM2-A")} className="input" />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="label">Niveau*</label>
+              <label className="label">{t("Niveau*")}</label>
               <Controller name="level" control={control} rules={{ required: true }}
                 render={({ field }) => (
                   <SearchableSelect
                     options={levels.map(l => ({ value: l.id, label: l.name }))}
                     value={field.value} onChange={field.onChange}
-                    placeholder="Rechercher un niveau…" />
+                    placeholder={t("Rechercher un niveau…")} />
                 )} />
             </div>
             <div>
-              <label className="label">Année scolaire*</label>
+              <label className="label">{t("Année scolaire*")}</label>
               <Controller name="school_year" control={control} rules={{ required: true }}
                 render={({ field }) => (
                   <SearchableSelect
                     options={years.map(y => ({ value: y.id, label: `${y.name}${y.is_current ? " ✓" : ""}` }))}
                     value={field.value} onChange={field.onChange}
-                    placeholder="Rechercher une année…" />
+                    placeholder={t("Rechercher une année…")} />
                 )} />
             </div>
           </div>
           <div>
-            <label className="label">Capacité max</label>
+            <label className="label">{t("Capacité max")}</label>
             <input {...register("max_students")} type="number" className="input" />
           </div>
           <div className="flex gap-3 justify-end pt-2">
-            <button type="button" onClick={closeModal} className="btn-secondary">Annuler</button>
-            <button type="submit" disabled={createMut.isPending || updateMut.isPending} className="btn-primary">
-              Enregistrer
-            </button>
+            <button type="button" onClick={closeModal} className="btn-secondary">{t("Annuler")}</button>
+            <button type="submit" disabled={createMut.isPending || updateMut.isPending} className="btn-primary">{t("Enregistrer")}</button>
           </div>
         </form>
       </Modal>
@@ -323,9 +316,7 @@ export default function AdminClasses() {
       {/* Modal gestion matières */}
       <Modal open={!!subjectModal} onClose={() => setSubjectModal(null)} title={`Matières — ${subjectModal?.name || ""}`} size="lg">
         <div className="space-y-5">
-          <p className="text-sm text-slate-500">
-            Sélectionnez les matières assignées à cette classe.
-            <strong className="text-slate-700"> Au moins une matière française et une matière anglaise sont obligatoires</strong> pour le calcul bilingue.
+          <p className="text-sm text-slate-500">{t("Sélectionnez les matières assignées à cette classe.")}<strong className="text-slate-700"> {t("Au moins une matière française et une matière anglaise sont obligatoires")}</strong> pour le calcul bilingue.
           </p>
 
           {/* Vérif bilingue */}
@@ -373,7 +364,7 @@ export default function AdminClasses() {
                   </label>
                 ))}
                 {frSubjects.length === 0 && (
-                  <p className="text-xs text-slate-400 p-2">Aucune matière française disponible. Créez-en dans l'onglet Matières.</p>
+                  <p className="text-xs text-slate-400 p-2">{t("Aucune matière française disponible. Créez-en dans l'onglet Matières.")}</p>
                 )}
               </div>
             </div>
@@ -401,14 +392,14 @@ export default function AdminClasses() {
                   </label>
                 ))}
                 {enSubjects.length === 0 && (
-                  <p className="text-xs text-slate-400 p-2">Aucune matière anglaise disponible. Créez-en dans l'onglet Matières.</p>
+                  <p className="text-xs text-slate-400 p-2">{t("Aucune matière anglaise disponible. Créez-en dans l'onglet Matières.")}</p>
                 )}
               </div>
             </div>
           </div>
 
           <div className="flex gap-3 justify-end pt-2 border-t border-slate-100">
-            <button type="button" onClick={() => setSubjectModal(null)} className="btn-secondary">Annuler</button>
+            <button type="button" onClick={() => setSubjectModal(null)} className="btn-secondary">{t("Annuler")}</button>
             <button
               onClick={onSaveSubjects}
               disabled={subjectsMut.isPending}

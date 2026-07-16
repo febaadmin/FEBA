@@ -248,6 +248,34 @@ class ParentDashboardView(APIView):
             avg_t2 = Grade.calculate_average(child, school_year, "T2") if school_year else None
             avg_t3 = Grade.calculate_average(child, school_year, "T3") if school_year else None
             from apps.grades.models import get_appreciation
+
+            # FIX (moyennes tableau de bord parent) : le tableau de bord
+            # n'exposait que la moyenne générale. La moyenne de français,
+            # d'anglais et le détail par matière existaient déjà dans le
+            # moteur de calcul (Grade.get_subject_averages /
+            # calculate_bilingual_averages) mais n'étaient jamais renvoyés
+            # par cet endpoint — d'où l'absence totale de ces valeurs côté
+            # UI (pas un bug de calcul, un bug de câblage API).
+            subject_averages = None
+            bilingual = None
+            if school_year:
+                subj_map = Grade.get_annual_subject_averages(child, school_year)
+                subject_averages = [
+                    {
+                        "subject_id": info["subject_id"],
+                        "subject_name": info["subject_name"],
+                        "language": info["language"],
+                        "average": safe_float(info["average"]) if info["average"] is not None else None,
+                        "has_notes": info["has_notes"],
+                    }
+                    for info in subj_map.values()
+                ]
+                bi = Grade.get_annual_bilingual(child, school_year)["annual"]
+                bilingual = {
+                    "fr_average": safe_float(bi["fr_average"]) if bi["fr_average"] is not None else None,
+                    "en_average": safe_float(bi["en_average"]) if bi["en_average"] is not None else None,
+                    "bilingual_average": safe_float(bi["bilingual_average"]) if bi["bilingual_average"] is not None else None,
+                }
             absent_qs = Attendance.objects.filter(student=child, status="absent")
             if school_year:
                 absent_qs = absent_qs.filter(school_year=school_year)
@@ -272,6 +300,8 @@ class ParentDashboardView(APIView):
                 "average_t1": safe_float(avg_t1) if avg_t1 is not None else None,
                 "average_t2": safe_float(avg_t2) if avg_t2 is not None else None,
                 "average_t3": safe_float(avg_t3) if avg_t3 is not None else None,
+                "subject_averages": subject_averages,
+                "bilingual": bilingual,
                 "appreciation": get_appreciation(avg) if avg is not None else None,
                 "progression": (
                     round(safe_float(avg_t2) - safe_float(avg_t1), 2)
@@ -322,6 +352,29 @@ class StudentDashboardView(APIView):
         grades_t3 = Grade.calculate_average(student, school_year, "T3") if school_year else None
         from apps.grades.models import get_appreciation
 
+        # FIX (moyennes tableau de bord élève) : même bug de câblage que le
+        # tableau de bord parent — voir commentaire équivalent plus haut.
+        subject_averages = None
+        bilingual = None
+        if school_year:
+            subj_map = Grade.get_annual_subject_averages(student, school_year)
+            subject_averages = [
+                {
+                    "subject_id": info["subject_id"],
+                    "subject_name": info["subject_name"],
+                    "language": info["language"],
+                    "average": safe_float(info["average"]) if info["average"] is not None else None,
+                    "has_notes": info["has_notes"],
+                }
+                for info in subj_map.values()
+            ]
+            bi = Grade.get_annual_bilingual(student, school_year)["annual"]
+            bilingual = {
+                "fr_average": safe_float(bi["fr_average"]) if bi["fr_average"] is not None else None,
+                "en_average": safe_float(bi["en_average"]) if bi["en_average"] is not None else None,
+                "bilingual_average": safe_float(bi["bilingual_average"]) if bi["bilingual_average"] is not None else None,
+            }
+
         # Filter attendance by active year
         att_base = Attendance.objects.filter(student=student)
         if school_year:
@@ -336,10 +389,9 @@ class StudentDashboardView(APIView):
         recent_grades = recent_grades_qs[:5]
 
         # Announcements for student
-        announcements = Announcement.objects.filter(
-            is_published=True
-        ).filter(
-            Q(target_roles__contains=["student"]) | Q(target_roles__contains=["all"])
+        from apps.announcements.utils import filter_targets_role
+        announcements = filter_targets_role(
+            Announcement.objects.filter(is_published=True), "student"
         ).order_by("-created_at")[:3]
 
         return Response({
@@ -361,6 +413,8 @@ class StudentDashboardView(APIView):
                 "average_t2": safe_float(grades_t2) if grades_t2 is not None else None,
                 "average_t3": safe_float(grades_t3) if grades_t3 is not None else None,
                 "annual_average": safe_float(avg) if avg is not None else None,
+                "subject_averages": subject_averages,
+                "bilingual": bilingual,
                 "appreciation": get_appreciation(avg) if avg is not None else None,
                 "progression": (
                     round(safe_float(grades_t2) - safe_float(grades_t1), 2)

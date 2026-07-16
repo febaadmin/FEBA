@@ -29,6 +29,10 @@ urlpatterns = [
 ]
 
 if settings.DEBUG:
-    import debug_toolbar
-    urlpatterns += [path('__debug__/', include(debug_toolbar.urls))]
+    # debug_toolbar n'est présent que dans certains environnements de dev :
+    # ne l'importer que s'il est réellement installé (sinon DEBUG=True sans
+    # le paquet faisait planter TOUT le routage au démarrage).
+    if 'debug_toolbar' in settings.INSTALLED_APPS:
+        import debug_toolbar
+        urlpatterns += [path('__debug__/', include(debug_toolbar.urls))]
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

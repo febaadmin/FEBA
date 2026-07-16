@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Plus, Pencil, Trash2, Video, Users, CalendarClock, StopCircle } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { format } from "date-fns";
-import { fr } from "date-fns/locale";
+import { fr, enGB } from "date-fns/locale";
 import toast from "react-hot-toast";
 import { virtualAPI, classesAPI, subjectsAPI } from "../../api";
 import { useAuthStore } from "../../store/authStore";
@@ -12,6 +12,7 @@ import Modal from "../../components/ui/Modal";
 import ConfirmDialog from "../../components/ui/ConfirmDialog";
 import JitsiMeeting from "../../components/JitsiMeeting";
 import { extractApiError } from "../../utils/errors";
+import { t, getLang } from "../../i18n";
 
 const STATUS_STYLE = {
   scheduled: "bg-blue-50 text-blue-600",
@@ -93,17 +94,17 @@ export default function VirtualRooms() {
 
   const createMut = useMutation({
     mutationFn: (d) => virtualAPI.create(normalize(d)),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["virtual-rooms"] }); toast.success("Salle créée !"); closeModal(); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["virtual-rooms"] }); toast.success(t("Salle créée !")); closeModal(); },
     onError: (e) => toast.error(extractApiError(e)),
   });
   const updateMut = useMutation({
     mutationFn: ({ id, data }) => virtualAPI.update(id, normalize(data)),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["virtual-rooms"] }); toast.success("Salle modifiée !"); closeModal(); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["virtual-rooms"] }); toast.success(t("Salle modifiée !")); closeModal(); },
     onError: (e) => toast.error(extractApiError(e)),
   });
   const deleteMut = useMutation({
     mutationFn: virtualAPI.delete,
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["virtual-rooms"] }); toast.success("Salle supprimée."); setDeleteItem(null); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["virtual-rooms"] }); toast.success(t("Salle supprimée.")); setDeleteItem(null); },
     onError: (e) => toast.error(extractApiError(e)),
   });
   const joinMut = useMutation({
@@ -116,7 +117,7 @@ export default function VirtualRooms() {
   });
   const endMut = useMutation({
     mutationFn: virtualAPI.end,
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["virtual-rooms"] }); toast.success("Réunion clôturée."); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["virtual-rooms"] }); toast.success(t("Réunion clôturée.")); },
     onError: (e) => toast.error(extractApiError(e)),
   });
 
@@ -128,12 +129,11 @@ export default function VirtualRooms() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Salles virtuelles"
-        subtitle="Visioconférence intégrée (Jitsi Meet) — cours en ligne, réunions parents-professeurs…"
+        title={t("Salles virtuelles")}
+        subtitle={t("Visioconférence intégrée (Jitsi Meet) — cours en ligne, réunions parents-professeurs…")}
         action={canManage && (
           <button onClick={openCreate} className="btn-primary flex items-center gap-2">
-            <Plus className="w-4 h-4" />Nouvelle salle
-          </button>
+            <Plus className="w-4 h-4" />{t("Nouvelle salle")}</button>
         )}
       />
 
@@ -143,30 +143,25 @@ export default function VirtualRooms() {
         <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
           <Video className="w-5 h-5 mt-0.5 shrink-0 text-amber-600" />
           <div>
-            <p className="font-semibold">Mode démonstration (meet.jit.si) — appels limités à 5 minutes</p>
-            <p className="mt-0.5">
-              Pour des cours sans limite, sécurisés par jetons FEBA, démarrez l'instance
-              auto-hébergée fournie : <code className="bg-amber-100 px-1 rounded">make jitsi-up</code>,
-              puis renseignez <code className="bg-amber-100 px-1 rounded">JITSI_DOMAIN</code>,{" "}
-              <code className="bg-amber-100 px-1 rounded">JITSI_APP_ID</code> et{" "}
-              <code className="bg-amber-100 px-1 rounded">JITSI_APP_SECRET</code> côté backend
-              (guide d'installation §7.1 ; production : guide de déploiement §9).
-            </p>
+            <p className="font-semibold">{t("Mode démonstration (meet.jit.si) — appels limités à 5 minutes")}</p>
+            <p className="mt-0.5">{t("Pour des cours sans limite, sécurisés par jetons FEBA, démarrez l'instance auto-hébergée fournie :")} <code className="bg-amber-100 px-1 rounded">make jitsi-up</code>,
+              puis renseignez <code className="bg-amber-100 px-1 rounded">{t("JITSI_DOMAIN")}</code>,{" "}
+              <code className="bg-amber-100 px-1 rounded">{t("JITSI_APP_ID")}</code> et{" "}
+              <code className="bg-amber-100 px-1 rounded">{t("JITSI_APP_SECRET")}</code> {t("côté backend (guide d'installation §7.1 ; production : guide de déploiement §9).")}</p>
           </div>
         </div>
       )}
 
       <div className="card">
         {isLoading ? (
-          <div className="py-12 text-center text-slate-400">Chargement…</div>
+          <div className="py-12 text-center text-slate-400">{t("Chargement…")}</div>
         ) : sortedRooms.length === 0 ? (
           <div className="py-16 text-center text-slate-400">
             <Video className="w-12 h-12 mx-auto mb-3 opacity-30" />
-            <p className="font-medium">Aucune salle virtuelle</p>
+            <p className="font-medium">{t("Aucune salle virtuelle")}</p>
             <p className="text-sm mt-1">
               {canManage
-                ? "Créez une salle pour organiser un cours en ligne ou une réunion."
-                : "Aucune réunion n'est planifiée pour le moment."}
+                ? t("Créez une salle pour organiser un cours en ligne ou une réunion.") : t("Aucune réunion n'est planifiée pour le moment.")}
             </p>
           </div>
         ) : (
@@ -174,10 +169,10 @@ export default function VirtualRooms() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-slate-100">
-                  <th className="text-left py-3 px-4 font-semibold text-slate-500 text-xs uppercase tracking-wider">Salle</th>
-                  <th className="text-left py-3 px-4 font-semibold text-slate-500 text-xs uppercase tracking-wider">Classe / Matière</th>
-                  <th className="text-left py-3 px-4 font-semibold text-slate-500 text-xs uppercase tracking-wider">Planification</th>
-                  <th className="text-left py-3 px-4 font-semibold text-slate-500 text-xs uppercase tracking-wider">Statut</th>
+                  <th className="text-left py-3 px-4 font-semibold text-slate-500 text-xs uppercase tracking-wider">{t("Salle")}</th>
+                  <th className="text-left py-3 px-4 font-semibold text-slate-500 text-xs uppercase tracking-wider">{t("Classe / Matière")}</th>
+                  <th className="text-left py-3 px-4 font-semibold text-slate-500 text-xs uppercase tracking-wider">{t("Planification")}</th>
+                  <th className="text-left py-3 px-4 font-semibold text-slate-500 text-xs uppercase tracking-wider">{t("Statut")}</th>
                   <th className="py-3 px-4 w-48" />
                 </tr>
               </thead>
@@ -196,11 +191,11 @@ export default function VirtualRooms() {
                       {r.scheduled_at ? (
                         <span className="inline-flex items-center gap-1.5">
                           <CalendarClock className="w-3.5 h-3.5 text-slate-400" />
-                          {format(new Date(r.scheduled_at), "dd MMM yyyy HH:mm", { locale: fr })}
+                          {format(new Date(r.scheduled_at), "dd MMM yyyy HH:mm", { locale: getLang() === "en" ? enGB : fr })}
                           <span className="text-xs text-slate-400">· {r.duration_minutes} min</span>
                         </span>
                       ) : (
-                        <span className="text-slate-400">Permanente</span>
+                        <span className="text-slate-400">{t("Permanente")}</span>
                       )}
                     </td>
                     <td className="py-3 px-4">
@@ -216,13 +211,12 @@ export default function VirtualRooms() {
                             disabled={joinMut.isPending}
                             className="btn-primary flex items-center gap-1.5 !py-1.5 !px-3 text-xs"
                           >
-                            <Video className="w-3.5 h-3.5" />Rejoindre
-                          </button>
+                            <Video className="w-3.5 h-3.5" />{t("Rejoindre")}</button>
                         )}
                         {canManage && r.status === "live" && (
                           <button
                             onClick={() => endMut.mutate(r.id)}
-                            title="Clôturer la réunion"
+                            title={t("Clôturer la réunion")}
                             className="p-1.5 rounded-lg hover:bg-amber-50 text-slate-400 hover:text-amber-600"
                           >
                             <StopCircle className="w-4 h-4" />
@@ -254,27 +248,27 @@ export default function VirtualRooms() {
       </div>
 
       {canManage && (
-        <Modal open={modalOpen} onClose={closeModal} title={editItem ? "Modifier la salle" : "Nouvelle salle virtuelle"}>
+        <Modal open={modalOpen} onClose={closeModal} title={editItem ? t("Modifier la salle") : t("Nouvelle salle virtuelle")}>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             <div>
-              <label className="label">Nom de la salle*</label>
-              <input {...register("name", { required: true })} placeholder="ex: Cours de Mathématiques — 6ème A" className="input" />
-              {errors.name && <p className="text-danger text-xs mt-1">Requis</p>}
+              <label className="label">{t("Nom de la salle*")}</label>
+              <input {...register("name", { required: true })} placeholder={t("ex: Cours de Mathématiques — 6ème A")} className="input" />
+              {errors.name && <p className="text-danger text-xs mt-1">{t("Requis")}</p>}
             </div>
             <div>
-              <label className="label">Description</label>
-              <textarea {...register("description")} rows={2} className="input" placeholder="Ordre du jour, consignes…" />
+              <label className="label">{t("Description")}</label>
+              <textarea {...register("description")} rows={2} className="input" placeholder={t("Ordre du jour, consignes…")} />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="label">Classe</label>
+                <label className="label">{t("Classe")}</label>
                 <select {...register("class_obj")} className="input">
-                  <option value="">Toute l'école</option>
+                  <option value="">{t("Toute l'école")}</option>
                   {classes.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
               </div>
               <div>
-                <label className="label">Matière</label>
+                <label className="label">{t("Matière")}</label>
                 <select {...register("subject")} className="input">
                   <option value="">—</option>
                   {subjects.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
@@ -283,18 +277,18 @@ export default function VirtualRooms() {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="label">Date / heure (vide = permanente)</label>
+                <label className="label">{t("Date / heure (vide = permanente)")}</label>
                 <input {...register("scheduled_at")} type="datetime-local" className="input" />
               </div>
               <div>
-                <label className="label">Durée (minutes)</label>
+                <label className="label">{t("Durée (minutes)")}</label>
                 <input {...register("duration_minutes", { valueAsNumber: true })} type="number" min="5" className="input" />
               </div>
             </div>
             <div className="flex gap-3 justify-end pt-2">
-              <button type="button" onClick={closeModal} className="btn-secondary">Annuler</button>
+              <button type="button" onClick={closeModal} className="btn-secondary">{t("Annuler")}</button>
               <button type="submit" disabled={createMut.isPending || updateMut.isPending} className="btn-primary">
-                {(createMut.isPending || updateMut.isPending) ? "Enregistrement…" : "Enregistrer"}
+                {(createMut.isPending || updateMut.isPending) ? t("Enregistrement…") : t("Enregistrer")}
               </button>
             </div>
           </form>

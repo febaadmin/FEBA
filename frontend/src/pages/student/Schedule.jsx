@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { scheduleAPI } from "../../api";
 import PageHeader from "../../components/ui/PageHeader";
 import { Clock } from "lucide-react";
+import { t } from "../../i18n";
 
 const DAYS = ["Lundi","Mardi","Mercredi","Jeudi","Vendredi","Samedi"];
 
@@ -14,11 +15,11 @@ export default function StudentSchedule() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Mon Emploi du Temps" subtitle="Planning de la semaine" />
+      <PageHeader title={t("Mon Emploi du Temps")} subtitle={t("Planning de la semaine")} />
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {byDay.filter(d => d.items.length > 0).map(({ day, items }) => (
           <div key={day} className="card">
-            <p className="font-bold text-slate-800 mb-3">{day}</p>
+            <p className="font-bold text-slate-800 mb-3">{t(day)}</p>
             <div className="space-y-2">
               {items.sort((a,b) => a.start_time > b.start_time ? 1 : -1).map(item => (
                 <div key={item.id} className="flex items-center gap-2 p-2 bg-sky-50 rounded-xl">
@@ -32,7 +33,7 @@ export default function StudentSchedule() {
             </div>
           </div>
         ))}
-        {byDay.every(d => d.items.length === 0) && <div className="col-span-3 card text-center py-12 text-slate-400">Aucun créneau défini</div>}
+        {byDay.every(d => d.items.length === 0) && <div className="col-span-3 card text-center py-12 text-slate-400">{t("Aucun créneau défini")}</div>}
       </div>
     </div>
   );

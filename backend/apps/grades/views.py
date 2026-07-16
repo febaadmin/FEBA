@@ -208,12 +208,22 @@ class GradeViewSet(BulkDeleteMixin, viewsets.ModelViewSet):
 
         # Notification
         try:
-            from apps.notifications.utils import create_notification
+            from apps.notifications.utils import create_notification, notification_path
             if grade.student.user:
                 create_notification(
                     grade.student.user, "grade",
                     f"Nouvelle note en {grade.subject.name}: {grade.value}/20",
                     f"Période {grade.period} — {grade.subject.name}: {grade.value}/20",
+                    related_url=notification_path(grade.student.user, "grades"),
+                )
+            # FIX (notifications) : les parents ne recevaient jamais de
+            # notification de note — seul l'élève était notifié.
+            for ps in grade.student.parents.select_related("parent__user").all():
+                create_notification(
+                    ps.parent.user, "grade",
+                    f"Nouvelle note pour {grade.student.get_full_name()} en {grade.subject.name}: {grade.value}/20",
+                    f"Période {grade.period} — {grade.subject.name}: {grade.value}/20",
+                    related_url=notification_path(ps.parent.user, "grades"),
                 )
         except Exception as exc:
             logger.warning("Erreur non bloquante ignorée : %s", exc, exc_info=True)

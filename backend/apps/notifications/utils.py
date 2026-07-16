@@ -1,5 +1,40 @@
 import logging
 logger = logging.getLogger("apps")
+
+# FIX (redirections notifications) : chaque rôle a son propre espace de
+# routes côté frontend (/admin/..., /parent/..., /teacher/..., /student/...,
+# /superadmin/...). Un related_url généré sans préfixe de rôle (ex.
+# "/messages/5/") ne correspond à AUCUNE route déclarée : React Router le
+# fait tomber dans la route catch-all "*", perçue par l'utilisateur comme une
+# déconnexion ou un renvoi vers la page de connexion. Toute création de
+# notification doit donc passer par `notification_path(user, ...)` pour que
+# le chemin soit préfixé selon le rôle du DESTINATAIRE (pas de l'émetteur).
+ROLE_PREFIXES = {
+    "superadmin": "/superadmin",
+    "admin": "/admin",
+    "teacher": "/teacher",
+    "parent": "/parent",
+    "student": "/student",
+}
+
+
+def notification_path(user, path):
+    """Construit une URL frontend valide et propre au rôle du destinataire.
+
+    `path` est le segment relatif à l'espace de rôle, ex. "grades",
+    "attendance", "messages?conversation=5". Ne jamais construire de
+    related_url "en dur" ailleurs dans le code : toujours passer par cette
+    fonction pour garantir la cohérence des redirections.
+    """
+    prefix = ROLE_PREFIXES.get(getattr(user, "role", None), "")
+    if not prefix:
+        # Rôle inconnu/absent : pas d'URL de destination fiable — mieux vaut
+        # une notification non cliquable qu'une redirection erronée.
+        return ""
+    path = path.lstrip("/")
+    return f"{prefix}/{path}"
+
+
 def create_notification(user, notif_type, title, message, related_url=""):
     from apps.notifications.models import Notification
     notif = Notification.objects.create(

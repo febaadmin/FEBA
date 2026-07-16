@@ -19,6 +19,7 @@ import ConfirmDialog from "../../components/ui/ConfirmDialog";
 import DataTable from "../../components/ui/DataTable";
 import { Save, Plus, Trash2, Check, Calendar, DoorOpen, Pencil, Tag } from "lucide-react";
 import { extractApiError } from "../../utils/errors";
+import { t } from "../../i18n";
 
 /** Types statiques par défaut (toujours présents dans le dropdown). */
 const STATIC_ROOM_TYPES = [
@@ -77,12 +78,6 @@ export default function AdminSettings() {
   const rooms        = roomsData?.data?.results        || roomsData?.data        || [];
   const dynamicTypes = roomTypesData?.data?.results    || roomTypesData?.data    || [];
 
-  // Merge static + dynamic types for the room dropdown
-  const allRoomTypeOptions = [
-    ...STATIC_ROOM_TYPES,
-    ...dynamicTypes.map(dt => ({ value: `dynamic_${dt.id}`, label: dt.name, isDynamic: true, id: dt.id })),
-  ];
-
   // Combine rooms + class-based rooms
   const classRooms = classes.map(c => ({
     id: `class-${c.id}`, name: c.name, room_type: "classroom",
@@ -100,28 +95,28 @@ export default function AdminSettings() {
   // ── Mutations : École ──────────────────────────────────────────────────────
   const updateMut = useMutation({
     mutationFn: d => schoolsAPI.update(school.id, d),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["school"] }); toast.success("École mise à jour !"); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["school"] }); toast.success(t("École mise à jour !")); },
   });
 
   // ── Mutations : Matières ───────────────────────────────────────────────────
   const createSubjectMut = useMutation({
     mutationFn: subjectsAPI.create,
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["subjects-settings"] }); toast.success("Matière créée !"); setSubjectModal(false); rss(); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["subjects-settings"] }); toast.success(t("Matière créée !")); setSubjectModal(false); rss(); },
   });
   const updateSubjectMut = useMutation({
     mutationFn: ({ id, data }) => subjectsAPI.update(id, data),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["subjects-settings"] }); toast.success("Matière modifiée !"); setEditSubject(null); rsedit(); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["subjects-settings"] }); toast.success(t("Matière modifiée !")); setEditSubject(null); rsedit(); },
     onError: (e) => toast.error(extractApiError(e)),
   });
   const deleteSubjectMut = useMutation({
     mutationFn: subjectsAPI.delete,
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["subjects-settings"] }); toast.success("Supprimée."); setDeleteSubject(null); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["subjects-settings"] }); toast.success(t("Supprimée.")); setDeleteSubject(null); },
   });
 
   // ── Mutations : Années ─────────────────────────────────────────────────────
   const createYearMut = useMutation({
     mutationFn: schoolsAPI.createYear,
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["years"] }); toast.success("Année créée !"); setYearModal(false); rsy(); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["years"] }); toast.success(t("Année créée !")); setYearModal(false); rsy(); },
     onError: (e) => {
       const detail = e.response?.data?.detail || e.response?.data?.non_field_errors?.[0]
         || JSON.stringify(e.response?.data) || "Erreur lors de la création.";
@@ -130,14 +125,14 @@ export default function AdminSettings() {
   });
   const activateYearMut = useMutation({
     mutationFn: schoolsAPI.activateYear,
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["years"] }); toast.success("Année activée !"); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["years"] }); toast.success(t("Année activée !")); },
   });
   // BUG N°5 — CRUD complet : modification et suppression d'une année
   const updateYearMut = useMutation({
     mutationFn: ({ id, data }) => schoolsAPI.updateYear(id, data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["years"] });
-      toast.success("Année scolaire modifiée !");
+      toast.success(t("Année scolaire modifiée !"));
       setYearModal(false); setEditYear(null); rsy();
     },
     onError: (e) => toast.error(extractApiError(e)),
@@ -165,7 +160,7 @@ export default function AdminSettings() {
     mutationFn: schoolsAPI.createRoomType,
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["room-types"] });
-      toast.success("Type de salle créé !");
+      toast.success(t("Type de salle créé !"));
       setRoomTypeModal(false);
       rsrt();
     },
@@ -175,7 +170,7 @@ export default function AdminSettings() {
     mutationFn: ({ id, data }) => schoolsAPI.updateRoomType(id, data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["room-types"] });
-      toast.success("Type modifié !");
+      toast.success(t("Type modifié !"));
       setEditRoomType(null);
       rsrt();
     },
@@ -186,7 +181,7 @@ export default function AdminSettings() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["room-types"] });
       qc.invalidateQueries({ queryKey: ["rooms"] });
-      toast.success("Type supprimé.");
+      toast.success(t("Type supprimé."));
       setDeleteRoomType(null);
     },
   });
@@ -194,15 +189,15 @@ export default function AdminSettings() {
   // ── Mutations : Salles ─────────────────────────────────────────────────────
   const createRoomMut = useMutation({
     mutationFn: schoolsAPI.createRoom,
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["rooms"] }); toast.success("Salle créée !"); setRoomModal(false); setEditRoom(null); rsr({ room_type: "classroom", capacity: 30 }); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["rooms"] }); toast.success(t("Salle créée !")); setRoomModal(false); setEditRoom(null); rsr({ room_type: "classroom", capacity: 30 }); },
   });
   const updateRoomMut = useMutation({
     mutationFn: ({ id, data }) => schoolsAPI.updateRoom(id, data),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["rooms"] }); toast.success("Salle modifiée !"); setRoomModal(false); setEditRoom(null); rsr({ room_type: "classroom", capacity: 30 }); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["rooms"] }); toast.success(t("Salle modifiée !")); setRoomModal(false); setEditRoom(null); rsr({ room_type: "classroom", capacity: 30 }); },
   });
   const deleteRoomMut = useMutation({
     mutationFn: schoolsAPI.deleteRoom,
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["rooms"] }); toast.success("Supprimée."); setDeleteRoom(null); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["rooms"] }); toast.success(t("Supprimée.")); setDeleteRoom(null); },
   });
 
   // ── Helpers salles ─────────────────────────────────────────────────────────
@@ -253,51 +248,50 @@ export default function AdminSettings() {
 
   // ── Column defs ────────────────────────────────────────────────────────────
   const roomCols = [
-    { key: "name",     label: "Nom",      accessor: "name" },
-    { key: "type",     label: "Type",     render: r => r.display_type || r.room_type_label || r.room_type || "—" },
-    { key: "capacity", label: "Capacité", accessor: "capacity" },
+    { key: "name",     label: t("Nom"),      accessor: "name" },
+    { key: "type",     label: t("Type"),     render: r => t(r.display_type || r.room_type_label || r.room_type || "—") },
+    { key: "capacity", label: t("Capacité"), accessor: "capacity" },
     {
-      key: "status", label: "Statut",
+      key: "status", label: t("Statut"),
       render: r => (
         <span className={`badge ${r.is_active ? "bg-success-50 text-success" : "bg-slate-100 text-slate-500"}`}>
-          {r.is_active ? "Active" : "Inactive"}
+          {r.is_active ? t("Active") : t("Inactive")}
         </span>
       ),
     },
   ];
 
   const roomTypeCols = [
-    { key: "name", label: "Nom du type", accessor: "name" },
+    { key: "name", label: t("Nom du type"), accessor: "name" },
     {
-      key: "rooms_count", label: "Salles associées",
+      key: "rooms_count", label: t("Salles associées"),
       render: rt => {
         const count = rooms.filter(r => r.room_type_obj === rt.id).length;
-        return <span className="text-slate-500 text-xs">{count} salle(s)</span>;
+        return <span className="text-slate-500 text-xs">{count} {t("salle(s)")}</span>;
       },
     },
   ];
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Paramètres" subtitle="Configuration de l'établissement" />
+      <PageHeader title={t("Paramètres")} subtitle={t("Configuration de l'établissement")} />
 
       {/* École */}
       <div className="card">
-        <h3 className="font-semibold text-slate-800 mb-4">Informations de l'École</h3>
+        <h3 className="font-semibold text-slate-800 mb-4">{t("Informations de l'École")}</h3>
         <form onSubmit={handleSubmit(d => updateMut.mutate(d))} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
-            <div><label className="label">Nom*</label><input {...register("name", { required: true })} className="input" /></div>
-            <div><label className="label">Ville</label><input {...register("city")} className="input" /></div>
+            <div><label className="label">{t("Nom*")}</label><input {...register("name", { required: true })} className="input" /></div>
+            <div><label className="label">{t("Ville")}</label><input {...register("city")} className="input" /></div>
           </div>
-          <div><label className="label">Adresse</label><textarea {...register("address")} className="input" rows={2} /></div>
+          <div><label className="label">{t("Adresse")}</label><textarea {...register("address")} className="input" rows={2} /></div>
           <div className="grid grid-cols-2 gap-4">
-            <div><label className="label">Téléphone</label><input {...register("phone")} className="input" /></div>
-            <div><label className="label">Email</label><input {...register("email")} type="email" className="input" /></div>
+            <div><label className="label">{t("Téléphone")}</label><input {...register("phone")} className="input" /></div>
+            <div><label className="label">{t("Email")}</label><input {...register("email")} type="email" className="input" /></div>
           </div>
           <div className="flex justify-end">
             <button type="submit" disabled={updateMut.isPending} className="btn-primary flex items-center gap-2">
-              <Save className="w-4 h-4" />Enregistrer
-            </button>
+              <Save className="w-4 h-4" />{t("Enregistrer")}</button>
           </div>
         </form>
       </div>
@@ -310,14 +304,13 @@ export default function AdminSettings() {
             Types de salles personnalisés ({dynamicTypes.length})
           </h3>
           <button onClick={openCreateRoomType} className="btn-primary text-sm flex items-center gap-1">
-            <Plus className="w-4 h-4" />Nouveau type
-          </button>
+            <Plus className="w-4 h-4" />{t("Nouveau type")}</button>
         </div>
         {dynamicTypes.length === 0 ? (
           <div className="text-center py-8 text-slate-400 text-sm">
             <Tag className="w-8 h-8 mx-auto mb-2 opacity-30" />
-            <p>Aucun type personnalisé.</p>
-            <p className="text-xs mt-1">Créez des types comme "Salle de jeux", "Salle de couture", "Laboratoire"…</p>
+            <p>{t("Aucun type personnalisé.")}</p>
+            <p className="text-xs mt-1">{t("Créez des types comme \"Salle de jeux\", \"Salle de couture\", \"Laboratoire\"…")}</p>
           </div>
         ) : (
           <DataTable
@@ -345,8 +338,7 @@ export default function AdminSettings() {
             Salles physiques de l'École ({allRooms.length})
           </h3>
           <button onClick={openCreateRoom} className="btn-primary text-sm flex items-center gap-1">
-            <Plus className="w-4 h-4" />Nouvelle salle
-          </button>
+            <Plus className="w-4 h-4" />{t("Nouvelle salle")}</button>
         </div>
         <DataTable
           columns={roomCols}
@@ -360,7 +352,7 @@ export default function AdminSettings() {
                 <Trash2 className="w-4 h-4" />
               </button>
             </div>
-          ) : <span className="text-xs text-slate-400 italic">Salle de classe</span>}
+          ) : <span className="text-xs text-slate-400 italic">{t("Salle de classe")}</span>}
         />
       </div>
 
@@ -368,12 +360,10 @@ export default function AdminSettings() {
       <div className="card">
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-semibold text-slate-800 flex items-center gap-2">
-            <Calendar className="w-4 h-4" />Années Scolaires
-          </h3>
+            <Calendar className="w-4 h-4" />{t("Années Scolaires")}</h3>
           <button onClick={() => { setEditYear(null); rsy({ name: "", start_date: "", end_date: "" }); setYearModal(true); }}
             className="btn-primary text-sm flex items-center gap-1">
-            <Plus className="w-4 h-4" />Nouvelle année
-          </button>
+            <Plus className="w-4 h-4" />{t("Nouvelle année")}</button>
         </div>
         <div className="space-y-2">
           {years.map(y => (
@@ -390,16 +380,16 @@ export default function AdminSettings() {
                     rsy({ name: y.name, start_date: y.start_date, end_date: y.end_date });
                     setYearModal(true);
                   }}
-                  title="Modifier cette année"
+                  title={t("Modifier cette année")}
                   className="p-1.5 rounded-lg hover:bg-primary-50 text-slate-400 hover:text-primary">
                   <Pencil className="w-4 h-4" />
                 </button>
                 {/* BUG N°5 — Supprimer (interdit sur l'année active) */}
                 <button
                   onClick={() => y.is_current
-                    ? toast.error("L'année active ne peut pas être supprimée. Clôturez-la d'abord.")
+                    ? toast.error(t("L'année active ne peut pas être supprimée. Clôturez-la d'abord."))
                     : setDeleteYear(y)}
-                  title={y.is_current ? "Année active : suppression impossible" : "Supprimer cette année"}
+                  title={y.is_current ? t("Année active : suppression impossible") : t("Supprimer cette année")}
                   className={`p-1.5 rounded-lg ${y.is_current
                     ? "text-slate-200 cursor-not-allowed"
                     : "hover:bg-danger-50 text-slate-400 hover:text-danger"}`}>
@@ -408,13 +398,12 @@ export default function AdminSettings() {
                 {y.is_current ? (
                   <span className="flex items-center gap-2">
                     <span className="badge bg-success-50 text-success flex items-center gap-1">
-                      <Check className="w-3 h-3" />En cours
-                    </span>
-                    <button onClick={() => closeYearMut.mutate(y.id)} title="Clôturer cette année"
-                      className="btn-secondary text-xs py-1 px-2">Clôturer</button>
+                      <Check className="w-3 h-3" />{t("En cours")}</span>
+                    <button onClick={() => closeYearMut.mutate(y.id)} title={t("Clôturer cette année")}
+                      className="btn-secondary text-xs py-1 px-2">{t("Clôturer")}</button>
                   </span>
                 ) : (
-                  <button onClick={() => activateYearMut.mutate(y.id)} className="btn-secondary text-xs py-1 px-2">Activer</button>
+                  <button onClick={() => activateYearMut.mutate(y.id)} className="btn-secondary text-xs py-1 px-2">{t("Activer")}</button>
                 )}
               </div>
             </div>
@@ -425,10 +414,9 @@ export default function AdminSettings() {
       {/* Matières */}
       <div className="card">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="font-semibold text-slate-800">Matières ({subjects.length})</h3>
+          <h3 className="font-semibold text-slate-800">{t("Matières")} ({subjects.length})</h3>
           <button onClick={() => setSubjectModal(true)} className="btn-primary text-sm flex items-center gap-1">
-            <Plus className="w-4 h-4" />Ajouter
-          </button>
+            <Plus className="w-4 h-4" />{t("Ajouter")}</button>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
           {subjects.map(s => (
@@ -459,31 +447,27 @@ export default function AdminSettings() {
       <Modal
         open={roomTypeModal}
         onClose={() => { setRoomTypeModal(false); setEditRoomType(null); rsrt(); }}
-        title={editRoomType ? "Modifier le type de salle" : "Nouveau type de salle"}
+        title={editRoomType ? t("Modifier le type de salle") : t("Nouveau type de salle")}
         size="sm"
       >
         <form onSubmit={hsrt(submitRoomType)} className="space-y-4">
           <div>
-            <label className="label">Nom du type *</label>
+            <label className="label">{t("Nom du type *")}</label>
             <input
               {...rrt("name", { required: true })}
               className="input"
-              placeholder="Ex: Salle de jeux, Salle de couture, Laboratoire…"
+              placeholder={t("Ex: Salle de jeux, Salle de couture, Laboratoire…")}
             />
-            <p className="text-xs text-slate-400 mt-1">
-              Ce type sera disponible dans le menu déroulant lors de la création de salles.
-            </p>
+            <p className="text-xs text-slate-400 mt-1">{t("Ce type sera disponible dans le menu déroulant lors de la création de salles.")}</p>
           </div>
           <div className="flex gap-3 justify-end pt-2">
-            <button type="button" onClick={() => { setRoomTypeModal(false); setEditRoomType(null); rsrt(); }} className="btn-secondary">
-              Annuler
-            </button>
+            <button type="button" onClick={() => { setRoomTypeModal(false); setEditRoomType(null); rsrt(); }} className="btn-secondary">{t("Annuler")}</button>
             <button
               type="submit"
               disabled={createRoomTypeMut.isPending || updateRoomTypeMut.isPending}
               className="btn-primary"
             >
-              {editRoomType ? "Modifier" : "Créer"}
+              {editRoomType ? t("Modifier") : t("Créer")}
             </button>
           </div>
         </form>
@@ -493,24 +477,24 @@ export default function AdminSettings() {
       <Modal
         open={roomModal}
         onClose={() => { setRoomModal(false); setEditRoom(null); rsr({ room_type: "classroom", capacity: 30 }); }}
-        title={editRoom ? "Modifier la salle" : "Nouvelle salle"}
+        title={editRoom ? t("Modifier la salle") : t("Nouvelle salle")}
       >
         <form onSubmit={hsr(submitRoom)} className="space-y-4">
           <div>
-            <label className="label">Nom de la salle *</label>
-            <input {...rr("name", { required: true })} placeholder="ex: Salle Informatique A" className="input" />
+            <label className="label">{t("Nom de la salle *")}</label>
+            <input {...rr("name", { required: true })} placeholder={t("ex: Salle Informatique A")} className="input" />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="label">Type *</label>
+              <label className="label">{t("Type *")}</label>
               <select {...rr("room_type", { required: true })} className="input">
-                <optgroup label="Types standards">
-                  {STATIC_ROOM_TYPES.map(t => (
-                    <option key={t.value} value={t.value}>{t.label}</option>
+                <optgroup label={t("Types standards")}>
+                  {STATIC_ROOM_TYPES.map(rt => (
+                    <option key={rt.value} value={rt.value}>{t(rt.label)}</option>
                   ))}
                 </optgroup>
                 {dynamicTypes.length > 0 && (
-                  <optgroup label="Types personnalisés">
+                  <optgroup label={t("Types personnalisés")}>
                     {dynamicTypes.map(dt => (
                       <option key={`dynamic_${dt.id}`} value={`dynamic_${dt.id}`}>{dt.name}</option>
                     ))}
@@ -518,65 +502,63 @@ export default function AdminSettings() {
                 )}
               </select>
               {dynamicTypes.length === 0 && (
-                <p className="text-xs text-slate-400 mt-1">
-                  Aucun type personnalisé. Créez-en dans la section "Types de salles personnalisés" ci-dessus.
-                </p>
+                <p className="text-xs text-slate-400 mt-1">{t("Aucun type personnalisé. Créez-en dans la section \"Types de salles personnalisés\" ci-dessus.")}</p>
               )}
             </div>
             <div>
-              <label className="label">Capacité</label>
+              <label className="label">{t("Capacité")}</label>
               <input {...rr("capacity")} type="number" min="1" className="input" />
             </div>
           </div>
           <div>
-            <label className="label">Description</label>
+            <label className="label">{t("Description")}</label>
             <textarea {...rr("description")} className="input" rows={2} />
           </div>
           <div className="flex items-center gap-2">
             <input {...rr("is_active")} type="checkbox" id="ra" className="w-4 h-4 accent-primary" defaultChecked />
-            <label htmlFor="ra" className="text-sm font-medium text-slate-700">Salle active</label>
+            <label htmlFor="ra" className="text-sm font-medium text-slate-700">{t("Salle active")}</label>
           </div>
           <div className="flex gap-3 justify-end pt-2">
-            <button type="button" onClick={() => { setRoomModal(false); setEditRoom(null); }} className="btn-secondary">Annuler</button>
-            <button type="submit" disabled={createRoomMut.isPending || updateRoomMut.isPending} className="btn-primary">Enregistrer</button>
+            <button type="button" onClick={() => { setRoomModal(false); setEditRoom(null); }} className="btn-secondary">{t("Annuler")}</button>
+            <button type="submit" disabled={createRoomMut.isPending || updateRoomMut.isPending} className="btn-primary">{t("Enregistrer")}</button>
           </div>
         </form>
       </Modal>
 
       {/* ── Modal : Matière ───────────────────────────────────────────────── */}
-      <Modal open={subjectModal} onClose={() => { setSubjectModal(false); rss(); }} title="Nouvelle matière">
+      <Modal open={subjectModal} onClose={() => { setSubjectModal(false); rss(); }} title={t("Nouvelle matière")}>
         <form onSubmit={hss(d => createSubjectMut.mutate({ ...d, school: school?.id }))} className="space-y-4">
-          <div><label className="label">Nom *</label><input {...rs("name", { required: true })} className="input" /></div>
+          <div><label className="label">{t("Nom *")}</label><input {...rs("name", { required: true })} className="input" /></div>
           <div className="grid grid-cols-2 gap-4">
-            <div><label className="label">Code *</label><input {...rs("code", { required: true })} className="input" /></div>
-            <div><label className="label">Coefficient *</label><input {...rs("coefficient", { required: true })} type="number" min={1} max={10} className="input" /></div>
+            <div><label className="label">{t("Code *")}</label><input {...rs("code", { required: true })} className="input" /></div>
+            <div><label className="label">{t("Coefficient *")}</label><input {...rs("coefficient", { required: true })} type="number" min={1} max={10} className="input" /></div>
           </div>
           <div>
-            <label className="label">Catégorie de matière *</label>
+            <label className="label">{t("Catégorie de matière *")}</label>
             <select {...rs("language", { required: true })} className="input">
               <option value="fr">🇫🇷 Française (Moyenne FR)</option>
               <option value="en">🇬🇧 Anglaise (Moyenne EN)</option>
               <option value="bilingual">🌐 Bilingue (FR + EN)</option>
             </select>
-            <p className="text-xs text-slate-400 mt-1">Détermine dans quelle moyenne la matière est comptabilisée.</p>
+            <p className="text-xs text-slate-400 mt-1">{t("Détermine dans quelle moyenne la matière est comptabilisée.")}</p>
           </div>
           <div className="flex gap-3 justify-end">
-            <button type="button" onClick={() => { setSubjectModal(false); rss(); }} className="btn-secondary">Annuler</button>
-            <button type="submit" className="btn-primary">Créer</button>
+            <button type="button" onClick={() => { setSubjectModal(false); rss(); }} className="btn-secondary">{t("Annuler")}</button>
+            <button type="submit" className="btn-primary">{t("Créer")}</button>
           </div>
         </form>
       </Modal>
 
       {/* ── Modal : Modifier matière ──────────────────────────────────────── */}
-      <Modal open={!!editSubject} onClose={() => { setEditSubject(null); rsedit(); }} title="Modifier la matière">
+      <Modal open={!!editSubject} onClose={() => { setEditSubject(null); rsedit(); }} title={t("Modifier la matière")}>
         <form onSubmit={hsedit(d => updateSubjectMut.mutate({ id: editSubject.id, data: d }))} className="space-y-4">
-          <div><label className="label">Nom *</label><input {...redit("name", { required: true })} className="input" /></div>
+          <div><label className="label">{t("Nom *")}</label><input {...redit("name", { required: true })} className="input" /></div>
           <div className="grid grid-cols-2 gap-4">
-            <div><label className="label">Code</label><input {...redit("code")} className="input" /></div>
-            <div><label className="label">Coefficient</label><input {...redit("coefficient")} type="number" min="1" className="input" /></div>
+            <div><label className="label">{t("Code")}</label><input {...redit("code")} className="input" /></div>
+            <div><label className="label">{t("Coefficient")}</label><input {...redit("coefficient")} type="number" min="1" className="input" /></div>
           </div>
           <div>
-            <label className="label">Catégorie de matière *</label>
+            <label className="label">{t("Catégorie de matière *")}</label>
             <select {...redit("language", { required: true })} className="input">
               <option value="fr">🇫🇷 Française (Moyenne FR)</option>
               <option value="en">🇬🇧 Anglaise (Moyenne EN)</option>
@@ -584,8 +566,8 @@ export default function AdminSettings() {
             </select>
           </div>
           <div className="flex gap-3 justify-end pt-2">
-            <button type="button" onClick={() => { setEditSubject(null); rsedit(); }} className="btn-secondary">Annuler</button>
-            <button type="submit" disabled={updateSubjectMut.isPending} className="btn-primary">Modifier</button>
+            <button type="button" onClick={() => { setEditSubject(null); rsedit(); }} className="btn-secondary">{t("Annuler")}</button>
+            <button type="submit" disabled={updateSubjectMut.isPending} className="btn-primary">{t("Modifier")}</button>
           </div>
         </form>
       </Modal>
@@ -602,17 +584,17 @@ export default function AdminSettings() {
             : createYearMut.mutate({ ...d, school: school?.id }))}
           className="space-y-4"
         >
-          <div><label className="label">Nom *</label><input {...ry("name", { required: true })} placeholder="ex: 2025-2026" className="input" /></div>
+          <div><label className="label">{t("Nom *")}</label><input {...ry("name", { required: true })} placeholder="ex: 2025-2026" className="input" /></div>
           <div className="grid grid-cols-2 gap-4">
-            <div><label className="label">Début *</label><input {...ry("start_date", { required: true })} type="date" className="input" /></div>
-            <div><label className="label">Fin *</label><input {...ry("end_date", { required: true })} type="date" className="input" /></div>
+            <div><label className="label">{t("Début *")}</label><input {...ry("start_date", { required: true })} type="date" className="input" /></div>
+            <div><label className="label">{t("Fin *")}</label><input {...ry("end_date", { required: true })} type="date" className="input" /></div>
           </div>
           <div className="flex gap-3 justify-end">
-            <button type="button" onClick={() => { setYearModal(false); setEditYear(null); rsy(); }} className="btn-secondary">Annuler</button>
+            <button type="button" onClick={() => { setYearModal(false); setEditYear(null); rsy(); }} className="btn-secondary">{t("Annuler")}</button>
             <button type="submit" disabled={createYearMut.isPending || updateYearMut.isPending} className="btn-primary">
               {editYear
-                ? (updateYearMut.isPending ? "Modification…" : "Modifier")
-                : (createYearMut.isPending ? "Création…" : "Créer")}
+                ? (updateYearMut.isPending ? t("Modification…") : t("Modifier"))
+                : (createYearMut.isPending ? t("Création…") : t("Créer"))}
             </button>
           </div>
         </form>

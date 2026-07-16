@@ -15,6 +15,7 @@ import LoginPage from "../pages/LoginPage";
 import SuperAdminDashboard from "../pages/superadmin/Dashboard";
 import SuperAdminUsers from "../pages/superadmin/Users";
 import SuperAdminAdmins from "../pages/superadmin/Admins";
+import SuperAdminProfile from "../pages/superadmin/Profile";
 
 // Admin pages
 import AdminDashboard from "../pages/admin/Dashboard";
@@ -36,6 +37,7 @@ import AdminUsers from "../pages/admin/Users";
 import AdminLevels from "../pages/admin/Levels";
 import AdminBranding from "../pages/admin/Branding";
 import AdminEnrollments from "../pages/admin/Enrollments";
+import AdminProfile from "../pages/admin/Profile";
 
 // Teacher pages
 import TeacherDashboard from "../pages/teacher/Dashboard";
@@ -72,6 +74,7 @@ import StudentProfile from "../pages/student/Profile";
 // Shared pages
 import SharedAnnouncements from "../pages/shared/Announcements";
 import VirtualRooms from "../pages/shared/VirtualRooms";
+import NotFoundPage from "../pages/shared/NotFound";
 
 // ── Guard: vérifie l'authentification et le rôle ──────────────────────────
 function ProtectedRoute({ children, allowedRoles }) {
@@ -92,8 +95,15 @@ function ProtectedRoute({ children, allowedRoles }) {
   }
 
   if (!accessToken) return <Navigate to="/login" replace />;
+
+  // FIX (notifications / redirections) : un related_url mal formé (rôle
+  // erroné, ressource d'un autre espace) amenait ici. Renvoyer un
+  // utilisateur AUTHENTIFIÉ vers /login est trompeur : il n'est PAS
+  // déconnecté (son token reste valide), mais l'écran de connexion lui
+  // laisse croire le contraire. On le renvoie plutôt vers SON propre
+  // tableau de bord, qui reste accessible en un clic.
   if (allowedRoles && !allowedRoles.includes(user?.role))
-    return <Navigate to="/login" replace />;
+    return <RoleRedirect />;
   return children;
 }
 
@@ -108,6 +118,14 @@ function RoleRedirect() {
   if (role === "teacher")    return <Navigate to="/teacher/dashboard" replace />;
   if (role === "parent")     return <Navigate to="/parent/home" replace />;
   return <Navigate to="/student/home" replace />;
+}
+
+// ── URL inconnue : ne jamais faire croire à une déconnexion ──────────────
+function NotFoundOrLogin() {
+  const { accessToken, _hasHydrated } = useAuthStore();
+  if (!_hasHydrated) return null;
+  if (!accessToken) return <Navigate to="/login" replace />;
+  return <NotFoundPage />;
 }
 
 export default function AppRouter() {
@@ -143,6 +161,7 @@ export default function AppRouter() {
         <Route path="branding"      element={<AdminBranding />} />
         <Route path="enrollments"   element={<AdminEnrollments />} />
         <Route path="virtual"       element={<VirtualRooms />} />
+        <Route path="profile"       element={<SuperAdminProfile />} />
       </Route>
 
       {/* ── Admin ── */}
@@ -171,6 +190,7 @@ export default function AppRouter() {
         <Route path="branding"      element={<AdminBranding />} />
         <Route path="enrollments"   element={<AdminEnrollments />} />
         <Route path="virtual"       element={<VirtualRooms />} />
+        <Route path="profile"       element={<AdminProfile />} />
       </Route>
       <Route path="/teacher" element={
         <ProtectedRoute allowedRoles={["teacher"]}>
@@ -227,7 +247,12 @@ export default function AppRouter() {
         <Route path="virtual"       element={<VirtualRooms />} />
       </Route>
 
-      <Route path="*" element={<Navigate to="/login" replace />} />
+      {/* FIX (notifications / redirections) : une URL inconnue ne doit
+          jamais renvoyer un utilisateur authentifié vers /login (cela
+          ressemble à une déconnexion forcée). On affiche une page "introuvable"
+          avec un lien de retour ; seul un utilisateur non authentifié est
+          envoyé vers /login. */}
+      <Route path="*" element={<NotFoundOrLogin />} />
     </Routes>
   );
 }

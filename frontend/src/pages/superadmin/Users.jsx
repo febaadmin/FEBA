@@ -10,6 +10,7 @@ import Modal from "../../components/ui/Modal";
 import ConfirmDialog from "../../components/ui/ConfirmDialog";
 import StatusBadge from "../../components/ui/StatusBadge";
 import { extractApiError } from "../../utils/errors";
+import { t } from "../../i18n";
 
 const ROLE_OPTIONS = [
   { value: "superadmin", label: "Super Admin" },
@@ -44,16 +45,16 @@ export default function SuperAdminUsers() {
 
   const createMut = useMutation({
     mutationFn: authAPI.createUser,
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["all-users"] }); toast.success("Utilisateur créé!"); closeModal(); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["all-users"] }); toast.success(t("Utilisateur créé!")); closeModal(); },
     onError: (e) => toast.error(extractApiError(e)),
   });
   const updateMut = useMutation({
     mutationFn: ({ id, data }) => authAPI.updateUser(id, data),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["all-users"] }); toast.success("Modifié!"); closeModal(); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["all-users"] }); toast.success(t("Modifié!")); closeModal(); },
   });
   const deleteMut = useMutation({
     mutationFn: authAPI.deleteUser,
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["all-users"] }); toast.success("Supprimé."); setDeleteItem(null); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["all-users"] }); toast.success(t("Supprimé.")); setDeleteItem(null); },
   });
   const toggleMut = useMutation({
     mutationFn: authAPI.toggleActive,
@@ -88,24 +89,24 @@ export default function SuperAdminUsers() {
   };
 
   const cols = [
-    { key: "name",  label: "Nom",   accessor: "first_name", render: r => `${r.first_name} ${r.last_name}` },
-    { key: "email", label: "Email", accessor: "email" },
-    { key: "role",  label: "Rôle",  accessor: "role", render: r => roleBadge(r.role) },
-    { key: "level", label: "Niveau", accessor: "role_level", render: r => <span className="font-mono text-xs bg-slate-100 px-2 py-0.5 rounded">{r.role_level}</span> },
-    { key: "status", label: "Statut", accessor: "is_active", sortable: false, render: r => <StatusBadge status={r.is_active ? "active" : "inactive"} /> },
+    { key: "name",  label: t("Nom"),   accessor: "first_name", render: r => `${r.first_name} ${r.last_name}` },
+    { key: "email", label: t("Email"), accessor: "email" },
+    { key: "role",  label: t("Rôle"),  accessor: "role", render: r => roleBadge(r.role) },
+    { key: "level", label: t("Niveau"), accessor: "role_level", render: r => <span className="font-mono text-xs bg-slate-100 px-2 py-0.5 rounded">{r.role_level}</span> },
+    { key: "status", label: t("Statut"), accessor: "is_active", sortable: false, render: r => <StatusBadge status={r.is_active ? "active" : "inactive"} /> },
   ];
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Tous les utilisateurs" subtitle="Gestion complète — accès Super Admin"
-        action={<button onClick={openCreate} className="btn-primary flex items-center gap-2"><Plus className="w-4 h-4" />Nouvel utilisateur</button>} />
+      <PageHeader title={t("Tous les utilisateurs")} subtitle={t("Gestion complète — accès Super Admin")}
+        action={<button onClick={openCreate} className="btn-primary flex items-center gap-2"><Plus className="w-4 h-4" />{t("Nouvel utilisateur")}</button>} />
 
       {/* Role filter */}
       <div className="flex gap-2 flex-wrap">
-        {[{ value: "", label: "Tous" }, ...ROLE_OPTIONS].map(opt => (
+        {[{ value: "", label: t("Tous") }, ...ROLE_OPTIONS].map(opt => (
           <button key={opt.value} onClick={() => setRoleFilter(opt.value)}
             className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all ${roleFilter === opt.value ? "bg-primary text-white shadow-md" : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50"}`}>
-            {opt.label}
+            {t(opt.label)}
           </button>
         ))}
       </div>
@@ -113,7 +114,7 @@ export default function SuperAdminUsers() {
       <div className="card">
         <DataTable columns={cols} data={users} loading={isLoading} onRowClick={row => setViewItem(row)} actions={(row) => (
           <div className="flex items-center gap-1 justify-end">
-            <button onClick={() => toggleMut.mutate(row.id)} title={row.is_active ? "Désactiver" : "Activer"}
+            <button onClick={() => toggleMut.mutate(row.id)} title={row.is_active ? t("Désactiver") : t("Activer")}
               className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-700">
               {row.is_active ? <ToggleRight className="w-4 h-4 text-success" /> : <ToggleLeft className="w-4 h-4" />}
             </button>
@@ -123,39 +124,39 @@ export default function SuperAdminUsers() {
         )} />
       </div>
 
-      <Modal open={modalOpen} onClose={closeModal} title={editItem ? "Modifier l'utilisateur" : "Nouvel utilisateur"} size="md">
+      <Modal open={modalOpen} onClose={closeModal} title={editItem ? t("Modifier l'utilisateur") : t("Nouvel utilisateur")} size="md">
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
-            <div><label className="label">Prénom*</label><input {...register("first_name", { required: true })} className="input" />{errors.first_name && <p className="text-danger text-xs mt-1">Requis</p>}</div>
-            <div><label className="label">Nom*</label><input {...register("last_name", { required: true })} className="input" />{errors.last_name && <p className="text-danger text-xs mt-1">Requis</p>}</div>
+            <div><label className="label">{t("Prénom*")}</label><input {...register("first_name", { required: true })} className="input" />{errors.first_name && <p className="text-danger text-xs mt-1">{t("Requis")}</p>}</div>
+            <div><label className="label">{t("Nom*")}</label><input {...register("last_name", { required: true })} className="input" />{errors.last_name && <p className="text-danger text-xs mt-1">{t("Requis")}</p>}</div>
           </div>
-          <div><label className="label">Email*</label><input {...register("email", { required: true })} type="email" className="input" /></div>
-          <div><label className="label">Téléphone</label><input {...register("phone")} className="input" /></div>
-          <div><label className="label">Rôle*</label>
+          <div><label className="label">{t("Email*")}</label><input {...register("email", { required: true })} type="email" className="input" /></div>
+          <div><label className="label">{t("Téléphone")}</label><input {...register("phone")} className="input" /></div>
+          <div><label className="label">{t("Rôle*")}</label>
             <select {...register("role", { required: true })} className="input">
-              {ROLE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+              {ROLE_OPTIONS.map(o => <option key={o.value} value={o.value}>{t(o.label)}</option>)}
             </select>
           </div>
           {needsSchool && (
             <div>
-              <label className="label">Établissement*</label>
+              <label className="label">{t("Établissement*")}</label>
               <select {...register("school", { required: needsSchool })} className="input">
                 <option value="">-- Sélectionner un établissement --</option>
                 {schools.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
               </select>
-              {errors.school && <p className="text-danger text-xs mt-1">Un établissement est requis pour ce rôle</p>}
+              {errors.school && <p className="text-danger text-xs mt-1">{t("Un établissement est requis pour ce rôle")}</p>}
             </div>
           )}
           {!editItem && (
             <div className="grid grid-cols-2 gap-4">
-              <div><label className="label">Mot de passe*</label><div className="relative"><input {...register("password", { required: !editItem })} type={showPwd ? "text" : "password"} className="input pr-10" /><button type="button" onClick={() => setShowPwd(v => !v)} className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600">{showPwd ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}</button></div></div>
-              <div><label className="label">Confirmer*</label><div className="relative"><input {...register("password2", { required: !editItem })} type={showPwd2 ? "text" : "password"} className="input pr-10" /><button type="button" onClick={() => setShowPwd2(v => !v)} className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600">{showPwd2 ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}</button></div></div>
+              <div><label className="label">{t("Mot de passe*")}</label><div className="relative"><input {...register("password", { required: !editItem })} type={showPwd ? "text" : "password"} className="input pr-10" /><button type="button" onClick={() => setShowPwd(v => !v)} className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600">{showPwd ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}</button></div></div>
+              <div><label className="label">{t("Confirmer*")}</label><div className="relative"><input {...register("password2", { required: !editItem })} type={showPwd2 ? "text" : "password"} className="input pr-10" /><button type="button" onClick={() => setShowPwd2(v => !v)} className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600">{showPwd2 ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}</button></div></div>
             </div>
           )}
           <div className="flex gap-3 justify-end pt-2">
-            <button type="button" onClick={closeModal} className="btn-secondary">Annuler</button>
+            <button type="button" onClick={closeModal} className="btn-secondary">{t("Annuler")}</button>
             <button type="submit" disabled={createMut.isPending || updateMut.isPending} className="btn-primary">
-              {(createMut.isPending || updateMut.isPending) ? "Enregistrement..." : "Enregistrer"}
+              {(createMut.isPending || updateMut.isPending) ? t("Enregistrement...") : t("Enregistrer")}
             </button>
           </div>
         </form>
@@ -167,7 +168,7 @@ export default function SuperAdminUsers() {
           <div className="absolute inset-0 bg-black/40" onClick={() => setViewItem(null)} />
           <div className="relative bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 space-y-4">
             <div className="flex items-center justify-between">
-              <h2 className="font-bold text-slate-800 text-lg">Détail utilisateur</h2>
+              <h2 className="font-bold text-slate-800 text-lg">{t("Détail utilisateur")}</h2>
               <button onClick={() => setViewItem(null)} className="text-slate-400 hover:text-slate-600 text-2xl leading-none">×</button>
             </div>
             <div className="flex items-center gap-4">
@@ -184,10 +185,10 @@ export default function SuperAdminUsers() {
               </div>
             </div>
             <div className="space-y-2 text-sm">
-              <div className="flex justify-between py-2 border-b border-slate-50"><span className="text-slate-500">Rôle</span><span className="font-medium capitalize">{viewItem.role}</span></div>
-              <div className="flex justify-between py-2 border-b border-slate-50"><span className="text-slate-500">Téléphone</span><span>{viewItem.phone || "—"}</span></div>
-              <div className="flex justify-between py-2 border-b border-slate-50"><span className="text-slate-500">Statut</span><span className={viewItem.is_active ? "text-success font-medium" : "text-danger font-medium"}>{viewItem.is_active ? "Actif" : "Inactif"}</span></div>
-              <div className="flex justify-between py-2"><span className="text-slate-500">Créé le</span><span>{viewItem.created_at?.slice(0,10)}</span></div>
+              <div className="flex justify-between py-2 border-b border-slate-50"><span className="text-slate-500">{t("Rôle")}</span><span className="font-medium capitalize">{viewItem.role}</span></div>
+              <div className="flex justify-between py-2 border-b border-slate-50"><span className="text-slate-500">{t("Téléphone")}</span><span>{viewItem.phone || "—"}</span></div>
+              <div className="flex justify-between py-2 border-b border-slate-50"><span className="text-slate-500">{t("Statut")}</span><span className={viewItem.is_active ? "text-success font-medium" : "text-danger font-medium"}>{viewItem.is_active ? t("Actif") : t("Inactif")}</span></div>
+              <div className="flex justify-between py-2"><span className="text-slate-500">{t("Créé le")}</span><span>{viewItem.created_at?.slice(0,10)}</span></div>
             </div>
           </div>
         </div>

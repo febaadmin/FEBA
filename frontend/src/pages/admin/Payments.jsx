@@ -11,9 +11,10 @@ import ConfirmDialog from "../../components/ui/ConfirmDialog";
 import StatCard from "../../components/ui/StatCard";
 import SearchableSelect from "../../components/ui/SearchableSelect";
 import { extractApiError } from "../../utils/errors";
+import { t, dateLocale } from "../../i18n";
 
 function exportCSV(rows, filename) {
-  if (!rows.length) { toast.error("Aucune donnée à exporter."); return; }
+  if (!rows.length) { toast.error(t("Aucune donnée à exporter.")); return; }
   const headers = Object.keys(rows[0]);
   const lines = [headers.join(";"), ...rows.map(r => headers.map(h => `"${String(r[h] ?? "").replace(/"/g, '""')}"`).join(";"))];
   const blob = new Blob(["\uFEFF" + lines.join("\n")], { type: "text/csv;charset=utf-8;" });
@@ -64,39 +65,39 @@ export default function AdminPayments() {
 
   const cancelMut = useMutation({
     mutationFn: ({ id, justification }) => paymentsAPI.cancel(id, justification),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["payments"] }); toast.success("Paiement annulé."); setViewItem(null); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["payments"] }); toast.success(t("Paiement annulé.")); setViewItem(null); },
     onError: (e) => toast.error(extractApiError(e)),
   });
   const createMut = useMutation({
     mutationFn: paymentsAPI.create,
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["payments"] }); qc.invalidateQueries({ queryKey: ["payments-summary"] }); toast.success("Paiement enregistré!"); closeModal(); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["payments"] }); qc.invalidateQueries({ queryKey: ["payments-summary"] }); toast.success(t("Paiement enregistré!")); closeModal(); },
     onError: (e) => toast.error(extractApiError(e)),
   });
   const deleteMut = useMutation({
     mutationFn: paymentsAPI.delete,
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["payments"] }); qc.invalidateQueries({ queryKey: ["payments-summary"] }); qc.invalidateQueries({ queryKey: ["payments-deleted"] });
-      toast.success("Supprimé."); setDeleteItem(null); setViewItem(null);
+      toast.success(t("Supprimé.")); setDeleteItem(null); setViewItem(null);
     },
   });
   const receiptMut = useMutation({
     mutationFn: (id) => paymentsAPI.generateReceipt(id),
     onSuccess: (data) => {
       const url = data?.data?.receipt_url || data?.data?.receipt_file;
-      if (url) { toast.success("Reçu généré !"); window.open(url, "_blank", "noopener,noreferrer"); }
-      else toast.success("Reçu généré !");
+      if (url) { toast.success(t("Reçu généré !")); window.open(url, "_blank", "noopener,noreferrer"); }
+      else toast.success(t("Reçu généré !"));
       qc.invalidateQueries({ queryKey: ["payments"] });
     },
     onError: (e) => toast.error(extractApiError(e)),
   });
   const restoreMut = useMutation({
     mutationFn: paymentsAPI.restore,
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["payments"] }); qc.invalidateQueries({ queryKey: ["payments-summary"] }); qc.invalidateQueries({ queryKey: ["payments-deleted"] }); toast.success("Restauré !"); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["payments"] }); qc.invalidateQueries({ queryKey: ["payments-summary"] }); qc.invalidateQueries({ queryKey: ["payments-deleted"] }); toast.success(t("Restauré !")); },
     onError: (e) => toast.error(extractApiError(e)),
   });
   const bulkDeleteMut = useMutation({
     mutationFn: (ids) => paymentsAPI.bulkDelete(ids),
-    onSuccess: (d) => { qc.invalidateQueries({ queryKey: ["payments"] }); qc.invalidateQueries({ queryKey: ["payments-summary"] }); toast.success(`${d?.data?.deleted || ""} élément(s) supprimé(s).`); },
+    onSuccess: (d) => { qc.invalidateQueries({ queryKey: ["payments"] }); qc.invalidateQueries({ queryKey: ["payments-summary"] }); toast.success(t("{n} élément(s) supprimé(s).", { n: d?.data?.deleted || "" })); },
     onError: (e) => toast.error(extractApiError(e)),
   });
 
@@ -114,7 +115,7 @@ export default function AdminPayments() {
       "Mode":          p.payment_method_label || p.payment_method || "",
       "Date":          p.payment_date || "",
       "Reçu par":      p.received_by_name || "",
-      "Statut":        p.is_confirmed ? "Confirmé" : "Annulé",
+      "Statut":        p.is_confirmed ? t("Confirmé") : t("Annulé"),
       "Année":         p.school_year_name || "",
       "Notes":         p.notes || "",
     }));
@@ -123,48 +124,45 @@ export default function AdminPayments() {
   };
 
   const cols = [
-    { key: "ref",    label: "Référence",  accessor: "reference_number" },
-    { key: "student",label: "Élève",      accessor: "student_name" },
-    { key: "class",  label: "Classe",     accessor: "student_class" },
-    { key: "type",   label: "Type",       accessor: "payment_type_label" },
-    { key: "amount", label: "Montant",    render: r => <span className="font-bold text-success">{Number(r.amount).toLocaleString()} FCFA</span> },
-    { key: "method", label: "Mode",       accessor: "payment_method_label" },
-    { key: "date",   label: "Date",       accessor: "payment_date" },
-    { key: "status", label: "Statut",     render: r => r.is_confirmed
-      ? <span className="text-xs text-success font-medium bg-success/10 px-2 py-0.5 rounded-full">Confirmé</span>
-      : <span className="text-xs text-danger font-medium bg-danger/10 px-2 py-0.5 rounded-full">Annulé</span> },
+    { key: "ref",    label: t("Référence"),  accessor: "reference_number" },
+    { key: "student",label: t("Élève"),      accessor: "student_name" },
+    { key: "class",  label: t("Classe"),     accessor: "student_class" },
+    { key: "type",   label: t("Type"),       render: r => t(r.payment_type_label || r.payment_type || "—") },
+    { key: "amount", label: t("Montant"),    render: r => <span className="font-bold text-success">{Number(r.amount).toLocaleString()} FCFA</span> },
+    { key: "method", label: t("Mode"),       render: r => t(r.payment_method_label || r.payment_method || "—") },
+    { key: "date",   label: t("Date"),       accessor: "payment_date" },
+    { key: "status", label: t("Statut"),     render: r => r.is_confirmed
+      ? <span className="text-xs text-success font-medium bg-success/10 px-2 py-0.5 rounded-full">{t("Confirmé")}</span>
+      : <span className="text-xs text-danger font-medium bg-danger/10 px-2 py-0.5 rounded-full">{t("Annulé")}</span> },
   ];
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Paiements" subtitle="Gestion des frais scolaires"
+      <PageHeader title={t("Paiements")} subtitle={t("Gestion des frais scolaires")}
         action={
           <div className="flex gap-2 flex-wrap justify-end">
             <button onClick={exportPayments} className="btn-secondary flex items-center gap-2 text-sm">
-              <FileSpreadsheet className="w-4 h-4" />Export Excel
-            </button>
+              <FileSpreadsheet className="w-4 h-4" />{t("Export Excel")}</button>
             <button onClick={() => setShowDeleted(true)}
               className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium bg-danger/10 text-danger hover:bg-danger/20 transition-all">
-              <Eye className="w-4 h-4" />Voir supprimés
-            </button>
+              <Eye className="w-4 h-4" />{t("Voir supprimés")}</button>
             <button onClick={() => setModalOpen(true)} className="btn-primary flex items-center gap-2">
-              <Plus className="w-4 h-4" />Nouveau paiement
-            </button>
+              <Plus className="w-4 h-4" />{t("Nouveau paiement")}</button>
           </div>
         } />
 
       <div className="flex items-center gap-3">
-        <label className="text-sm font-semibold text-slate-600">Année :</label>
+        <label className="text-sm font-semibold text-slate-600">{t("Année :")}</label>
         <select value={filterYear} onChange={e => setFilterYear(e.target.value)} className="input w-auto text-sm">
-          <option value="">— Actuelle ({currentYear?.name || "—"}) —</option>
+          <option value="">— {t("Actuelle")} ({currentYear?.name || "—"}) —</option>
           {years.map(y => <option key={y.id} value={y.id}>{y.name}{y.is_current ? " ✓" : ""}</option>)}
         </select>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <StatCard title="Total encaissé"  value={`${Number(summary.total || 0).toLocaleString()} FCFA`}  icon={DollarSign} color="success" />
-        <StatCard title="Inscriptions"    value={`${Number(summary.by_type?.inscription || 0).toLocaleString()} FCFA`} icon={TrendingUp} color="primary" />
-        <StatCard title="Mensualités"     value={`${Number(summary.by_type?.mensualite  || 0).toLocaleString()} FCFA`} icon={TrendingUp} color="secondary" />
+        <StatCard title={t("Total encaissé")}  value={`${Number(summary.total || 0).toLocaleString()} FCFA`}  icon={DollarSign} color="success" />
+        <StatCard title={t("Inscriptions")}    value={`${Number(summary.by_type?.inscription || 0).toLocaleString()} FCFA`} icon={TrendingUp} color="primary" />
+        <StatCard title={t("Mensualités")}     value={`${Number(summary.by_type?.mensualite  || 0).toLocaleString()} FCFA`} icon={TrendingUp} color="secondary" />
       </div>
 
       <div className="card overflow-x-auto">
@@ -178,7 +176,7 @@ export default function AdminPayments() {
           bulkDeletePending={bulkDeleteMut.isPending}
           actions={row => (
             <div className="flex items-center gap-1 justify-end">
-              <button onClick={(e) => { e.stopPropagation(); receiptMut.mutate(row.id); }} title="Générer reçu"
+              <button onClick={(e) => { e.stopPropagation(); receiptMut.mutate(row.id); }} title={t("Générer reçu")}
                 className="p-1.5 rounded-lg hover:bg-green-50 text-slate-400 hover:text-success">
                 <Receipt className="w-4 h-4" />
               </button>
@@ -197,7 +195,7 @@ export default function AdminPayments() {
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setViewItem(null)} />
           <div className="relative bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 space-y-4 z-10 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between">
-              <h2 className="font-bold text-slate-800 text-lg">Détail du paiement</h2>
+              <h2 className="font-bold text-slate-800 text-lg">{t("Détail du paiement")}</h2>
               <button onClick={() => setViewItem(null)} className="text-slate-400 hover:text-slate-600 text-2xl leading-none">×</button>
             </div>
             <div className="space-y-0 text-sm divide-y divide-slate-100">
@@ -205,12 +203,12 @@ export default function AdminPayments() {
                 ["Référence", <span key="ref" className="font-bold text-slate-800">{viewItem.reference_number}</span>],
                 ["Élève",     viewItem.student_name],
                 ["Classe",    viewItem.student_class],
-                ["Type",      viewItem.payment_type_label],
+                ["Type",      t(viewItem.payment_type_label || "")],
                 ["Montant",   <span key="amount" className="font-bold text-success">{Number(viewItem.amount).toLocaleString()} FCFA</span>],
-                ["Mode",      viewItem.payment_method_label],
+                ["Mode",      t(viewItem.payment_method_label || "")],
                 ["Date",      viewItem.payment_date],
                 ["Reçu par",  viewItem.received_by_name],
-                ["Statut",    <span key="status" className={viewItem.is_confirmed ? "text-success font-medium" : "text-danger font-medium"}>{viewItem.is_confirmed ? "Confirmé" : "Annulé"}</span>],
+                ["Statut",    <span key="status" className={viewItem.is_confirmed ? "text-success font-medium" : "text-danger font-medium"}>{viewItem.is_confirmed ? t("Confirmé") : t("Annulé")}</span>],
               ].map(([label, val]) => (
                 <div key={label} className="flex justify-between py-2">
                   <span className="text-slate-500">{label}</span><span>{val}</span>
@@ -221,12 +219,12 @@ export default function AdminPayments() {
             {/* Historique */}
             {paymentHistory.length > 0 && (
               <div>
-                <p className="text-xs font-semibold text-slate-500 mb-2">Historique</p>
+                <p className="text-xs font-semibold text-slate-500 mb-2">{t("Historique")}</p>
                 <div className="space-y-1">
                   {paymentHistory.slice(0, 5).map((h, i) => (
                     <div key={i} className="text-xs bg-slate-50 rounded-lg px-3 py-1.5 flex justify-between">
                       <span className="text-slate-600">{h.action || h.changed_by_name}</span>
-                      <span className="text-slate-400">{h.changed_at ? new Date(h.changed_at).toLocaleDateString("fr-FR") : ""}</span>
+                      <span className="text-slate-400">{h.changed_at ? new Date(h.changed_at).toLocaleDateString(dateLocale()) : ""}</span>
                     </div>
                   ))}
                 </div>
@@ -236,16 +234,13 @@ export default function AdminPayments() {
               {viewItem.receipt_file && (
                 <a href={viewItem.receipt_file} target="_blank" rel="noreferrer"
                   className="btn-secondary flex items-center gap-1 text-sm flex-1 justify-center">
-                  <Receipt className="w-4 h-4" />Voir le reçu
-                </a>
+                  <Receipt className="w-4 h-4" />{t("Voir le reçu")}</a>
               )}
               {viewItem.is_confirmed && (
                 <button onClick={() => {
                   const justification = prompt("Raison de l'annulation (obligatoire):");
                   if (justification) cancelMut.mutate({ id: viewItem.id, justification });
-                }} className="btn-secondary text-danger border-danger text-sm flex-1">
-                  Annuler
-                </button>
+                }} className="btn-secondary text-danger border-danger text-sm flex-1">{t("Annuler")}</button>
               )}
               <button onClick={() => setDeleteItem(viewItem)}
                 className="p-2 rounded-xl hover:bg-danger-50 text-slate-400 hover:text-danger">
@@ -262,13 +257,13 @@ export default function AdminPayments() {
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowDeleted(false)} />
           <div className="relative bg-white rounded-2xl shadow-2xl max-w-3xl w-full p-6 z-10 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="font-bold text-slate-800 text-lg">Paiements supprimés</h2>
+              <h2 className="font-bold text-slate-800 text-lg">{t("Paiements supprimés")}</h2>
               <button onClick={() => setShowDeleted(false)} className="text-slate-400 text-2xl leading-none">×</button>
             </div>
             {deletedLoading ? (
-              <div className="text-center py-8 text-slate-400">Chargement…</div>
+              <div className="text-center py-8 text-slate-400">{t("Chargement…")}</div>
             ) : deletedPayments.length === 0 ? (
-              <div className="text-center py-8 text-slate-400">Aucun paiement supprimé.</div>
+              <div className="text-center py-8 text-slate-400">{t("Aucun paiement supprimé.")}</div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
@@ -284,14 +279,13 @@ export default function AdminPayments() {
                       <tr key={p.id} className="hover:bg-slate-50">
                         <td className="px-3 py-2 font-mono text-xs">{p.reference_number}</td>
                         <td className="px-3 py-2">{p.student_name}</td>
-                        <td className="px-3 py-2">{p.payment_type_label}</td>
+                        <td className="px-3 py-2">{t(p.payment_type_label)}</td>
                         <td className="px-3 py-2 font-bold text-slate-600">{Number(p.amount).toLocaleString()} FCFA</td>
                         <td className="px-3 py-2 text-slate-500">{p.payment_date}</td>
                         <td className="px-3 py-2">
                           <button onClick={() => restoreMut.mutate(p.id)}
                             className="flex items-center gap-1 text-xs text-success hover:underline">
-                            <RotateCcw className="w-3 h-3" />Restaurer
-                          </button>
+                            <RotateCcw className="w-3 h-3" />{t("Restaurer")}</button>
                         </td>
                       </tr>
                     ))}
@@ -304,60 +298,60 @@ export default function AdminPayments() {
       )}
 
       {/* Create modal */}
-      <Modal open={modalOpen} onClose={closeModal} title="Nouveau paiement" size="md">
+      <Modal open={modalOpen} onClose={closeModal} title={t("Nouveau paiement")} size="md">
         <form onSubmit={handleSubmit(d => createMut.mutate(d))} className="space-y-4">
           <div>
-            <label className="label">Élève *</label>
+            <label className="label">{t("Élève *")}</label>
             <Controller name="student" control={control} rules={{ required: true }}
               render={({ field }) => (
                 <SearchableSelect options={studentOptions} value={field.value} onChange={field.onChange}
-                  placeholder="Rechercher un élève…" />
+                  placeholder={t("Rechercher un élève…")} />
               )} />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="label">Type *</label>
+              <label className="label">{t("Type *")}</label>
               <select {...register("payment_type", { required: true })} className="input">
                 <option value="">— Choisir —</option>
-                <option value="inscription">Inscription</option>
-                <option value="mensualite">Mensualité</option>
-                <option value="cantine">Cantine</option>
-                <option value="transport">Transport</option>
-                <option value="autre">Autre</option>
+                <option value="inscription">{t("Inscription")}</option>
+                <option value="mensualite">{t("Mensualité")}</option>
+                <option value="cantine">{t("Cantine")}</option>
+                <option value="transport">{t("Transport")}</option>
+                <option value="autre">{t("Autre")}</option>
               </select>
             </div>
             <div>
-              <label className="label">Mode *</label>
+              <label className="label">{t("Mode *")}</label>
               <select {...register("payment_method")} className="input">
-                <option value="cash">Espèces</option>
-                <option value="mobile_money">Mobile Money</option>
-                <option value="bank_transfer">Virement</option>
-                <option value="check">Chèque</option>
+                <option value="cash">{t("Espèces")}</option>
+                <option value="mobile_money">{t("Mobile Money")}</option>
+                <option value="bank_transfer">{t("Virement")}</option>
+                <option value="check">{t("Chèque")}</option>
               </select>
             </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="label">Montant (FCFA) *</label>
+              <label className="label">{t("Montant (FCFA) *")}</label>
               <input {...register("amount", { required: true, min: 1 })} type="number" className="input" placeholder="0" />
             </div>
             <div>
-              <label className="label">Date *</label>
+              <label className="label">{t("Date *")}</label>
               <input {...register("payment_date", { required: true })} type="date" className="input" />
             </div>
           </div>
           <div>
-            <label className="label">Mois concerné</label>
+            <label className="label">{t("Mois concerné")}</label>
             <input {...register("month_concerned")} type="month" className="input" />
           </div>
           <div>
-            <label className="label">Notes</label>
+            <label className="label">{t("Notes")}</label>
             <textarea {...register("notes")} className="input" rows={2} />
           </div>
           <div className="flex gap-3 justify-end pt-2">
-            <button type="button" onClick={closeModal} className="btn-secondary">Annuler</button>
+            <button type="button" onClick={closeModal} className="btn-secondary">{t("Annuler")}</button>
             <button type="submit" disabled={createMut.isPending} className="btn-primary">
-              {createMut.isPending ? "Enregistrement…" : "Enregistrer"}
+              {createMut.isPending ? t("Enregistrement…") : t("Enregistrer")}
             </button>
           </div>
         </form>

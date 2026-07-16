@@ -7,6 +7,7 @@ import PageHeader from "../../components/ui/PageHeader";
 import AvatarUpload from "../../components/ui/AvatarUpload";
 import { Save, Lock, Eye, EyeOff, BookOpen, AlertCircle, ClipboardList } from "lucide-react";
 import { extractApiError } from "../../utils/errors";
+import { t } from "../../i18n";
 
 export default function StudentProfile() {
   const qc = useQueryClient();
@@ -58,7 +59,7 @@ export default function StudentProfile() {
 
   const pwdMut = useMutation({
     mutationFn: authAPI.changePassword,
-    onSuccess: () => { toast.success("Mot de passe changé !"); resetPwd(); },
+    onSuccess: () => { toast.success(t("Mot de passe changé !")); resetPwd(); },
     onError: (e) => toast.error(extractApiError(e)),
   });
 
@@ -66,7 +67,7 @@ export default function StudentProfile() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Mon Profil" subtitle={`Année scolaire ${currentYear?.name || "en cours"}`} />
+      <PageHeader title={t("Mon Profil")} subtitle={t("Année scolaire {y}", { y: currentYear?.name || "" })} />
 
       {/* Avatar card */}
       <div className="card flex flex-col items-center gap-3 py-6">
@@ -74,7 +75,7 @@ export default function StudentProfile() {
         <div className="text-center">
           <p className="font-bold text-slate-800 text-xl">{user?.first_name} {user?.last_name}</p>
           <p className="text-sm text-slate-500 mt-0.5">{user?.email}</p>
-          <span className="mt-2 inline-block text-xs bg-sky-50 text-sky-700 px-3 py-0.5 rounded-full font-medium">Élève</span>
+          <span className="mt-2 inline-block text-xs bg-sky-50 text-sky-700 px-3 py-0.5 rounded-full font-medium">{t("Élève")}</span>
         </div>
       </div>
 
@@ -84,18 +85,18 @@ export default function StudentProfile() {
           <div className="card text-center py-4">
             <ClipboardList className="w-6 h-6 mx-auto mb-2 text-blue-500" />
             <p className="text-2xl font-bold text-slate-800">{grades.length}</p>
-            <p className="text-xs text-slate-500 mt-0.5">Notes cette année</p>
-            {avgGrade && <p className="text-sm font-semibold text-blue-600 mt-1">Moy. {avgGrade}/20</p>}
+            <p className="text-xs text-slate-500 mt-0.5">{t("Notes cette année")}</p>
+            {avgGrade && <p className="text-sm font-semibold text-blue-600 mt-1">{t("Moy.")} {avgGrade}/20</p>}
           </div>
           <div className="card text-center py-4">
             <AlertCircle className="w-6 h-6 mx-auto mb-2 text-amber-500" />
             <p className="text-2xl font-bold text-slate-800">{absences.length}</p>
-            <p className="text-xs text-slate-500 mt-0.5">Absences / retards</p>
+            <p className="text-xs text-slate-500 mt-0.5">{t("Absences / retards")}</p>
           </div>
           <div className="card text-center py-4">
             <BookOpen className="w-6 h-6 mx-auto mb-2 text-green-500" />
             <p className="text-2xl font-bold text-slate-800">{homework.length}</p>
-            <p className="text-xs text-slate-500 mt-0.5">Devoirs assignés</p>
+            <p className="text-xs text-slate-500 mt-0.5">{t("Devoirs assignés")}</p>
           </div>
         </div>
       )}
@@ -103,7 +104,7 @@ export default function StudentProfile() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Account info */}
         <div className="card">
-          <h3 className="font-semibold text-slate-800 mb-4">Compte utilisateur</h3>
+          <h3 className="font-semibold text-slate-800 mb-4">{t("Compte utilisateur")}</h3>
           <dl className="space-y-3 text-sm">
             {[
               ["Prénom", user?.first_name],
@@ -124,16 +125,16 @@ export default function StudentProfile() {
         {/* Student-specific info */}
         {student && (
           <div className="card">
-            <h3 className="font-semibold text-slate-800 mb-4">Dossier scolaire</h3>
+            <h3 className="font-semibold text-slate-800 mb-4">{t("Dossier scolaire")}</h3>
             <dl className="space-y-3 text-sm">
               {[
                 ["Matricule", student.matricule],
                 ["Classe", student.class_name || student.current_class?.name || "—"],
                 ["Année scolaire", currentYear?.name || "—"],
                 ["Date de naissance", student.date_of_birth || "—"],
-                ["Genre", student.gender === "M" ? "Masculin" : student.gender === "F" ? "Féminin" : "—"],
+                ["Genre", student.gender === "M" ? "Masculin" : student.gender === "F" ? t("Féminin") : "—"],
                 ["Adresse", student.address || "—"],
-                ["Statut", student.is_active ? "Actif" : "Inactif"],
+                ["Statut", student.is_active ? t("Actif") : t("Inactif")],
                 ["Inscrit le", student.enrollment_date || "—"],
               ].map(([label, val]) => (
                 <div key={label} className="flex justify-between py-2 border-b border-slate-50 last:border-0">
@@ -148,14 +149,13 @@ export default function StudentProfile() {
         {/* Change password */}
         <div className="card">
           <h3 className="font-semibold text-slate-800 mb-4 flex items-center gap-2">
-            <Lock className="w-4 h-4" />Changer le mot de passe
-          </h3>
+            <Lock className="w-4 h-4" />{t("Changer le mot de passe")}</h3>
           <form onSubmit={hsPwd(d => pwdMut.mutate(d))} className="space-y-4">
-            <div><label className="label">Mot de passe actuel</label><div className="relative"><input {...regPwd("old_password", { required: true })} type={showOldPwd ? "text" : "password"} className="input pr-10" /><button type="button" onClick={() => setShowOldPwd(v => !v)} className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600">{showOldPwd ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}</button></div></div>
-            <div><label className="label">Nouveau mot de passe</label><div className="relative"><input {...regPwd("new_password", { required: true, minLength: 8 })} type={showNewPwd ? "text" : "password"} className="input pr-10" /><button type="button" onClick={() => setShowNewPwd(v => !v)} className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600">{showNewPwd ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}</button></div></div>
-            <div><label className="label">Confirmer</label><div className="relative"><input {...regPwd("confirm_password", { required: true })} type={showConfirmPwd ? "text" : "password"} className="input pr-10" /><button type="button" onClick={() => setShowConfirmPwd(v => !v)} className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600">{showConfirmPwd ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}</button></div></div>
+            <div><label className="label">{t("Mot de passe actuel")}</label><div className="relative"><input {...regPwd("old_password", { required: true })} type={showOldPwd ? "text" : "password"} className="input pr-10" /><button type="button" onClick={() => setShowOldPwd(v => !v)} className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600">{showOldPwd ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}</button></div></div>
+            <div><label className="label">{t("Nouveau mot de passe")}</label><div className="relative"><input {...regPwd("new_password", { required: true, minLength: 8 })} type={showNewPwd ? "text" : "password"} className="input pr-10" /><button type="button" onClick={() => setShowNewPwd(v => !v)} className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600">{showNewPwd ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}</button></div></div>
+            <div><label className="label">{t("Confirmer")}</label><div className="relative"><input {...regPwd("confirm_password", { required: true })} type={showConfirmPwd ? "text" : "password"} className="input pr-10" /><button type="button" onClick={() => setShowConfirmPwd(v => !v)} className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600">{showConfirmPwd ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}</button></div></div>
             <button type="submit" disabled={pwdMut.isPending} className="btn-primary flex items-center gap-2">
-              <Save className="w-4 h-4" />{pwdMut.isPending ? "Enregistrement…" : "Changer le mot de passe"}
+              <Save className="w-4 h-4" />{pwdMut.isPending ? t("Enregistrement…") : t("Changer le mot de passe")}
             </button>
           </form>
         </div>

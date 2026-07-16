@@ -10,6 +10,7 @@ import Modal from "../../components/ui/Modal";
 import ConfirmDialog from "../../components/ui/ConfirmDialog";
 import StatusBadge from "../../components/ui/StatusBadge";
 import { extractApiError } from "../../utils/errors";
+import { t } from "../../i18n";
 
 export default function SuperAdminAdmins() {
   const qc = useQueryClient();
@@ -30,16 +31,16 @@ export default function SuperAdminAdmins() {
 
   const createMut = useMutation({
     mutationFn: (d) => authAPI.createUser({ ...d, role: "admin" }),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["admins"] }); toast.success("Administrateur créé!"); closeModal(); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["admins"] }); toast.success(t("Administrateur créé!")); closeModal(); },
     onError: (e) => toast.error(extractApiError(e)),
   });
   const updateMut = useMutation({
     mutationFn: ({ id, data }) => authAPI.updateUser(id, data),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["admins"] }); toast.success("Modifié!"); closeModal(); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["admins"] }); toast.success(t("Modifié!")); closeModal(); },
   });
   const deleteMut = useMutation({
     mutationFn: authAPI.deleteUser,
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["admins"] }); toast.success("Supprimé."); setDeleteItem(null); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["admins"] }); toast.success(t("Supprimé.")); setDeleteItem(null); },
   });
   const toggleMut = useMutation({
     mutationFn: authAPI.toggleActive,
@@ -57,17 +58,17 @@ export default function SuperAdminAdmins() {
   };
 
   const cols = [
-    { key: "name",  label: "Nom",   accessor: "first_name", render: r => `${r.first_name} ${r.last_name}` },
-    { key: "email", label: "Email", accessor: "email" },
-    { key: "phone", label: "Tél",   accessor: "phone" },
-    { key: "status", label: "Statut", accessor: "is_active", sortable: false, render: r => <StatusBadge status={r.is_active ? "active" : "inactive"} /> },
-    { key: "date",  label: "Créé le", accessor: "created_at", render: r => r.created_at?.slice(0,10) },
+    { key: "name",  label: t("Nom"),   accessor: "first_name", render: r => `${r.first_name} ${r.last_name}` },
+    { key: "email", label: t("Email"), accessor: "email" },
+    { key: "phone", label: t("Tél"),   accessor: "phone" },
+    { key: "status", label: t("Statut"), accessor: "is_active", sortable: false, render: r => <StatusBadge status={r.is_active ? "active" : "inactive"} /> },
+    { key: "date",  label: t("Créé le"), accessor: "created_at", render: r => r.created_at?.slice(0,10) },
   ];
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Gestion des Administrateurs" subtitle="Seul le Super Admin peut gérer les admins"
-        action={<button onClick={openCreate} className="btn-primary flex items-center gap-2"><Plus className="w-4 h-4" />Nouvel admin</button>} />
+      <PageHeader title={t("Gestion des Administrateurs")} subtitle={t("Seul le Super Admin peut gérer les admins")}
+        action={<button onClick={openCreate} className="btn-primary flex items-center gap-2"><Plus className="w-4 h-4" />{t("Nouvel admin")}</button>} />
 
       <div className="card">
         <DataTable columns={cols} data={admins} loading={isLoading} actions={(row) => (
@@ -81,16 +82,16 @@ export default function SuperAdminAdmins() {
         )} />
       </div>
 
-      <Modal open={modalOpen} onClose={closeModal} title={editItem ? "Modifier l'admin" : "Nouvel administrateur"} size="md">
+      <Modal open={modalOpen} onClose={closeModal} title={editItem ? t("Modifier l'admin") : t("Nouvel administrateur")} size="md">
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
-            <div><label className="label">Prénom*</label><input {...register("first_name", { required: true })} className="input" /></div>
-            <div><label className="label">Nom*</label><input {...register("last_name", { required: true })} className="input" /></div>
+            <div><label className="label">{t("Prénom*")}</label><input {...register("first_name", { required: true })} className="input" /></div>
+            <div><label className="label">{t("Nom*")}</label><input {...register("last_name", { required: true })} className="input" /></div>
           </div>
-          <div><label className="label">Email*</label><input {...register("email", { required: true })} type="email" className="input" /></div>
-          <div><label className="label">Téléphone</label><input {...register("phone")} className="input" /></div>
+          <div><label className="label">{t("Email*")}</label><input {...register("email", { required: true })} type="email" className="input" /></div>
+          <div><label className="label">{t("Téléphone")}</label><input {...register("phone")} className="input" /></div>
           <div>
-            <label className="label">Établissement*</label>
+            <label className="label">{t("Établissement*")}</label>
             <select {...register("school", { required: true })} className="input">
               <option value="">-- Sélectionner un établissement --</option>
               {schools.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
@@ -98,14 +99,14 @@ export default function SuperAdminAdmins() {
           </div>
           {!editItem && (
             <div className="grid grid-cols-2 gap-4">
-              <div><label className="label">Mot de passe*</label><div className="relative"><input {...register("password", { required: true })} type={showPwd ? "text" : "password"} className="input pr-10" /><button type="button" onClick={() => setShowPwd(v => !v)} className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600">{showPwd ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}</button></div></div>
-              <div><label className="label">Confirmer*</label><div className="relative"><input {...register("password2", { required: true })} type={showPwd2 ? "text" : "password"} className="input pr-10" /><button type="button" onClick={() => setShowPwd2(v => !v)} className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600">{showPwd2 ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}</button></div></div>
+              <div><label className="label">{t("Mot de passe*")}</label><div className="relative"><input {...register("password", { required: true })} type={showPwd ? "text" : "password"} className="input pr-10" /><button type="button" onClick={() => setShowPwd(v => !v)} className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600">{showPwd ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}</button></div></div>
+              <div><label className="label">{t("Confirmer*")}</label><div className="relative"><input {...register("password2", { required: true })} type={showPwd2 ? "text" : "password"} className="input pr-10" /><button type="button" onClick={() => setShowPwd2(v => !v)} className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600">{showPwd2 ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}</button></div></div>
             </div>
           )}
           <div className="flex gap-3 justify-end pt-2">
-            <button type="button" onClick={closeModal} className="btn-secondary">Annuler</button>
+            <button type="button" onClick={closeModal} className="btn-secondary">{t("Annuler")}</button>
             <button type="submit" disabled={createMut.isPending || updateMut.isPending} className="btn-primary">
-              {(createMut.isPending || updateMut.isPending) ? "Enregistrement..." : "Enregistrer"}
+              {(createMut.isPending || updateMut.isPending) ? t("Enregistrement...") : t("Enregistrer")}
             </button>
           </div>
         </form>

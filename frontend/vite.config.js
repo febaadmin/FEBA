@@ -10,9 +10,12 @@ export default defineConfig({
   server: {
     port: 5173,
     proxy: {
-      "/api": { target: "http://backend-dev:8000", changeOrigin: true },
-      "/media": { target: "http://backend-dev:8000", changeOrigin: true },
-      "/ws": { target: "ws://backend-dev:8000", ws: true },
+      // BACKEND_ORIGIN permet de lancer le frontend hors Docker
+      // (ex: BACKEND_ORIGIN=http://localhost:8000 npm run dev).
+      // Défaut : hostname du service backend dans le réseau docker-compose.
+      "/api": { target: process.env.BACKEND_ORIGIN || "http://backend-dev:8000", changeOrigin: true },
+      "/media": { target: process.env.BACKEND_ORIGIN || "http://backend-dev:8000", changeOrigin: true },
+      "/ws": { target: (process.env.BACKEND_ORIGIN || "http://backend-dev:8000").replace(/^http/, "ws"), ws: true },
     },
   },
 });

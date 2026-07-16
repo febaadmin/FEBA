@@ -15,3 +15,7 @@ dump.rdb
 # Environnement de test local jetable (créé pour exécuter la suite sans postgres)
 backend/.venv-test/
 .venv-test/
+
+# Artefacts d'exécution locale
+backend/db_dev.sqlite3
+backend/celerybeat-schedule

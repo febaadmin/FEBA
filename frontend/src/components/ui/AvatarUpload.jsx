@@ -10,6 +10,7 @@ import { Camera, Trash2, User } from "lucide-react";
 import { avatarAPI, authAPI } from "../../api";
 import { resolveMediaUrl } from "../../utils/media";
 import toast from "react-hot-toast";
+import { t } from "../../i18n";
 
 export default function AvatarUpload({ user, onUpdate, size = "lg" }) {
   const qc = useQueryClient();
@@ -23,17 +24,17 @@ export default function AvatarUpload({ user, onUpdate, size = "lg" }) {
   const uploadMut = useMutation({
     mutationFn: (file) => avatarAPI.upload(file),
     onSuccess: (res) => {
-      toast.success("Photo mise à jour !");
+      toast.success(t("Photo mise à jour !"));
       qc.invalidateQueries({ queryKey: ["me"] });
       onUpdate?.(res.data);
     },
-    onError: () => toast.error("Erreur lors de l'upload"),
+    onError: () => toast.error(t("Erreur lors de l'upload")),
   });
 
   const deleteMut = useMutation({
     mutationFn: avatarAPI.delete,
     onSuccess: (res) => {
-      toast.success("Photo supprimée");
+      toast.success(t("Photo supprimée"));
       qc.invalidateQueries({ queryKey: ["me"] });
       onUpdate?.(res.data);
     },
@@ -43,7 +44,7 @@ export default function AvatarUpload({ user, onUpdate, size = "lg" }) {
   const handleFile = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 5 * 1024 * 1024) { toast.error("Fichier trop grand (max 5 MB)"); return; }
+    if (file.size > 5 * 1024 * 1024) { toast.error(t("Fichier trop grand (max 5 MB)")); return; }
     uploadMut.mutate(file);
     e.target.value = "";
   };
@@ -89,8 +90,7 @@ export default function AvatarUpload({ user, onUpdate, size = "lg" }) {
             onClick={() => deleteMut.mutate()}
             className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-danger/10 text-danger rounded-xl hover:bg-danger/20 transition-colors"
           >
-            <Trash2 className="w-3.5 h-3.5" />Supprimer
-          </button>
+            <Trash2 className="w-3.5 h-3.5" />{t("Supprimer")}</button>
         )}
       </div>
     </div>

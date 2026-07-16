@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Megaphone, Paperclip, ChevronDown, ChevronUp, Search } from "lucide-react";
 import { announcementsAPI } from "../../api";
 import PageHeader from "../../components/ui/PageHeader";
+import { t, dateLocale } from "../../i18n";
 
 export default function SharedAnnouncements() {
   const [search, setSearch] = useState("");
@@ -20,15 +21,15 @@ export default function SharedAnnouncements() {
     a.content?.toLowerCase().includes(search.toLowerCase())
   );
 
-  const formatDate = d => new Date(d).toLocaleDateString("fr-FR", { day: "2-digit", month: "long", year: "numeric" });
+  const formatDate = d => new Date(d).toLocaleDateString(dateLocale(), { day: "2-digit", month: "long", year: "numeric" });
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Annonces" subtitle={`${announcements.length} annonce(s)`} />
+      <PageHeader title={t("Annonces")} subtitle={t("{n} annonce(s)", { n: announcements.length })} />
       <div className="card flex items-center gap-3">
         <Search className="w-4 h-4 text-slate-400 shrink-0" />
         <input value={search} onChange={e => setSearch(e.target.value)}
-          placeholder="Rechercher une annonce…"
+          placeholder={t("Rechercher une annonce…")}
           className="flex-1 bg-transparent outline-none text-sm text-slate-700 placeholder:text-slate-400" />
       </div>
       {isLoading ? (
@@ -36,7 +37,7 @@ export default function SharedAnnouncements() {
       ) : announcements.length === 0 ? (
         <div className="card text-center py-16">
           <Megaphone className="w-12 h-12 text-slate-200 mx-auto mb-3" />
-          <p className="text-slate-400 font-medium">Aucune annonce disponible</p>
+          <p className="text-slate-400 font-medium">{t("Aucune annonce disponible")}</p>
         </div>
       ) : (
         <div className="space-y-3">
@@ -54,7 +55,7 @@ export default function SharedAnnouncements() {
                       {expanded === a.id ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
                     </div>
                   </div>
-                  <p className="text-sm text-slate-500 mt-0.5">Par {a.author_name || "Administration"}</p>
+                  <p className="text-sm text-slate-500 mt-0.5">{t("Par")} {a.author_name || "Administration"}</p>
                   {expanded !== a.id && <p className="text-sm text-slate-600 mt-1 line-clamp-2">{a.content}</p>}
                 </div>
               </button>

@@ -6,6 +6,7 @@ import { dashboardAPI, announcementsAPI } from "../../api";
 import StatCard from "../../components/ui/StatCard";
 import PageHeader from "../../components/ui/PageHeader";
 import AnnouncementModal from "../../components/ui/AnnouncementModal";
+import { t } from "../../i18n";
 
 const MONTHS = ["Jan","Fév","Mar","Avr","Mai","Jun","Jul","Aoû","Sep","Oct","Nov","Déc"];
 
@@ -16,7 +17,7 @@ export default function AdminDashboard() {
   const d = data?.data;
   const announcements = annData?.data?.results || annData?.data || [];
 
-  const chartData = (d?.monthly_revenue || []).map(m => ({ month: MONTHS[m.month-1], montant: m.amount }));
+  const chartData = (d?.monthly_revenue || []).map(m => ({ month: t(MONTHS[m.month-1]), montant: m.amount }));
 
   if (isLoading) return (
     <div className="space-y-6">
@@ -28,41 +29,40 @@ export default function AdminDashboard() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Tableau de bord" subtitle="Vue d'ensemble de l'établissement" />
+      <PageHeader title={t("Tableau de bord")} subtitle={t("Vue d'ensemble de l'établissement")} />
 
       {/* Active year badge */}
       {d?.active_year && (
         <div className="flex items-center gap-2 px-4 py-2 bg-blue-50 border border-blue-200 rounded-xl w-fit">
           <span className="w-2 h-2 rounded-full bg-green-500 inline-block" />
-          <span className="text-sm font-medium text-blue-800">
-            Année scolaire active : <strong>{d.active_year.name}</strong>
+          <span className="text-sm font-medium text-blue-800">{t("Année scolaire active :")} <strong>{d.active_year.name}</strong>
           </span>
-          <span className="text-xs text-blue-500 ml-1">— statistiques filtrées sur cette année</span>
+          <span className="text-xs text-blue-500 ml-1">— {t("statistiques filtrées sur cette année")}</span>
         </div>
       )}
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard title="Élèves actifs"    value={kpis.total_students ?? 0}  icon={GraduationCap} color="primary"   delay={0} />
-        <StatCard title="Enseignants"      value={kpis.total_teachers ?? 0}  icon={Users}         color="secondary" delay={0.1} />
-        <StatCard title="Classes"          value={kpis.total_classes ?? 0}   icon={BookOpen}      color="accent"    delay={0.2} />
-        <StatCard title="Revenus du mois"  value={`${(kpis.monthly_revenue ?? 0).toLocaleString()} FCFA`} icon={DollarSign} color="success" delay={0.3} />
+        <StatCard title={t("Élèves actifs")}    value={kpis.total_students ?? 0}  icon={GraduationCap} color="primary"   delay={0} />
+        <StatCard title={t("Enseignants")}      value={kpis.total_teachers ?? 0}  icon={Users}         color="secondary" delay={0.1} />
+        <StatCard title={t("Classes")}          value={kpis.total_classes ?? 0}   icon={BookOpen}      color="accent"    delay={0.2} />
+        <StatCard title={t("Revenus du mois")}  value={`${(kpis.monthly_revenue ?? 0).toLocaleString()} FCFA`} icon={DollarSign} color="success" delay={0.3} />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="card">
-          <h3 className="font-semibold text-slate-800 mb-4">Revenus mensuels (FCFA)</h3>
+          <h3 className="font-semibold text-slate-800 mb-4">{t("Revenus mensuels (FCFA)")}</h3>
           <ResponsiveContainer width="100%" height={220}>
             <BarChart data={chartData}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
               <XAxis dataKey="month" tick={{ fontSize: 11 }} />
               <YAxis tick={{ fontSize: 11 }} tickFormatter={v => `${(v/1000).toFixed(0)}k`} />
-              <Tooltip formatter={v => [`${v.toLocaleString()} FCFA`, "Montant"]} />
+              <Tooltip formatter={v => [`${v.toLocaleString()} FCFA`, t("Montant")]} />
               <Bar dataKey="montant" fill="#6366F1" radius={[6,6,0,0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
         <div className="card">
-          <h3 className="font-semibold text-slate-800 mb-4">Évolution des revenus</h3>
+          <h3 className="font-semibold text-slate-800 mb-4">{t("Évolution des revenus")}</h3>
           <ResponsiveContainer width="100%" height={220}>
             <LineChart data={chartData}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
@@ -77,25 +77,24 @@ export default function AdminDashboard() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="card">
-          <h3 className="font-semibold text-slate-800 mb-4">Derniers paiements</h3>
+          <h3 className="font-semibold text-slate-800 mb-4">{t("Derniers paiements")}</h3>
           <div className="space-y-3">
             {(d?.recent_payments || []).map((p, i) => (
               <div key={i} className="flex items-center justify-between py-2 border-b border-slate-50 last:border-0">
                 <div>
                   <p className="text-sm font-medium text-slate-800">{p.student}</p>
-                  <p className="text-xs text-slate-400">{p.type} • {p.date} • {p.reference_number}</p>
+                  <p className="text-xs text-slate-400">{t(p.type)} • {p.date} • {p.reference_number}</p>
                 </div>
                 <span className="text-sm font-bold text-success">{p.amount?.toLocaleString()} FCFA</span>
               </div>
             ))}
-            {(d?.recent_payments || []).length === 0 && <p className="text-sm text-slate-400 text-center py-4">Aucun paiement</p>}
+            {(d?.recent_payments || []).length === 0 && <p className="text-sm text-slate-400 text-center py-4">{t("Aucun paiement")}</p>}
           </div>
         </div>
 
         <div className="card">
           <h3 className="font-semibold text-slate-800 mb-4 flex items-center gap-2">
-            <Megaphone className="w-4 h-4 text-primary" />Annonces actives
-          </h3>
+            <Megaphone className="w-4 h-4 text-primary" />{t("Annonces actives")}</h3>
           <div className="space-y-2">
             {announcements.slice(0,4).map(a => (
               <div key={a.id} onClick={() => setSelectedAnn(a)}
@@ -107,7 +106,7 @@ export default function AdminDashboard() {
                 </div>
               </div>
             ))}
-            {announcements.length === 0 && <p className="text-sm text-slate-400 text-center py-4">Aucune annonce</p>}
+            {announcements.length === 0 && <p className="text-sm text-slate-400 text-center py-4">{t("Aucune annonce")}</p>}
           </div>
         </div>
       </div>

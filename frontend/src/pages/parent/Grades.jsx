@@ -12,6 +12,7 @@ import { gradesAPI, parentsAPI, schoolsAPI } from "../../api";
 import PageHeader from "../../components/ui/PageHeader";
 import DataTable from "../../components/ui/DataTable";
 import { TrendingUp, BookOpen, Globe } from "lucide-react";
+import { t } from "../../i18n";
 
 /* ── Carte moyenne ──────────────────────────────────────────────────────────── */
 function AvgCard({ label, value, icon: Icon, color }) {
@@ -29,9 +30,11 @@ function AvgCard({ label, value, icon: Icon, color }) {
       <div className={`${c.badge} p-2 rounded-xl`}><Icon className={`w-5 h-5 ${c.text}`} /></div>
       <div>
         <p className="text-xs font-medium text-slate-500">{label}</p>
-        <p className={`text-2xl font-extrabold ${num == null ? "text-slate-300" : noteClr}`}>
-          {num != null ? `${num.toFixed(2)}/20` : "—"}
-        </p>
+        {num != null ? (
+          <p className={`text-2xl font-extrabold ${noteClr}`}>{num.toFixed(2)}/20</p>
+        ) : (
+          <p className="text-sm font-medium text-slate-400 mt-1">{t("Aucune note")}</p>
+        )}
       </div>
     </div>
   );
@@ -39,28 +42,42 @@ function AvgCard({ label, value, icon: Icon, color }) {
 
 /* ── Bloc moyennes d'un enfant ────────────────────────────────────────────── */
 function ChildAverages({ child, period, schoolYearId }) {
+  // "Toutes périodes" (period === "") doit se comporter comme "Annuel" côté
+  // API : on envoie donc toujours une période explicite. Voir FIX dans
+  // Grade.calculate_average (backend) qui applique la même règle.
+  const effectivePeriod = period || "annual";
+
   const { data: avgData } = useQuery({
-    queryKey: ["parent-avg", child.id, period || "all", schoolYearId],
-    queryFn: () => gradesAPI.averages({ student: child.id, period: period || undefined, school_year: schoolYearId }),
+    queryKey: ["parent-avg", child.id, effectivePeriod, schoolYearId],
+    queryFn: () => gradesAPI.averages({ student: child.id, period: effectivePeriod, school_year: schoolYearId }),
     enabled: !!child.id && !!schoolYearId,
   });
   const { data: biData } = useQuery({
-    queryKey: ["parent-bilingual", child.id, period || "all", schoolYearId],
-    queryFn: () => gradesAPI.bilingual({ student: child.id, period: period || undefined, school_year: schoolYearId }),
+    queryKey: ["parent-bilingual", child.id, effectivePeriod, schoolYearId],
+    queryFn: () => gradesAPI.bilingual({ student: child.id, period: effectivePeriod, school_year: schoolYearId }),
     enabled: !!child.id && !!schoolYearId,
   });
 
+  // FIX : le backend renvoie `average` (pas `overall_average`), et
+  // `fr_average` / `en_average` (pas `french_average` / `english_average`) —
+  // voir Student/Admin Grades.jsx qui utilisent déjà ces noms corrects.
   const avg = avgData?.data;
-  const bi  = biData?.data;
+
+  // FIX : /api/grades/bilingual/ renvoie une forme différente selon la
+  // période demandée :
+  //  - période précise (T1/T2/T3)  → objet plat {fr_average, en_average, bilingual_average, ...}
+  //  - "annual" (aucune période)   → objet imbriqué {T1, T2, T3, annual: {fr_average, en_average, bilingual_average}}
+  const biRaw = biData?.data;
+  const bi = effectivePeriod === "annual" ? biRaw?.annual : biRaw;
 
   return (
     <div>
       <p className="text-xs font-bold text-slate-500 mb-2 uppercase tracking-wide">{child.first_name} {child.last_name}</p>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <AvgCard label="Moy. Générale"  value={avg?.overall_average}  icon={TrendingUp} color="blue"   />
-        <AvgCard label="Moy. Française" value={bi?.french_average}    icon={BookOpen}   color="green"  />
-        <AvgCard label="Moy. Anglaise"  value={bi?.english_average}   icon={Globe}      color="amber"  />
-        <AvgCard label="Moy. Bilingue"  value={bi?.bilingual_average} icon={TrendingUp} color="purple" />
+        <AvgCard label={t("Moy. Générale")}  value={avg?.average}          icon={TrendingUp} color="blue"   />
+        <AvgCard label={t("Moy. Française")} value={bi?.fr_average}        icon={BookOpen}   color="green"  />
+        <AvgCard label={t("Moy. Anglaise")}  value={bi?.en_average}        icon={Globe}      color="amber"  />
+        <AvgCard label={t("Moy. Bilingue")}  value={bi?.bilingual_average} icon={TrendingUp} color="purple" />
       </div>
     </div>
   );
@@ -105,28 +122,28 @@ export default function ParentGrades() {
   };
 
   const PERIODS = [
-    { value: "",       label: "Toutes périodes" },
-    { value: "T1",     label: "Trimestre 1" },
-    { value: "T2",     label: "Trimestre 2" },
-    { value: "T3",     label: "Trimestre 3" },
-    { value: "annual", label: "Annuel" },
+    { value: "",       label: t("Toutes périodes") },
+    { value: "T1",     label: t("Trimestre 1") },
+    { value: "T2",     label: t("Trimestre 2") },
+    { value: "T3",     label: t("Trimestre 3") },
+    { value: "annual", label: t("Annuel") },
   ];
 
   const cols = [
-    { key: "student", label: "Élève",       accessor: "student_name" },
-    { key: "subject", label: "Matière",     accessor: "subject_name" },
-    { key: "period",  label: "Période",     accessor: "period_label" },
-    { key: "value",   label: "Note",        render: r => <span className={noteColor(r.value)}>{r.value}/20</span> },
-    { key: "coeff",   label: "Coeff",       accessor: "subject_coefficient" },
-    { key: "appr",    label: "Appréciation",accessor: "appreciation" },
-    { key: "comment", label: "Commentaire", render: r => r.comment || "—" },
+    { key: "student", label: t("Élève"),       accessor: "student_name" },
+    { key: "subject", label: t("Matière"),     accessor: "subject_name" },
+    { key: "period",  label: t("Période"),     accessor: "period_label" },
+    { key: "value",   label: t("Note"),        render: r => <span className={noteColor(r.value)}>{r.value}/20</span> },
+    { key: "coeff",   label: t("Coeff"),       accessor: "subject_coefficient" },
+    { key: "appr",    label: t("Appréciation"),accessor: "appreciation" },
+    { key: "comment", label: t("Commentaire"), render: r => r.comment || "—" },
   ];
 
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Notes de mes enfants"
-        subtitle={`${grades.length} note(s)${activeYear ? ` — ${activeYear.name}` : ""}`}
+        title={t("Notes de mes enfants")}
+        subtitle={t("{n} note(s)", { n: grades.length }) + (activeYear ? ` — ${activeYear.name}` : "")}
       />
 
       {/* ── Filtres ────────────────────────────────────────────────────────── */}
@@ -134,9 +151,7 @@ export default function ParentGrades() {
         {children.length > 1 && (
           <div className="flex gap-2 flex-wrap">
             <button onClick={() => setSelectedChild("")}
-              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${!selectedChild ? "bg-amber-500 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}>
-              Tous
-            </button>
+              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${!selectedChild ? "bg-amber-500 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}>{t("Tous")}</button>
             {children.map(c => (
               <button key={c.id} onClick={() => setSelectedChild(String(c.id))}
                 className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${selectedChild === String(c.id) ? "bg-amber-500 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}>

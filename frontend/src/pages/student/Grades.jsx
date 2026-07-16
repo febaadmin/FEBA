@@ -14,6 +14,7 @@ import { gradesAPI, schoolsAPI } from "../../api";
 import PageHeader from "../../components/ui/PageHeader";
 import DataTable from "../../components/ui/DataTable";
 import { RadarChart, PolarGrid, PolarAngleAxis, Radar, ResponsiveContainer, Tooltip } from "recharts";
+import { t } from "../../i18n";
 
 const NOTE_TYPE_BADGE = {
   devoir:        "bg-blue-50 text-blue-600",
@@ -95,25 +96,25 @@ export default function StudentGrades() {
   };
 
   const cols = [
-    { key: "subject", label: "Matière",      accessor: "subject_name" },
-    { key: "coeff",   label: "Coeff",         accessor: "subject_coefficient" },
-    { key: "period",  label: "Période",       accessor: "period" },
+    { key: "subject", label: t("Matière"),      accessor: "subject_name" },
+    { key: "coeff",   label: t("Coeff"),         accessor: "subject_coefficient" },
+    { key: "period",  label: t("Période"),       accessor: "period" },
     {
-      key: "note_type", label: "Type",
+      key: "note_type", label: t("Type"),
       render: r => (
         <span className={`px-2 py-0.5 rounded-lg text-xs font-medium ${NOTE_TYPE_BADGE[r.note_type] || ""}`}>
           {r.note_type_label || r.note_type || "—"}
         </span>
       ),
     },
-    { key: "poids",   label: "Poids",        render: r => r.note_coefficient || 1 },
-    { key: "value",   label: "Note",         render: r => <span className={nc(r.value)}>{r.value}/20</span> },
-    { key: "appr",    label: "Appréciation", accessor: "appreciation" },
+    { key: "poids",   label: t("Poids"),        render: r => r.note_coefficient || 1 },
+    { key: "value",   label: t("Note"),         render: r => <span className={nc(r.value)}>{r.value}/20</span> },
+    { key: "appr",    label: t("Appréciation"), accessor: "appreciation" },
   ];
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Mes Notes" subtitle="Résultats par matière et période" />
+      <PageHeader title={t("Mes Notes")} subtitle={t("Résultats par matière et période")} />
 
       {/* Moyennes trimestrielles + annuelle (calculées côté serveur) */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
@@ -129,7 +130,7 @@ export default function StudentGrades() {
 
       {/* Filtre période */}
       <div className="card flex gap-2 items-center">
-        <span className="text-sm font-medium text-slate-600">Filtrer :</span>
+        <span className="text-sm font-medium text-slate-600">{t("Filtrer :")}</span>
         {["","T1","T2","T3","exam"].map(p => (
           <button key={p} onClick={() => setPeriod(p)}
             className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all ${period === p ? "bg-primary text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}>
@@ -141,7 +142,7 @@ export default function StudentGrades() {
       {/* Radar */}
       {radarData.length > 2 && (
         <div className="card">
-          <h3 className="font-semibold text-slate-800 mb-4">Profil de performance</h3>
+          <h3 className="font-semibold text-slate-800 mb-4">{t("Profil de performance")}</h3>
           <ResponsiveContainer width="100%" height={260}>
             <RadarChart data={radarData}>
               <PolarGrid stroke="#e2e8f0" />

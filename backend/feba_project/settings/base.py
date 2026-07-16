@@ -49,6 +49,9 @@ MIDDLEWARE = [
     'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'corsheaders.middleware.CorsMiddleware',
+    # i18n : localise les messages du framework (DRF/Django) selon
+    # l'en-tête Accept-Language envoyé par le frontend (fr/en).
+    'django.middleware.locale.LocaleMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -87,6 +90,11 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 LANGUAGE_CODE = 'fr-fr'
+# Langues servies par LocaleMiddleware (négociées via Accept-Language).
+LANGUAGES = [
+    ('fr', 'Français'),
+    ('en', 'English'),
+]
 TIME_ZONE = 'Africa/Porto-Novo'
 USE_I18N = True
 USE_TZ = True

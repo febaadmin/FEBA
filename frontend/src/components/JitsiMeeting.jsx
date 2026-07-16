@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { X, Loader2 } from "lucide-react";
+import { t } from "../i18n";
 
 /**
  * JitsiMeeting — intègre une réunion Jitsi Meet en plein écran.
@@ -103,7 +104,7 @@ export default function JitsiMeeting({
         <button
           onClick={onClose}
           className="p-1.5 rounded hover:bg-slate-700 transition-colors"
-          aria-label="Quitter la réunion"
+          aria-label={t("Quitter la réunion")}
         >
           <X className="w-5 h-5" />
         </button>
@@ -112,16 +113,14 @@ export default function JitsiMeeting({
         {loading && (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 text-slate-300">
             <Loader2 className="w-8 h-8 animate-spin" />
-            <span className="text-sm">Connexion à la salle…</span>
+            <span className="text-sm">{t("Connexion à la salle…")}</span>
           </div>
         )}
         {error && (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-red-300 px-6 text-center">
-            <p className="font-medium">Connexion impossible</p>
+            <p className="font-medium">{t("Connexion impossible")}</p>
             <p className="text-sm text-slate-400">{error}</p>
-            <p className="text-xs text-slate-500">
-              Vérifiez votre connexion Internet ou le domaine Jitsi configuré (JITSI_DOMAIN).
-            </p>
+            <p className="text-xs text-slate-500">{t("Vérifiez votre connexion Internet ou le domaine Jitsi configuré (JITSI_DOMAIN).")}</p>
           </div>
         )}
         <div ref={containerRef} className="absolute inset-0" />
