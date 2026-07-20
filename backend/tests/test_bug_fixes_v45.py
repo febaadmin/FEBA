@@ -176,7 +176,7 @@ class DashboardTests(BaseSchoolSetup):
         self.assertEqual(kpis["average_t1"], 12.5)
         self.assertIsNone(kpis["average_t2"])
         self.assertEqual(kpis["annual_average"], 12.5)
-        self.assertEqual(kpis["appreciation"], "Bien")
+        self.assertEqual(kpis["appreciation"], "PEUT MIEUX FAIRE")  # barème v4
 
     def test_parent_dashboard_average(self):
         pu = CustomUser.objects.create_user(
@@ -192,7 +192,7 @@ class DashboardTests(BaseSchoolSetup):
         child = resp.data["children"][0]
         self.assertEqual(child["average"], 12.5)
         self.assertEqual(child["average_t1"], 12.5)
-        self.assertEqual(child["appreciation"], "Bien")
+        self.assertEqual(child["appreciation"], "PEUT MIEUX FAIRE")  # barème v4
 
 
 class AdminUserManagementTests(BaseSchoolSetup):

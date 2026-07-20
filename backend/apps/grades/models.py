@@ -45,16 +45,56 @@ def get_letter_grade(value):
     return 'F', 'Échec', '❌'
 
 
-def get_appreciation(avg):
-    if avg is None:
+# ─── Barème officiel des appréciations (source unique de vérité) ─────────────
+# Seuils inclusifs bas : une note n de [seuil, seuil_supérieur[ reçoit le
+# libellé du seuil. 19 → EXCELLENT, 18,99 → TRÈS SATISFAISANT, etc.
+# Toute autre logique (bulletins, exports, dashboards, API) DOIT passer par
+# get_appreciation() — ne pas dupliquer ces seuils ailleurs.
+APPRECIATION_SCALE = [
+    (Decimal('19'), 'EXCELLENT'),
+    (Decimal('17'), 'TRÈS SATISFAISANT'),
+    (Decimal('15'), 'SATISFAISANT'),
+    (Decimal('13'), 'ACCEPTABLE'),
+    (Decimal('11'), 'PEUT MIEUX FAIRE'),
+    (Decimal('9'),  'INSUFFISANT'),
+    (Decimal('7'),  'TRÈS INSUFFISANT'),
+    (Decimal('4'),  'FAIBLE'),
+    (Decimal('0'),  'TRÈS FAIBLE'),
+]
+
+
+def get_appreciation(value, max_value=20):
+    """
+    Appréciation officielle d'une note.
+
+    value      : note obtenue (None → '—', l'absence de note n'est pas une erreur)
+    max_value  : barème de la note (20 par défaut) ; toute note sur un autre
+                 barème est normalisée sur 20 avant classification :
+                 note_normalisée = note / barème × 20 (ex. 45/50 → 18 → TRÈS SATISFAISANT)
+
+    Une valeur non numérique, un barème nul/négatif ou une note hors
+    [0, barème] lèvent ValueError : les données invalides doivent être
+    rejetées par la validation, jamais converties en appréciation trompeuse.
+    """
+    if value is None:
         return '—'
-    v = float(avg)
-    if v >= 16: return 'Excellent'
-    if v >= 14: return 'Très Bien'
-    if v >= 12: return 'Bien'
-    if v >= 10: return 'Assez Bien'
-    if v >= 8:  return 'Passable'
-    return 'Insuffisant'
+    from decimal import InvalidOperation
+    try:
+        v = Decimal(str(value))
+        m = Decimal(str(max_value))
+    except (InvalidOperation, ValueError, TypeError):
+        raise ValueError(f'Note ou barème non numérique : {value!r} / {max_value!r}')
+    if m <= 0:
+        raise ValueError(f'Barème invalide : {max_value!r} (doit être strictement positif)')
+    if v < 0:
+        raise ValueError(f'Note négative : {value!r}')
+    if v > m:
+        raise ValueError(f'Note {value!r} supérieure au barème {max_value!r}')
+    normalized = v if m == 20 else v / m * Decimal('20')
+    for threshold, label in APPRECIATION_SCALE:
+        if normalized >= threshold:
+            return label
+    return 'TRÈS FAIBLE'
 
 
 # ─── Grade Model ─────────────────────────────────────────────────────────────
@@ -66,11 +106,14 @@ class Grade(models.Model):
         ('T3',   'Trimestre 3'),
         ('exam', 'Examen'),
     ]
+    # Les valeurs internes ('interrogation', 'examen', …) sont des identifiants
+    # métier STABLES stockés en base — ne jamais les renommer, seuls les
+    # libellés affichés changent (compatibilité des données existantes).
     NOTE_TYPE_CHOICES = [
         ('devoir',        'Devoir'),
-        ('interrogation', 'Interrogation'),
+        ('interrogation', 'Interrogation / Devoir de classe'),
         ('controle',      'Contrôle'),
-        ('examen',        'Examen'),
+        ('examen',        'Examen / Évaluation'),
         ('tp',            'Travaux Pratiques'),
         ('autre',         'Autre'),
     ]

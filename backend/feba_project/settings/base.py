@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     'apps.user_files',
     'apps.dashboard',
     'apps.virtualclass',
+    'apps.website',
 ]
 
 MIDDLEWARE = [

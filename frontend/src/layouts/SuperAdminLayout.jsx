@@ -4,7 +4,7 @@ import {
   LayoutDashboard, Users, Shield, GraduationCap, UserCheck,
   Users2, BookOpen, DollarSign, Megaphone, Settings, LogOut,
   Menu, X, MessageSquare, Layers, ClipboardList, FileText,
-  Calendar, UserCog, FolderOpen, Image, ClipboardCheck, Video } from "lucide-react";
+  Calendar, UserCog, FolderOpen, Image, ClipboardCheck, Video, Globe } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
 import { useBranding } from "../hooks/useBranding";
 import { clsx } from "clsx";
@@ -40,6 +40,7 @@ const nav = [
     { label: "Annonces",          icon: Megaphone,     to: "/superadmin/announcements" },
     { label: "Paramètres",        icon: Settings,      to: "/superadmin/settings" },
     { label: "Fichiers",           icon: FolderOpen,    to: "/superadmin/user-files" },
+    { label: "Site vitrine",       icon: Globe,         to: "/superadmin/website" },
     { label: "Logo & Branding",    icon: Image,         to: "/superadmin/branding" },
   ]},
 ];

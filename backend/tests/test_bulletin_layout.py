@@ -36,7 +36,7 @@ def _ctx():
         matricule="FEBA-26-0023", school_year=None,
     )
     sy = SimpleNamespace(name="2025-2026", school_id=1, school=school)
-    bull = SimpleNamespace(appreciation="Assez Bien", general_comment="", rank_in_class=None)
+    bull = SimpleNamespace(appreciation="ACCEPTABLE", general_comment="", rank_in_class=None)
     return student, sy, bull
 
 

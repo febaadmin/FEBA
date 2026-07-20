@@ -92,9 +92,9 @@ class UserSerializer(serializers.ModelSerializer):
             "id", "email", "username", "first_name", "last_name",
             "full_name", "role", "role_level", "phone", "avatar",
             "school", "school_name", "preferred_language",
-            "is_active", "created_at", "updated_at",
+            "is_active", "must_change_password", "created_at", "updated_at",
         ]
-        read_only_fields = ["id", "role_level", "created_at", "updated_at"]
+        read_only_fields = ["id", "role_level", "must_change_password", "created_at", "updated_at"]
 
     def get_full_name(self, obj):
         return obj.get_full_name()
@@ -267,6 +267,36 @@ class ChangePasswordSerializer(serializers.Serializer):
         return value
 
 
+# ── Réinitialisation par un administrateur (P2 v4) ────────────────────────────
+
+class AdminResetPasswordSerializer(serializers.Serializer):
+    """
+    Saisie du nouveau mot de passe temporaire par un admin/superadmin
+    (solution A du cahier des charges). La cible est passée via le contexte
+    pour que les validateurs Django (similarité avec les attributs de
+    l'utilisateur, etc.) s'appliquent à la CIBLE, pas à l'auteur.
+    """
+    new_password = serializers.CharField(
+        required=True, write_only=True,
+        error_messages={"required": "Le nouveau mot de passe est obligatoire."},
+    )
+    confirm_password = serializers.CharField(
+        required=True, write_only=True,
+        error_messages={"required": "La confirmation du mot de passe est obligatoire."},
+    )
+
+    def validate_new_password(self, value):
+        validate_password(value, user=self.context.get("target_user"))
+        return value
+
+    def validate(self, attrs):
+        if attrs["new_password"] != attrs["confirm_password"]:
+            raise serializers.ValidationError(
+                {"confirm_password": "Les mots de passe ne correspondent pas."}
+            )
+        return attrs
+
+
 # ── JWT Login ───────────────────────────────────────────────────────────────────
 
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
@@ -313,6 +343,9 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
         return {
             "refresh": str(refresh),
             "access":  str(refresh.access_token),
+            # Le frontend force le parcours « nouveau mot de passe obligatoire »
+            # quand un administrateur a réinitialisé le compte.
+            "must_change_password": user.must_change_password,
         }
 
     def _validate_tenant(self, user):

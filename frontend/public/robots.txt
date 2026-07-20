@@ -1,0 +1,12 @@
+User-agent: *
+Allow: /
+# Espaces privés de l'ERP : ne pas indexer
+Disallow: /login
+Disallow: /superadmin/
+Disallow: /admin/
+Disallow: /teacher/
+Disallow: /parent/
+Disallow: /student/
+Disallow: /change-password-required
+
+Sitemap: /sitemap.xml

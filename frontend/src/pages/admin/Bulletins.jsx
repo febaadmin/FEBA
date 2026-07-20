@@ -90,7 +90,7 @@ export default function AdminBulletins() {
     { key: "period",       label: t("Période"),       accessor: "period_label" },
     { key: "year",         label: t("Année"),         accessor: "school_year_name" },
     { key: "avg",          label: t("Moyenne"),       render: r => r.average ? `${parseFloat(r.average).toFixed(2)}/20` : "—" },
-    { key: "appreciation", label: t("Appréciation"),  accessor: "appreciation" },
+    { key: "appreciation", label: t("Appréciation"),  accessor: "appreciation", render: r => r.appreciation ? t(r.appreciation) : "—" },
     { key: "date",         label: t("Généré le"),     render: r => r.generated_at?.slice(0, 10) },
   ];
 

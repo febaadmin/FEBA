@@ -11,6 +11,7 @@ urlpatterns = [
     path("users/", views.UserListCreateView.as_view(), name="user_list"),
     path("users/<int:pk>/", views.UserDetailView.as_view(), name="user_detail"),
     path("users/<int:pk>/toggle-active/", views.ToggleUserActiveView.as_view(), name="toggle_active"),
+    path("users/<int:pk>/reset-password/", views.AdminResetPasswordView.as_view(), name="admin_reset_password"),
     path("recipients/", views.MessageRecipientsView.as_view(), name="recipients"),
     path("avatar/", views.AvatarUploadView.as_view(), name="avatar"),
 ]

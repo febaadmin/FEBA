@@ -4,7 +4,7 @@ import {
   LayoutDashboard, Users, GraduationCap, UserCheck, BookOpen,
   ClipboardList, DollarSign, Calendar, FileText, Bell, MessageSquare,
   Megaphone, Settings, LogOut, School, Menu, X, UserCog, Layers, FolderOpen,
-  ClipboardCheck, Video } from "lucide-react";
+  ClipboardCheck, Video, Globe } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
 import { useBranding } from "../hooks/useBranding";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -35,6 +35,7 @@ const nav = [
   { label: "Annonces",        icon: Megaphone,        to: "/admin/announcements" },
   { label: "Utilisateurs",    icon: UserCog,          to: "/admin/users" },
   { label: "Fichiers",         icon: FolderOpen,       to: "/admin/user-files" },
+  { label: "Site vitrine",     icon: Globe,            to: "/admin/website" },
   { label: "Branding & Logo",  icon: School,           to: "/admin/branding" },
   { label: "Paramètres",      icon: Settings,         to: "/admin/settings" },
   { label: "Mon profil",      icon: UserCog,          to: "/admin/profile" },

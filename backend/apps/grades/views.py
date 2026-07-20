@@ -129,7 +129,7 @@ class GradeViewSet(BulkDeleteMixin, viewsets.ModelViewSet):
     def get_permissions(self):
         if self.action in [
             "create", "update", "partial_update", "destroy",
-            "restore", "bulk_save",
+            "restore", "bulk_save", "bulk_create",
         ]:
             from apps.accounts.permissions import IsAdminOrTeacher
             return [IsAuthenticated(), IsAdminOrTeacher()]
@@ -353,6 +353,179 @@ class GradeViewSet(BulkDeleteMixin, viewsets.ModelViewSet):
                 errors.append({"item": item, "error": str(e)})
 
         return Response({"saved": saved, "errors": errors})
+
+    # ──────────────────────────────────────────────────────────────────────────
+    # Saisie GROUPÉE atomique (V6)
+    # ──────────────────────────────────────────────────────────────────────────
+
+    def _notify_bulk(self, created, student):
+        """Notification récapitulative unique (élève + parents) après un lot."""
+        if not created:
+            return
+        try:
+            from apps.notifications.utils import create_notification, notification_path
+            n = len(created)
+            subjects = ", ".join(sorted({g.subject.name for g in created}))
+            if student.user:
+                create_notification(
+                    student.user, "grade",
+                    f"{n} nouvelle(s) note(s)",
+                    f"Notes ajoutées en : {subjects}.",
+                    related_url=notification_path(student.user, "grades"),
+                )
+            for ps in student.parents.select_related("parent__user").all():
+                create_notification(
+                    ps.parent.user, "grade",
+                    f"{n} nouvelle(s) note(s) pour {student.get_full_name()}",
+                    f"Notes ajoutées en : {subjects}.",
+                    related_url=notification_path(ps.parent.user, "grades"),
+                )
+        except Exception as exc:
+            logger.warning("Notification groupée ignorée : %s", exc, exc_info=True)
+
+    @action(detail=False, methods=["post"], url_path="bulk-create")
+    def bulk_create(self, request):
+        """
+        POST /api/grades/bulk-create/ — saisie GROUPÉE ATOMIQUE (V6).
+
+        Payload :
+          {"student": <id>, "school_year": <id?>,
+           "grades": [{"subject": <id>, "period": "T1", "value": 15,
+                       "note_type": "controle", "note_coefficient": 2,
+                       "comment": "", "justification": ""}, ...]}
+
+        Tout ou rien : si UNE seule ligne est invalide (permission, matière
+        hors périmètre, note > barème, doublon…), AUCUNE note n'est créée.
+        Les erreurs sont indexées par ligne :
+          {"grades": [{}, {"value": ["..."]}, {"subject": ["..."]}]}
+        que le frontend mappe en « grades.i.champ ».
+
+        Permissions vérifiées CÔTÉ BACKEND :
+          - enseignant → uniquement ses matières, ses classes, ses élèves ;
+          - admin → son établissement ; superadmin → établissement courant.
+        Modifier un ID dans la requête ne contourne rien (filtrage tenant +
+        permission enseignant réappliqués à chaque ligne).
+        """
+        from django.db import transaction
+        from apps.students.models import Student
+        from apps.subjects.models import Subject
+        from apps.schools.models import SchoolYear
+        from apps.students.services import get_or_create_enrollment
+        from .serializers import BulkGradeLineSerializer
+
+        teacher = self._resolve_teacher()
+        school = get_request_school(request)
+
+        # --- Structure de haut niveau ---
+        raw_lines = request.data.get("grades")
+        if not isinstance(raw_lines, list) or not raw_lines:
+            return Response({"grades": ["Ajoutez au moins une note."]},
+                            status=status.HTTP_400_BAD_REQUEST)
+        if not request.data.get("student"):
+            return Response({"student": ["L'élève est obligatoire."]},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        # --- Résolution élève + année, filtrées par établissement (anti-IDOR) ---
+        student_qs = Student.objects.all()
+        year_qs = SchoolYear.objects.all()
+        if school is not None:
+            student_qs = student_qs.filter(school=school)
+            year_qs = year_qs.filter(school=school)
+
+        try:
+            student = student_qs.get(pk=request.data["student"])
+        except (Student.DoesNotExist, ValueError, TypeError):
+            return Response({"student": ["Élève introuvable ou hors de votre établissement."]},
+                            status=status.HTTP_400_BAD_REQUEST)
+        if not student.is_active or (student.user and not student.user.is_active):
+            return Response({"student": ["Cet élève est désactivé."]},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        if request.data.get("school_year"):
+            try:
+                school_year = year_qs.get(pk=request.data["school_year"])
+            except (SchoolYear.DoesNotExist, ValueError, TypeError):
+                return Response({"school_year": ["Année scolaire introuvable ou hors de votre établissement."]},
+                                status=status.HTTP_400_BAD_REQUEST)
+        else:
+            school_year = SchoolYear.objects.filter(
+                school=(school or student.school), is_current=True,
+            ).first()
+            if not school_year:
+                return Response({"school_year": ["Aucune année scolaire active."]},
+                                status=status.HTTP_400_BAD_REQUEST)
+
+        # Enseignant : l'élève doit appartenir à l'une de ses classes.
+        if teacher and not teacher.classes.filter(id=student.current_class_id).exists():
+            return Response(
+                {"student": [f"{student.get_full_name()} n'est pas dans vos classes."]},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        subject_qs = Subject.objects.all()
+        if school is not None:
+            subject_qs = subject_qs.filter(school=school)
+
+        # --- Validation ligne par ligne (champ + métier fusionnés) AVANT
+        #     toute écriture. Toutes les erreurs sont collectées d'un coup et
+        #     indexées par ligne (grades.i.champ) — tout ou rien. ---
+        line_errors = [dict() for _ in raw_lines]
+        resolved = [None] * len(raw_lines)
+        seen = set()
+        for i, raw in enumerate(raw_lines):
+            ls = BulkGradeLineSerializer(data=raw if isinstance(raw, dict) else {})
+            if not ls.is_valid():
+                line_errors[i] = ls.errors
+                continue
+            line = ls.validated_data
+            try:
+                subject = subject_qs.get(pk=line["subject"])
+            except Subject.DoesNotExist:
+                line_errors[i]["subject"] = ["Matière introuvable ou hors de votre établissement."]
+                continue
+            if teacher:
+                ok, msg = self._validate_teacher_permission(teacher, subject, student)
+                if not ok:
+                    line_errors[i]["subject"] = [msg]
+                    continue
+            # Doublon strict DANS la requête (accidentel) — plusieurs
+            # évaluations d'une même matière restent permises si elles
+            # diffèrent (note, type, période ou coefficient).
+            signature = (line["subject"], line["period"], str(line["value"]),
+                         line["note_type"], line["note_coefficient"])
+            if signature in seen:
+                line_errors[i]["subject"] = ["Ligne en double : cette note identique est déjà saisie."]
+                continue
+            seen.add(signature)
+            resolved[i] = (subject, line)
+
+        if any(line_errors):
+            return Response({"grades": line_errors}, status=status.HTTP_400_BAD_REQUEST)
+
+        # --- Création ATOMIQUE : tout réussit, ou rien n'est écrit ---
+        created = []
+        with transaction.atomic():
+            enrollment, _ = get_or_create_enrollment(student, school_year.id)
+            for subject, line in resolved:
+                grade = Grade.objects.create(
+                    student=student, subject=subject, school_year=school_year,
+                    enrollment=enrollment, period=line["period"], value=line["value"],
+                    note_type=line["note_type"], note_coefficient=line["note_coefficient"],
+                    comment=line.get("comment", ""), teacher=teacher,
+                )
+                _log_grade(grade, None, "", "create", request.user, line.get("justification", ""))
+                created.append(grade)
+
+        self._notify_bulk(created, student)
+        logger.info("Bulk grades: %d notes pour %s par %s",
+                    len(created), student.get_full_name(), request.user.email)
+        return Response({
+            "created": len(created),
+            "student_name": student.get_full_name(),
+            "subjects": [g.subject.name for g in created],
+            "detail": f"{len(created)} note(s) ajoutée(s) avec succès pour {student.get_full_name()}.",
+            "grades": GradeSerializer(created, many=True).data,
+        }, status=status.HTTP_201_CREATED)
 
     @action(detail=False, methods=["get"])
     def averages(self, request):

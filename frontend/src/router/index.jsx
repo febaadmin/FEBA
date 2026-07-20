@@ -1,80 +1,110 @@
+import { lazy, Suspense } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import { useAuthStore } from "../store/authStore";
 
+// ── Site vitrine public (P4 v4) — chargé en lazy pour ne pas alourdir le
+// bundle de l'ERP (code splitting : le chunk "site" n'est téléchargé que
+// pour les visiteurs du site public, et réciproquement).
+const SiteLayout = lazy(() => import("../site/SiteLayout"));
+const SiteHome = lazy(() => import("../site/pages/HomePage"));
+const SiteAbout = lazy(() => import("../site/pages/AboutPage"));
+const SiteCampus = lazy(() => import("../site/pages/CampusPage"));
+const SiteAcademics = lazy(() => import("../site/pages/AcademicsPage"));
+const SiteAdmissions = lazy(() => import("../site/pages/AdmissionsPage"));
+const SiteSchoolLife = lazy(() => import("../site/pages/SchoolLifePage"));
+const SiteOnline = lazy(() => import("../site/pages/OnlinePage"));
+const SiteNews = lazy(() => import("../site/pages/NewsPage"));
+const SiteNewsDetail = lazy(() => import("../site/pages/NewsDetailPage"));
+const SiteGallery = lazy(() => import("../site/pages/GalleryPage"));
+const SiteContact = lazy(() => import("../site/pages/ContactPage"));
+const SiteLegal = lazy(() => import("../site/pages/LegalPages").then(m => ({ default: m.LegalPage })));
+const SitePrivacy = lazy(() => import("../site/pages/LegalPages").then(m => ({ default: m.PrivacyPage })));
+const SiteNotFound = lazy(() => import("../site/pages/SiteNotFound"));
+
+function SiteFallback() {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-[#F7F2E8]">
+      <div className="w-8 h-8 border-2 border-[#071D49] border-t-transparent rounded-full animate-spin"
+        role="status" aria-label="Chargement" />
+    </div>
+  );
+}
+
 // Layouts
-import SuperAdminLayout from "../layouts/SuperAdminLayout";
-import AdminLayout from "../layouts/AdminLayout";
-import TeacherLayout from "../layouts/TeacherLayout";
-import ParentLayout from "../layouts/ParentLayout";
-import StudentLayout from "../layouts/StudentLayout";
+const SuperAdminLayout = lazy(() => import("../layouts/SuperAdminLayout"));
+const AdminLayout = lazy(() => import("../layouts/AdminLayout"));
+const TeacherLayout = lazy(() => import("../layouts/TeacherLayout"));
+const ParentLayout = lazy(() => import("../layouts/ParentLayout"));
+const StudentLayout = lazy(() => import("../layouts/StudentLayout"));
 
 // Auth
-import LoginPage from "../pages/LoginPage";
+const LoginPage = lazy(() => import("../pages/LoginPage"));
 
 // SuperAdmin pages
-import SuperAdminDashboard from "../pages/superadmin/Dashboard";
-import SuperAdminUsers from "../pages/superadmin/Users";
-import SuperAdminAdmins from "../pages/superadmin/Admins";
-import SuperAdminProfile from "../pages/superadmin/Profile";
+const SuperAdminDashboard = lazy(() => import("../pages/superadmin/Dashboard"));
+const SuperAdminUsers = lazy(() => import("../pages/superadmin/Users"));
+const SuperAdminAdmins = lazy(() => import("../pages/superadmin/Admins"));
+const SuperAdminProfile = lazy(() => import("../pages/superadmin/Profile"));
 
 // Admin pages
-import AdminDashboard from "../pages/admin/Dashboard";
-import AdminStudents from "../pages/admin/Students";
-import AdminTeachers from "../pages/admin/Teachers";
-import AdminParents from "../pages/admin/Parents";
-import AdminClasses from "../pages/admin/Classes";
-import AdminGrades from "../pages/admin/Grades";
-import AdminPayments from "../pages/admin/Payments";
-import AdminAttendance from "../pages/admin/Attendance";
-import AdminHomework from "../pages/admin/Homework";
-import AdminAnnouncements from "../pages/admin/Announcements";
-import AdminMessages from "../pages/admin/Messages";
-import AdminBulletins from "../pages/admin/Bulletins";
-import AdminSchedule from "../pages/admin/Schedule";
-import AdminSettings from "../pages/admin/Settings";
-import AdminUserFiles from "../pages/admin/UserFiles";
-import AdminUsers from "../pages/admin/Users";
-import AdminLevels from "../pages/admin/Levels";
-import AdminBranding from "../pages/admin/Branding";
-import AdminEnrollments from "../pages/admin/Enrollments";
-import AdminProfile from "../pages/admin/Profile";
+const AdminDashboard = lazy(() => import("../pages/admin/Dashboard"));
+const AdminStudents = lazy(() => import("../pages/admin/Students"));
+const AdminTeachers = lazy(() => import("../pages/admin/Teachers"));
+const AdminParents = lazy(() => import("../pages/admin/Parents"));
+const AdminClasses = lazy(() => import("../pages/admin/Classes"));
+const AdminGrades = lazy(() => import("../pages/admin/Grades"));
+const AdminPayments = lazy(() => import("../pages/admin/Payments"));
+const AdminAttendance = lazy(() => import("../pages/admin/Attendance"));
+const AdminHomework = lazy(() => import("../pages/admin/Homework"));
+const AdminAnnouncements = lazy(() => import("../pages/admin/Announcements"));
+const AdminMessages = lazy(() => import("../pages/admin/Messages"));
+const AdminBulletins = lazy(() => import("../pages/admin/Bulletins"));
+const AdminSchedule = lazy(() => import("../pages/admin/Schedule"));
+const AdminSettings = lazy(() => import("../pages/admin/Settings"));
+const AdminUserFiles = lazy(() => import("../pages/admin/UserFiles"));
+const AdminUsers = lazy(() => import("../pages/admin/Users"));
+const AdminLevels = lazy(() => import("../pages/admin/Levels"));
+const AdminBranding = lazy(() => import("../pages/admin/Branding"));
+const AdminEnrollments = lazy(() => import("../pages/admin/Enrollments"));
+const AdminProfile = lazy(() => import("../pages/admin/Profile"));
+const AdminWebsite = lazy(() => import("../pages/admin/Website"));
 
 // Teacher pages
-import TeacherDashboard from "../pages/teacher/Dashboard";
-import TeacherClasses from "../pages/teacher/Classes";
-import TeacherGrades from "../pages/teacher/Grades";
-import TeacherAttendance from "../pages/teacher/Attendance";
-import TeacherHomework from "../pages/teacher/Homework";
-import TeacherSchedule from "../pages/teacher/Schedule";
-import TeacherMessages from "../pages/teacher/Messages";
-import TeacherProfile from "../pages/teacher/Profile";
+const TeacherDashboard = lazy(() => import("../pages/teacher/Dashboard"));
+const TeacherClasses = lazy(() => import("../pages/teacher/Classes"));
+const TeacherGrades = lazy(() => import("../pages/teacher/Grades"));
+const TeacherAttendance = lazy(() => import("../pages/teacher/Attendance"));
+const TeacherHomework = lazy(() => import("../pages/teacher/Homework"));
+const TeacherSchedule = lazy(() => import("../pages/teacher/Schedule"));
+const TeacherMessages = lazy(() => import("../pages/teacher/Messages"));
+const TeacherProfile = lazy(() => import("../pages/teacher/Profile"));
 
 // Parent pages
-import ParentHome from "../pages/parent/Home";
-import ParentChildren from "../pages/parent/Children";
-import ParentGrades from "../pages/parent/Grades";
-import ParentAttendance from "../pages/parent/Attendance";
-import ParentHomework from "../pages/parent/Homework";
-import ParentPayments from "../pages/parent/Payments";
-import ParentBulletins from "../pages/parent/Bulletins";
-import ParentMessages from "../pages/parent/Messages";
-import ParentSchedule from "../pages/parent/Schedule";
-import ParentProfile from "../pages/parent/Profile";
+const ParentHome = lazy(() => import("../pages/parent/Home"));
+const ParentChildren = lazy(() => import("../pages/parent/Children"));
+const ParentGrades = lazy(() => import("../pages/parent/Grades"));
+const ParentAttendance = lazy(() => import("../pages/parent/Attendance"));
+const ParentHomework = lazy(() => import("../pages/parent/Homework"));
+const ParentPayments = lazy(() => import("../pages/parent/Payments"));
+const ParentBulletins = lazy(() => import("../pages/parent/Bulletins"));
+const ParentMessages = lazy(() => import("../pages/parent/Messages"));
+const ParentSchedule = lazy(() => import("../pages/parent/Schedule"));
+const ParentProfile = lazy(() => import("../pages/parent/Profile"));
 
 // Student pages
-import StudentHome from "../pages/student/Home";
-import StudentGrades from "../pages/student/Grades";
-import StudentAttendance from "../pages/student/Attendance";
-import StudentHomework from "../pages/student/Homework";
-import StudentSchedule from "../pages/student/Schedule";
-import StudentBulletins from "../pages/student/Bulletins";
-import StudentMessages from "../pages/student/Messages";
-import StudentProfile from "../pages/student/Profile";
+const StudentHome = lazy(() => import("../pages/student/Home"));
+const StudentGrades = lazy(() => import("../pages/student/Grades"));
+const StudentAttendance = lazy(() => import("../pages/student/Attendance"));
+const StudentHomework = lazy(() => import("../pages/student/Homework"));
+const StudentSchedule = lazy(() => import("../pages/student/Schedule"));
+const StudentBulletins = lazy(() => import("../pages/student/Bulletins"));
+const StudentMessages = lazy(() => import("../pages/student/Messages"));
+const StudentProfile = lazy(() => import("../pages/student/Profile"));
 
 // Shared pages
-import SharedAnnouncements from "../pages/shared/Announcements";
-import VirtualRooms from "../pages/shared/VirtualRooms";
-import NotFoundPage from "../pages/shared/NotFound";
+const SharedAnnouncements = lazy(() => import("../pages/shared/Announcements"));
+const VirtualRooms = lazy(() => import("../pages/shared/VirtualRooms"));
+const ForcePasswordChange = lazy(() => import("../pages/shared/ForcePasswordChange"));
 
 // ── Guard: vérifie l'authentification et le rôle ──────────────────────────
 function ProtectedRoute({ children, allowedRoles }) {
@@ -95,6 +125,12 @@ function ProtectedRoute({ children, allowedRoles }) {
   }
 
   if (!accessToken) return <Navigate to="/login" replace />;
+
+  // P2 : mot de passe réinitialisé par un administrateur — l'utilisateur ne
+  // peut pas naviguer dans son espace tant qu'il n'a pas choisi son propre
+  // mot de passe (le backend lève le drapeau après change-password).
+  if (user?.must_change_password)
+    return <Navigate to="/change-password-required" replace />;
 
   // FIX (notifications / redirections) : un related_url mal formé (rôle
   // erroné, ressource d'un autre espace) amenait ici. Renvoyer un
@@ -120,19 +156,43 @@ function RoleRedirect() {
   return <Navigate to="/student/home" replace />;
 }
 
-// ── URL inconnue : ne jamais faire croire à une déconnexion ──────────────
-function NotFoundOrLogin() {
-  const { accessToken, _hasHydrated } = useAuthStore();
+// ── P2 : écran de changement de mot de passe obligatoire ──────────────────
+// Accessible uniquement authentifié ; si le drapeau n'est pas (ou plus)
+// levé, retour au tableau de bord du rôle.
+function ForcePasswordChangeRoute() {
+  const { user, accessToken, _hasHydrated } = useAuthStore();
   if (!_hasHydrated) return null;
   if (!accessToken) return <Navigate to="/login" replace />;
-  return <NotFoundPage />;
+  if (!user?.must_change_password) return <RoleRedirect />;
+  return <ForcePasswordChange />;
 }
 
 export default function AppRouter() {
   return (
+    <Suspense fallback={<SiteFallback />}>
     <Routes>
       <Route path="/login" element={<LoginPage />} />
-      <Route path="/" element={<RoleRedirect />} />
+      <Route path="/change-password-required" element={<ForcePasswordChangeRoute />} />
+
+      {/* ── Site vitrine public (P4) : « / » est désormais le site public.
+          La connexion à l'ERP se fait via le bouton « Connexion » du menu.
+          Un utilisateur déjà authentifié conserve l'accès direct à son
+          espace (routes /superadmin, /admin, /teacher, /parent, /student). */}
+      <Route element={<SiteLayout />}>
+        <Route path="/" element={<SiteHome />} />
+        <Route path="/a-propos" element={<SiteAbout />} />
+        <Route path="/campus" element={<SiteCampus />} />
+        <Route path="/academique" element={<SiteAcademics />} />
+        <Route path="/admissions" element={<SiteAdmissions />} />
+        <Route path="/vie-scolaire" element={<SiteSchoolLife />} />
+        <Route path="/feba-online" element={<SiteOnline />} />
+        <Route path="/actualites" element={<SiteNews />} />
+        <Route path="/actualites/:slug" element={<SiteNewsDetail />} />
+        <Route path="/galerie" element={<SiteGallery />} />
+        <Route path="/contact" element={<SiteContact />} />
+        <Route path="/mentions-legales" element={<SiteLegal />} />
+        <Route path="/confidentialite" element={<SitePrivacy />} />
+      </Route>
 
       {/* ── SuperAdmin ── */}
       <Route path="/superadmin" element={
@@ -161,6 +221,7 @@ export default function AppRouter() {
         <Route path="branding"      element={<AdminBranding />} />
         <Route path="enrollments"   element={<AdminEnrollments />} />
         <Route path="virtual"       element={<VirtualRooms />} />
+        <Route path="website"       element={<AdminWebsite />} />
         <Route path="profile"       element={<SuperAdminProfile />} />
       </Route>
 
@@ -190,6 +251,7 @@ export default function AppRouter() {
         <Route path="branding"      element={<AdminBranding />} />
         <Route path="enrollments"   element={<AdminEnrollments />} />
         <Route path="virtual"       element={<VirtualRooms />} />
+        <Route path="website"       element={<AdminWebsite />} />
         <Route path="profile"       element={<AdminProfile />} />
       </Route>
       <Route path="/teacher" element={
@@ -247,12 +309,14 @@ export default function AppRouter() {
         <Route path="virtual"       element={<VirtualRooms />} />
       </Route>
 
-      {/* FIX (notifications / redirections) : une URL inconnue ne doit
-          jamais renvoyer un utilisateur authentifié vers /login (cela
-          ressemble à une déconnexion forcée). On affiche une page "introuvable"
-          avec un lien de retour ; seul un utilisateur non authentifié est
-          envoyé vers /login. */}
-      <Route path="*" element={<NotFoundOrLogin />} />
+      {/* URL inconnue → 404 PUBLIQUE du site vitrine (P4). Un utilisateur
+          authentifié n'est jamais renvoyé vers /login (pas de fausse
+          impression de déconnexion : le header du site affiche « Mon
+          espace » et sa session reste intacte). */}
+      <Route element={<SiteLayout />}>
+        <Route path="*" element={<SiteNotFound />} />
+      </Route>
     </Routes>
+    </Suspense>
   );
 }

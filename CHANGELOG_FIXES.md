@@ -1,176 +1,277 @@
-# CHANGELOG_FIXES — FEBA V3 bilingue auditée
+# CHANGELOG_FIXES.md — Missions V4 + V5 + V6 (juillet 2026)
 
-## HOTFIX (16/07/2026, soir) — page blanche /parent/home « t2 is not a function »
+## V6.2 — Conformité visuelle exacte aux captures annotées (20/07/2026)
 
-**Symptôme** : après connexion Parent, `/parent/home` restait entièrement
-blanche ; console : `Uncaught TypeError: t2 is not a function`
-(Home.jsx:76–78, Array.map, ParentHome).
+Passe corrective ciblée (aucune fonctionnalité modifiée) : utiliser
+**exactement** les images marquées « Bonne image », retirer les
+« Pas la bonne / Mauvaise image ». Détails : `VISUAL_CONFORMITY_REPORT.md`.
 
-**Cause racine** : dans `frontend/src/pages/parent/Home.jsx`, le rendu des
-moyennes trimestrielles utilisait un destructuring
-`.map(([t, v]) => …)` — la variable locale `t` (libellé « T1 »/« T2 »/« T3 »)
-**masquait la fonction de traduction `t`** importée de `src/i18n`. L'appel
-`t("Moy.")` introduit par la passe i18n tombait donc sur la chaîne « T1 »
-(pas une fonction) → crash du rendu React → page blanche. `t2` est le nom
-que Vite donne à l'un des deux identifiants en collision dans le module
-transformé.
-
-**Correction (cause racine, pas de contournement)** :
-- renommage du paramètre destructuré : `.map(([per, v]) => …)` +
-  `key={per}` + `{t("Moy.")} {per}` — la fonction de traduction n'est plus
-  masquée et le libellé de période reste affiché ;
-- balayage automatisé de TOUT le frontend à la recherche d'autres liaisons
-  locales nommées `t` dans les fichiers important `{ t }` (16 motifs :
-  params de callback, destructuring tableau/objet, const/let/var, catch,
-  for) → un seul autre cas, bénin, uniformisé (`AdminLayout`) ;
-- **garde-fou permanent** : test statique
-  `frontend/src/test/no-t-shadowing.test.js` qui fait échouer la suite si
-  un shadowing de `t` est réintroduit.
-
-**Renforts ajoutés en même temps** :
-- Error Boundary global (`frontend/src/components/ErrorBoundary.jsx`,
-  monté dans `App.jsx`) : plus jamais de page entièrement blanche — écran
-  d'erreur bilingue avec « Réessayer / Retour », erreur d'origine toujours
-  tracée en console ;
-- infrastructure de tests frontend (Vitest + Testing Library + jsdom) ;
-- `frontend/src/pages/parent/Home.test.jsx` : 10 tests de rendu de
-  ParentHome (données valides mono/multi-enfants, moyennes T1/T2/T3 — le
-  scénario exact du crash —, valeurs null, children absent/vide, erreur
-  API, chargement, annonces, bascule EN) ;
-- `frontend/src/i18n/i18n.test.js` : 12 tests unitaires i18n (traduction,
-  repli, interpolation, tBoth, persistance, langue non supportée) ;
-- dernières chaînes non traduites de ParentHome (« Aucune note »,
-  « Progression T1 → T2 : ») passées par t().
-
-**Vérifié dans le navigateur (identifiants réels, serveur local)** :
-connexion parent1@feba.bj → `/parent/home` s'affiche (2 enfants, moyennes
-générale/T1/T2/T3/FR/EN, progression) ; console : 0 erreur ; rechargement
-direct par URL OK ; navigation `/parent/grades` ↔ retour OK (cartes de
-moyennes remplies) ; clic sur une notification réelle → `/parent/grades`
-sans déconnexion ; déconnexion UI OK ; reconnexion élève →
-`/student/home` complet ; bascule FR↔EN immédiate.
-
----
+- **C1 — Mosaïque d'accueil** : `campus-fresque` (vue drone, « Pas la bonne
+  image ») → **`campus-facade-logo`** (façade FEBA logo + nom + fresques,
+  composition verticale propre).
+- **C2 — À propos « La direction »** : portrait serré (`apropos-encadrement`,
+  « Pas la bonne image ») → **`apropos-direction-2`** restauré (directeur à son
+  bureau, vue large, mains + logo FEBA), utilisé **uniquement** sur cette carte.
+- **C3 — Académique « Deux langues »** : cadrage réellement corrigé — focal
+  `70/42` → `50/66` (mobile `50/70`), conteneur `h-80 sm:h-[28rem]`, overlay
+  **responsive** `left-navy-md` (dégradé bas mobile, gauche dès sm), texte
+  resserré. Têtes + bustes enseignante/élèves visibles **desktop ET mobile**.
+- **C4 — Galerie « Notre campus »** : `campus-facade` + `campus-fresque`
+  (« Mauvaise image ») retirées → **`campus-facade-logo`** + **`campus-devise`**.
+  4 vues distinctes.
+- **Nouveaux médias** webp 800+1600 : `campus-facade-logo`, `campus-devise` ;
+  `apropos-direction-2` restauré. Backend seed + fallback `siteDefaults`
+  **alignés** (même ordre) → pas de réapparition d'ancienne image.
+- **Tests de conformité par slug exact** ajoutés (`visual-conformity.test.jsx`,
+  6 cas). Frontend **62 tests**, backend **300** (+1 skip), eslint **0 erreur**,
+  build OK. Vérifié navigateur 375 + 1440 (captures + DOM).
 
 
-Modifications réalisées sur la base V3 (`feba_v1.zip`), classées par catégorie.
+## V6.1 — Corrections visuelles finales sur captures annotées (20/07/2026)
 
-## Bilinguisme
+- **Médias de remplacement fournis intégrés** (webp 1600+800 optimisés) :
+  `campus-logo` (bâtiment + panneau « Faith & Excellence » lisible),
+  `campus-fresque` (façade aux fresques pédagogiques), `apropos-equipe-pedagogique`
+  (photo d'équipe réelle, 7 personnes), `petite-enfance-creche` (crèche).
+- **Accueil** : slide 1 du carrousel → `campus-logo` ; mosaïque de présentation
+  → `campus-fresque` (fini l'ancienne façade rouge).
+- **Galerie « Notre campus »** : les deux façades rouges quasi identiques
+  (`campus-batiment`, `campus-garderie-maternelle`) remplacées par
+  `campus-logo` + `campus-fresque` → 4 vues réellement distinctes.
+- **Galerie « Petite enfance »** : ajout de `petite-enfance-creche`.
+- **Image bannie** : `apropos-direction` **et** `apropos-direction-2` (même
+  personne « assise seule dans un bureau ») + `galerie-mosaique-3` (qui
+  l'incrustait) **supprimées** du site, des seeds, des valeurs par défaut **et
+  du paquet** (fichiers webp retirés + entrées de registre retirées). Vérifié :
+  aucun de ces slugs n'apparaît plus dans le DOM public.
+- **« Une équipe engagée » (À propos)** : plus de doublon de personne —
+  « La direction » = portrait unique du directeur, « Les enseignants » =
+  accompagnement en classe, « L'encadrement » = vraie photo d'équipe.
+- **Recadrages individuels** (galerie) : `galerie-devoirs` (50/66),
+  `galerie-soutien` (50/68), `galerie-etude` (66/46), `galerie-ecriture`
+  (66/46), `accompagnement-duo` (52/64) — sujets décentrés/trop bas + fond
+  crème corrigés (object-position vérifié en navigateur).
+- **Carrousel** : voile gris délavé → habillage marine DA FEBA (dégradé marine
+  à gauche `hero-left` + pointe dorée `hero-gold`), centralisé dans `OVERLAYS`,
+  appliqué aux 5 slides.
+- Vérifié navigateur (DOM + captures, 375→1920) ; 56 tests frontend, 300 backend
+  (+1 skip), eslint 0 erreur, build prod OK.
 
-- **Nouveau système i18n centralisé** `frontend/src/i18n/` :
-  - `index.js` — état de langue (module + `useSyncExternalStore`), `t()` global,
-    `useI18n()` réactif, `tBoth()` (affichage « FR / EN » simultané),
-    `translate()`, `getLang()/setLang()`, `dateLocale()` ;
-  - `translations.js` — dictionnaire FR→EN (~1 050 entrées), la chaîne
-    française est la clé (modèle gettext), repli automatique sur le français.
-- **Page de connexion bilingue simultanée** (`pages/LoginPage.jsx`) : titres,
-  sous-titre, labels, placeholders, bouton (état de chargement inclus),
-  erreurs zod, messages d'échec serveur, aria-labels — tous en « FR / EN ».
-- **Sélecteur de langue FR | EN** (`components/ui/LanguageSwitcher.jsx`)
-  intégré à l'en-tête des 5 layouts (superadmin, admin, teacher, parent,
-  student). Application immédiate : `App.jsx` remonte l'arbre
-  (`<AppRouter key={lang} />`) sans déconnexion ni perte de route.
-- **Persistance** : localStorage `feba-lang` + champ serveur
-  `preferred_language` (PATCH `/api/auth/me/` au changement ; ré-appliqué en
-  priorité au login — `hooks/useAuth.js`).
-- **Traduction de toutes les pages** : 56 pages + 5 layouts + 12 composants
-  (~1 500 chaînes enveloppées dans `t()` : nœuds JSX, attributs UI,
-  toasts, ternaires, colonnes de tableaux, sous-titres interpolés
-  `{n} élève(s)`, etc.).
-- **Messages backend traduits à l'affichage** : `utils/errors.js`
-  (`extractApiError/extractApiErrors`) passe tous les messages par `t()` ;
-  les messages métier français fréquents du backend sont au dictionnaire.
-- **Négociation de langue HTTP** : axios envoie `Accept-Language` ;
-  `LocaleMiddleware` + `LANGUAGES=[fr,en]` côté Django (messages du
-  framework localisés).
-- **Dates et calendrier** : `dateLocale()` (fr-FR/en-GB) remplace les locales
-  codées en dur (`toLocaleDateString("fr-FR")` × 16), date-fns localisé
-  (VirtualRooms), jours de semaine et mois abrégés des graphiques traduits.
 
-## Interface
+## V6 — Carrousel/galerie incassables, dédoublonnage, recadrages, menu, saisie groupée (20/07/2026)
 
-- Sélecteur de langue accessible (aria-pressed, aria-label, `lang=`).
-- `StatusBadge` : traduction appliquée au rendu (plus de libellés figés à la
-  langue de chargement).
-- `ConfirmDialog` : titres/messages par défaut et boutons traduits.
-- Suppression de code mort : `allRoomTypeOptions` (Settings).
-- Renommage de variables locales `t` qui masquaient la fonction de
-  traduction (Teachers, Schedule, Grades ×2, Settings).
+- **P1 — Carrousel restauré (jamais une image statique).** `HeroCarousel`
+  affiche 5 slides réelles ; repli robuste sur médias packagés
+  (`siteDefaults.js → DEFAULT_SLIDES`) si l'API ne renvoie rien — jamais une
+  image figée, jamais un vide. Flèches (masquées < sm), points, clavier,
+  tactile, `prefers-reduced-motion`. Administrable via l'API/l'admin.
+  *Vérifié navigateur 375/1280/1920 : 5 slides, auto-défilement, flèches
+  masquées sur mobile.*
+- **P2 — Galerie remplie.** `GalleryPage`/`HomePage` : repli sur
+  `DEFAULT_ALBUMS` si l'API est vide ; suppression de l'état « bientôt
+  disponible » quand des médias existent. *Vérifié navigateur : albums pleins,
+  vignettes toutes distinctes.*
+- **P3 — Doublons d'images éliminés** (voir `MEDIA_DUPLICATES_REPORT.md`).
+  `hero-campus` (≈8× avant) ramené à un usage sain ; élagage des galeries au
+  seed (`exclude(image_path__in=…).delete()`), grille d'accueil, bannière
+  Campus, cartes Campus, carte CM1·CM2.
+- **P4/P5 — Recadrages individuels + zones crème** (voir
+  `MEDIA_CROP_AUDIT.md`, `VISUAL_FIXES_REPORT.md`). CM1·CM2 (visuel mur crème
+  inexploitable → `valeurs-projet`), cartes vie scolaire, « Grandir en
+  confiance », points focaux relevés (activités, `academique-participation`
+  26% 64%…). Pas de `cover/center` uniforme.
+- **P6 — Menu desktop sur une seule ligne.** En-tête `SiteLayout` :
+  `whitespace-nowrap`, breakpoint `min-[1200px]`, sous-titre `2xl:block`,
+  bascule hamburger propre en-dessous. *Vérifié navigateur : une ligne à
+  1280 et 1920, overlay hamburger propre à 375.*
+- **P7 — Saisie groupée de notes** (voir `BULK_GRADES_REPORT.md`).
+  `POST /api/grades/bulk-create/` atomique (tout ou rien, jamais d'écriture
+  partielle), permissions **backend** (enseignant → ses matières/classes,
+  anti-IDOR ; admin/superadmin élargis ; parent 403 ; anonyme 401), erreurs
+  indexées par ligne, appréciation calculée backend. `BulkGradeModal`
+  réutilisable (enseignant/admin/superadmin), la saisie simple est inchangée.
+  16 tests backend + 6 tests frontend + E2E session enseignant réelle.
+- **Audit V6.** Suite complète rejouée : 2 régressions détectées et corrigées
+  — assertion de point focal (`test_website`) alignée sur la valeur V6 seedée,
+  et 4 clés de traduction dupliquées (`no-dupe-keys`) retirées.
+  Backend **300 tests OK** (+1 skip concurrence documenté), frontend
+  **56 tests OK**, `eslint` **0 erreur**, build prod OK.
 
-## Backend
+## V5 — Corrections visuelles du site vitrine (19/07/2026)
 
-- `CustomUser.preferred_language` (choices fr/en, défaut fr) + migration
-  `accounts/0004_customuser_preferred_language.py` ; exposé dans
-  `UserSerializer`, modifiable via la liste blanche du PATCH `/auth/me/`.
-- `feba_project/urls.py` : import de `debug_toolbar` conditionné à sa
-  présence dans `INSTALLED_APPS` (plantage si DEBUG=True sans le paquet).
-- Nouveau settings `feba_project/settings/dev_sqlite.py` : exécution locale
-  complète sans Docker/PostgreSQL/Redis (SQLite fichier, Celery eager,
-  channels mémoire, schéma dérivé des modèles `migrate --run-syncdb`).
-- `feba_project/settings/test_postgres.py` : identifiants configurables par
-  variables d'environnement `TEST_DB_*` (défauts = stack docker dev).
+- **Système de point focal** :
+  - backend : `focal_x`/`focal_y` (0–100, validés) sur HeroSlide,
+    GalleryItem et NewsPost (`apps/website`, migration 0002), exposés par
+    l'API (`focal`), modifiables via l'admin Django et l'API admin ;
+    valeurs seedées pour les 5 slides et les 42 médias de la galerie ;
+  - frontend : registre central `src/site/mediaMeta.js` (object-position
+    desktop + variante mobile pour les 57 visuels packagés), appliqué
+    automatiquement par `SiteImage` (variables CSS `.site-img`, bascule
+    < 640 px) — plus aucun `object-position` codé en dur dispersé.
+- **Dégradés de marque centralisés** (`OVERLAYS` : bottom/left/right-navy,
+  left-green, top-navy, hero) + composant `MediaFrame` (image + dégradé +
+  texte) : aucun gradient arbitraire dans les pages.
+- **Zones crème vides transformées en compositions** (dégradé FEBA + texte
+  de section) : carte CM1·CM2 (maquette), bilinguisme Académique
+  (« Deux langues, un monde d'opportunités »), accueil des familles
+  (Admissions), grande vignette FEBA Online (dégradé vert), cartes équipe.
+- **Recadrages corrigés** : portrait de l'encadrement (tête coupée → visage
+  entier, focal 50/16), cartes de niveaux (têtes), ronde « Grandir en
+  confiance », hero slide 4 (enfants entiers), grille de présentation,
+  galerie et actualités (focal administré).
+- **Hero** : dégradés unifiés (tokens), titre mobile réduit, largeur du
+  texte limitée, flèches masquées < 640 px (plus de chevauchement).
+- Détail complet : `MEDIA_CROP_AUDIT.md` (44 lignes d'audit) et
+  `VISUAL_FIXES_REPORT.md` (12 fiches de correction + preuves).
+- Tests ajoutés : `mediaMeta.test.js` (6, cohérence registre↔fichiers) et
+  `FocalPointTests` backend (4). Totaux : **284 backend / 41 frontend**.
 
-## Base de données
+## V4 — rappel
 
-- Migration additive `accounts.0004` (`preferred_language`) — non
-  destructive, défaut `fr`.
-- `apps/announcements/utils.py::filter_targets_role()` — filtrage par rôle
-  destinataire portable : lookup JSON natif sur PostgreSQL, cast texte
-  ailleurs (SQLite). Appliqué dans `announcements/views.py` et
-  `dashboard/views.py` (dashboard élève).
+> Corrections et développements de la mission V4 : types de notes, barème
+> officiel des appréciations, réinitialisation de mot de passe par
+> administrateur, site vitrine public. Les changelogs des missions
+> précédentes sont archivés dans `docs/historique/` (…_V3.md) et dans
+> l'historique git.
 
-## Logique métier
+## P1 — Types de notes renommés
 
-- **Emploi du temps** (`schedule/serializers.py`) : heure de fin > heure de
-  début ; refus des chevauchements (même jour + même année scolaire) pour la
-  classe, l'enseignant et la salle.
-- **Présences** (`attendance/serializers.py`) : date future refusée ;
-  doublon (élève + date + matière) refusé, mises à jour exclues du contrôle.
+- `backend/apps/grades/models.py` : libellés des choix `NOTE_TYPE_CHOICES`
+  renommés — `interrogation` → « Interrogation / Devoir de classe »,
+  `examen` → « Examen / Évaluation ». **Les valeurs internes stockées en
+  base restent inchangées** (identifiants métier stables) : aucune donnée
+  existante à migrer, les anciennes notes restent lisibles.
+- Migration `grades/0010_alter_grade_note_type.py` (choices uniquement,
+  aucun changement de schéma).
+- Frontend : listes `NOTE_TYPES` de `admin/Grades.jsx` et
+  `teacher/Grades.jsx` alignées ; tous les affichages passent par
+  `note_type_display`/`note_type_label` renvoyés par l'API (source unique).
+- i18n : nouvelles paires EN (« Quiz / Class test »,
+  « Examination / Assessment »).
+- Tests : `backend/tests/test_note_types_appreciations.py` (création via
+  API pour chaque type renommé, modification, filtre `?note_type=`,
+  lecture des anciennes valeurs, rejet des libellés utilisés comme valeur).
 
-## Authentification
+## P3 — Barème officiel des appréciations (9 niveaux)
 
-- Préférence de langue restaurée en priorité à la reconnexion.
-- Vérifié (tests existants + nouveau test) : le PATCH `/auth/me/` ne permet
-  pas de modifier `role`/`is_active`/`school` (liste blanche).
+- **Source unique de vérité** : `apps.grades.models.get_appreciation(value,
+  max_value=20)` réécrite avec le barème officiel :
+  19–20 EXCELLENT · 17–<19 TRÈS SATISFAISANT · 15–<17 SATISFAISANT ·
+  13–<15 ACCEPTABLE · 11–<13 PEUT MIEUX FAIRE · 9–<11 INSUFFISANT ·
+  7–<9 TRÈS INSUFFISANT · 4–<7 FAIBLE · 0–<4 TRÈS FAIBLE (aucun trou,
+  décimales incluses, accents « TRÈS » corrects).
+- **Normalisation** des barèmes ≠ 20 : `note/barème×20` (ex. 45/50 → 18 →
+  TRÈS SATISFAISANT). Les valeurs invalides (note négative, note > barème,
+  barème nul/négatif, non numérique) **lèvent ValueError** au lieu de
+  produire une appréciation trompeuse. `None` → « — » (absence de note).
+- Tous les consommateurs passent par cette fonction : serializer des notes,
+  résumé élève, dashboards élève/parent, bulletins PDF, seed. L'ancienne
+  échelle (Excellent/Très Bien/Bien/Assez Bien/Passable/Insuffisant) ne
+  subsiste nulle part dans le code actif.
+- `seed_demo_data` : appréciations de bulletins désormais calculées par la
+  fonction centrale (suppression de seuils locaux dupliqués).
+- Migration de données `bulletins/0005_recompute_appreciations.py` :
+  recalcule les appréciations STOCKÉES des bulletins existants à partir de
+  leur moyenne (réversible — l'inverse recalcule l'ancienne échelle ; la
+  moyenne source n'est jamais modifiée).
+- Frontend : n'affiche que l'appréciation renvoyée par le backend (aucun
+  recalcul local) ; cellules passées par `t()` pour la traduction EN.
+- Tests : bornes exhaustives entières 0→20 et décimales (3,99 / 6,99 /
+  8,99 / 10,99 / 12,99 / 14,99 / 16,99 / 18,99 / 17,50 / 14,75 / 12,25 /
+  10,50 / 8,75 / 6,50), balayage au centième sans trou, barèmes 5/10/25/
+  50/100, rejets d'invalides, migration de bulletins.
 
-## Permissions
+## P2 — Réinitialisation de mot de passe par administrateur
 
-- Pas de faille détectée : écritures sensibles réservées aux rôles adéquats
-  côté serveur (ex. paiements admin+), isolation multi-établissements
-  couverte par `test_tenant_security.py` (réexécuté vert).
+- **Backend** :
+  - `CustomUser.must_change_password` (+ migration accounts/0005) ;
+  - `CustomUser.can_reset_password_of()` — règles métier :
+    admin → enseignant/parent/élève de SON établissement uniquement ;
+    superadmin → admin/enseignant/parent/élève ; jamais un superadmin,
+    jamais soi-même ;
+  - `POST /api/auth/users/<id>/reset-password/`
+    (`AdminResetPasswordView`) : permissions vérifiées côté serveur
+    (contournement par ID direct → 403), validateurs Django appliqués à la
+    CIBLE, `set_password` (hachage Django, jamais de clair),
+    `must_change_password=True`, **révocation de tous les refresh tokens**
+    de la cible (blacklist simplejwt — l'auteur garde sa session), journal
+    d'audit `PasswordResetLog` (auteur, cible, rôle, établissement, date —
+    jamais le mot de passe), rate-limit 10/min/utilisateur ;
+  - réponse `/api/auth/login/` et `/api/auth/me/` exposent
+    `must_change_password` ; `change-password` lève le drapeau.
+- **Frontend** :
+  - `ResetPasswordModal` (identité + rôle de la cible, avertissement de
+    sécurité, double saisie avec œil, règles de complexité, case de
+    confirmation explicite, messages succès/erreur) branché dans
+    `admin/Users.jsx`, `superadmin/Users.jsx` (masqué pour les cibles
+    superadmin et soi-même) et `superadmin/Admins.jsx` ;
+  - parcours complet « mot de passe temporaire » :
+    `/change-password-required` (`ForcePasswordChange`) — le routeur
+    bloque l'accès aux espaces tant que le drapeau est levé, le login
+    redirige vers ce formulaire, la réussite renvoie vers l'espace du rôle.
+- Tests : `backend/tests/test_password_reset.py` — matrice de permissions
+  complète (23 tests) : admin→enseignant/parent/élève OK ; admin→admin/
+  superadmin/soi-même/autre établissement 403 ; superadmin→admin/enseignant/
+  parent/élève OK ; superadmin→superadmin 403 ; rôles non admin 403 ;
+  anonyme 401 ; confirmation différente 400 ; mots de passe faibles 400 ;
+  ancien mot de passe refusé au login, nouveau accepté ; refresh token
+  révoqué (l'auteur conserve sa session) ; journal d'audit sans secret ;
+  parcours must_change_password de bout en bout.
 
-## Sécurité
+## P4 — Site vitrine public
 
-- Validations serveur renforcées (voir Logique métier + Paiements).
-- Paiements : montant strictement positif, date non future
-  (`payments/serializers.py`).
-- Confirmé : secrets prod hors dépôt, HSTS/SSL/cookies Secure en prod,
-  rate-limit login, rotation+blacklist des refresh tokens.
+### Médias (`scripts/optimize_site_media.py`, `MEDIA_INVENTORY.md`)
+- 57 PNG + 1 vidéo inventoriés (dimensions, poids, orientation, doublons —
+  aucun) ; originaux intacts.
+- 114 WebP responsive (800/1600, ≈9 Mo au lieu de 113 Mo) sous
+  `frontend/public/site/img/` avec noms sémantiques ; vidéo H.264+AAC
+  compressée 73 Mo → ≈9 Mo + affiche WebP (lecture uniquement au clic).
 
-## Performances
+### Backend CMS (`apps/website` + migration 0001)
+- Modèles administrables : `SiteSettings` (identité, coordonnées, réseaux,
+  horaires, SEO, statistiques **nullable = masquées**), `HeroSlide`,
+  `NewsPost` (actualités ET événements, slug unique, brouillon/publié),
+  `GalleryAlbum`/`GalleryItem` (images + vidéo), `ContactMessage`,
+  `PreRegistration` (statut new/processing/closed).
+- API publique en lecture seule + `POST /contact/` et
+  `POST /preregistrations/` : validation backend complète, honeypot
+  anti-spam, rate-limit 5/min/IP, **aucune exposition publique des
+  soumissions**.
+- API d'administration `/api/website/admin/**` (admin/superadmin
+  uniquement) + admin Django (`/django-admin/`) pour tout le contenu.
+- `manage.py seed_website` : contenu par défaut idempotent construit sur
+  les médias réels — **aucune donnée fictive** (pas de fausses actualités,
+  stats vides, coordonnées vides tant que l'administration ne les a pas
+  saisies).
 
-- Aucune régression introduite ; pas d'optimisation risquée réalisée.
-  Les listes admin utilisent la pagination existante (`FlexiblePagination`).
+### Frontend public (`frontend/src/site/`)
+- `/` est désormais le site vitrine ; la connexion ERP reste sur `/login`
+  (boutons « Connexion » / « Mon espace » + « Inscrire mon enfant » dans le
+  header). Les routes privées des 5 profils sont inchangées.
+- Pages : Accueil (hero carrousel administrable — autoplay stoppé par
+  `prefers-reduced-motion`, tactile, accessible —, présentation/valeurs,
+  niveaux, pourquoi FEBA, bilinguisme, vie à FEBA, FEBA Online en vert,
+  chiffres seulement si renseignés, actualités réelles, galerie, CTA),
+  À propos, Campus, Académique, Admissions (+ formulaire préinscription),
+  Vie scolaire, FEBA Online, Actualités + détail, Galerie (mosaïque +
+  visionneuse plein écran + vidéo à la demande), Contact (+ formulaire),
+  Mentions légales, Confidentialité, 404 publique.
+- Écran ERP « Site vitrine » (`admin/Website.jsx`, routes /admin/website et
+  /superadmin/website) : messages reçus (lu/non-lu, réponse mailto,
+  suppression), préinscriptions (workflow de statut), actualités (CRUD +
+  publication), paramètres du site (coordonnées, réseaux, stats, SEO).
+- SEO : titres/méta/OG/canonical par page (`Seo.jsx`), JSON-LD « School »,
+  `sitemap.xml`, `robots.txt` (espaces privés désindexés).
+- Performance : lazy loading images (`srcset` 800/1600, dimensions
+  explicites), code splitting complet du routeur — **bundle initial
+  visiteur 407 Ko → 113 Ko gzip** (index 295 Ko + chunks site 1–19 Ko).
 
-## Tests
+## Audit / divers
 
-- `tests/test_i18n_preferences.py` (nouveau, 7 tests) : préférence de langue
-  (défaut, PATCH, rejet de langue non supportée, restauration après
-  reconnexion, isolation par utilisateur, liste blanche du PATCH).
-- `tests/test_audit_validations.py` (nouveau, 11 tests) : paiements
-  (négatif/zéro/date future/valide), présences (date future, doublon,
-  mise à jour), emploi du temps (fin<début, chevauchements classe/salle,
-  non-chevauchement accepté).
-- `tests/test_parent_student.py` : test de concurrence marqué `skipIf`
-  SQLite avec justification (vert sur PostgreSQL).
-- `tests/test_priority_fixes.py` : dates de test corrigées (étaient dans le
-  futur, incompatibles avec la nouvelle validation).
-- Résultats : **220/220 sur PostgreSQL** (migrations incluses),
-  **219 + 1 skip documenté sur SQLite**.
-
-## Documentation
-
-- `README.md` mis à jour (mode local sans Docker, sélecteur de langue,
-  variables d'environnement).
-- `.env.example` documenté à la racine.
-- `AUDIT_REPORT.md`, `VERIFICATION_CHECKLIST.md`, `CORRECTIONS.md` ajoutés.
+- Routeur : imports statiques des ~60 pages ERP convertis en
+  `React.lazy` (mêmes gains pour l'ERP, chunk par page).
+- `vite.config.js` : proxys pour `vite preview` (test local du build de
+  production).
+- i18n : clé dupliquée « Réinitialiser » supprimée (erreur eslint).
+- `.claude/launch.json` : lancement démo locale (backend dev_sqlite +
+  Vite) documenté et reproductible.
