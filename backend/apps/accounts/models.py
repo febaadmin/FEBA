@@ -37,6 +37,13 @@ class CustomUser(AbstractUser):
     )
     avatar = models.ImageField(upload_to='avatars/', null=True, blank=True)
     is_active = models.BooleanField(default=True)
+    # Positionné à True quand un administrateur réinitialise le mot de passe :
+    # l'utilisateur doit choisir un nouveau mot de passe à sa prochaine
+    # connexion (le frontend force le parcours, change-password remet à False).
+    must_change_password = models.BooleanField(
+        default=False,
+        help_text="L'utilisateur doit changer son mot de passe à la prochaine connexion.",
+    )
     # Tenant : établissement de rattachement. Obligatoire pour tout rôle
     # sauf 'superadmin' (rôle plateforme, transverse à tous les
     # établissements). Voir apps/core/tenancy.py pour les règles d'usage.
@@ -98,3 +105,59 @@ class CustomUser(AbstractUser):
     def requires_school(self):
         """Tout rôle sauf superadmin doit être rattaché à un établissement."""
         return self.role != 'superadmin'
+
+    def can_reset_password_of(self, target_user):
+        """
+        Règles métier de la réinitialisation de mot de passe (P2 v4) :
+        - personne ne réinitialise son PROPRE mot de passe ici (parcours
+          « changer mon mot de passe » distinct, avec ancien mot de passe) ;
+        - superadmin → admin / teacher / parent / student, jamais un autre
+          superadmin (pas de règle métier l'autorisant) ;
+        - admin → teacher / parent / student de SON établissement uniquement,
+          jamais un admin ni un superadmin ;
+        - tous les autres rôles → jamais.
+        """
+        if target_user.pk == self.pk:
+            return False
+        if self.is_superadmin():
+            return target_user.role in ('admin', 'teacher', 'parent', 'student')
+        if self.is_admin():
+            if target_user.school_id != self.school_id:
+                return False
+            return target_user.role in ('teacher', 'parent', 'student')
+        return False
+
+
+class PasswordResetLog(models.Model):
+    """
+    Journal d'audit des réinitialisations de mot de passe par un
+    administrateur. NE CONTIENT JAMAIS le mot de passe (ni en clair, ni haché).
+    """
+    performed_by = models.ForeignKey(
+        CustomUser, on_delete=models.SET_NULL, null=True,
+        related_name='password_resets_performed',
+    )
+    target_user = models.ForeignKey(
+        CustomUser, on_delete=models.CASCADE,
+        related_name='password_resets_received',
+    )
+    performed_by_email = models.EmailField(
+        help_text="Copie de l'email de l'auteur (résiste à la suppression du compte).",
+    )
+    target_email = models.EmailField()
+    target_role = models.CharField(max_length=12)
+    school = models.ForeignKey(
+        'schools.School', on_delete=models.SET_NULL, null=True, blank=True,
+    )
+    performed_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Réinitialisation de mot de passe'
+        verbose_name_plural = 'Réinitialisations de mot de passe'
+        ordering = ['-performed_at']
+
+    def __str__(self):
+        return (
+            f'{self.performed_by_email} → {self.target_email} '
+            f'({self.target_role}) le {self.performed_at:%Y-%m-%d %H:%M}'
+        )

@@ -9,7 +9,7 @@
  */
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Plus, Pencil, Trash2, ToggleLeft, ToggleRight, Eye, EyeOff, AlertCircle } from "lucide-react";
+import { Plus, Pencil, Trash2, ToggleLeft, ToggleRight, Eye, EyeOff, AlertCircle, KeyRound } from "lucide-react";
 import { useForm } from "react-hook-form";
 import toast from "react-hot-toast";
 import { authAPI } from "../../api";
@@ -18,6 +18,7 @@ import PageHeader from "../../components/ui/PageHeader";
 import DataTable from "../../components/ui/DataTable";
 import Modal from "../../components/ui/Modal";
 import ConfirmDialog from "../../components/ui/ConfirmDialog";
+import ResetPasswordModal from "../../components/ui/ResetPasswordModal";
 import StatusBadge from "../../components/ui/StatusBadge";
 import { resolveMediaUrl } from "../../utils/media";
 import { t } from "../../i18n";
@@ -35,6 +36,7 @@ export default function AdminUsers() {
   const [modalOpen, setModalOpen]   = useState(false);
   const [editItem,  setEditItem]    = useState(null);
   const [deleteItem,setDeleteItem]  = useState(null);
+  const [resetItem, setResetItem]   = useState(null);
   const [roleFilter,setRoleFilter]  = useState("");
   const [viewItem,  setViewItem]    = useState(null);
   const [showPwd,   setShowPwd]     = useState(false);
@@ -221,6 +223,13 @@ export default function AdminUsers() {
                 <Pencil className="w-4 h-4" />
               </button>
               <button
+                onClick={() => setResetItem(row)}
+                className="p-1.5 rounded-lg hover:bg-amber-50 text-slate-400 hover:text-amber-600"
+                title={t("Réinitialiser le mot de passe")}
+              >
+                <KeyRound className="w-4 h-4" />
+              </button>
+              <button
                 onClick={() => setDeleteItem(row)}
                 className="p-1.5 rounded-lg hover:bg-danger-50 text-slate-400 hover:text-danger"
                 title={t("Supprimer")}
@@ -396,6 +405,9 @@ export default function AdminUsers() {
         </form>
       </Modal>
 
+      {/* ── Réinitialisation du mot de passe (P2) ───────────────────────── */}
+      <ResetPasswordModal user={resetItem} onClose={() => setResetItem(null)} />
+
       {/* ── Confirmation suppression ────────────────────────────────────── */}
       {deleteItem && (
         <ConfirmDialog
@@ -447,6 +459,11 @@ export default function AdminUsers() {
             </div>
             <div className="flex gap-2 pt-2">
               <button onClick={() => { setViewItem(null); openEdit(viewItem); }} className="btn-secondary flex-1">{t("Modifier")}</button>
+              <button
+                onClick={() => { const u = viewItem; setViewItem(null); setResetItem(u); }}
+                className="btn-secondary flex-1 flex items-center justify-center gap-1.5">
+                <KeyRound className="w-4 h-4" /> {t("Mot de passe")}
+              </button>
               <button onClick={() => setViewItem(null)} className="btn-primary flex-1">{t("Fermer")}</button>
             </div>
           </div>

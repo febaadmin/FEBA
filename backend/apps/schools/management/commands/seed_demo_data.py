@@ -365,11 +365,9 @@ class Command(BaseCommand):
                         avg = Grade.calculate_average(student, sy, period)
                         if avg is None:
                             continue
-                        appreciation = ("Excellent travail" if avg >= 16 else
-                                        "Bon travail" if avg >= 14 else
-                                        "Travail satisfaisant" if avg >= 12 else
-                                        "Peut mieux faire" if avg >= 10 else
-                                        "Efforts insuffisants")
+                        # Barème officiel centralisé — jamais de seuils locaux.
+                        from apps.grades.models import get_appreciation
+                        appreciation = get_appreciation(avg)
                         Bulletin.objects.get_or_create(
                             student=student, school_year=sy, period=period,
                             defaults={

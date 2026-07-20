@@ -25,6 +25,7 @@ urlpatterns = [
     path('api/dashboard/', include('apps.dashboard.urls')),
     path('api/virtual-rooms/', include('apps.virtualclass.urls')),
     path('api/health/', include('apps.dashboard.health_urls')),
+    path('api/website/', include('apps.website.urls')),
     path('api/', include('apps.core.urls')),  # plateforme SaaS (superadmin)
 ]
 

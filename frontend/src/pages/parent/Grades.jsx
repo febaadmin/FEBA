@@ -135,7 +135,7 @@ export default function ParentGrades() {
     { key: "period",  label: t("Période"),     accessor: "period_label" },
     { key: "value",   label: t("Note"),        render: r => <span className={noteColor(r.value)}>{r.value}/20</span> },
     { key: "coeff",   label: t("Coeff"),       accessor: "subject_coefficient" },
-    { key: "appr",    label: t("Appréciation"),accessor: "appreciation" },
+    { key: "appr",    label: t("Appréciation"),accessor: "appreciation", render: r => r.appreciation ? t(r.appreciation) : "—" },
     { key: "comment", label: t("Commentaire"), render: r => r.comment || "—" },
   ];
 

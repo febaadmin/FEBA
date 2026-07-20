@@ -37,3 +37,15 @@
   word-break: break-word;
   overflow-wrap: break-word;
 }
+
+/* ── Site vitrine V5 : point focal des images (voir src/site/mediaMeta.js) ──
+   Chaque <SiteImage> reçoit son object-position via variables CSS, avec une
+   variante mobile facultative appliquée sous 640 px. */
+.site-img {
+  object-position: var(--site-img-pos-mobile, var(--site-img-pos, 50% 50%));
+}
+@media (min-width: 640px) {
+  .site-img {
+    object-position: var(--site-img-pos, 50% 50%);
+  }
+}

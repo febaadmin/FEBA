@@ -9,7 +9,7 @@
  */
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Plus, Save, Pencil, Trash2, AlertCircle } from "lucide-react";
+import { Plus, Save, Pencil, Trash2, AlertCircle, Layers } from "lucide-react";
 import { useForm, Controller } from "react-hook-form";
 import toast from "react-hot-toast";
 import { gradesAPI, studentsAPI, schoolsAPI, teachersAPI, classesAPI } from "../../api";
@@ -17,15 +17,16 @@ import PageHeader from "../../components/ui/PageHeader";
 import DataTable from "../../components/ui/DataTable";
 import Modal from "../../components/ui/Modal";
 import SearchableSelect from "../../components/ui/SearchableSelect";
+import BulkGradeModal from "../../components/grades/BulkGradeModal";
 import ConfirmDialog from "../../components/ui/ConfirmDialog";
 import { extractApiError } from "../../utils/errors";
 import { t, dateLocale } from "../../i18n";
 
 const NOTE_TYPES = [
   { value: "devoir",        label: "Devoir" },
-  { value: "interrogation", label: "Interrogation" },
+  { value: "interrogation", label: "Interrogation / Devoir de classe" },
   { value: "controle",      label: "Contrôle" },
-  { value: "examen",        label: "Examen" },
+  { value: "examen",        label: "Examen / Évaluation" },
   { value: "tp",            label: "Travaux Pratiques" },
   { value: "autre",         label: "Autre" },
 ];
@@ -35,6 +36,7 @@ export default function TeacherGrades() {
   const [period,       setPeriod]       = useState("T1");
   const [filterClass,  setFilterClass]  = useState("");
   const [modalOpen,    setModalOpen]    = useState(false);
+  const [bulkOpen,     setBulkOpen]     = useState(false);
   const [viewItem,     setViewItem]     = useState(null);
   const [showDeleted,  setShowDeleted]  = useState(false);
   const [editItem,     setEditItem]     = useState(null);
@@ -86,6 +88,12 @@ export default function TeacherGrades() {
   const studentOpts = filteredStudents.map(s => ({ value: s.id, label: `${s.full_name} — ${s.class_name || "?"}` }));
   const subjectOpts = subjects.map(s => ({ value: s.id, label: `${s.name} (coeff ${s.coefficient})` }));
   const classOpts   = allClasses.map(c => ({ value: c.id, label: c.name }));
+  // Options pour la saisie groupée : TOUS les élèves (filtre de classe interne
+  // au modal), avec l'identifiant de classe pour ce filtre.
+  const bulkStudentOpts = students.map(s => ({
+    value: s.id, label: `${s.full_name} — ${s.class_name || "?"}`,
+    classId: s.current_class ?? s.class_id ?? "",
+  }));
 
   /* ── Mutations ─────────────────────────────────────────────────────────── */
   const createMut = useMutation({
@@ -154,7 +162,7 @@ export default function TeacherGrades() {
     { key: "note_type",        label: t("Type"),         render: r => r.note_type_label || r.note_type || "—" },
     { key: "note_coefficient", label: t("Poids"),        render: r => r.note_coefficient || 1 },
     { key: "value",            label: t("Note"),         render: r => <span className={nc(r.value)}>{r.value}/20</span> },
-    { key: "appr",             label: t("Appréciation"), accessor: "appreciation" },
+    { key: "appr",             label: t("Appréciation"), accessor: "appreciation", render: r => r.appreciation ? t(r.appreciation) : "—" },
   ];
 
   const histCols = [
@@ -175,10 +183,23 @@ export default function TeacherGrades() {
               className={`btn-secondary text-sm ${showDeleted ? "ring-2 ring-amber-400" : ""}`}>
               {showDeleted ? t("Masquer supprimées") : t("Voir supprimées")}
             </button>
+            <button onClick={() => setBulkOpen(true)} className="btn-secondary flex items-center gap-2">
+              <Layers className="w-4 h-4" />{t("Saisie groupée")}</button>
             <button onClick={openCreate} className="btn-primary flex items-center gap-2">
               <Plus className="w-4 h-4" />{t("Saisir une note")}</button>
           </div>
         } />
+
+      <BulkGradeModal
+        open={bulkOpen}
+        onClose={() => setBulkOpen(false)}
+        onSaved={() => qc.invalidateQueries({ queryKey: ["teacher-grades"] })}
+        studentOptions={bulkStudentOpts}
+        subjectOptions={subjectOpts}
+        classOptions={classOpts}
+        schoolYearId={currentYear?.id}
+        periodDefault={period !== "all" ? period : "T1"}
+      />
 
       {/* Alerte si aucun élève trouvé */}
       {!isLoading && students.length === 0 && (

@@ -86,6 +86,51 @@ class GradeSerializer(serializers.ModelSerializer):
         return meaning
 
 
+# ── Saisie GROUPÉE de notes (V6) ────────────────────────────────────────────
+
+class BulkGradeLineSerializer(serializers.Serializer):
+    """
+    Une ligne de la saisie groupée. Validation de champ uniquement (types,
+    bornes, choix). Les contrôles métier (matière assignée à l'enseignant,
+    élève de la classe, tenant, année) sont faits dans la vue avec des
+    erreurs indexées par ligne.
+    """
+    subject = serializers.IntegerField(min_value=1)
+    period = serializers.ChoiceField(choices=[c[0] for c in Grade.PERIOD_CHOICES])
+    value = serializers.DecimalField(
+        max_digits=4, decimal_places=2, min_value=Decimal("0"), max_value=Decimal("20"),
+        error_messages={
+            "min_value": "La note doit être comprise entre 0 et 20.",
+            "max_value": "La note dépasse le barème (max 20).",
+            "invalid": "La note doit être numérique.",
+        },
+    )
+    note_type = serializers.ChoiceField(
+        choices=[c[0] for c in Grade.NOTE_TYPE_CHOICES], default="devoir",
+    )
+    note_coefficient = serializers.IntegerField(
+        min_value=1, default=1,
+        error_messages={"min_value": "Le coefficient doit être au moins 1."},
+    )
+    comment = serializers.CharField(required=False, allow_blank=True, default="")
+    justification = serializers.CharField(required=False, allow_blank=True, default="")
+
+
+class BulkGradeCreateSerializer(serializers.Serializer):
+    """Enveloppe de la saisie groupée : un élève, une année, N lignes de notes."""
+    student = serializers.IntegerField(min_value=1)
+    school_year = serializers.IntegerField(min_value=1, required=False, allow_null=True)
+    grades = BulkGradeLineSerializer(
+        many=True,
+        error_messages={"empty": "Ajoutez au moins une note.", "min_length": "Ajoutez au moins une note."},
+    )
+
+    def validate_grades(self, value):
+        if not value:
+            raise serializers.ValidationError("Ajoutez au moins une note.")
+        return value
+
+
 class StudentGradeSummarySerializer(serializers.Serializer):
     """Serializer for the student summary view."""
     student_id = serializers.IntegerField()

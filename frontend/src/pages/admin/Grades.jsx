@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Plus, Trash2, BarChart2, BookOpen, Globe, User, Clock, History } from "lucide-react";
+import { Plus, Trash2, BarChart2, BookOpen, Globe, User, Clock, History, Layers } from "lucide-react";
 import { useForm, Controller } from "react-hook-form";
 import toast from "react-hot-toast";
 import { gradesAPI, studentsAPI, subjectsAPI, schoolsAPI, classesAPI } from "../../api";
@@ -21,6 +21,7 @@ import PageHeader from "../../components/ui/PageHeader";
 // DataTable replaced by custom row-click table in list view
 import Modal from "../../components/ui/Modal";
 import SearchableSelect from "../../components/ui/SearchableSelect";
+import BulkGradeModal from "../../components/grades/BulkGradeModal";
 import { extractApiError } from "../../utils/errors";
 import { t, dateLocale } from "../../i18n";
 
@@ -33,9 +34,9 @@ const PERIODS = [
 
 const NOTE_TYPES = [
   { value: "devoir", label: "Devoir" },
-  { value: "interrogation", label: "Interrogation" },
+  { value: "interrogation", label: "Interrogation / Devoir de classe" },
   { value: "controle", label: "Contrôle" },
-  { value: "examen", label: "Examen" },
+  { value: "examen", label: "Examen / Évaluation" },
   { value: "tp", label: "Travaux Pratiques" },
   { value: "autre", label: "Autre" },
 ];
@@ -60,6 +61,7 @@ export default function AdminGrades() {
   const qc = useQueryClient();
   const [view, setView] = useState("list"); // "list" | "summary" | "bilingual" | "deleted" | "allhistory"
   const [addOpen, setAddOpen] = useState(false);
+  const [bulkOpen, setBulkOpen] = useState(false);
   const [editItem, setEditItem] = useState(null);
   const [histItem, setHistItem] = useState(null);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
@@ -205,6 +207,12 @@ export default function AdminGrades() {
 
   const studentOpts = students.map(s => ({ value: s.id, label: `${s.full_name || s.first_name + ' ' + s.last_name} — ${s.class_name || "?"}` }));
   const subjectOpts = subjects.map(s => ({ value: s.id, label: `${s.name}${s.language ? ` (${s.language.toUpperCase()})` : ""}` }));
+  // Saisie groupée : élèves avec identifiant de classe + options de classe.
+  const bulkStudentOpts = students.map(s => ({
+    value: s.id, label: `${s.full_name || s.first_name + ' ' + s.last_name} — ${s.class_name || "?"}`,
+    classId: s.current_class ?? s.class_id ?? "",
+  }));
+  const classOpts = classes.map(c => ({ value: c.id, label: c.name }));
 
   const restoreMut = useMutation({
     mutationFn: (id) => gradesAPI.restore(id),
@@ -311,10 +319,23 @@ export default function AdminGrades() {
                 Excel / CSV ({grades.length})
               </button>
             )}
+            <button onClick={() => setBulkOpen(true)}
+              className="btn-secondary flex items-center gap-2"><Layers className="w-4 h-4" />{t("Saisie groupée")}</button>
             <button onClick={() => { reset({ school_year: currentYear?.id || "" }); setAddOpen(true); }}
               className="btn-primary flex items-center gap-2"><Plus className="w-4 h-4" />{t("Ajouter une note")}</button>
           </div>
         }
+      />
+
+      <BulkGradeModal
+        open={bulkOpen}
+        onClose={() => setBulkOpen(false)}
+        onSaved={() => { qc.invalidateQueries({ queryKey: ["grades"] }); qc.invalidateQueries({ queryKey: ["grades-deleted"] }); }}
+        studentOptions={bulkStudentOpts}
+        subjectOptions={subjectOpts}
+        classOptions={classOpts}
+        schoolYearId={filterYear || currentYear?.id}
+        periodDefault={filterPeriod && filterPeriod !== "all" ? filterPeriod : "T1"}
       />
 
       {/* View tabs — FIX BUG N°9 (responsive) : la barre passait sous les

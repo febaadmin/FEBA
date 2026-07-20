@@ -22,6 +22,13 @@ export function useAuth() {
     if (me.data.preferred_language && me.data.preferred_language !== getLang()) {
       setLang(me.data.preferred_language);
     }
+    // P2 : mot de passe réinitialisé par un administrateur → l'utilisateur
+    // doit d'abord choisir son propre mot de passe (parcours obligatoire).
+    if (me.data.must_change_password) {
+      navigate("/change-password-required");
+      toast(translate("Veuillez définir votre nouveau mot de passe."), { icon: "🔑" });
+      return;
+    }
     const role = me.data.role;
     if (role === "superadmin") navigate("/superadmin/dashboard");
     else if (role === "admin")   navigate("/admin/dashboard");

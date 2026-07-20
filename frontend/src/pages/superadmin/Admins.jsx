@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Plus, Pencil, Trash2, ToggleLeft, ToggleRight, Eye, EyeOff} from "lucide-react";
+import { Plus, Pencil, Trash2, ToggleLeft, ToggleRight, Eye, EyeOff, KeyRound } from "lucide-react";
 import { useForm } from "react-hook-form";
 import toast from "react-hot-toast";
 import { authAPI, schoolsAPI } from "../../api";
@@ -8,6 +8,7 @@ import PageHeader from "../../components/ui/PageHeader";
 import DataTable from "../../components/ui/DataTable";
 import Modal from "../../components/ui/Modal";
 import ConfirmDialog from "../../components/ui/ConfirmDialog";
+import ResetPasswordModal from "../../components/ui/ResetPasswordModal";
 import StatusBadge from "../../components/ui/StatusBadge";
 import { extractApiError } from "../../utils/errors";
 import { t } from "../../i18n";
@@ -17,6 +18,7 @@ export default function SuperAdminAdmins() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editItem, setEditItem] = useState(null);
   const [deleteItem, setDeleteItem] = useState(null);
+  const [resetItem, setResetItem] = useState(null);
   const [showPwd, setShowPwd] = useState(false);
   const [showPwd2, setShowPwd2] = useState(false);
   const { register, handleSubmit, reset } = useForm();
@@ -77,6 +79,11 @@ export default function SuperAdminAdmins() {
               {row.is_active ? <ToggleRight className="w-4 h-4 text-success" /> : <ToggleLeft className="w-4 h-4" />}
             </button>
             <button onClick={() => openEdit(row)} className="p-1.5 rounded-lg hover:bg-primary-50 text-slate-400 hover:text-primary"><Pencil className="w-4 h-4" /></button>
+            <button onClick={() => setResetItem(row)}
+              className="p-1.5 rounded-lg hover:bg-amber-50 text-slate-400 hover:text-amber-600"
+              title={t("Réinitialiser le mot de passe")}>
+              <KeyRound className="w-4 h-4" />
+            </button>
             <button onClick={() => setDeleteItem(row)} className="p-1.5 rounded-lg hover:bg-danger-50 text-slate-400 hover:text-danger"><Trash2 className="w-4 h-4" /></button>
           </div>
         )} />
@@ -112,6 +119,7 @@ export default function SuperAdminAdmins() {
         </form>
       </Modal>
 
+      <ResetPasswordModal user={resetItem} onClose={() => setResetItem(null)} />
       <ConfirmDialog open={!!deleteItem} onClose={() => setDeleteItem(null)}
         onConfirm={() => deleteMut.mutate(deleteItem?.id)} loading={deleteMut.isPending}
         message={`Supprimer l'administrateur ${deleteItem?.email} ?`} />

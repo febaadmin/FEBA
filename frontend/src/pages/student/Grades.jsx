@@ -109,7 +109,7 @@ export default function StudentGrades() {
     },
     { key: "poids",   label: t("Poids"),        render: r => r.note_coefficient || 1 },
     { key: "value",   label: t("Note"),         render: r => <span className={nc(r.value)}>{r.value}/20</span> },
-    { key: "appr",    label: t("Appréciation"), accessor: "appreciation" },
+    { key: "appr",    label: t("Appréciation"), accessor: "appreciation", render: r => r.appreciation ? t(r.appreciation) : "—" },
   ];
 
   return (

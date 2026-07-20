@@ -11,6 +11,20 @@ export default {
         success: { DEFAULT: "#10B981", 50: "#ECFDF5", 500: "#10B981" },
         danger: { DEFAULT: "#EF4444", 50: "#FEF2F2", 500: "#EF4444" },
         sidebar: { DEFAULT: "#0F172A" },
+        // Charte du site vitrine FEBA (palette officielle — voir
+        // Medias/FEBA-SITE-MEDIAS/00-CHARTE/palette-couleurs.txt)
+        feba: {
+          navy: "#071D49",
+          navy2: "#0E2A63",
+          gold: "#D89B16",
+          gold2: "#B8830F",
+          cream: "#F7F2E8",
+          sky: "#4AA3DF",
+          green: "#1F6B36",
+          green2: "#17532A",
+          red: "#B42020",
+          gray: "#3C4450",
+        },
       },
       fontFamily: { sans: ["Inter", "sans-serif"] },
     },

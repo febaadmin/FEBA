@@ -8,10 +8,11 @@ from django_ratelimit.decorators import ratelimit
 from django.utils.decorators import method_decorator
 import logging
 
-from .models import CustomUser
+from .models import CustomUser, PasswordResetLog
 from .serializers import (
     UserSerializer, UserCreateSerializer,
     ChangePasswordSerializer, CustomTokenObtainPairSerializer,
+    AdminResetPasswordSerializer,
 )
 from .permissions import IsAdminOrAbove, CanManageUser
 from apps.core.tenancy import get_request_school
@@ -73,7 +74,11 @@ class ChangePasswordView(APIView):
         serializer = ChangePasswordSerializer(data=request.data, context={"request": request})
         if serializer.is_valid():
             request.user.set_password(serializer.validated_data["new_password"])
+            # Fin du parcours « mot de passe temporaire » : l'utilisateur a
+            # choisi son propre mot de passe, l'obligation est levée.
+            request.user.must_change_password = False
             request.user.save()
+            logger.info(f"Password changed (self): {request.user.email}")
             return Response({"detail": "Mot de passe modifié."})
         return Response(serializer.errors, status=400)
 
@@ -187,6 +192,96 @@ class ToggleUserActiveView(APIView):
             f"by {request.user.email}"
         )
         return Response({"detail": action_detail, "is_active": target.is_active})
+
+
+class AdminResetPasswordView(APIView):
+    """
+    POST /api/auth/users/<pk>/reset-password/  (P2 v4)
+
+    Réinitialisation du mot de passe d'un utilisateur par un administrateur
+    autorisé. Règles appliquées CÔTÉ BACKEND (jamais uniquement frontend) :
+      - admin      → teacher / parent / student de SON établissement ;
+      - superadmin → admin / teacher / parent / student (jamais superadmin) ;
+      - jamais soi-même (parcours « changer mon mot de passe » distinct).
+
+    Effets :
+      - mot de passe haché par Django (set_password), jamais stocké en clair ;
+      - must_change_password=True → nouveau mot de passe obligatoire à la
+        prochaine connexion de la cible ;
+      - révocation de tous les refresh tokens JWT de la cible (les sessions
+        actives expirent avec l'access token, ≤ durée de vie configurée) —
+        l'auteur de l'opération, lui, reste connecté ;
+      - journal d'audit PasswordResetLog (auteur, cible, rôle, date —
+        JAMAIS le mot de passe) ;
+      - la réponse API ne renvoie JAMAIS le mot de passe.
+    """
+    permission_classes = [IsAuthenticated, IsAdminOrAbove]
+
+    @method_decorator(ratelimit(key="user", rate="10/m", method="POST", block=True))
+    def post(self, request, pk):
+        requester = request.user
+        try:
+            target = CustomUser.objects.get(pk=pk)
+        except CustomUser.DoesNotExist:
+            return Response({"detail": "Utilisateur introuvable."}, status=404)
+
+        # Contrôle d'accès vertical (rôles) ET horizontal (établissement).
+        # Un 403 explicite (plutôt qu'un 404) : l'action est journalisée et
+        # le frontend n'affiche l'action que sur les cibles autorisées.
+        if not requester.can_reset_password_of(target):
+            logger.warning(
+                "Password reset REFUSÉ : %s (%s) → %s (%s)",
+                requester.email, requester.role, target.email, target.role,
+            )
+            return Response(
+                {"detail": "Vous n'êtes pas autorisé à réinitialiser le mot de passe de cet utilisateur."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        serializer = AdminResetPasswordSerializer(
+            data=request.data, context={"request": request, "target_user": target},
+        )
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        target.set_password(serializer.validated_data["new_password"])
+        target.must_change_password = True
+        target.save()
+
+        # Révocation des sessions : blacklist de TOUS les refresh tokens en
+        # circulation pour la cible. L'ancien mot de passe ne permet plus de
+        # se connecter et les sessions ne peuvent plus se renouveler.
+        revoked = 0
+        try:
+            from rest_framework_simplejwt.token_blacklist.models import (
+                OutstandingToken, BlacklistedToken,
+            )
+            for token in OutstandingToken.objects.filter(user=target):
+                _, created = BlacklistedToken.objects.get_or_create(token=token)
+                revoked += 1 if created else 0
+        except Exception as exc:
+            logger.warning("Révocation des tokens impossible : %s", exc)
+
+        PasswordResetLog.objects.create(
+            performed_by=requester,
+            target_user=target,
+            performed_by_email=requester.email,
+            target_email=target.email,
+            target_role=target.role,
+            school=target.school,
+        )
+        # Journal applicatif — AUCUNE donnée sensible.
+        logger.info(
+            "Password reset : %s (%s) → %s (%s), %d refresh token(s) révoqué(s)",
+            requester.email, requester.role, target.email, target.role, revoked,
+        )
+        return Response({
+            "detail": (
+                f"Mot de passe de {target.get_full_name()} réinitialisé. "
+                "L'utilisateur devra choisir un nouveau mot de passe à sa prochaine connexion."
+            ),
+            "must_change_password": True,
+        })
 
 
 class MessageRecipientsView(APIView):

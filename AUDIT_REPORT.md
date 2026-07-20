@@ -1,102 +1,104 @@
-# AUDIT_REPORT — FEBA School Management (V3 → V3 bilingue auditée)
+# AUDIT_REPORT.md — Missions V4 + V6
 
-Date : 16 juillet 2026
-Branche : `claude/v3-bilingual-audit` (base : import du zip V3 `feba_v1.zip` du 15/07/2026)
+## Audit global V6 (20/07/2026)
+
+Audit réalisé après P1–P7, sur l'ensemble du projet, en rejouant la **suite
+complète** (et non un sous-ensemble).
+
+### Anomalies détectées et corrigées
+
+| Sujet | Constat | Action |
+|---|---|---|
+| Point focal galerie | `test_website` échouait : assertion figée sur l'ancien focal `academique-participation` (`82% 28%`), désormais volontairement `26% 64%` (recadrage V6 hors mur crème) | Assertion alignée sur la valeur seedée |
+| Traductions | 4 clés dupliquées (`no-dupe-keys`) introduites avec les libellés de saisie groupée → `eslint` 4 erreurs | Doublons retirés (valeurs EN identiques) → 0 erreur |
+
+### Sécurité (P7)
+
+| Sujet | Constat | Action |
+|---|---|---|
+| Saisie groupée | Permissions **strictement backend** : enseignant limité à ses matières/classes, filtrage établissement (anti-IDOR), parent 403, anonyme 401 ; atomicité `transaction.atomic` (aucune écriture partielle) ; appréciation calculée backend | Implémenté + 16 tests backend + 6 frontend + E2E réel |
+
+### État final V6
+
+- Backend : **300 tests OK** (+1 skip concurrence PostgreSQL documenté).
+- Frontend : **56 tests OK**, `eslint` **0 erreur**, build prod OK.
+- Anciennes corrections (V4/V5) : non régressées — couvertes par les suites
+  `test_note_types_appreciations`, `test_password_reset`,
+  `test_parent_averages_missing_period`, `test_priority_fixes`,
+  `test_tenant_security`, `parent/Home.test.jsx`, toutes vertes ; page notes
+  enseignant vérifiée en navigateur (appréciations V4 correctes).
 
 ---
 
-## 1. Architecture identifiée
+# AUDIT_REPORT.md — Mission V4 (19/07/2026)
 
-| Couche | Technologie | Détails |
+Audit réalisé APRÈS livraison des quatre priorités, sur l'ensemble du
+projet (le projet avait déjà bénéficié d'audits successifs V29→V45 puis de
+l'audit bilinguisation — archivés dans `docs/`). Constats et actions de la
+passe V4 :
+
+## 1. Sécurité
+
+| Sujet | Constat | Action |
 |---|---|---|
-| Backend | Django 5 + Django REST Framework | 21 apps métier (`backend/apps/*`), authentification JWT (SimpleJWT, rotation + blacklist), multi-tenant par établissement (`school` FK + `IsSameTenant`), Channels (WebSocket), Celery + Redis (tâches) |
-| Frontend | React 18 + Vite | Zustand (état auth persisté), React Query (données serveur), react-hook-form + zod (formulaires), Tailwind CSS, React Router 6 (espaces par rôle : `/superadmin`, `/admin`, `/teacher`, `/parent`, `/student`) |
-| Base de données | PostgreSQL 16 (prod/dev docker) | SQLite possible en mode démo local (`settings.dev_sqlite`) |
-| PDF | Génération bulletins via `apps/bulletins/pdf_generator.py` | Bulletins bilingues FR/EN, formule 60/40 |
-| Visio | Jitsi Meet (mode démo ou auto-hébergé JWT) | `docker-compose.jitsi.yml` |
-| Déploiement | Docker Compose (dev + prod), Nginx, WhiteNoise | `docker-compose.yml`, `docker-compose.prod.yml` |
+| Permissions réinitialisation mdp | Nouvelles règles strictement vérifiées côté backend (`can_reset_password_of`), 403 sur contournement par ID, périmètre établissement respecté | Implémenté + 23 tests |
+| Sessions après réinitialisation | Blacklist de tous les refresh tokens de la cible ; l'auteur conserve sa session ; l'access token résiduel expire (≤ 60 min, configurable) | Implémenté + testé ; voir SECURITY_NOTES |
+| Journalisation | `PasswordResetLog` + logs applicatifs sans aucun secret | Vérifié par test |
+| Formulaires publics | Validation backend, honeypot, rate-limit IP (5/min), aucune lecture publique des soumissions (401/405), champs saisis par les familles en lecture seule côté admin | Implémenté + testé |
+| Endpoints admin du CMS | `IsAuthenticated + IsAdminOrAbove` sur tout `/api/website/admin/**` (anonyme → 401, parent → 403, testés) | Testé |
+| `manage.py check` | Aucun problème signalé | — |
+| Site public vs ERP | Instance axios publique séparée (aucun jeton envoyé, pas d'intercepteur de déconnexion) ; robots.txt désindexe les espaces privés | Implémenté |
 
-Modules analysés : accounts, announcements, attendance, bulletins, classes, core (tenancy/plateforme), dashboard, grades, homework, messaging, notifications, parents, payments, schedule, schools, students, subjects, teachers, user_files, virtualclass — plus les 56 pages frontend, 5 layouts, 12 composants UI.
+## 2. Logique métier
 
-## 2. Bilinguisme (PRIORITÉ Nº 1) — réalisé
-
-Voir `CHANGELOG_FIXES.md` § Bilinguisme pour le détail. Résumé :
-
-- **Architecture i18n centralisée unique** : `frontend/src/i18n/` — modèle « gettext » (la chaîne française EST la clé), dictionnaire FR→EN de ~1 050 entrées (`translations.js`), repli automatique sur le français (aucune clé technique ne peut apparaître à l'écran).
-- **Page de connexion bilingue simultanée** : chaque texte affiché en « FR / EN » via `tBoth()` (titres, labels, placeholders, bouton, erreurs de validation zod, messages d'échec serveur, aria-labels afficher/masquer le mot de passe).
-- **Sélecteur FR | EN** dans l'en-tête des 5 layouts (tous les rôles), application immédiate sans déconnexion (remontage de l'arbre React via `<AppRouter key={lang} />`, route courante préservée).
-- **Persistance** : localStorage (`feba-lang`) + profil utilisateur (`CustomUser.preferred_language`, migration `accounts.0004`), synchronisée par PATCH `/api/auth/me/` au changement, ré-appliquée en priorité au login.
-- **Messages backend** : `Accept-Language` envoyé par axios + `LocaleMiddleware` Django (messages du framework localisés) ; les messages métier français connus sont traduits à l'affichage par le dictionnaire via `utils/errors.js` (point de passage unique des erreurs API).
-- **Dates localisées** : helper `dateLocale()` (fr-FR / en-GB), remplacement des locales codées en dur, date-fns localisé (salles virtuelles), jours de semaine et mois abrégés traduits.
-
-## 3. Problèmes détectés et corrigés
-
-| # | Gravité | Problème | Fichiers | Correction | Test |
-|---|---|---|---|---|---|
-| 1 | Critique (mission) | Application non bilingue : ~1 500 chaînes françaises codées en dur dans 56 pages, 5 layouts, 12 composants | tout `frontend/src` | Système i18n central + enveloppement `t()` de toutes les chaînes + dictionnaire EN ~1 050 entrées | Build Vite OK ; vérification navigateur FR/EN ; `tests/test_i18n_preferences.py` (7 tests) |
-| 2 | Élevée | Pas de préférence de langue persistée côté serveur | `accounts/models.py`, `serializers.py`, `views.py` | Champ `preferred_language` + migration 0004 + exposition/PATCH `/auth/me/` | `test_i18n_preferences.py` : défaut fr, PATCH, rejet langue non supportée, restauration à la reconnexion, isolation par utilisateur |
-| 3 | Élevée | Montant de paiement sans validation : montants négatifs ou nuls acceptés (risque d'incohérence financière) | `payments/serializers.py` | `validate_amount` (strictement positif) + `validate_payment_date` (pas de date future) | `test_audit_validations.py::TestPaymentValidation` (4 tests) |
-| 4 | Élevée | Présences : doublons possibles (même élève, même date, même matière) et dates futures acceptées | `attendance/serializers.py` | Validation d'unicité (mise à jour exclue) + rejet date future | `TestAttendanceValidation` (3 tests) |
-| 5 | Élevée | Emploi du temps : aucun contrôle de conflit — fin avant début, chevauchements classe/enseignant/salle acceptés | `schedule/serializers.py` | Validation fin > début + détection de chevauchement (même jour/année) pour la classe, l'enseignant et la salle | `TestScheduleConflicts` (4 tests) |
-| 6 | Moyenne | Lookup JSONField `__contains` non portable (plantage SQLite : annonces + dashboard élève) | `announcements/utils.py` (nouveau), `announcements/views.py`, `dashboard/views.py` | Helper `filter_targets_role()` : lookup natif sur PostgreSQL, cast texte sur les autres moteurs (sans faux positif grâce aux guillemets JSON) | 3 tests précédemment en échec sur SQLite passent désormais des deux côtés |
-| 7 | Moyenne | `urls.py` importait `debug_toolbar` dès que `DEBUG=True` → crash au démarrage si le paquet n'est pas installé | `feba_project/urls.py` | Import conditionné à la présence dans `INSTALLED_APPS` | Démarrage vérifié en mode `dev_sqlite` (runserver) |
-| 8 | Moyenne | Proxy Vite figé sur l'hôte docker `backend-dev` → frontend inutilisable hors Docker | `frontend/vite.config.js` | Cible configurable par `BACKEND_ORIGIN` (défaut docker inchangé) | Stack locale lancée avec `BACKEND_ORIGIN=http://localhost:8000`, connexion vérifiée au navigateur |
-| 9 | Moyenne | Pas de mode d'exécution sans PostgreSQL/Redis (démo/dev léger) ; migrations v29 en SQL brut PostgreSQL | `feba_project/settings/dev_sqlite.py` (nouveau) | Settings démo documentés : SQLite fichier, schéma dérivé des modèles (`migrate --run-syncdb`), Celery eager, channels mémoire | Migrate + `seed_demo_data` + runserver + parcours navigateur exécutés |
-| 10 | Faible | `settings/test_postgres.py` : identifiants codés en dur ne correspondant pas à la stack docker | `test_postgres.py` | Variables d'environnement `TEST_DB_*` avec défauts = stack docker dev | Suite complète exécutée sur PostgreSQL : 220/220 |
-| 11 | Faible | Test de concurrence en échec permanent sur SQLite (verrou de table en mémoire) | `tests/test_parent_student.py` | `skipIf(vendor=="sqlite")` avec raison documentée ; test exécuté et vert sur PostgreSQL | `220 passed` sur PostgreSQL |
-| 12 | Faible | 2 tests de notifications utilisaient une date codée en dur devenue future (cassants avec la validation n°4) | `tests/test_priority_fixes.py` | Date passée dans l'année scolaire (2026-02-05) | Suite verte |
-| 13 | Faible | Code mort : `allRoomTypeOptions` construit puis jamais utilisé | `pages/admin/Settings.jsx` | Supprimé | Build OK |
-| 14 | Faible | Variables locales `t` masquant la fonction de traduction (5 sites, dont 2 entourant des rendus d'options) | Teachers/Schedule/Grades/Settings.jsx | Renommées (`tch`, `tc`, `per`, `nt`, `rt`) | Build OK |
-
-## 4. Contrôles d'audit sans anomalie détectée (vérifiés)
-
-| Domaine | Méthode de vérification | Résultat |
+| Sujet | Constat | Action |
 |---|---|---|
-| Montants financiers | Lecture des modèles : `DecimalField` partout (payments.amount 12,2 ; grades.value 4,2) — pas de flottants | Conforme |
-| Barème des notes | `MinValueValidator(0)/MaxValueValidator(20)` sur `Grade.value` ; coefficient ≥ 1 | Conforme (impossible de saisir hors barème via l'API — validators DRF hérités du modèle) |
-| Formule bilingue 60/40 et moyennes | Suite de tests dédiée existante (`test_years_and_averages.py`, `test_priority_fixes.py`, `test_parent_averages_missing_period.py`, `test_bug_fixes_v45.py`) réexécutée | 220/220 verts sur PostgreSQL |
-| Permissions serveur | Lecture de `accounts/permissions.py` + `get_permissions()` des ViewSets (ex. paiements : écritures réservées admin+) ; suite `test_tenant_security.py` (isolation multi-établissements) réexécutée | Conforme — les restrictions ne sont pas seulement visuelles |
-| PATCH /auth/me/ | Liste blanche de champs (`first_name`, `last_name`, `phone`, `avatar`, `preferred_language`) — un utilisateur ne peut pas s'auto-promouvoir | Test dédié `test_patch_me_cannot_change_role` |
-| Authentification | Login email+mdp, comptes désactivés bloqués, établissement suspendu bloqué, rate-limit 20/min/IP sur le login, rotation des refresh tokens + blacklist, déconnexion révoquant le refresh | Lecture de `CustomTokenObtainPairSerializer` + tests accounts existants |
-| Secrets | `.env.prod` gitignoré ; `.env.dev` ne contient que des valeurs locales de développement explicitement marquées non-production ; `SECRET_KEY` prod exigée par variable d'environnement | Inspection `git ls-files` + settings |
-| Config production | `prod.py` : DEBUG=False, HSTS 1 an + preload, SSL redirect, cookies Secure, X-Frame-Options DENY, nosniff | Lecture settings |
-| Redirections notifications | Corrigées dans la V3 importée (`notification_path` préfixé par rôle) — vérifiées présentes | Tests `test_priority_fixes.py` |
-| Pagination | `FlexiblePagination` par défaut (PAGE_SIZE 20) | Lecture settings |
+| Appréciations dupliquées | `seed_demo_data` recalculait ses propres seuils (« Excellent travail »…) divergents du moteur | Centralisé sur `get_appreciation` |
+| Appréciations stockées | `Bulletin.appreciation` contenait l'ancienne échelle | Migration de données réversible `bulletins/0005` |
+| Valeurs invalides | L'ancienne fonction classait silencieusement n'importe quelle valeur | `ValueError` sur note hors [0, barème], barème ≤ 0, non numérique |
+| Types de notes | Valeurs internes déjà stables (`interrogation`, `examen`) — seuls les libellés changent : compatibilité totale des anciennes données | Vérifié en navigateur sur données seedées |
 
-## 5. Tests exécutés (commandes réelles)
+## 3. Frontend
 
-```bash
-# SQLite (rapide, sans services)
-cd backend
-DJANGO_SETTINGS_MODULE=feba_project.settings.test_sqlite .venv-test/bin/python -m pytest --no-migrations -q
-# → 219 passed, 1 skipped (concurrence : nécessite un vrai serveur de BD)
+| Sujet | Constat | Action |
+|---|---|---|
+| Bundle unique 1,5 Mo | Toutes les pages ERP importées statiquement : un visiteur du site public téléchargeait tout l'ERP | Router 100 % lazy : 407 → 113 Ko gzip au premier chargement |
+| Clé i18n dupliquée | `Réinitialiser` définie deux fois (erreur eslint) | Supprimée |
+| Appréciations non traduites | Les cellules affichaient la chaîne backend brute en mode EN | Passage par `t()` + dictionnaire EN des 9 libellés |
+| 404 | URL inconnue → page de connexion (impression de déconnexion) sur les anciennes versions ; la passe bilingue l'avait déjà corrigé côté ERP | V4 : 404 publique du site vitrine, session intacte, header « Mon espace » |
+| eslint global | 0 erreur (warnings préexistants de style/compiler conservés) | — |
 
-# PostgreSQL (migrations incluses)
-DJANGO_SETTINGS_MODULE=feba_project.settings.test_postgres .venv-test/bin/python -m pytest -q
-# → 220 passed
+## 4. Revérification des anciens correctifs (mission précédente)
 
-# Frontend
-cd frontend && npm run build
-# → ✓ built (sans erreur)
-```
+| Sujet | Vérification V4 (navigateur) | Résultat |
+|---|---|---|
+| Tableau de bord Parent | `/parent/home` : rendu complet, aucune page blanche ni TypeError, données chargées | ✅ |
+| Moyennes Parent | 4 cartes affichées (générale, française, anglaise, bilingue), valeurs cohérentes, aucun tiret indu | ✅ |
+| Notifications | Clic cloche : panneau OK ; clic notification : ouvre la page Notes (activité correcte), session conservée, pas de redirection forcée vers les annonces | ✅ |
+| Changement de mot de passe personnel | Parcours `change-password` inchangé et re-testé (utilisé par le flux must_change_password) ; le drapeau est levé à la réussite | ✅ |
 
-Vérification navigateur (stack locale `dev_sqlite` + Vite, données `seed_demo_data`) :
-- page de connexion : tous les textes en FR / EN simultanés — capturé ;
-- connexion invalide → 400 + toast bilingue ; connexion valide `admin@feba.bj` → tableau de bord ;
-- sélecteur FR|EN dans l'en-tête → bascule immédiate (Dashboard/School overview, cartes KPI, graphiques) — capturé ;
-- persistance : `PATCH /api/auth/me/` (200) émis au changement de langue ; préférence restaurée à la reconnexion (couvert aussi par test API dédié).
+## 5. Points suivis mais non bloquants
 
-## 6. Risques résiduels
+- Suite PostgreSQL (`settings.test_postgres` via Docker) non exécutée :
+  Docker indisponible sur la machine pendant la mission. La suite SQLite
+  complète (280 tests) passe ; le seul test dépendant de PostgreSQL est
+  skippé avec justification. À rejouer sur un poste avec Docker
+  (commande dans README / KNOWN_LIMITATIONS).
+- Warnings Django préexistants (STATICFILES_STORAGE déprécié,
+  pagination non ordonnée sur un queryset) : inchangés, hors périmètre.
+- L'admin Django (`/django-admin/`) sert d'interface de gestion des slides
+  et de la galerie ; l'écran React « Site vitrine » couvre messages,
+  préinscriptions, actualités et paramètres (le plus opérationnel).
 
-1. **Couverture i18n** : ~1 050 chaînes traduites ; d'éventuels reliquats mineurs (textes très dynamiques, combinaisons rares) s'affichent en français (repli sûr) — jamais de clé technique. Un balayage systématique des nœuds mixtes a été fait ; signaler tout reliquat repéré à l'usage.
-2. **Doublons de présence pré-existants** : la validation bloque les nouveaux doublons via l'API ; les éventuels doublons historiques en base ne sont pas purgés (aucune migration destructive, conformément à la mission).
-3. **Conflits d'emploi du temps pré-existants** : même logique — le contrôle s'applique aux créations/modifications futures.
-4. **Migrations v29 en SQL PostgreSQL** : inchangées (les réécrire risquerait de casser les bases existantes) ; le mode SQLite local utilise le schéma dérivé des modèles, documenté dans `dev_sqlite.py`.
-5. **Mode d'emploi Celery/Redis** : en mode démo local, Celery est en mode eager (synchronisé) — comportement des tâches identique mais non asynchrone.
+## 6. Tableau récapitulatif final
 
-## 7. Éléments non testables dans cet environnement (et pourquoi)
-
-- **E-mails réels** : backend console en dev (aucun serveur SMTP fourni) — la logique d'envoi est exercée, pas la délivrance.
-- **Jitsi auto-hébergé (JWT)** : nécessite l'instance `docker-compose.jitsi.yml` et des secrets `JITSI_APP_*` ; le mode démo meet.jit.si est fonctionnel.
-- **Test de charge / volumes élevés** : hors périmètre de l'environnement local ; la pagination et les index existants limitent le risque.
-- **Docker en fin de session** : Docker Desktop a été arrêté en cours de vérification (hors de mon contrôle) ; la validation navigateur a été terminée sur la stack locale sans Docker (`dev_sqlite` + Vite). La stack Docker avait démarré proprement auparavant (migration 0004 appliquée sur PostgreSQL, backend healthy, login 400/200 vérifiés à travers le proxy).
+| ID | Priorité | Module | Problème / besoin | Cause | Fichiers modifiés (principaux) | Correction | Tests exécutés | Résultat | Statut |
+|----|----|----|----|----|----|----|----|----|----|
+| V4-01 | P1 | Notes | Libellés « Interrogation », « Examen » à renommer partout | Libellés portés par les choices backend + listes frontend | grades/models.py, migration 0010, admin/teacher Grades.jsx, translations.js | Libellés renommés, valeurs internes stables | pytest test_note_types_appreciations (19) + création/modif UI navigateur | 280 ✅ backend, UI vérifiée | Corrigé et testé |
+| V4-02 | P3 | Notes/Bulletins | Nouveau barème officiel 9 niveaux | Ancienne échelle 6 niveaux codée dans get_appreciation + seuils dupliqués dans le seed + valeurs stockées | grades/models.py, seed_demo_data.py, bulletins/0005, pages React (t()) | Fonction centrale + normalisation + rejets + migration | Bornes exhaustives + balayage 0,01 + barèmes ≠20 + API + navigateur | ✅ | Corrigé et testé |
+| V4-03 | P2 | Comptes | Réinitialisation mdp par admin/superadmin absente | Fonctionnalité inexistante | accounts (models/serializers/views/urls + migration 0005), ResetPasswordModal, ForcePasswordChange, router, useAuth, Users/Admins.jsx | Endpoint sécurisé + UI + parcours forcé + audit log + révocation tokens | pytest test_password_reset (23) + parcours navigateur complet | ✅ | Implémenté et testé |
+| V4-04 | P4 | Site public | Site vitrine à créer, « / » devait devenir public | Application 100 % ERP | apps/website (complet), frontend/src/site (18 fichiers), router, index.html, robots/sitemap, tailwind, scripts/optimize_site_media.py | Site 13 pages + CMS + formulaires + SEO + médias optimisés | pytest test_website (19), vitest site (13), E2E desktop+mobile, build prod | ✅ | Implémenté et testé |
+| V4-05 | Audit | Frontend | Visiteurs téléchargeaient l'ERP entier (1,5 Mo) | Imports statiques du routeur | router/index.jsx | Lazy loading intégral | vite build (chunks), navigateur | 407→113 Ko gzip | Corrigé et testé |
+| V4-06 | Audit | i18n | Clé dupliquée (erreur eslint) | Ajout V4 en double d'une clé existante | translations.js | Doublon supprimé | eslint --quiet, vitest | 0 erreur | Corrigé et testé |
+| V4-07 | Audit | Outillage | Impossible de tester le build prod localement | vite preview sans proxy API | vite.config.js | Proxy preview | vite preview + navigateur | ✅ | Corrigé et testé |
+| V4-08 | Suivi | Tests | Suite PostgreSQL non rejouée | Docker indisponible sur la machine | — | Procédure documentée | — | — | Bloqué par une dépendance externe |

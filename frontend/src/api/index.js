@@ -84,7 +84,26 @@ export const authAPI = {
   updateUser: (id, d) => api.patch(`/auth/users/${id}/`, d),
   deleteUser: (id)    => api.delete(`/auth/users/${id}/`),
   toggleActive: (id)  => api.post(`/auth/users/${id}/toggle-active/`),
+  adminResetPassword: (id, d) => api.post(`/auth/users/${id}/reset-password/`, d),
   recipients: ()      => api.get("/auth/recipients/"),
+};
+
+// Administration du site vitrine public (P4) — permission admin/superadmin.
+export const websiteAdminAPI = {
+  settings: ()            => api.get("/website/admin/settings/"),
+  updateSettings: (d)     => api.patch("/website/admin/settings/", d),
+  news: ()                => api.get("/website/admin/news/", { params: BIG }),
+  createNews: (d)         => api.post("/website/admin/news/", d),
+  updateNews: (id, d)     => api.patch(`/website/admin/news/${id}/`, d),
+  deleteNews: (id)        => api.delete(`/website/admin/news/${id}/`),
+  contactMessages: ()     => api.get("/website/admin/contact-messages/", { params: BIG }),
+  updateContact: (id, d)  => api.patch(`/website/admin/contact-messages/${id}/`, d),
+  deleteContact: (id)     => api.delete(`/website/admin/contact-messages/${id}/`),
+  preregistrations: ()    => api.get("/website/admin/preregistrations/", { params: BIG }),
+  updatePrereg: (id, d)   => api.patch(`/website/admin/preregistrations/${id}/`, d),
+  deletePrereg: (id)      => api.delete(`/website/admin/preregistrations/${id}/`),
+  heroSlides: ()          => api.get("/website/admin/hero-slides/"),
+  updateHeroSlide: (id, d) => api.patch(`/website/admin/hero-slides/${id}/`, d),
 };
 
 export const schoolsAPI = {
@@ -243,6 +262,7 @@ export const gradesAPI = {
   studentSummary: (sid, p) => api.get("/grades/student-summary/", { params: { student: sid, ...p } }),
   bilingual: (p)         => api.get("/grades/bilingual/", { params: p }),
   bulkSave: (d)          => api.post("/grades/bulk_save/", d),
+  bulkCreate: (d)        => api.post("/grades/bulk-create/", d),
   allHistory: (p)        => api.get("/grades/all-history/", { params: p }),
 };
 

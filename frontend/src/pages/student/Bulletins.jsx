@@ -93,7 +93,7 @@ export default function StudentBulletins() {
                         </span>
                       )}
                       {b.appreciation && (
-                        <span className="text-xs text-emerald-600 font-medium">{b.appreciation}</span>
+                        <span className="text-xs text-emerald-600 font-medium">{t(b.appreciation)}</span>
                       )}
                     </div>
                   </div>

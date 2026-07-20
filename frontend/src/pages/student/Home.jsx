@@ -39,8 +39,8 @@ export default function StudentHome() {
           trend={kpis.progression != null && kpis.progression < 0 ? "down" : "up"}
           trendValue={
             kpis.progression != null
-              ? `${kpis.progression >= 0 ? "+" : ""}${kpis.progression} pt vs T1${kpis.appreciation ? ` • ${kpis.appreciation}` : ""}`
-              : kpis.appreciation || undefined
+              ? `${kpis.progression >= 0 ? "+" : ""}${kpis.progression} pt vs T1${kpis.appreciation ? ` • ${t(kpis.appreciation)}` : ""}`
+              : (kpis.appreciation ? t(kpis.appreciation) : undefined)
           }
           delay={0} />
         <StatCard title={t("Devoirs à rendre")} icon={FileText} color="accent"

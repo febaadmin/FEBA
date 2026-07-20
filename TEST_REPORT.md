@@ -1,193 +1,226 @@
-# TEST_REPORT — itération « bilinguisation + hotfix page blanche Parent » (16/07/2026)
+# TEST_REPORT.md — Missions V4 + V5 + V6 (20/07/2026)
 
-## Commandes réellement exécutées et résultats
+## Résultats V6.2 (conformité visuelle exacte aux captures annotées)
 
 ```bash
-# Backend — SQLite (sans services externes)
+cd backend && DJANGO_SETTINGS_MODULE=feba_project.settings.test_sqlite \
+  .venv-test/bin/python -m pytest --no-migrations -q     # 300 passed, 1 skipped
+cd frontend && npx vitest run                            # 62 passed (8 fichiers)
+npx eslint src                                           # 0 erreur
+npx vite build                                           # ✓ built
+```
+
+- **Nouveau fichier** `src/site/visual-conformity.test.jsx` (6 cas) : vérifie le
+  **slug exact** attendu à chaque emplacement corrigé — pas seulement qu'une
+  image existe, mais que c'est **la bonne** :
+  - carrousel slide 1 = `campus-logo` ;
+  - « Notre campus » (fallback) = `[campus-logo, campus-facade-logo,
+    campus-devise, campus-cour]`, **sans** `campus-facade` ni `campus-fresque` ;
+  - mosaïque d'accueil = `campus-facade-logo` (et **pas** `campus-fresque`) ;
+  - À propos « La direction » = `apropos-direction-2` (et **pas**
+    `apropos-direction`) + cartes distinctes ;
+  - Académique = `bilingue-accompagnement` avec focal `50% 66%`.
+- `mediaMeta.test.js` : invariant slug ↔ fichier maintenu après ajout de
+  `campus-facade-logo`, `campus-devise`, restauration d'`apropos-direction-2`.
+- Vérif navigateur (captures 375 + 1440 + DOM) : les 4 corrections conformes ;
+  cadrage Académique correct sur desktop **et** mobile (overlay responsive).
+
+## Résultats V6.1 (corrections visuelles finales sur captures annotées)
+
+```bash
+cd backend && DJANGO_SETTINGS_MODULE=feba_project.settings.test_sqlite \
+  .venv-test/bin/python -m pytest --no-migrations -q     # 300 passed, 1 skipped
+cd frontend && npx vitest run                            # 56 passed (7 fichiers)
+npx eslint src                                           # 0 erreur
+npx vite build                                           # ✓ built
+```
+
+- `mediaMeta.test.js` valide l'invariant bidirectionnel slug ↔ fichiers après
+  ajout de 4 médias et **suppression** de 3 (apropos-direction,
+  apropos-direction-2, galerie-mosaique-3) : chaque slug a ses fichiers
+  800+1600 **et** chaque fichier a une entrée de focal.
+- `seed_website` idempotent + élagage : « Notre campus » −2, « Petite enfance »
+  +1 (crèche), « Moments FEBA » −1 (mosaïque bannie).
+- Vérif navigateur déterministe (DOM) : slide 1 = `campus-logo` ; mosaïque =
+  `campus-fresque` ; focals vignettes = 50/66, 50/68, 66/46, 66/46, 52/64 ;
+  overlays hero `hero-left`+`hero-gold` présents ; `apropos-direction*` /
+  `galerie-mosaique-3` absents du DOM.
+
+## Résultats V6 (carrousel/galerie, dédoublonnage, recadrages, menu, saisie groupée)
+
+```bash
+cd backend && DJANGO_SETTINGS_MODULE=feba_project.settings.test_sqlite \
+  .venv-test/bin/python -m pytest --no-migrations -q
+# → 300 passed, 1 skipped (concurrence PostgreSQL, documentée), 46 subtests passed
+
+cd frontend && npx vitest run          # → 56 passed (7 fichiers)
+npx eslint src                         # → 0 erreur (62 avertissements, base projet)
+npx vite build                         # → ✓ built (~8 s)
+```
+
+Détail des ajouts V6 :
+
+| Suite | Fichier | Tests | Couvre |
+|---|---|---|---|
+| Backend | `tests/test_bulk_grades.py` | 16 | atomicité, rollback, erreurs indexées, permissions (enseignant/admin/superadmin/parent/anonyme), IDOR, doublons, coefficient |
+| Frontend | `src/components/grades/BulkGradeModal.test.jsx` | 6 | charge utile groupée, succès, mapping erreurs par ligne, validations cliente |
+| Frontend | `src/site/carousel-gallery.test.jsx` | 9 | 0/1/N slides, repli galerie vide/erreur/pleine, déduplication `siteDefaults` |
+
+**Régressions détectées par la passe complète et corrigées :**
+
+1. `tests/test_website.py::FocalPointTests::test_gallery_items_expose_focal` —
+   assertion sur l'ancien point focal de `academique-participation` (`82% 28%`)
+   alignée sur la valeur V6 seedée voulue (`26% 64%`, enseignante en bas-gauche
+   hors mur crème). *Correction : test.*
+2. `src/i18n/translations.js` — 4 clés dupliquées (`no-dupe-keys`) introduites
+   avec les libellés de saisie groupée, retirées (valeurs EN identiques, aucun
+   changement de comportement). *eslint : 4 erreurs → 0.*
+
+E2E navigateur (session enseignant réelle + site public 375/1280/1920) :
+voir `BULK_GRADES_REPORT.md` §4.3 et `VISUAL_FIXES_REPORT.md`.
+
+## Résultats V5 (corrections visuelles)
+
+```bash
+cd backend && DJANGO_SETTINGS_MODULE=feba_project.settings.test_sqlite \
+  .venv-test/bin/python -m pytest --no-migrations -q
+# → 284 passed, 1 skipped (concurrence PostgreSQL), 46 subtests passed
+
+cd frontend && npx vitest run   # → 41 passed (5 fichiers)
+npx eslint src --ext .js,.jsx --quiet   # → 0 erreur
+npx vite build                  # → ✓ built (~10 s, chunks identiques V4)
+```
+
+Nouveaux tests V5 : `frontend/src/site/mediaMeta.test.js` (6 — chaque
+fichier packagé a un point focal, chaque entrée du registre correspond à un
+fichier réel, positions valides, overlays 100 % couleurs de marque) ;
+`backend/tests/test_website.py::FocalPointTests` (4 — focal exposé par
+l'API avec les valeurs seedées, bornes 0–100 validées, PATCH admin
+répercuté sur l'API publique).
+
+Vérifications navigateur V5 réellement effectuées :
+- captures pleine page AVANT/APRÈS des 10 pages publiques × 3 largeurs
+  (livraison_v5/captures/avant|apres, 60 fichiers) ;
+- accueil aux 9 largeurs imposées 320/375/390/430/768/1024/1280/1440/1920
+  (captures/breakpoints) ;
+- 0 débordement horizontal à 320 px sur les 12 pages (scrollWidth mesuré) ;
+- 36 images accueil, 0 cassée après lazy-load ; console sans erreur ;
+- slides 4 et 5 vérifiées interactivement en mobile (texte lisible, sujets
+  entiers, plus de flèche sous le titre) ;
+- non-régression ERP : login admin → dashboard 200, notes 200 ; login
+  parent → moyennes + appréciation « PEUT MIEUX FAIRE » (12,67) intactes.
+
+
+# Rappel V4
+
+Tous les résultats ci-dessous proviennent de commandes réellement exécutées
+sur cette machine (macOS, Python 3.14.5 via `backend/.venv-test`, Node/Vite).
+
+## 1. Tests backend (pytest, SQLite en mémoire)
+
+```bash
 cd backend
-DJANGO_SETTINGS_MODULE=feba_project.settings.test_sqlite pytest --no-migrations -q
-#  → 219 passed, 1 skipped (concurrence : nécessite un serveur de BD ; vert sur PostgreSQL)
-
-# Backend — PostgreSQL (docker dev up, migrations incluses — avant l'arrêt de Docker)
-DJANGO_SETTINGS_MODULE=feba_project.settings.test_postgres pytest -q
-#  → 220 passed
-
-# Backend — depuis la copie propre extraite du ZIP livré
-#  → 219 passed, 1 skipped
-
-# Frontend — tests unitaires (Vitest + Testing Library, nouveau)
-cd frontend && npx vitest run
-#  → 3 fichiers, 22 tests, 22 passed
-#     · src/pages/parent/Home.test.jsx  (10) — rendu ParentHome, dont le
-#       scénario exact du crash « t2 is not a function » (moyennes T1/T2/T3)
-#     · src/i18n/i18n.test.js           (12) — t/tBoth/interpolation/repli/persistance
-#     · src/test/no-t-shadowing.test.js (1)  — garde statique anti-shadowing de t
-
-# Frontend — build production
-npm run build
-#  → ✓ built (aucune erreur)
+DJANGO_SETTINGS_MODULE=feba_project.settings.test_sqlite \
+  .venv-test/bin/python -m pytest --no-migrations -q
 ```
 
-## Vérification navigateur (serveurs réels : Django runserver + Vite)
-
-| Scénario | Résultat observé |
+| Étape | Résultat |
 |---|---|
-| Connexion parent1@feba.bj | 200, redirection `/parent/home` |
-| `/parent/home` | **Page complète** : 2 enfants, moyenne générale 12.62/20 & 12.68/20, Moy. T1/T2/T3, Français/Anglais, progression — plus de page blanche |
-| Console navigateur | **0 erreur** (plus de « t2 is not a function ») |
-| Rechargement direct `/parent/home` | OK |
-| `/parent/grades` puis retour | OK — cartes Moy. Générale/Française/Anglaise/Bilingue remplies pour chaque enfant |
-| Notification réelle (nouvelle note créée par l'enseignant via API) | Cloche → clic → navigation `/parent/grades`, session conservée, pas de déconnexion |
-| Déconnexion (bouton UI) | Retour `/login`, jetons purgés |
-| Connexion eleve1@feba.bj | `/student/home` complet (moyennes T1/T2/T3, annuelle, FR/EN) |
-| Bascule FR ↔ EN (parent + admin) | Immédiate, persistée (PATCH `/auth/me/` 200) |
-| Changement de mot de passe admin (API) | mauvais ancien → 400 ; bon → 200 ; login avec nouveau → 200 ; restauré |
-| Réseau | Tous les endpoints du dashboard parent en 200, aucune boucle de requêtes |
+| **Baseline avant mission** | 219 passed, 1 skipped |
+| Après P1+P3 | 238 passed, 1 skipped (2 anciens tests mis à jour : ils attendaient l'ancienne échelle « Bien » — la règle métier a changé) |
+| Après P2 | 261 passed, 1 skipped |
+| **Final (P4 inclus)** | **280 passed, 1 skipped, 46 subtests passed** |
 
----
+Le skip unique est documenté : test de concurrence multi-threads
+impossible sur SQLite en mémoire (verrou de table globale), exécuté sur la
+stack PostgreSQL (`settings.test_postgres`) — Docker indisponible sur cette
+machine au moment de la mission (voir KNOWN_LIMITATIONS).
 
-# (Itérations précédentes ci-dessous)
+Nouveaux fichiers de tests :
+- `tests/test_note_types_appreciations.py` — 19 tests + 40 subtests
+  (bornes du barème, normalisation, invalides, migration bulletins, P1 API).
+- `tests/test_password_reset.py` — 23 tests (matrice de permissions
+  complète, effets, journal, parcours must_change_password).
+- `tests/test_website.py` — 19 tests (contenu public, formulaires +
+  honeypot, non-exposition des soumissions, permissions admin, seed).
 
-# TEST_REPORT — Itération courante (notifications / moyennes / mot de passe)
+`manage.py check` : « System check identified no issues (0 silenced). »
 
-Toutes les commandes ci-dessous ont été **réellement exécutées** dans
-l'environnement de travail (pas de résultat inventé). Voir `CORRECTIONS.md`
-pour le détail des corrections associées. Le rapport de l'itération
-précédente (bulletins/matricules) a été renommé `TEST_REPORT_PREVIOUS.md`.
+## 2. Tests frontend (vitest, jsdom)
 
-## 1. Backend — suite complète (PostgreSQL réel)
-
-```
-$ DJANGO_SETTINGS_MODULE=feba_project.settings.test_postgres python manage.py migrate --no-input
-... (toutes les migrations appliquées sans erreur, y compris les migrations
-     multi-tenant v29 qui utilisent une syntaxe PostgreSQL réelle)
-
-$ DJANGO_SETTINGS_MODULE=feba_project.settings.test_postgres python -m pytest tests/ -q --reuse-db
-====================== 192 passed, 143 warnings in 7.53s =======================
+```bash
+cd frontend && npx vitest run
 ```
 
-175 tests pré-existants + 17 nouveaux (`tests/test_priority_fixes.py`) = 192.
-**0 échec, 0 erreur.**
+| Étape | Résultat |
+|---|---|
+| Baseline avant mission | 22 passed (3 fichiers) |
+| **Final** | **35 passed (4 fichiers)** |
 
-## 2. Détail des 17 nouveaux tests (`tests/test_priority_fixes.py`)
+Nouveau : `src/site/site.test.jsx` — 13 tests : layout + menu complet +
+lien Connexion → /login, menu mobile accessible (aria-expanded), accueil
+sans crash (carrousel administrable, sections), chiffres masqués si non
+renseignés / affichés si saisis, actualités (état vide sans fausses
+données, erreur API propre, liste réelle), formulaire contact (validations
+frontend, succès, erreurs backend), formulaire préinscription (champs
+obligatoires, envoi), 404 publique.
 
-```
-tests/test_priority_fixes.py::NotificationPathTests::test_all_roles_get_correct_prefix PASSED
-tests/test_priority_fixes.py::NotificationPathTests::test_create_notification_stores_related_url_verbatim PASSED
-tests/test_priority_fixes.py::NotificationPathTests::test_leading_slash_in_path_is_normalized PASSED
-tests/test_priority_fixes.py::NotificationPathTests::test_unknown_role_returns_empty_string_not_broken_url PASSED
-tests/test_priority_fixes.py::GradeNotificationRedirectTests::test_grade_creation_notifies_parent_with_parent_prefixed_url PASSED
-tests/test_priority_fixes.py::GradeNotificationRedirectTests::test_grade_creation_notifies_student_with_student_prefixed_url PASSED
-tests/test_priority_fixes.py::AttendanceAndPaymentNotificationTests::test_absence_notifies_parent_and_student_with_correct_prefixes PASSED
-tests/test_priority_fixes.py::AttendanceAndPaymentNotificationTests::test_payment_notifies_parent_and_student_with_correct_prefixes PASSED
-tests/test_priority_fixes.py::DashboardSubjectAveragesTests::test_annual_subject_averages_helper_groups_by_subject PASSED
-tests/test_priority_fixes.py::DashboardSubjectAveragesTests::test_parent_dashboard_exposes_subject_and_bilingual_averages_per_child PASSED
-tests/test_priority_fixes.py::DashboardSubjectAveragesTests::test_student_dashboard_exposes_subject_and_bilingual_averages PASSED
-tests/test_priority_fixes.py::DashboardSubjectAveragesTests::test_student_with_no_grades_at_all_dashboard_does_not_crash PASSED
-tests/test_priority_fixes.py::DashboardSubjectAveragesTests::test_subject_without_grades_reports_none_not_zero PASSED
-tests/test_priority_fixes.py::AdminPasswordChangeTests::test_admin_can_change_own_password PASSED
-tests/test_priority_fixes.py::AdminPasswordChangeTests::test_superadmin_can_change_own_password PASSED
-tests/test_priority_fixes.py::AdminPasswordChangeTests::test_weak_new_password_rejected_for_admin PASSED
-tests/test_priority_fixes.py::AdminPasswordChangeTests::test_wrong_old_password_rejected_for_admin PASSED
+`npx eslint src --quiet` : 0 erreur (1 clé i18n dupliquée détectée et
+corrigée pendant l'audit).
+
+## 3. Compilation de production
+
+```bash
+cd frontend && npx vite build
 ```
 
-## 3. Non-régression — tests des itérations précédentes
+✓ built in ~8 s — bundle initial 295 Ko (95,8 Ko gzip) + chunks lazy par
+page (site vitrine : 1–19 Ko). Avant la mission : chunk unique de
+1 534 Ko (407 Ko gzip). Build servi et vérifié via
+`BACKEND_ORIGIN=http://localhost:8000 npx vite preview` (page d'accueil
+publique fonctionnelle sur http://localhost:4173, données API chargées).
 
-Toujours verts, sans modification :
-- `tests/test_bulletin_layout.py` — 7/7
-- `tests/test_matricule.py` — 16/16
-- `tests/test_averages_and_notifications.py` (endpoint `/api/grades/averages/`,
-  déjà présent) — inchangé, toujours vert.
+## 4. Vérifications navigateur réellement effectuées (E2E)
 
-## 4. Frontend — build de production
+Environnement : backend Django `dev_sqlite` (schéma `migrate --run-syncdb`,
+`seed_demo_data` + `seed_website`), frontend Vite, navigateur intégré.
 
-```
-$ npm install
-added 398 packages in 7s
+| # | Parcours | Constat |
+|---|---|---|
+| 1 | Ouverture de `/` | Site vitrine public affiché (hero carrousel 5 slides administrables, sections complètes, pas de section chiffres car stats non renseignées) |
+| 2 | Navigation site (desktop) | Accueil, À propos, Galerie (mosaïque + albums), Contact OK ; aucun débordement horizontal |
+| 3 | Accès connexion depuis le menu | Bouton « Connexion » → `/login` (page bilingue existante) |
+| 4 | Connexion Administrateur | admin@feba.bj → tableau de bord admin (données chargées) |
+| 5 | Réinitialisation mdp d'un enseignant | Modal complet (identité, rôle, avertissement, règles, confirmation explicite) → toast de succès |
+| 6 | Tentative interdite | La liste admin ne contient aucun superadmin ; appel API direct admin→superadmin (id=1) → **HTTP 403** ; mot de passe cible intact |
+| 7 | Note « Interrogation / Devoir de classe » | Créée via le modal UI (élève Koffi Codjo, Français, T1, 17,5) — API : `note_type="interrogation"`, libellé neuf, **appréciation TRÈS SATISFAISANT** |
+| 8 | Note « Examen / Évaluation » | Modification de la même note via PATCH en session réelle → 200, libellé « Examen / Évaluation » |
+| 9 | Anciennes notes | Tableau des notes : les notes seedées `interrogation`/`examen` affichent les nouveaux libellés (compatibilité des données) |
+| 10 | Appréciations en base | Bulletins stockés : 13,80/13,59/13,18 → ACCEPTABLE (migration + seed corrects) |
+| 11 | Connexion enseignant avec mdp temporaire | Redirection automatique vers « Nouveau mot de passe requis » ; impossible d'accéder aux espaces avant changement |
+| 12 | Changement forcé | Nouveau mot de passe accepté → arrivée sur le tableau de bord enseignant |
+| 13 | Connexion Parent | `/parent/home` sans page blanche ; cartes enfants avec moyenne générale + **appréciation PEUT MIEUX FAIRE (12,67)**, Moy T1/T2, Français, Anglais |
+| 14 | Moyennes parent (page Notes) | 4 cartes par enfant : Générale 12,67 · Française 13,84 · Anglaise 11,07 · **Bilingue 12,73** — aucun tiret indu |
+| 15 | Notification | Clic cloche → panneau (la note 17,50 créée en test y figure) ; clic → page Notes correcte, session conservée, pas de redirection annonces |
+| 16 | Formulaires publics (réseau réel, anonyme) | contact → **201** ; préinscription → **201** ; honeypot rempli → **400** ; soumissions visibles dans l'écran admin « Site vitrine » (statut Nouveau) |
+| 17 | Mobile (375×812) | Accueil, menu hamburger accessible (tous liens + Mon espace + Inscrire mon enfant), page Contact — aucune coupure ni débordement |
+| 18 | Console navigateur | Aucune erreur sur l'ensemble des parcours |
 
-$ npm run build
-✓ 3751 modules transformed.
-✓ built in 13.39s
-```
+## 5. Commandes d'environnement propre exécutées
 
-Aucune erreur de compilation. Un avertissement pré-existant sur la taille du
-bundle principal (>500 kB) subsiste — non lié à cette itération, non
-corrigé (hors périmètre : découpage en chunks à faire dans une itération
-dédiée à la performance).
-
-## 5. Frontend — lint
-
-```
-$ npm run lint
-✖ 60 problems (0 errors, 60 warnings)
-```
-
-**0 erreur.** Les 60 avertissements sont très majoritairement pré-existants
-(imports inutilisés dans des fichiers non touchés, dépendances de hooks
-`useEffect`/`useMemo` déjà présentes avant cette itération). Un seul
-avertissement nouveau, dans le fichier créé
-`frontend/src/pages/shared/AccountProfile.jsx` :
-`Compilation Skipped: Use of incompatible library` sur `watchPwd(...)` —
-avertissement du React Compiler concernant `react-hook-form`, présent à
-l'identique dans les formulaires teacher/parent/student déjà livrés
-(`Profile.jsx`, `Admins.jsx`) ; **pas une erreur**, comportement déjà
-accepté dans le reste du projet.
-
-## 6. Vérification de la dérive de migrations
-
-```
-$ DJANGO_SETTINGS_MODULE=feba_project.settings.test_postgres python manage.py makemigrations --check --dry-run
-Migrations for 'parents': ...
-Migrations for 'students': ...
-Migrations for 'subjects': ...
-Migrations for 'attendance': ...
-Migrations for 'bulletins': ...
-Migrations for 'grades': ...
-Migrations for 'payments': ...
+```bash
+# Base de démo recréée de zéro pendant la mission :
+cd backend
+rm -f db_dev.sqlite3
+DJANGO_SETTINGS_MODULE=feba_project.settings.dev_sqlite .venv-test/bin/python manage.py migrate --run-syncdb
+DJANGO_SETTINGS_MODULE=feba_project.settings.dev_sqlite .venv-test/bin/python manage.py seed_demo_data
+DJANGO_SETTINGS_MODULE=feba_project.settings.dev_sqlite .venv-test/bin/python manage.py seed_website
+DJANGO_SETTINGS_MODULE=feba_project.settings.dev_sqlite .venv-test/bin/python manage.py runserver 8000
+# Frontend :
+cd frontend && BACKEND_ORIGIN=http://localhost:8000 npm run dev
 ```
 
-Dérive **déjà présente avant cette itération** (déjà documentée dans
-`CORRECTIONS_PREVIOUS.md`). Aucun champ de modèle n'a été modifié dans
-cette itération — seule une méthode a été ajoutée à `Grade`
-(`get_annual_subject_averages`), qui ne génère aucune migration. Vérifié en
-comparant la sortie ci-dessus avant/après mes changements : identique.
-
-## 7. Lint Python (ruff) sur les fichiers modifiés
-
-```
-$ ruff check apps/notifications/utils.py apps/dashboard/views.py apps/grades/models.py \
-    apps/grades/views.py apps/attendance/views.py apps/payments/views.py \
-    apps/messaging/views.py tests/test_priority_fixes.py --select F
-```
-
-6 problèmes détectés, **tous pré-existants** (imports inutilisés, variable
-non utilisée) situés dans des sections de code non touchées par cette
-itération — vérifié ligne par ligne, aucun n'est dans le code que j'ai
-ajouté ou modifié.
-
-## 8. Ce qui n'a PAS pu être testé (déclaré honnêtement)
-
-- **Rendu réel dans un navigateur** (clic effectif sur une notification, un
-  bouton, navigation visuelle) : aucun outil E2E (Cypress/Playwright)
-  n'existe dans le projet, et Docker n'est pas disponible dans cet
-  environnement d'exécution sandboxé — impossible de démarrer
-  simultanément le backend Django, le frontend Vite, Redis, MinIO et un
-  navigateur piloté. Les corrections ont donc été validées au niveau API
-  (backend) et build/lint (frontend), pas via un scénario utilisateur
-  complet dans un navigateur.
-- **Redis / Celery / MinIO / Jitsi** : non démarrés dans cet environnement
-  (pas nécessaires pour les trois corrections de cette itération, qui ne
-  touchent ni fichiers, ni tâches asynchrones, ni visio).
-- **Audit exhaustif des ~25 modules** demandé dans le cahier des charges :
-  non mené (voir « Audit global — état honnête » dans `CORRECTIONS.md`).
-
-## Environnement utilisé
-
-- PostgreSQL 16 installé et démarré localement (`apt-get install postgresql`),
-  base `feba_test`, migrations appliquées normalement.
-- Python 3.12, dépendances installées via
-  `pip install -r requirements/dev.txt` + `psycopg2-binary`.
-- Node.js 22, npm 10, dépendances installées via `npm install`.
-- Paramètres de test : `feba_project/settings/test_postgres.py` (nouveau,
-  cache en mémoire, rate-limit désactivé pour éviter les échecs en cascade
-  documentés dans `dev.py`).
+Comptes de démonstration (seed) :
+superadmin@feba.bj / SuperAdmin@2024 · admin@feba.bj / Admin@2024 ·
+prof.math@feba.bj (mot de passe modifié pendant l'E2E : MonNouveauProf#26) ·
+parent1@feba.bj / Parent@2024 · eleve1@feba.bj / Student@2024.

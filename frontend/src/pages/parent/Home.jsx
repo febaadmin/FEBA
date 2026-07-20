@@ -57,7 +57,7 @@ export default function ParentHome() {
                     {child.average != null ? `${Number(child.average).toFixed(2)}/20` : "—"}
                   </p>
                   {child.appreciation && (
-                    <p className="text-[10px] text-slate-400">{child.appreciation}</p>
+                    <p className="text-[10px] text-slate-400">{t(child.appreciation)}</p>
                   )}
                 </div>
                 <div className="bg-slate-50 rounded-xl p-2 text-center">
