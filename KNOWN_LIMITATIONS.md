@@ -1,5 +1,15 @@
 # KNOWN_LIMITATIONS.md — Missions V4 + V5 + V6
 
+## Ajouts V7 (25/07/2026)
+- Cachet : fichier statique unique packagé (défaut fourni) ; gestion fine par établissement
+  (activation/taille/position, réservée aux profils autorisés) = évolution possible. Dégradation
+  gracieuse si fichier absent.
+- Vérification navigateur du site public via le volet intégré ; la lecture programmatique de la
+  vidéo est bloquée en arrière-plan (économie d'énergie) — `readyState=4` prouve la disponibilité.
+- Captures headless Chrome parfois indisponibles (mise à jour Chrome en attente sur la machine) :
+  la vérification s'appuie alors sur le volet intégré + assertions DOM + rendus PDF réels.
+
+
 ## Ajouts V6 (20/07/2026)
 
 - **Vérification de la sauvegarde via l'UI groupée.** Le flux de sauvegarde du

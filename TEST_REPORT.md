@@ -1,4 +1,31 @@
-# TEST_REPORT.md — Missions V4 + V5 + V6 (20/07/2026)
+# TEST_REPORT.md — Missions V4 → V7 (25/07/2026)
+
+## Résultats V7
+
+```bash
+cd backend && DJANGO_SETTINGS_MODULE=feba_project.settings.test_sqlite \
+  .venv-test/bin/python -m pytest --no-migrations -q     # 311 passed, 1 skipped
+cd frontend && npx vitest run                            # 70 passed
+npx eslint src                                           # 0 erreur
+npx vite build                                           # ✓ built
+```
+
+Ajouts V7 :
+
+| Suite | Fichier | Tests | Couvre |
+|---|---|---|---|
+| Backend | `tests/test_grade_precision.py` | 5 | saisir 10 → 10.00 (DB+API) ; 14 valeurs 0..20 ; bulk ; modification |
+| Backend | `tests/test_document_branding.py` | 6 | nom avec « & », GROUPE ÉDUCATIF présent, GROUPE SCOLAIRE absent, cachet embarqué, 1 page |
+| Frontend | `src/utils/gradeInput.test.js` | 8 | 10 reste 10 ; décimales ; virgule ; bornes ; signe |
+
+Vérif navigateur : formulaire notes (champ texte décimal, 10 immuable) ;
+bulletin & reçu réels (noms + cachet) ; galerie vidéo (contrôles, readyState 4) ;
+Admissions (corps entiers) ; façade (panneau visible). PDF réels extraits +
+rendus PNG (aucune fabrication).
+
+## Résultats V4 + V5 + V6
+
+
 
 ## Résultats V6.2 (conformité visuelle exacte aux captures annotées)
 

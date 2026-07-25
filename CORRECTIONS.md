@@ -1,5 +1,13 @@
 # CORRECTIONS — FEBA V4 + V5 + V6 (20/07/2026)
 
+## V7 (25/07/2026)
+P1 nom officiel « Faith & Excellence Bilingual Academy » (& partout, source centralisée) ;
+P2 « GROUPE ÉDUCATIF FEBA » sur bulletins/reçus ; P3 cachet officiel apposé (bulletins & reçus) ;
+P4 note 10 conservée exactement (champs texte décimaux, plus d'altération molette/flèche) ;
+P5 nouvelle façade ; P6 vidéo galerie (visionneuse à contrôles) ; P7 recadrage Admissions
+(corps entiers). Backend 311 tests, frontend 70, eslint 0, build OK. Voir FINAL_REPORT.md.
+
+
 ## V6 / V6.1 — Carrousel, galerie, doublons, cadrages, menu, saisie groupée
 
 Synthèse (détails : `FINAL_REPORT.md`, `CHANGELOG_FIXES.md`,

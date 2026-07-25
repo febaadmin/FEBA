@@ -1,5 +1,14 @@
 # SECURITY_NOTES.md — Missions V4 + V6
 
+## V7 (25/07/2026)
+- Précision des notes : la valeur saisie n'est jamais transformée en silence ; aucune règle
+  cachée (`if score==10`), aucun arrondi d'affichage masquant la base. Backend = source de vérité
+  (DecimalField, validation 0..20). Permissions de saisie inchangées (enseignant→ses matières,
+  anti-IDOR de V6 conservé).
+- Cachet : fichier statique packagé, apposé côté serveur sur les PDF ; aucune donnée sensible
+  exposée. Noms officiels centralisés (branding.py).
+
+
 ## Saisie groupée de notes (V6, P7)
 
 - **Autorisation décidée côté serveur uniquement.** `POST

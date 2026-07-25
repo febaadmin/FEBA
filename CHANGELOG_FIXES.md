@@ -1,4 +1,30 @@
-# CHANGELOG_FIXES.md — Missions V4 + V5 + V6 (juillet 2026)
+# CHANGELOG_FIXES.md — Missions V4 → V7 (juillet 2026)
+
+## V7 — Noms officiels, cachet, précision des notes, façade, vidéo, admissions (25/07/2026)
+
+- **P1** — Nom officiel **« Faith & Excellence Bilingual Academy »** (avec « & »)
+  partout ; source de vérité `backend/feba_project/branding.py` ; 0 occurrence
+  restante sans « & » ; migrations de données (website 0003, schools 0011).
+- **P2** — **« GROUPE ÉDUCATIF FEBA »** remplace « GROUPE SCOLAIRE FEBA » ;
+  affiché en tête des bulletins & reçus ; l'école ERP prend son nom officiel.
+- **P3** — **Cachet officiel** extrait fidèlement du PDF (1320×1301) → PNG HD +
+  transparent + WebP ; apposé automatiquement sur bulletins & reçus (case
+  direction), non déformé, dégradation gracieuse si absent.
+- **P4** — **La note 10 n'est plus altérée en 9,5/9,75** : cause racine =
+  `input type=number step` modifié en silence par la molette/les flèches →
+  champs de note en **texte décimal** + normalisation + garde globale
+  anti-molette. 8 tests front + 5 tests back (10 reste 10 : DB, API, bulletin).
+- **P5** — Nouvelle **façade FEBA** (panneau « Faith & Excellence » + fresques)
+  intégrée (accueil + galerie), point focal relevé (panneau visible).
+- **P6** — **Vidéo** fournie optimisée (11→6,6 Mo, H.264/AAC, faststart) +
+  poster ; visionneuse avec contrôles (lecture/pause, volume, plein écran),
+  arrêt à la fermeture, pas de lecture auto avec son.
+- **P7** — **Admissions « La visite du campus »** : conteneur agrandi + focal
+  descendu → corps entiers des enfants et parents visibles (plus que les têtes).
+- Backend **311 tests** (+1 skip), frontend **70 tests**, eslint **0 erreur**,
+  build prod OK. Détails : `OFFICIAL_NAMING_REPORT`, `STAMP_INTEGRATION_REPORT`,
+  `GRADE_PRECISION_REPORT`, `VIDEO_INTEGRATION_REPORT`, `FINAL_REPORT`.
+
 
 ## V6.2 — Conformité visuelle exacte aux captures annotées (20/07/2026)
 

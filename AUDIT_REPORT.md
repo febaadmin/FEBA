@@ -1,5 +1,13 @@
 # AUDIT_REPORT.md — Missions V4 + V6
 
+## Audit V7 (25/07/2026)
+Anomalie critique corrigée : altération silencieuse des notes (10→9,5/9,75) — cause frontend
+(input number step + molette), non un bug backend (DecimalField sain). Autres : noms officiels
+harmonisés (source unique branding.py), cachet sur documents, médias (façade, vidéo, admissions).
+Suites complètes rejouées : backend 311 (+1 skip), frontend 70, eslint 0 erreur, build OK.
+Anciennes corrections V4→V6.2 non régressées (couvertes par leurs suites).
+
+
 ## Audit global V6 (20/07/2026)
 
 Audit réalisé après P1–P7, sur l'ensemble du projet, en rejouant la **suite

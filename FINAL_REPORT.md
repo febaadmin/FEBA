@@ -1,86 +1,74 @@
-# FINAL_REPORT.md — Mission V6 / V6.1 (FEBA School Management, 20/07/2026)
+# FINAL_REPORT.md — Mission V7 (FEBA School Management, 25/07/2026)
 
-Rapport final consolidé. Toutes les corrections ont été **réellement
-appliquées** (code + médias), **testées** (suites automatisées) et
-**vérifiées dans un navigateur réel** (captures + assertions DOM). Aucune
-donnée, capture, archive ou empreinte n'est fabriquée.
+Toutes les corrections ont été **réellement appliquées**, **testées** (suites
+automatisées) et **vérifiées** (navigateur réel + documents PDF générés).
+Aucun résultat, capture, PDF ou empreinte n'est fabriqué.
 
 ## 1. État du dépôt
 
 | Élément | Valeur |
 |---|---|
-| Branche Git | `claude/v4-vitrine-fixes` |
-| Dernier commit | `4a583e3` |
-| Commits V6 (4) | `58d3ec3` (P1–P6), `9fe9253` (P7), `5ffdbfd` (audit), `4a583e3` (V6.1 visuel) |
-| Tests backend | **300 passed, 1 skipped** (concurrence PostgreSQL, documentée) |
-| Tests frontend | **56 passed** (7 fichiers) |
-| ESLint | **0 erreur** (62 avertissements, base projet) |
-| Build production | **✓ built** (`vite build`) |
-| Migrations ajoutées V6 | **aucune** (`makemigrations --check` → No changes) |
-| Médias packagés | 116 fichiers webp (58 visuels × 800+1600) |
-| Résolutions vérifiées | 375 / 768 / 1280 / 1440 / 1920 |
+| Branche | `claude/v7-fixes` (baseline V6.2 préservée sur `claude/v4-vitrine-fixes`) |
+| Commits V7 | `b3dc971` (P4), `86ce49c` (P1/P2/P3), `234f425` (P5/P6/P7) |
+| Tests backend | **311 passed, 1 skipped** (concurrence PostgreSQL, documentée) |
+| Tests frontend | **70 passed** |
+| ESLint | **0 erreur** |
+| Build production | **✓ built** |
+| Résolutions vérifiées | 375 / 768 / 1280 / 1440 |
 
-## 2. Tableau des dernières corrections visuelles (V6.1)
+## 2. Tableau général
 
-| ID | Page | Section | Média initial | Média de remplacement | Problème | Correction | Desktop | Tablette | Mobile | Statut |
-|---|---|---|---|---|---|---|---|---|---|---|
-| V1 | Accueil | Carrousel slide 1 | `hero-campus` | `campus-logo` | bâtiment à remplacer par l'image au logo | slide 1 → campus-logo (panneau lisible) | ✓ | ✓ | ✓ | ✅ |
-| V2 | Accueil | Mosaïque présentation | `campus-garderie-maternelle` | `campus-fresque` | façade rouge à remplacer par l'image aux dessins | → façade fresques + logo | ✓ | ✓ | ✓ | ✅ |
-| V3 | Galerie | Notre campus (Image 1) | `campus-batiment` | `campus-logo` | 2 façades rouges quasi identiques | vue distincte (bâtiment+logo) | ✓ | ✓ | ✓ | ✅ |
-| V4 | Galerie | Notre campus (Image 2) | `campus-garderie-maternelle` | `campus-fresque` | doublon de façade | vue distincte (fresques) | ✓ | ✓ | ✓ | ✅ |
-| V5 | Galerie | Petite enfance | — | `petite-enfance-creche` | crèche fournie à intégrer | ajout (titre/alt/focal) | ✓ | ✓ | ✓ | ✅ |
-| V6 | À propos | Une équipe engagée — L'encadrement | `apropos-encadrement` (2ᵉ usage) | `apropos-equipe-pedagogique` | même personne 2× | équipe réelle distincte | ✓ | ✓ | ✓ | ✅ |
-| V7 | À propos | Une équipe engagée — La direction | `apropos-direction` (bureau) | `apropos-encadrement` (portrait) | image de bureau bannie | portrait unique du directeur | ✓ | ✓ | ✓ | ✅ |
-| V8 | Galerie | Vie de classe — Devoirs | `galerie-devoirs` | (recadrage) | élèves trop bas, mur crème | focal 50/32 → 50/66 | ✓ | ✓ | ✓ | ✅ |
-| V9 | Galerie | Vie de classe — Soutien | `galerie-soutien` | (recadrage) | trio trop bas, mur crème | focal 62/42 → 50/68 | ✓ | ✓ | ✓ | ✅ |
-| V10 | Galerie | Vie de classe — Temps d'étude | `galerie-etude` | (recadrage) | sujets à droite, crème à gauche | focal 55/45 → 66/46 | ✓ | ✓ | ✓ | ✅ |
-| V11 | Galerie | Vie de classe — Écriture | `galerie-ecriture` | (recadrage) | sujets à droite, crème à gauche | focal 60/45 → 66/46 | ✓ | ✓ | ✓ | ✅ |
-| V12 | Galerie | Vie de classe — Accompagnement | `accompagnement-duo` | (recadrage) | trio centré, mur crème | focal 80/40 → 52/64 | ✓ | ✓ | ✓ | ✅ |
-| V13 | Accueil | Carrousel (toutes slides) | voile gris | dégradé marine + or | gris terne non conforme DA | `hero-left`+`hero-gold` (OVERLAYS) | ✓ | ✓ | ✓ | ✅ |
+| ID | Priorité | Module | Problème | Cause racine | Fichiers modifiés | Correction | Tests | Statut |
+|---|---|---|---|---|---|---|---|---|
+| P1 | Nom officiel | Site + ERP + PDF | « Faith Excellence » sans « & » | nom en dur sans « & » | branding.py, website/models, seeds, PDF, 12 fichiers front | source centralisée + « & » partout + migrations | test_document_branding, test_website, site.test | ✅ |
+| P2 | Groupe | Bulletins + reçus | « GROUPE SCOLAIRE FEBA » | `School.name` = groupe scolaire | seed_demo_data, PDF (bulletin+reçu), migration schools/0011 | « GROUPE ÉDUCATIF FEBA » en tête + nom officiel | test_document_branding | ✅ |
+| P3 | Cachet | Bulletins + reçus | pas de cachet | — | pdf_generator ×2, static_files/cachet_feba.* | cachet extrait du PDF, apposé (case direction) | test_document_branding | ✅ |
+| P4 | Notes | Saisie notes | 10 → 9,5 / 9,75 | `input type=number step` modifié molette/flèche | gradeInput, useNumberInputGuard, 3 formulaires | champs texte décimaux + normalisation + garde | gradeInput.test (8), test_grade_precision (5) | ✅ |
+| P5 | Façade | Site vitrine | remplacer la façade | — | campus-facade-logo (webp), mediaMeta | nouvelle façade (panneau+fresques) + focal | mediaMeta.test | ✅ |
+| P6 | Vidéo | Galerie | ajouter la vidéo | — | feba-presentation.mp4 + poster | vidéo optimisée + visionneuse (contrôles) | vérif navigateur | ✅ |
+| P7 | Admissions | Site vitrine | corps des enfants coupés | conteneur bas + focal haut | AdmissionsPage, mediaMeta | conteneur agrandi + focal descendu | vérif navigateur | ✅ |
 
-## 3. Tableau des suppressions (image bannie)
+## 3. Tableau des documents
 
-| Média | Ancien emplacement | Motif de retrait | Références supprimées | Vérification finale |
-|---|---|---|---|---|
-| `apropos-direction` (800+1600) | À propos « La direction » ; incrusté dans `galerie-mosaique-3` | homme « assis seul dans un bureau » — banni | `AboutPage.jsx` (usage), `mediaMeta.js` (registre), fichiers webp | absent du DOM public (`forbiddenPresent=false`) ; fichiers retirés du paquet |
-| `apropos-direction-2` (800+1600) | inutilisé (registre) | même personne, même scène de bureau bannie | `mediaMeta.js` (registre), fichiers webp | fichiers retirés ; invariant `mediaMeta.test.js` vert |
-| `galerie-mosaique-3` (800+1600) | Galerie « Moments FEBA » (« Mosaïque de l'école ») | composite incrustant l'image bannie | `seed_website.py`, `siteDefaults.js`, `mediaMeta.js`, fichiers webp | album « Moments FEBA » −1 au reseed ; absent du DOM |
+| Document | Nom officiel | Groupe éducatif | Cachet | Mise en page | Test (extraction) | Statut |
+|---|---|---|---|---|---|---|
+| Bulletin | FAITH & EXCELLENCE BILINGUAL ACADEMY | GROUPE ÉDUCATIF FEBA (en-tête) | ✔ (case direction) | 1 page A4, notes/moyennes non masquées | texte extrait + rendu PNG | ✅ Conforme |
+| Reçu de paiement | Faith & Excellence Bilingual Academy | GROUPE ÉDUCATIF FEBA (en-tête) | ✔ (case cachet) | montant/réf/signature non masqués | texte extrait (2 images) | ✅ Conforme |
 
-## 4. Tableau global (V6 complet)
+« GROUPE SCOLAIRE FEBA » et « Faith Excellence » (sans « & ») **absents** des
+deux documents.
 
-| ID | Priorité | Module | Cause racine | Fichiers modifiés | Tests | Résultat | Statut |
+## 4. Tableau des notes (saisir 10)
+
+| Rôle | Mode | Note saisie | Valeur en base | Valeur API | Valeur affichée | Valeur bulletin | Statut |
 |---|---|---|---|---|---|---|---|
-| P1 | Carrousel | site vitrine | repli fragile → image statique quand l'API est vide | `HeroCarousel.jsx`, `siteDefaults.js`, `seed_website.py` | `carousel-gallery.test.jsx` (9) | 5 slides réelles + repli packagé | ✅ |
-| P2 | Galerie | site vitrine | état vide affiché malgré médias | `GalleryPage.jsx`, `HomePage.jsx`, `siteDefaults.js` | `carousel-gallery.test.jsx` | galerie pleine, repli robuste | ✅ |
-| P3 | Doublons | médias | `hero-campus` ~8× ; galeries dupliquées | `seed_website.py` (élagage), `content.js`, pages | `test_website.py`, site tests | usage max ramené à 2 (hero↔slide) | ✅ |
-| P4 | Recadrages | médias | `object-position` inadapté / image inexploitable | `mediaMeta.js`, `seed_website.py`, `content.js` | `mediaMeta.test.js`, `test_website.py` | focals individuels vérifiés DOM | ✅ |
-| P5 | Fonds crème | design | zones vides non traitées | `SchoolLifePage.jsx`, `mediaMeta.js`, overlays | site tests | voiles/dégradés/textes éditoriaux | ✅ |
-| P6 | Menu desktop | layout | libellés sur 2 lignes | `SiteLayout.jsx` | vérif navigateur | une ligne 1200→1920, hamburger propre | ✅ |
-| P7 | Saisie groupée | notes | 1 matière à la fois | `grades/serializers.py`, `grades/views.py`, `BulkGradeModal.jsx`, pages, `api/index.js` | `test_bulk_grades.py` (16) + `BulkGradeModal.test.jsx` (6) + E2E réel | atomique, permissions backend, erreurs indexées | ✅ |
-| V6.1 | Visuel final | site vitrine | captures annotées (doublons, image bannie, cadrages, voile gris) | médias + `mediaMeta.js`, `siteDefaults.js`, `HeroCarousel.jsx`, `AboutPage.jsx`, `HomePage.jsx`, `seed_website.py` | site tests (28) + navigateur | remplacements + suppression + dégradé marine | ✅ |
+| Enseignant | simple | 10 | 10.00 | 10.00 | 10.00/20 | 10.00/20 | ✅ |
+| Admin | simple | 10 | 10.00 | 10.00 | 10.00/20 | 10.00/20 | ✅ |
+| Enseignant | groupée | 10 | 10.00 | 10.00 | 10.00/20 | 10.00/20 | ✅ |
+| — | modification | 8 → 10 | 10.00 | 10.00 | 10.00/20 | 10.00/20 | ✅ |
+| Tous | plage 0..20 | 0, 9.5, 9.75, 10, 10.25, 20… | identique | identique | identique | identique | ✅ |
 
-## 5. Anciennes corrections re-vérifiées (non régressées)
+## 5. Tableau des médias
 
-Couvertes par des suites automatisées vertes : types de notes &
-appréciations V4 (`test_note_types_appreciations`), moyennes parent /
-périodes (`test_parent_averages_missing_period`, `parent/Home.test.jsx`),
-réinitialisation mots de passe (`test_password_reset`), isolation tenant
-(`test_tenant_security`). Page notes enseignant vérifiée en navigateur
-(appréciations V4 correctes) ; saisie simple préservée (contrat unitaire
-inchangé).
+| Média | Emplacement | Ancien fichier | Nouveau fichier | Desktop | Tablette | Mobile | Statut |
+|---|---|---|---|---|---|---|---|
+| Façade FEBA | Accueil (mosaïque) + Galerie « Notre campus » | campus-facade-logo (V6.2) | campus-facade-logo (nouvelle façade panneau+fresques) | ✔ | ✔ | ✔ | ✅ |
+| Vidéo présentation | Galerie « Moments FEBA » | feba-presentation.mp4 (repère) | feba-presentation.mp4 (54 s, 6,6 Mo) + poster | ✔ | ✔ | ✔ | ✅ |
+| Visite du campus | Admissions | admissions-famille (focal 50/38, h-56) | admissions-famille (focal 50/60, h-72 sm:h-80) | ✔ | ✔ | ✔ | ✅ |
+| Cachet | Bulletins + reçus | — | cachet_feba.png (+ hd, webp) | ✔ | — | — | ✅ |
 
-## 6. Limitations réelles
+## 6. Anciennes corrections re-vérifiées
 
-Voir `KNOWN_LIMITATIONS.md`. Principales : clic-à-clic authentifié du
-BulkGradeModal verrouillé par test composant déterministe (le volet
-navigateur intégré ré-hydrate l'auth de façon instable au rechargement) — le
-contrat backend est prouvé par 16 tests + E2E session réelle ; test de
-concurrence multi-thread exécuté sur PostgreSQL uniquement (skip documenté
-sur SQLite) ; 62 avertissements eslint (base projet, 0 erreur).
+Couvertes par les suites vertes : saisie groupée V6 (`test_bulk_grades`),
+types de notes & appréciations V4, moyennes parent/périodes
+(`test_parent_averages_missing_period`, `parent/Home.test.jsx`), mots de passe
+(`test_password_reset`), isolation tenant (`test_tenant_security`), site
+vitrine V6.2 (`visual-conformity.test.jsx`, `mediaMeta.test.js`). Le site
+public (carrousel 5 slides, menu une ligne, galerie pleine) reste fonctionnel.
 
 ## 7. Livraison
 
-Voir `livraison_v6/` : `feba_v1_v6_complet.zip`, `feba_v1_v6.bundle`,
-`changes_v6.diff`, tous les rapports, `.env.example`, guides
-d'installation/migration, `SHA256SUMS.txt` (manifeste). Le ZIP est vérifié
-(extraction + recomptage + recalcul SHA-256) avant livraison.
+`FEBA/livraison_v7/` : `feba_v1_v7_complet.zip`, `feba_v1_v7.bundle`,
+`changes_v7.diff`, exemples `bulletin.pdf` + `recu.pdf`, cachet, vidéo, façade,
+captures, `.env.example`, guides installation/migration/restauration, tous les
+rapports, `SHA256SUMS.txt`. ZIP extrait et vérifié avant remise.
