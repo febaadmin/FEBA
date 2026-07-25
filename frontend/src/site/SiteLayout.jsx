@@ -89,7 +89,7 @@ export default function SiteLayout() {
               <span className="leading-tight">
                 <span className="block text-white font-bold text-sm lg:text-base tracking-wide">FEBA</span>
                 <span className="hidden 2xl:block text-feba-gold text-[11px] whitespace-nowrap">
-                  Faith Excellence Bilingual Academy
+                  Faith & Excellence Bilingual Academy
                 </span>
               </span>
             </Link>
@@ -164,7 +164,7 @@ export default function SiteLayout() {
               <img src={logoSrc} alt="" className="w-10 h-10 rounded-full bg-white object-contain border-2 border-feba-gold" />
               <p className="font-bold text-white leading-tight">
                 FEBA<br />
-                <span className="text-[11px] font-normal text-feba-gold">Faith Excellence Bilingual Academy</span>
+                <span className="text-[11px] font-normal text-feba-gold">Faith & Excellence Bilingual Academy</span>
               </p>
             </div>
             <p className="text-sm leading-relaxed">
@@ -243,7 +243,7 @@ export default function SiteLayout() {
         </div>
         <div className="border-t border-white/10">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-white/60">
-            <p>© {new Date().getFullYear()} Faith Excellence Bilingual Academy — Akpakpa, Cotonou, Bénin</p>
+            <p>© {new Date().getFullYear()} Faith & Excellence Bilingual Academy — Akpakpa, Cotonou, Bénin</p>
             <p className="flex gap-4">
               <Link to="/mentions-legales" className="hover:text-feba-gold">Mentions légales</Link>
               <Link to="/confidentialite" className="hover:text-feba-gold">Confidentialité</Link>

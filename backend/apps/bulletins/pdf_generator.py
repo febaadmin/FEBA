@@ -29,6 +29,7 @@ from reportlab.platypus import (
     SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, HRFlowable, Image
 )
 from django.core.files.base import ContentFile
+from feba_project.branding import SCHOOL_GROUP_NAME
 from django.utils import timezone
 
 from apps.grades.models import Grade, get_letter_grade, get_appreciation
@@ -40,6 +41,16 @@ logger = logging.getLogger('apps')
 STATIC_LOGO_PATH = os.path.join(
     os.path.dirname(__file__), '..', '..', 'feba_project', 'static_files', 'logo_feba.jpeg'
 )
+# Cachet officiel (V7) — extrait fidèlement du PDF fourni par la direction.
+STATIC_CACHET_PATH = os.path.join(
+    os.path.dirname(__file__), '..', '..', 'feba_project', 'static_files', 'cachet_feba.png'
+)
+
+
+def _get_cachet_path():
+    """Chemin du cachet officiel à apposer, ou None si le fichier est absent
+    (dégradation gracieuse : le document reste valide, sans cachet)."""
+    return STATIC_CACHET_PATH if os.path.exists(STATIC_CACHET_PATH) else None
 
 # Couleurs de la charte
 PRIMARY = colors.HexColor('#1E3A6E')   # bleu institutionnel
@@ -287,6 +298,9 @@ def _add_header(story, student, period, school_year, logo_path, title):
             story.append(logo_img)
         except Exception as exc:
             logger.warning("Erreur non bloquante ignorée : %s", exc, exc_info=True)
+    # V7 : ligne « groupe » (GROUPE ÉDUCATIF FEBA) au-dessus du nom officiel.
+    story.append(P(SCHOOL_GROUP_NAME, fontSize=9, fontName='Helvetica-Bold',
+                   alignment=1, textColor=GOLD, spaceAfter=1))
     story.append(P(name.upper(), fontSize=14, fontName='Helvetica-Bold',
                    alignment=1, textColor=PRIMARY, spaceAfter=2))
     story.append(P(subtitle, fontSize=9, alignment=1, spaceAfter=2))
@@ -722,10 +736,20 @@ def _add_signatures(story, bulletin):
     story.append(HRFlowable(width='100%', thickness=1, color=colors.lightgrey))
     story.append(Spacer(1, 0.2 * cm))
     comment = bulletin.general_comment or '(Aucun commentaire / No comment)'
+    # V7 : cachet officiel de la direction apposé dans la case « Cachet ».
+    cachet_path = _get_cachet_path()
+    stamp_cell = ''
+    if cachet_path:
+        try:
+            stamp = Image(cachet_path, width=2.6 * cm, height=2.6 * cm)
+            stamp.hAlign = 'CENTER'
+            stamp_cell = stamp
+        except Exception as exc:
+            logger.warning("Cachet non apposé (non bloquant) : %s", exc, exc_info=True)
     sig_data = [
         [C('Commentaire du Directeur / Principal\'s Comment', bold=True),
          '', C('Signature & Cachet / Stamp', bold=True)],
-        [C(comment), '', ''],
+        [C(comment), '', stamp_cell],
         ['', '', C('________________________', align='CENTER')],
         ['', '', C(f'Cotonou, le {timezone.now().strftime("%d/%m/%Y")}', align='CENTER')],
     ]

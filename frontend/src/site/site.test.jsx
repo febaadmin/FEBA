@@ -27,7 +27,7 @@ import SiteNotFound from "./pages/SiteNotFound";
 import { ContactForm, PreRegistrationForm } from "./components/PublicForms";
 
 const SETTINGS = {
-  school_name: "Faith Excellence Bilingual Academy",
+  school_name: "Faith & Excellence Bilingual Academy",
   tagline: "Développer les talents, construire l'avenir.",
   signature: "FEBA, l'école autrement avec vous.",
   address: "Akpakpa, Cotonou, Bénin",
@@ -102,7 +102,7 @@ describe("Site vitrine — page d'accueil", () => {
       expect(screen.getAllByText("Bienvenue à FEBA").length).toBeGreaterThan(0);
     });
     // Présentation, valeurs, niveaux, bilinguisme, FEBA Online
-    expect(screen.getAllByText(/Faith Excellence Bilingual Academy/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Faith & Excellence Bilingual Academy/).length).toBeGreaterThan(0);
     expect(screen.getByText("Excellence")).toBeInTheDocument();
     expect(screen.getByText("Pourquoi choisir FEBA ?")).toBeInTheDocument();
     expect(screen.getByText("FEBA Online")).toBeInTheDocument();

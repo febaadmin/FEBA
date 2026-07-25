@@ -68,7 +68,7 @@ class SiteSettings(models.Model):
     Paramètres globaux du site public (une seule ligne).
     Les champs vides ne sont PAS affichés par le frontend.
     """
-    school_name = models.CharField(max_length=120, default="Faith Excellence Bilingual Academy")
+    school_name = models.CharField(max_length=120, default="Faith & Excellence Bilingual Academy")
     tagline = models.CharField(
         max_length=200, blank=True,
         default="Développer les talents, construire l'avenir.",
@@ -91,7 +91,7 @@ class SiteSettings(models.Model):
     # SEO par défaut
     meta_title = models.CharField(
         max_length=120, blank=True,
-        default="FEBA — Faith Excellence Bilingual Academy | École bilingue à Cotonou",
+        default="FEBA — Faith & Excellence Bilingual Academy | École bilingue à Cotonou",
     )
     meta_description = models.CharField(
         max_length=300, blank=True,

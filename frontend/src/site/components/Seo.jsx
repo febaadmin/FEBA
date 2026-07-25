@@ -28,8 +28,8 @@ function upsertCanonical(href) {
 export default function Seo({ title, description, image, type = "website" }) {
   useEffect(() => {
     const fullTitle = title
-      ? `${title} — FEBA | Faith Excellence Bilingual Academy`
-      : "FEBA — Faith Excellence Bilingual Academy | École bilingue à Cotonou";
+      ? `${title} — FEBA | Faith & Excellence Bilingual Academy`
+      : "FEBA — Faith & Excellence Bilingual Academy | École bilingue à Cotonou";
     document.title = fullTitle;
     const url = window.location.origin + window.location.pathname;
     upsertMeta("name", "description", description);

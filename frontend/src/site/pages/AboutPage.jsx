@@ -26,7 +26,7 @@ export default function AboutPage() {
   return (
     <>
       <Seo title="À propos"
-        description="Faith Excellence Bilingual Academy : notre mission, notre vision et nos valeurs. École bilingue français-anglais à Akpakpa, Cotonou." />
+        description="Faith & Excellence Bilingual Academy : notre mission, notre vision et nos valeurs. École bilingue français-anglais à Akpakpa, Cotonou." />
       <PageBanner title="À propos de FEBA"
         intro="Une école bilingue, chaleureuse et exigeante, au cœur d'Akpakpa."
         image="/site/img/campus-batiment-1600.webp" />
@@ -37,7 +37,7 @@ export default function AboutPage() {
             <SectionHeading center={false} overline="Qui sommes-nous ?"
               title="Développer les talents, construire l'avenir" />
             <p className="leading-relaxed">
-              Faith Excellence Bilingual Academy (FEBA) accueille les enfants de
+              Faith & Excellence Bilingual Academy (FEBA) accueille les enfants de
               la garderie au CM2 dans un cadre bilingue français-anglais. Notre
               projet éducatif associe l'exigence académique, l'éducation aux
               valeurs et l'épanouissement personnel de chaque enfant.

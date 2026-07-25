@@ -24,7 +24,7 @@ IMG = "/site/img/{}-1600.webp"
 HERO_SLIDES = [
     {
         "order": 1, "title": "Bienvenue à FEBA",
-        "subtitle": "Faith Excellence Bilingual Academy — école bilingue à Akpakpa, Cotonou.",
+        "subtitle": "Faith & Excellence Bilingual Academy — école bilingue à Akpakpa, Cotonou.",
         "cta_label": "Découvrir l'école", "cta_url": "/a-propos",
         # V6.1 : bâtiment principal avec panneau « Faith & Excellence » lisible.
         "image_path": IMG.format("campus-logo"),

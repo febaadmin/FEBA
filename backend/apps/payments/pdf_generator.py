@@ -21,6 +21,7 @@ from reportlab.lib.units import cm
 from reportlab.lib import colors
 from django.core.files.base import ContentFile
 from django.utils import timezone
+from feba_project.branding import SCHOOL_GROUP_NAME
 
 STATIC_LOGO_PATH = os.path.join(
     os.path.dirname(__file__), '..', '..', 'feba_project', 'static_files', 'logo_feba.jpeg'
@@ -96,6 +97,9 @@ def generate_receipt(payment):
             story.append(Spacer(1, 0.2*cm))
         except Exception as exc:
             logger.warning("Erreur non bloquante ignorée : %s", exc, exc_info=True)
+    # V7 : ligne « groupe » (GROUPE ÉDUCATIF FEBA) au-dessus du nom officiel.
+    story.append(P(SCHOOL_GROUP_NAME, fontSize=10, fontName="Helvetica-Bold",
+                   alignment=1, textColor=gold, spaceAfter=1))
     story.append(P(school_name, fontSize=16, fontName="Helvetica-Bold",
                    alignment=1, textColor=primary, spaceAfter=2))
     story.append(P(school_address, fontSize=10, alignment=1,
@@ -190,9 +194,21 @@ def generate_receipt(payment):
     # Signatures
     story.append(HRFlowable(width="100%", thickness=1, color=colors.lightgrey))
     story.append(Spacer(1, 0.3*cm))
+    # V7 : cachet officiel dans la case « Cachet de l'École ».
+    cachet_path = os.path.join(
+        os.path.dirname(__file__), "..", "..", "feba_project", "static_files", "cachet_feba.png"
+    )
+    stamp_cell = ""
+    if os.path.exists(cachet_path):
+        try:
+            stamp = Image(cachet_path, width=2.6*cm, height=2.6*cm)
+            stamp.hAlign = "CENTER"
+            stamp_cell = stamp
+        except Exception as exc:
+            logger.warning("Cachet reçu non apposé (non bloquant) : %s", exc, exc_info=True)
     sig_tbl = Table([
         ["Signature du Caissier", "", "Cachet de l'École / School Stamp"],
-        ["", "", ""],
+        ["", "", stamp_cell],
         ["________________________", "", "________________________"],
     ], colWidths=[6*cm, 5*cm, 6*cm])
     sig_tbl.setStyle(TableStyle([

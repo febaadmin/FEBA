@@ -67,7 +67,7 @@ class Command(BaseCommand):
 
         # ── ÉTABLISSEMENT ────────────────────────────────────────────────
         school, _ = School.objects.get_or_create(
-            name="Groupe Scolaire FEBA",
+            name="Faith & Excellence Bilingual Academy",
             defaults={
                 "address": "Rue des Cocotiers, Akpakpa",
                 "city": "Cotonou", "country": "Bénin",
