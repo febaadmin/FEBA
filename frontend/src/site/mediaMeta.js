@@ -63,7 +63,7 @@ export const MEDIA_META = {
   "campus-logo": { position: "50% 48%" },     // bâtiment principal + panneau « Faith & Excellence » lisible
   "campus-fresque": { position: "50% 52%" },  // (V6.1 — non retenu en V6.2, conservé au registre)
   // V6.2 — visuels « Bonne image » validés pour la mosaïque d'accueil / galerie
-  "campus-facade-logo": { position: "50% 48%" }, // façade FEBA logo + nom + fresques pédagogiques, composition verticale propre
+  "campus-facade-logo": { position: "50% 42%" }, // V7 : nouvelle façade — panneau FEBA (logo + nom) en haut → cadrage relevé pour le garder visible
   "campus-devise": { position: "50% 50%" },      // façade « Here will change the world » (logo + devise + fresques)
   "campus-cour": { position: "50% 74%", mobile: "55% 76%" }, // cour : enfants en bas, ciel/crème en haut
   // Niveaux
@@ -103,7 +103,7 @@ export const MEDIA_META = {
   "online-cours-francais": { position: "62% 48%", mobile: "70% 48%" }, // laptop à droite, crème à gauche
   "online-lecon": { position: "42% 45%" },
   // Admissions / contact
-  "admissions-famille": { position: "50% 38%" },
+  "admissions-famille": { position: "50% 60%", mobile: "50% 62%" }, // V7 : famille debout, grand mur crème en haut → descendre le cadrage pour montrer les corps (pas que les têtes)
   "admissions-visite": { position: "50% 35%" },
   "admissions-accueil": { position: "70% 45%", mobile: "76% 45%" }, // accueil à droite, crème à gauche
   "admissions-bienvenue": { position: "65% 42%" },
