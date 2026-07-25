@@ -23,6 +23,7 @@ import Modal from "../../components/ui/Modal";
 import SearchableSelect from "../../components/ui/SearchableSelect";
 import BulkGradeModal from "../../components/grades/BulkGradeModal";
 import { extractApiError } from "../../utils/errors";
+import { isValidGrade, gradePayloadValue } from "../../utils/gradeInput";
 import { t, dateLocale } from "../../i18n";
 
 const PERIODS = [
@@ -265,7 +266,8 @@ export default function AdminGrades() {
     const payload = {
       ...d,
       school_year: d.school_year || currentYear?.id,
-      value: parseFloat(d.value),
+      // V7 : note normalisée sans altération (« 10 » reste « 10 »).
+      value: gradePayloadValue(d.value),
       note_coefficient: parseInt(d.note_coefficient) || 1,
     };
     if (editItem) {
@@ -962,8 +964,10 @@ export default function AdminGrades() {
           <div className="grid grid-cols-3 gap-3">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">{t("Note (/20) *")}</label>
-              <input {...register("value", { required: true, min: 0, max: 20 })}
-                type="number" step="0.25" min="0" max="20"
+              {/* V7 : champ TEXTE (inputMode décimal) — insensible molette /
+                  flèches / compteurs ; la note tapée n'est jamais altérée. */}
+              <input {...register("value", { required: true, validate: v => isValidGrade(v) || t("Note entre 0 et 20.") })}
+                type="text" inputMode="decimal" autoComplete="off" placeholder="0–20"
                 className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm" />
             </div>
             <div>

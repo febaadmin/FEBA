@@ -25,6 +25,7 @@ import { gradesAPI } from "../../api";
 import Modal from "../ui/Modal";
 import SearchableSelect from "../ui/SearchableSelect";
 import { appreciationPreview } from "../../utils/appreciation";
+import { normalizeGradeInput, isValidGrade } from "../../utils/gradeInput";
 import { t } from "../../i18n";
 
 const NOTE_TYPES = [
@@ -116,7 +117,7 @@ export default function BulkGradeModal({
       const e = {};
       if (!r.subject) e.subject = t("Matière obligatoire.");
       if (r.value === "" || r.value == null) e.value = t("Note obligatoire.");
-      else if (Number(r.value) < 0 || Number(r.value) > 20) e.value = t("Note entre 0 et 20.");
+      else if (!isValidGrade(r.value)) e.value = t("Note entre 0 et 20.");
       if (!r.note_coefficient || Number(r.note_coefficient) < 1) e.note_coefficient = t("Coefficient ≥ 1.");
       if (Object.keys(e).length) localErrors[i] = e;
     });
@@ -131,7 +132,7 @@ export default function BulkGradeModal({
       grades: rows.map((r) => ({
         subject: Number(r.subject),
         period: r.period,
-        value: String(r.value),
+        value: normalizeGradeInput(r.value),
         note_type: r.note_type,
         note_coefficient: Number(r.note_coefficient),
         comment: r.comment || "",
@@ -208,8 +209,10 @@ export default function BulkGradeModal({
                 </div>
                 <div>
                   <span className="lg:hidden label">{t("Note /20")}</span>
-                  <input type="number" step="0.01" min="0" max="20" className={inputCls(err.value)}
-                    value={r.value} onChange={(e) => setRow(i, { value: e.target.value })} placeholder="0–20" />
+                  {/* V7 : champ TEXTE (inputMode décimal) — insensible molette /
+                      flèches / compteurs ; la note tapée n'est jamais altérée. */}
+                  <input type="text" inputMode="decimal" autoComplete="off" className={inputCls(err.value)}
+                    value={r.value} onChange={(e) => setRow(i, { value: normalizeGradeInput(e.target.value) })} placeholder="0–20" />
                   {err.value && <p className="text-xs text-red-600 mt-1">{err.value}</p>}
                 </div>
                 <div>

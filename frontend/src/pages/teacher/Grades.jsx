@@ -18,6 +18,7 @@ import DataTable from "../../components/ui/DataTable";
 import Modal from "../../components/ui/Modal";
 import SearchableSelect from "../../components/ui/SearchableSelect";
 import BulkGradeModal from "../../components/grades/BulkGradeModal";
+import { isValidGrade, gradePayloadValue } from "../../utils/gradeInput";
 import ConfirmDialog from "../../components/ui/ConfirmDialog";
 import { extractApiError } from "../../utils/errors";
 import { t, dateLocale } from "../../i18n";
@@ -145,10 +146,13 @@ export default function TeacherGrades() {
   };
 
   const onSubmit = (d) => {
+    // V7 : la note est normalisée (virgule → point) sans jamais être altérée ;
+    // « 10 » reste « 10 ». La valeur envoyée = exactement la valeur saisie.
+    const value = gradePayloadValue(d.value);
     if (editItem) {
-      updateMut.mutate({ id: editItem.id, data: { value: d.value, period: d.period, note_type: d.note_type, note_coefficient: d.note_coefficient || 1, comment: d.comment, justification: d.justification } });
+      updateMut.mutate({ id: editItem.id, data: { value, period: d.period, note_type: d.note_type, note_coefficient: d.note_coefficient || 1, comment: d.comment, justification: d.justification } });
     } else {
-      const payload = { ...d };
+      const payload = { ...d, value };
       if (!payload.school_year && currentYear) payload.school_year = currentYear.id;
       createMut.mutate(payload);
     }
@@ -306,7 +310,10 @@ export default function TeacherGrades() {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="label">{t("Note (0–20) *")}</label>
-              <input {...register("value", { required: true, min: 0, max: 20 })} type="number" step="0.25" className="input" />
+              {/* V7 : champ TEXTE (inputMode décimal) — insensible molette /
+                  flèches / compteurs ; la note tapée n'est jamais altérée. */}
+              <input {...register("value", { required: true, validate: v => isValidGrade(v) || t("Note entre 0 et 20.") })}
+                type="text" inputMode="decimal" autoComplete="off" placeholder="0–20" className="input" />
             </div>
             <div>
               <label className="label">{t("Période *")}</label>
