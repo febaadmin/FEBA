@@ -150,7 +150,7 @@ export default function TeacherGrades() {
     // « 10 » reste « 10 ». La valeur envoyée = exactement la valeur saisie.
     const value = gradePayloadValue(d.value);
     if (editItem) {
-      updateMut.mutate({ id: editItem.id, data: { value, period: d.period, note_type: d.note_type, note_coefficient: d.note_coefficient || 1, comment: d.comment, justification: d.justification } });
+      updateMut.mutate({ id: editItem.id, data: { value, period: d.period, note_type: d.note_type, comment: d.comment, justification: d.justification } });
     } else {
       const payload = { ...d, value };
       if (!payload.school_year && currentYear) payload.school_year = currentYear.id;
@@ -333,10 +333,15 @@ export default function TeacherGrades() {
                 {NOTE_TYPES.map(nt => <option key={nt.value} value={nt.value}>{t(nt.label)}</option>)}
               </select>
             </div>
+            {/* V8 : le poids d'une évaluation vaut TOUJOURS 1 (un examen ne
+                compte pas plus qu'une interrogation). Le champ éditable a été
+                supprimé — la règle est imposée par le backend. */}
             <div>
-              <label className="label">{t("Coefficient (poids) *")}</label>
-              <input {...register("note_coefficient", { required: true, min: 1 })} type="number" min="1" max="10" step="1" defaultValue={1} className="input" />
-              <p className="text-xs text-slate-400 mt-1">{t("Examen = 3, devoir = 1")}</p>
+              <label className="label">{t("Poids de l'évaluation")}</label>
+              <input value="1" readOnly disabled className="input bg-slate-50 text-slate-500" />
+              <p className="text-xs text-slate-400 mt-1">
+                {t("Toutes les évaluations comptent pour 1.")}
+              </p>
             </div>
           </div>
 

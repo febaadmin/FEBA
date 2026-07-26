@@ -30,6 +30,10 @@ from reportlab.platypus import (
 )
 from django.core.files.base import ContentFile
 from feba_project.branding import SCHOOL_GROUP_NAME
+# V8 — barème d'affichage par niveau (1..11 → /10, au-delà → /20)
+from apps.grades.grading import (
+    convert_average_for_scale, get_grading_scale, scale_label,
+)
 from django.utils import timezone
 
 from apps.grades.models import Grade, get_letter_grade, get_appreciation
@@ -90,6 +94,33 @@ def _fmt(val):
     if val is None:
         return '—'
     return f'{float(val):.2f}'
+
+
+def _student_scale(student):
+    """Barème d'AFFICHAGE du bulletin, déduit du niveau de l'élève."""
+    level = None
+    klass = getattr(student, 'current_class', None)
+    if klass is not None:
+        level = getattr(klass, 'level', None)
+    return get_grading_scale(level)
+
+
+def _fmt_scale(val, scale):
+    """Moyenne interne /20 → valeur affichée dans le barème du niveau.
+
+    La conversion n'a lieu QU'ICI (une seule fois) ; les lettres et
+    appréciations restent calculées sur l'échelle interne /20.
+    """
+    if val is None:
+        return '—'
+    return f'{float(convert_average_for_scale(val, scale)):.2f}'
+
+
+def _fmt_scale_denom(val, scale):
+    """Idem avec le dénominateur explicite : « 6.00/10 » ou « 12.00/20 »."""
+    if val is None:
+        return '—'
+    return f'{_fmt_scale(val, scale)}/{int(scale)}'
 
 
 def _period_label(period):
@@ -358,7 +389,7 @@ def _weighted_section_average(rows):
     return round(total_w / total_c, 2) if total_c else None
 
 
-def _subject_rows_trimester(entries):
+def _subject_rows_trimester(entries, scale=20):
     """Lignes matières pour une période trimestre : notes détaillées."""
     note_labels = {'devoir': 'D', 'interrogation': 'I', 'controle': 'C',
                    'examen': 'E', 'tp': 'TP', 'autre': 'A'}
@@ -379,7 +410,7 @@ def _subject_rows_trimester(entries):
             C(info['subject_name'], bold=True),
             str(info['coefficient']),
             C(details, align='CENTER', size=7.5),
-            f'{_fmt(avg)}/20' if avg is not None else '—',
+            _fmt_scale_denom(avg, scale),
             f'{weighted:.2f}' if weighted is not None else '—',
             letter or '—',
             C(get_appreciation(avg) if avg is not None else '—', align='CENTER'),
@@ -387,7 +418,7 @@ def _subject_rows_trimester(entries):
     return rows
 
 
-def _subject_rows_annual(entries):
+def _subject_rows_annual(entries, scale=20):
     """Lignes matières pour le bulletin annuel : T1 / T2 / T3 / moyenne."""
     rows = []
     for info in entries:
@@ -397,17 +428,17 @@ def _subject_rows_annual(entries):
         rows.append([
             C(info['subject_name'], bold=True),
             str(info['coefficient']),
-            _fmt(t_avgs.get('T1')),
-            _fmt(t_avgs.get('T2')),
-            _fmt(t_avgs.get('T3')),
-            f'{_fmt(avg)}/20' if avg is not None else '—',
+            _fmt_scale(t_avgs.get('T1'), scale),
+            _fmt_scale(t_avgs.get('T2'), scale),
+            _fmt_scale(t_avgs.get('T3'), scale),
+            _fmt_scale_denom(avg, scale),
             letter or '—',
             C(get_appreciation(avg) if avg is not None else '—', align='CENTER'),
         ])
     return rows
 
 
-def _add_language_section(story, title, entries, period, head_color, zebra_color):
+def _add_language_section(story, title, entries, period, head_color, zebra_color, scale=20):
     """
     Une section de résultats par langue (BUG N°1) : tableau des matières
     de cette langue avec notes, coefficients, moyennes et appréciations,
@@ -430,22 +461,22 @@ def _add_language_section(story, title, entries, period, head_color, zebra_color
                   hcell('Appréciation')]
         col_widths = [4.7 * cm, 1.2 * cm, 1.3 * cm, 1.3 * cm, 1.3 * cm, 2.0 * cm,
                       1.3 * cm, 5.4 * cm]
-        rows = _subject_rows_annual(entries)
+        rows = _subject_rows_annual(entries, scale)
     else:
         header = [hcell('Matière / Subject', 'LEFT'), hcell('Coeff'), hcell('Notes'),
-                  hcell('Moy. /20'), hcell('Moy. Pond.'), hcell('Lettre'),
+                  hcell(scale_label(scale)), hcell('Moy. Pond.'), hcell('Lettre'),
                   hcell('Appréciation')]
         col_widths = [4.6 * cm, 1.2 * cm, 3.6 * cm, 1.9 * cm, 1.9 * cm, 1.3 * cm, 4.0 * cm]
-        rows = _subject_rows_trimester(entries)
+        rows = _subject_rows_trimester(entries, scale)
 
     section_avg = _weighted_section_average(entries)
     letter, _, _ = get_letter_grade(section_avg)
     total_label = C('MOYENNE DE LA PARTIE', bold=True)
     total_row = ([total_label, '', '', '', '',
-                  f'{_fmt(section_avg)}/20', letter or '—',
+                  _fmt_scale_denom(section_avg, scale), letter or '—',
                   C(get_appreciation(section_avg), align='CENTER', bold=True)]
                  if period == 'annual' else
-                 [total_label, '', '', f'{_fmt(section_avg)}/20', '',
+                 [total_label, '', '', _fmt_scale_denom(section_avg, scale), '',
                   letter or '—', C(get_appreciation(section_avg), align='CENTER', bold=True)])
 
     full_rows = [header] + rows + [total_row]
@@ -474,7 +505,7 @@ def _add_language_section(story, title, entries, period, head_color, zebra_color
 
 # ─── Statistiques de classe + moyennes bilingues (BUG N°2 / N°6) ─────────────
 
-def _add_stats_section(story, bilingual_data, class_stats, average, bulletin, period):
+def _add_stats_section(story, bilingual_data, class_stats, average, bulletin, period, scale=20):
     story.append(HRFlowable(width='100%', thickness=1, color=GOLD))
     story.append(P('MOYENNES & STATISTIQUES DE LA CLASSE / AVERAGES & CLASS STATISTICS',
                    fontSize=11, fontName='Helvetica-Bold', textColor=PRIMARY,
@@ -495,13 +526,13 @@ def _add_stats_section(story, bilingual_data, class_stats, average, bulletin, pe
     rows = [
         header,
         [C('Moyenne Française / French Average'),
-         f'{_fmt(fr_avg)}/20', _fmt(class_stats.get('fr_min')), _fmt(class_stats.get('fr_max')),
+         _fmt_scale_denom(fr_avg, scale), _fmt_scale(class_stats.get('fr_min'), scale), _fmt_scale(class_stats.get('fr_max'), scale),
          fr_letter or '—'],
         [C('Moyenne Anglaise / English Average'),
-         f'{_fmt(en_avg)}/20', _fmt(class_stats.get('en_min')), _fmt(class_stats.get('en_max')),
+         _fmt_scale_denom(en_avg, scale), _fmt_scale(class_stats.get('en_min'), scale), _fmt_scale(class_stats.get('en_max'), scale),
          en_letter or '—'],
         [C('Moyenne Bilingue / Bilingual Average ★', bold=True),
-         f'{_fmt(bi_avg)}/20', _fmt(class_stats.get('bi_min')), _fmt(class_stats.get('bi_max')),
+         _fmt_scale_denom(bi_avg, scale), _fmt_scale(class_stats.get('bi_min'), scale), _fmt_scale(class_stats.get('bi_max'), scale),
          bi_letter or '—'],
     ]
     tbl = Table(rows, colWidths=[6.9 * cm, 2.9 * cm, 3.2 * cm, 3.2 * cm, 2.3 * cm])
@@ -533,7 +564,7 @@ def _add_stats_section(story, bilingual_data, class_stats, average, bulletin, pe
     letter, _, _ = get_letter_grade(average)
     summary_data = [[
         C('Moyenne Générale', align='CENTER', bold=True, size=9),
-        C(f'{_fmt(average)}/20', align='CENTER', bold=True, size=9, color=PRIMARY),
+        C(_fmt_scale_denom(average, scale), align='CENTER', bold=True, size=9, color=PRIMARY),
         C('Lettre', align='CENTER', bold=True, size=9),
         C(f'{letter or "—"}', align='CENTER', bold=True, size=9),
         C('Appréciation', align='CENTER', bold=True, size=9),
@@ -564,6 +595,8 @@ def _build_standard_pdf(buffer, student, period, school_year, subject_data,
         title='Bulletin de notes', author='FEBA School Management System',
     )
     story = []
+    # V8 — barème d'affichage du bulletin selon le niveau (1..11 → /10).
+    scale = _student_scale(student)
 
     _add_header(story, student, period, school_year, logo_path,
                 'BULLETIN DE NOTES / PROGRESS REPORT')
@@ -577,19 +610,19 @@ def _build_standard_pdf(buffer, student, period, school_year, subject_data,
 
     _add_language_section(
         story, 'RÉSULTATS — PARTIE FRANÇAISE / FRENCH SECTION',
-        fr_entries, period, FR_HEAD, LIGHT,
+        fr_entries, period, FR_HEAD, LIGHT, scale,
     )
     _add_language_section(
         story, 'ACADEMIC RESULTS — ENGLISH SECTION / PARTIE ANGLAISE',
-        en_entries, period, EN_HEAD, EN_BG,
+        en_entries, period, EN_HEAD, EN_BG, scale,
     )
     if other_entries:
         _add_language_section(
             story, 'AUTRES MATIÈRES / OTHER SUBJECTS',
-            other_entries, period, colors.HexColor('#6B21A8'), colors.HexColor('#FAF5FF'),
+            other_entries, period, colors.HexColor('#6B21A8'), colors.HexColor('#FAF5FF'), scale,
         )
 
-    _add_stats_section(story, bilingual_data, class_stats, average, bulletin, period)
+    _add_stats_section(story, bilingual_data, class_stats, average, bulletin, period, scale)
     _add_signatures(story, bulletin)
     _add_footer(story, student, school_year)
     doc.build(story)

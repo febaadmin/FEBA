@@ -268,7 +268,8 @@ export default function AdminGrades() {
       school_year: d.school_year || currentYear?.id,
       // V7 : note normalisée sans altération (« 10 » reste « 10 »).
       value: gradePayloadValue(d.value),
-      note_coefficient: parseInt(d.note_coefficient) || 1,
+      // V8 : poids d'évaluation toujours 1 (imposé aussi côté backend).
+      note_coefficient: 1,
     };
     if (editItem) {
       editMut.mutate({ id: editItem.id, data: payload });
@@ -978,7 +979,7 @@ export default function AdminGrades() {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">{t("Coeff. note")}</label>
-              <input {...register("note_coefficient")} type="number" min="1" defaultValue="1"
+              <input value="1" readOnly disabled
                 className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm" />
             </div>
           </div>

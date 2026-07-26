@@ -10,6 +10,9 @@ Corrections critiques :
 from decimal import Decimal
 from django.db import models
 from django.core.validators import MinValueValidator, MaxValueValidator
+
+# V8 — règles de notation centralisées (poids d'évaluation, barèmes /10 ou /20)
+from .grading import ASSESSMENT_WEIGHT, subject_average
 from apps.students.models import Student
 from apps.subjects.models import Subject
 from apps.schools.models import SchoolYear
@@ -140,8 +143,15 @@ class Grade(models.Model):
         validators=[MinValueValidator(0), MaxValueValidator(20)],
     )
     note_type = models.CharField(max_length=20, choices=NOTE_TYPE_CHOICES, default='devoir')
+    # V8 — POIDS DE L'ÉVALUATION : toujours 1. Toutes les évaluations d'une
+    # matière pèsent pareil (un examen ne compte pas plus qu'une
+    # interrogation). Le champ est conservé pour l'historique et la
+    # compatibilité, mais il est normalisé à 1 à chaque enregistrement.
+    # Ne pas confondre avec Subject.coefficient (pondération des MATIÈRES).
     note_coefficient = models.PositiveSmallIntegerField(
-        default=1, validators=[MinValueValidator(1)],
+        default=ASSESSMENT_WEIGHT,
+        validators=[MinValueValidator(1)],
+        help_text="Poids de l'évaluation — toujours 1 (règle FEBA V8).",
     )
     comment    = models.TextField(blank=True)
     graded_at  = models.DateField(null=True, blank=True)
@@ -163,6 +173,16 @@ class Grade(models.Model):
             f'{self.student} - {self.subject} - {self.period} '
             f'[{self.get_note_type_display()}] : {self.value}/20'
         )
+
+    def save(self, *args, **kwargs):
+        # V8 — le poids d'une évaluation est TOUJOURS 1, quel que soit son
+        # type. Normalisation côté backend (source de vérité) : même une
+        # requête API envoyant un autre coefficient est ramenée à 1.
+        if self.note_coefficient != ASSESSMENT_WEIGHT:
+            self.note_coefficient = ASSESSMENT_WEIGHT
+            if "update_fields" in kwargs and kwargs["update_fields"] is not None:
+                kwargs["update_fields"] = set(kwargs["update_fields"]) | {"note_coefficient"}
+        return super().save(*args, **kwargs)
 
     @property
     def letter(self):
@@ -250,9 +270,11 @@ class Grade(models.Model):
             # L'ancien comportement (0 d'office) écrasait injustement la
             # moyenne des élèves dès qu'une matière n'était pas encore notée.
             if notes:
-                total_w = sum(note.value * Decimal(note.note_coefficient) for note in notes)
-                total_c = sum(Decimal(note.note_coefficient) for note in notes)
-                avg = total_w / total_c if total_c else None
+                # V8 : toutes les évaluations pèsent 1 — la moyenne d'une
+                # matière est la moyenne ARITHMÉTIQUE de ses notes (un examen
+                # ne pèse pas plus qu'une interrogation). Calcul centralisé
+                # dans apps.grades.grading (source unique de vérité).
+                avg = subject_average([note.value for note in notes])
             else:
                 avg = None
 
