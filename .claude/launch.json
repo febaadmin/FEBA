@@ -1,0 +1,31 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "backend",
+      "runtimeExecutable": "env",
+      "runtimeArgs": [
+        "DJANGO_SETTINGS_MODULE=feba_project.settings.dev_sqlite",
+        "backend/.venv-test/bin/python",
+        "backend/manage.py",
+        "runserver",
+        "8000",
+        "--noreload"
+      ],
+      "port": 8000
+    },
+    {
+      "name": "frontend",
+      "runtimeExecutable": "env",
+      "runtimeArgs": [
+        "BACKEND_ORIGIN=http://localhost:8000",
+        "npm",
+        "run",
+        "dev",
+        "--prefix",
+        "frontend"
+      ],
+      "port": 5173
+    }
+  ]
+}
