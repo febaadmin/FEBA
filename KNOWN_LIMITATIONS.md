@@ -36,7 +36,14 @@
    nouvelle migration de données devra être ajoutée à `DATA_MIGRATIONS` dans
    cette commande.
 
-8. **Node 20 requis pour la suite frontend.** Sous Node 26, jsdom est masqué
+8. **Installation depuis PyPI non rejouée de bout en bout.** Sur la machine de
+   validation, le réseau sortant est coupé et seul Python 3.14 est disponible
+   (le projet cible 3.12+). Deux blocages ont été trouvés et corrigés
+   (`psycopg2-binary` 2.9.9 → 2.9.12, ajout de `PyMuPDF`), mais un
+   `pip install -r requirements/dev.txt` complet reste à confirmer sur une
+   machine connectée.
+
+9. **Node 20 requis pour la suite frontend.** Sous Node 26, jsdom est masqué
    par le `localStorage` global expérimental de Node et `i18n.test.js` échoue
    (`Cannot read properties of undefined (reading 'getItem')`). Utiliser la
    version du projet (`.nvmrc` / v20.20.2).

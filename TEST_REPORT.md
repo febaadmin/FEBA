@@ -39,6 +39,44 @@ manage.py bootstrap_demo     → migrations + migrations de données + seeds
   ✔ conforme
 ```
 
+### Test de l'ARCHIVE EXTRAITE (livraison V8)
+
+Le ZIP a été extrait dans un dossier neuf, puis **son propre code** exécuté
+(chemin des modules vérifié : `/tmp/verif_zip_v8/…/apps/bulletins/pdf_generator.py`).
+
+| Contrôle | Résultat |
+|---|---|
+| Base de données locale, `node_modules`, `venv`, cache, log, `dist` dans l'archive | **aucun** |
+| Secrets | aucun ; `.env.dev` ne contient que des valeurs de développement explicitement marquées |
+| Migrations sur PostgreSQL **vierge** | **109 appliquées**, dont `grades/0011`, `grades/0012`, `incidents/0001` |
+| Seeds + vérification (`bootstrap_demo`) | `nombre de notes avec poids d'évaluation != 1 = 0` (sur 2400) |
+| Tests critiques depuis l'archive | **74 passed** (bootstrap, migrations, barèmes, documents, profils) |
+| Bulletin **/10** généré | `Moy. /10`, **0** valeur sur 20, 1 page |
+| Bulletin **/20** généré | `Moy. /20`, **0** valeur sur 10, 1 page |
+| Reçu généré | « Le Secrétariat » ✔, « Signature du Caissier » ✘, « Cachet de l'École » ✘, texte spécial conservé |
+| **Cachets embarqués** | bulletins → **LA DIRECTION** (et pas le secrétariat) ; reçu → **LE SECRETARIAT** (et pas la direction) |
+| SHA-256 | **58 / 58** conformes |
+| Bundle Git | `git bundle verify` : « complete history » ; clone réel → HEAD `26f1319`, 692 fichiers |
+
+#### Deux défauts d'installation trouvés par ce test (et corrigés)
+
+1. `psycopg2-binary==2.9.9` n'a **aucune roue** pour Python ≥ 3.13 : la
+   compilation échoue faute d'en-têtes PostgreSQL → installation impossible.
+   Version portée à **2.9.12**.
+2. **PyMuPDF (« fitz ») n'était déclaré nulle part** alors que les tests
+   documents l'importent : sur une installation neuve, la suite ne pouvait pas
+   démarrer. Ajouté à `requirements/dev.txt`.
+
+#### Ce qui n'a PAS pu être vérifié sur cette machine
+
+L'installation des dépendances **à partir de PyPI** n'a pas pu être menée à son
+terme : le réseau sortant est coupé (`ConnectTimeoutError` sur `pypi.org`) et
+seul **Python 3.14** est disponible localement, alors que le projet cible
+3.12+. Les deux correctifs ci-dessus lèvent les blocages identifiés, mais un
+`pip install -r requirements/dev.txt` complet reste à rejouer sur une machine
+disposant d'un accès réseau. Tout le reste du contrôle a été effectué sur le
+code réellement extrait de l'archive.
+
 ### Piège d'environnement rencontré (et écarté)
 
 Un passage de la suite frontend a échoué sur `i18n.test.js` avec
