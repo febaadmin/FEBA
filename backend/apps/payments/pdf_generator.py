@@ -152,8 +152,10 @@ def generate_receipt(payment):
     story.append(P("INFORMATIONS ÉLÈVE / STUDENT INFORMATION",
                    fontSize=10, fontName="Helvetica-Bold", textColor=primary, spaceAfter=4))
     student = payment.student
+    # V8 : valeurs enveloppées dans des Paragraph → repli automatique (les
+    # identités très longues étaient tronquées au bord droit du reçu).
     student_data = [
-        ["Nom complet / Full Name:", student.get_full_name()],
+        ["Nom complet / Full Name:", P(student.get_full_name(), fontSize=9, leading=11, wordWrap="CJK")],
         ["Matricule / Student ID:", student.matricule],
         ["Classe / Class:", student.current_class.name if student.current_class else "—"],
         ["Niveau / Level:", (student.current_class.level.name
@@ -162,7 +164,8 @@ def generate_receipt(payment):
     try:
         link = student.parents.select_related("parent__user").first()
         if link:
-            student_data.append(["Parent / Guardian:", link.parent.user.get_full_name()])
+            student_data.append(["Parent / Guardian:",
+                                 P(link.parent.user.get_full_name(), fontSize=9, leading=11, wordWrap="CJK")])
     except Exception as exc:
         logger.warning("Erreur non bloquante ignorée : %s", exc, exc_info=True)
     st_tbl = Table(student_data, colWidths=[5.5*cm, 11.5*cm])
@@ -182,13 +185,20 @@ def generate_receipt(payment):
     pay_data = [
         ["Type de paiement / Payment Type:", payment.get_payment_type_display()],
         ["Montant (chiffres) / Amount:", f"{payment.amount:,.0f} FCFA"],
-        ["Montant (lettres) / In Words:", amount_in_words(payment.amount)],
+        ["Montant (lettres) / In Words:",
+         P(amount_in_words(payment.amount), fontSize=9, leading=11, wordWrap="CJK")],
         ["Mode de paiement / Method:", payment.get_payment_method_display()],
         ["Reçu par / Received by:", payment.received_by.get_full_name() if payment.received_by else "—"],
         ["Statut / Status:", "Confirmé ✓" if confirmed else "En attente"],
     ]
     if getattr(payment, 'notes', None):
-        pay_data.append(["Observations:", payment.notes])
+        # V8 — les observations peuvent être longues : ReportLab ne coupe JAMAIS
+        # une simple chaîne, le texte était donc TRONQUÉ au bord droit du reçu.
+        # Enveloppé dans un Paragraph, il se replie dans la largeur de colonne.
+        pay_data.append([
+            "Observations:",
+            P(str(payment.notes), fontSize=9, leading=11, wordWrap="CJK"),
+        ])
 
     pay_tbl = Table(pay_data, colWidths=[6*cm, 11*cm])
     pay_tbl.setStyle(TableStyle([

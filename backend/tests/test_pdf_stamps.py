@@ -291,3 +291,39 @@ class BulletinStampTests(TestCase):
         doc = self._bulletin(level_order=12)
         self.assertTrue(_contains_stamp(doc, DIRECTION_STAMP))
         self.assertFalse(_contains_stamp(doc, SECRETARIAT_STAMP))
+
+
+class ReceiptTextWrapTests(ReceiptStampTests):
+    """V8 — aucun texte tronqué au bord droit du reçu.
+
+    ReportLab ne coupe jamais une simple chaîne : une observation longue (ou
+    une identité très longue) débordait de sa colonne et se retrouvait
+    TRONQUÉE à l'impression. Les valeurs sont désormais des Paragraph.
+    """
+
+    def test_observation_longue_entierement_presente(self):
+        from apps.payments.models import Payment
+        note = ("Frais d'inscription, fournitures, cantine, transport et "
+                "activités parascolaires pour l'année complète, réglés en une "
+                "seule fois par chèque de banque.")
+        payment = Payment.objects.create(
+            student=self.student, school_year=self.year, amount=Decimal("1250000"),
+            payment_type="registration", payment_method="cheque",
+            received_by=self.cashier, notes=note)
+        _, doc = self._receipt(payment)
+        text = " ".join(" ".join(p.get_text().split()) for p in doc)
+        # Le DERNIER mot doit être présent : preuve que rien n'est coupé.
+        self.assertIn("banque", text, "l'observation est tronquée dans le reçu")
+        self.assertIn("parascolaires", text)
+
+    def test_identite_longue_entierement_presente(self):
+        from apps.payments.models import Payment
+        self.student.first_name = "Marie-Emmanuelle Christiane"
+        self.student.last_name = "Hounkpatin-Adjovi De Souza"
+        self.student.save()
+        payment = Payment.objects.create(
+            student=self.student, school_year=self.year, amount=Decimal("75000"),
+            payment_type="tuition", payment_method="cash", received_by=self.cashier)
+        _, doc = self._receipt(payment)
+        text = " ".join(" ".join(p.get_text().split()) for p in doc)
+        self.assertIn("Hounkpatin-Adjovi De Souza", text)
