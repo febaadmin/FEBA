@@ -117,6 +117,19 @@ def _fmt_scale(val, scale):
     return f'{float(convert_average_for_scale(val, scale)):.2f}'
 
 
+def _fmt_note(val, scale):
+    """Note individuelle (stockée /20) exprimée dans le barème du bulletin.
+
+    Une décimale sur 20 (format historique), deux sur 10 pour ne pas perdre
+    de précision en divisant par deux (17,5/20 → 8,75/10).
+    """
+    if val is None:
+        return '—'
+    converted = convert_average_for_scale(val, scale)
+    digits = 1 if Decimal(str(scale)) == Decimal('20') else 2
+    return f'{float(converted):.{digits}f}'
+
+
 def _fmt_scale_denom(val, scale):
     """Idem avec le dénominateur explicite : « 6.00/10 » ou « 12.00/20 »."""
     if val is None:
@@ -399,8 +412,13 @@ def _subject_rows_trimester(entries, scale=20):
         notes = info.get('notes') or []
         avg = info['average']
         if notes:
+            # V8 : le DÉTAIL des notes suit le barème du bulletin. Sur un
+            # bulletin sur 10, imprimer « E:17.5 » à côté de « 8.26/10 » était
+            # incompréhensible (et affichait des notes supérieures au barème
+            # annoncé). Les notes restent stockées sur 20 ; la conversion a
+            # lieu ici seulement, à l'affichage.
             details = '  '.join(
-                f"{note_labels.get(n.note_type, 'N')}:{float(n.value):.1f}"
+                f"{note_labels.get(n.note_type, 'N')}:{_fmt_note(n.value, scale)}"
                 for n in sorted(notes, key=lambda x: x.note_type)
             )
         else:

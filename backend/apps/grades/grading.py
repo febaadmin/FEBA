@@ -26,8 +26,13 @@ ASSESSMENT_WEIGHT = 1
 # Barème de référence des calculs internes.
 REFERENCE_SCALE = Decimal("20")
 
-# (B) Dernier niveau affiché sur 10 (CM2 = 11ᵉ niveau : Garderie, Maternelle 1
-# et 2, CI, CP, CE1, CE2, CM1, CM2… selon l'ordre défini par l'établissement).
+# (B) Cycles notés sur 10 / sur 20 — champ `Level.cycle`, indépendant de la
+# numérotation choisie par l'établissement.
+PRIMARY_CYCLES = frozenset({"maternelle", "primaire"})
+SECONDARY_CYCLES = frozenset({"college", "collège", "lycee", "lycée"})
+
+# Repli quand le cycle n'est pas renseigné : dernier niveau affiché sur 10
+# (CM2 = 11ᵉ niveau : Garderie, Maternelle 1 et 2, CI, CP, CE1, CE2, CM1, CM2…).
 PRIMARY_MAX_LEVEL_ORDER = 11
 
 
@@ -65,10 +70,33 @@ def subject_average(values, max_values=None):
 def get_grading_scale(level):
     """Barème d'AFFICHAGE (10 ou 20) pour un niveau.
 
-    S'appuie sur `Level.order` (champ stable), jamais sur le libellé de la
-    classe : niveaux 1 à 11 → /10, au-delà (Collège, Lycée) → /20.
+    S'appuie sur des CHAMPS STABLES de `Level`, jamais sur le libellé de la
+    classe :
+
+    1. `Level.cycle` d'abord — c'est le champ qui porte le SENS (maternelle,
+       primaire, collège, lycée). Il est administrable et fiable.
+    2. `Level.order` en repli, pour un établissement qui n'aurait pas
+       renseigné le cycle : niveaux 1 à 11 (Garderie → CM2) → /10, au-delà
+       → /20.
+
+    `order` seul ne suffit PAS : c'est un rang d'affichage propre à chaque
+    établissement (le jeu de démonstration numérote CP1 = 0 … 3ème = 9), donc
+    un collège s'y retrouverait noté sur 10. Le cycle, lui, ne dépend pas de
+    la numérotation choisie.
+
     Sans niveau identifiable, on conserve le barème de référence /20.
     """
+    if level is None:
+        return REFERENCE_SCALE
+
+    cycle = getattr(level, "cycle", None)
+    if cycle:
+        cycle = str(cycle).strip().lower()
+        if cycle in SECONDARY_CYCLES:
+            return REFERENCE_SCALE
+        if cycle in PRIMARY_CYCLES:
+            return Decimal("10")
+
     order = getattr(level, "order", None)
     if order is None:
         return REFERENCE_SCALE

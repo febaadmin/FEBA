@@ -81,6 +81,37 @@ class GradingScaleTests(SimpleTestCase):
     def test_niveau_inconnu_reste_sur_20(self):
         self.assertEqual(get_grading_scale(None), Decimal("20"))
 
+    def test_le_cycle_prime_sur_la_numerotation(self):
+        """Le rang d'affichage est propre à chaque établissement.
+
+        Un établissement qui numérote ses niveaux à partir de 0 (CP1 = 0 …
+        3ème = 9) ne doit PAS voir son collège noté sur 10 : c'est le cycle
+        qui tranche.
+        """
+        cas = [
+            # (cycle, order, barème attendu)
+            ("college", 6, Decimal("20")),     # 6ème du jeu de démonstration
+            ("college", 9, Decimal("20")),     # 3ème
+            ("lycee", 3, Decimal("20")),
+            ("primaire", 0, Decimal("10")),    # CP1, rang 0
+            ("primaire", 2, Decimal("10")),    # CE1
+            ("maternelle", 0, Decimal("10")),
+        ]
+        for cycle, order, attendu in cas:
+            level = type("L", (), {"cycle": cycle, "order": order})()
+            self.assertEqual(
+                get_grading_scale(level), attendu,
+                f"cycle={cycle} rang={order} doit donner /{int(attendu)}",
+            )
+
+    def test_repli_sur_le_rang_si_cycle_absent(self):
+        for cycle in (None, "", "   "):
+            primaire = type("L", (), {"cycle": cycle, "order": 5})()
+            college = type("L", (), {"cycle": cycle, "order": 12})()
+            self.assertEqual(get_grading_scale(primaire), Decimal("10"))
+            self.assertEqual(get_grading_scale(college), Decimal("20"))
+
+
     def test_conversions(self):
         cases = [
             (Decimal("20"), Decimal("10.00")), (Decimal("19"), Decimal("9.50")),
@@ -108,6 +139,31 @@ class GradingScaleTests(SimpleTestCase):
         # L'affichage sur 10 ne doit JAMAIS être reclassé avec les seuils /20
         # (6 serait alors « INSUFFISANT » — c'est précisément l'erreur à éviter).
         self.assertNotEqual(get_appreciation(Decimal("6")), get_appreciation(internal))
+
+
+class GradingScaleRealLevelsTests(TestCase):
+    """P5 sur de VRAIS objets Level, tels que créés par l'établissement."""
+
+    def test_barème_par_cycle_sur_des_niveaux_persistes(self):
+        school = School.objects.create(name="École barème", address="Cotonou")
+        chaine = [
+            ("Garderie", "maternelle", 0), ("CP1", "primaire", 1),
+            ("CE1", "primaire", 2), ("CM2", "primaire", 5),
+            ("6ème", "college", 6), ("3ème", "college", 9),
+        ]
+        attendus = {
+            "Garderie": Decimal("10"), "CP1": Decimal("10"),
+            "CE1": Decimal("10"), "CM2": Decimal("10"),
+            "6ème": Decimal("20"), "3ème": Decimal("20"),
+        }
+        for name, cycle, order in chaine:
+            level = Level.objects.create(
+                school=school, name=name, cycle=cycle, order=order,
+            )
+            self.assertEqual(
+                get_grading_scale(level), attendus[name],
+                f"{name} ({cycle}, rang {order})",
+            )
 
 
 class GradeWeightEnforcementTests(TestCase):
@@ -194,13 +250,13 @@ class BulletinScaleTests(TestCase):
         cls.subject = Subject.objects.create(school=cls.school, name="Maths", code="MATH",
                                              coefficient=4, language="fr")
 
-    def _pdf_text(self, level_order, value):
+    def _pdf_text(self, level_order, value, cycle="primaire"):
         from io import BytesIO
         import fitz
         from apps.bulletins import pdf_generator as G
 
         level = Level.objects.create(school=self.school, name=f"N{level_order}",
-                                     order=level_order, cycle="primaire")
+                                     order=level_order, cycle=cycle)
         klass = Class.objects.create(name=f"C{level_order}", level=level,
                                      school_year=self.year)
         klass.subjects.set([self.subject])
@@ -229,10 +285,26 @@ class BulletinScaleTests(TestCase):
         self.assertNotIn("12.00/20", text)
 
     def test_college_niveau_12_reste_sur_20(self):
-        text = self._pdf_text(12, 12)
+        text = self._pdf_text(12, 12, cycle="college")
         self.assertIn("12.00/20", text)
         self.assertIn("Moy. /20", text)
         self.assertNotIn("6.00/10", text)
+
+    def test_notes_detaillees_suivent_le_bareme(self):
+        """Le détail des notes ne doit JAMAIS dépasser le barème annoncé.
+
+        Une note de 17,5/20 s'imprime « 8.75 » sur un bulletin sur 10 — pas
+        « 17.5 » à côté d'une moyenne sur 10.
+        """
+        text = self._pdf_text(4, "17.5")
+        self.assertIn("8.75", text)
+        self.assertNotIn("17.5", text)
+        self.assertIn("8.75/10", text)
+
+    def test_notes_detaillees_inchangees_au_college(self):
+        text = self._pdf_text(12, "17.5", cycle="college")
+        self.assertIn("17.5", text)
+        self.assertIn("17.50/20", text)
 
     def test_niveau_1_garderie_sur_10(self):
         text = self._pdf_text(1, 15)           # 15/20 → 7,50/10
