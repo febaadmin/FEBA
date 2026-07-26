@@ -45,6 +45,7 @@ const SuperAdminDashboard = lazy(() => import("../pages/superadmin/Dashboard"));
 const SuperAdminUsers = lazy(() => import("../pages/superadmin/Users"));
 const SuperAdminAdmins = lazy(() => import("../pages/superadmin/Admins"));
 const SuperAdminProfile = lazy(() => import("../pages/superadmin/Profile"));
+const SuperAdminIncidents = lazy(() => import("../pages/superadmin/Incidents"));
 
 // Admin pages
 const AdminDashboard = lazy(() => import("../pages/admin/Dashboard"));
@@ -222,6 +223,8 @@ export default function AppRouter() {
         <Route path="enrollments"   element={<AdminEnrollments />} />
         <Route path="virtual"       element={<VirtualRooms />} />
         <Route path="website"       element={<AdminWebsite />} />
+        <Route path="incidents"     element={<SuperAdminIncidents />} />
+        <Route path="incidents/:id" element={<SuperAdminIncidents />} />
         <Route path="profile"       element={<SuperAdminProfile />} />
       </Route>
 

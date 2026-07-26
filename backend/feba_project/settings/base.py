@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     'apps.dashboard',
     'apps.virtualclass',
     'apps.website',
+    'apps.incidents',
 ]
 
 MIDDLEWARE = [
@@ -127,6 +128,9 @@ REST_FRAMEWORK = {
     'DEFAULT_RENDERER_CLASSES': [
         'rest_framework.renderers.JSONRenderer',
     ],
+    # V8 : les erreurs 500 inattendues créent un incident technique réel,
+    # notifient les super administrateurs et renvoient une référence ERR-XXXXXX.
+    'EXCEPTION_HANDLER': 'apps.incidents.handlers.feba_exception_handler',
 }
 
 # JWT Settings

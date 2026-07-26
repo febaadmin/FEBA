@@ -14,6 +14,28 @@
  *  examen/examination · devoir/assignment · administration/administration
  */
 export const EN = {
+  "Une erreur interne est survenue. L'incident a été transmis à l'équipe technique sous la référence {ref}.": "An internal error occurred. The incident was reported to the technical team under reference {ref}.",
+  "Une erreur interne est survenue. Veuillez réessayer ou contacter l'assistance.": "An internal error occurred. Please try again or contact support.",
+  "Incidents techniques": "Technical incidents",
+  "Erreurs serveur enregistrées automatiquement": "Server errors recorded automatically",
+  "Aucun incident technique": "No technical incident",
+  "Les erreurs serveur inattendues apparaîtront ici automatiquement.": "Unexpected server errors will appear here automatically.",
+  "Impossible de charger les incidents.": "Unable to load incidents.",
+  "Rechercher (référence, message, endpoint)…": "Search (reference, message, endpoint)…",
+  "Toutes gravités": "All severities", "Tous statuts": "All statuses",
+  "Critique": "Critical", "Élevée": "High", "Faible": "Low",
+  "Nouveau": "New", "Résolu": "Resolved",
+  "Ignoré": "Ignored", "Réouvert": "Reopened",
+  "Nouveaux": "New", "Résolus": "Resolved",
+  "Erreur": "Error", "Gravité": "Severity",
+  "Occur.": "Occur.", "Dernière fois": "Last seen", "Incident": "Incident",
+  "occurrence(s)": "occurrence(s)", "depuis le": "since",
+  "Action tentée": "Attempted action", "Route frontend": "Frontend route",
+  "Environnement": "Environment", "Première / dernière": "First / last",
+  "Contexte (données sensibles expurgées)": "Context (sensitive data redacted)",
+  "Note interne": "Internal note", "Marquer résolu": "Mark resolved",
+  "Réouvrir": "Reopen", "Incident marqué comme résolu.": "Incident marked as resolved.",
+  "Incident réouvert.": "Incident reopened.", "Incident mis à jour.": "Incident updated.",
   // ── Page de connexion ────────────────────────────────────────────────────
   "Connexion": "Login",
   "Se connecter": "Sign in",
