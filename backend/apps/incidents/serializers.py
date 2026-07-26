@@ -37,3 +37,21 @@ class TechnicalIncidentDetailSerializer(TechnicalIncidentListSerializer):
             f for f in fields
             if f not in {"status", "assigned_to", "resolution_notes", "severity"}
         ]
+
+    def update(self, instance, validated_data):
+        """Tient `resolved_at` à jour quel que soit le chemin employé.
+
+        Les actions dédiées `resolve/` et `reopen/` renseignaient la date de
+        résolution, mais une simple mise à jour du statut (PATCH
+        `status=resolved`) la laissait vide — l'incident apparaissait résolu
+        sans date. La règle est désormais appliquée ici, donc partout.
+        """
+        from django.utils import timezone
+
+        new_status = validated_data.get("status", instance.status)
+        if new_status == "resolved":
+            if instance.resolved_at is None:
+                validated_data["resolved_at"] = timezone.now()
+        else:
+            validated_data["resolved_at"] = None
+        return super().update(instance, validated_data)

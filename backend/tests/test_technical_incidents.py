@@ -239,3 +239,32 @@ class IncidentTreatmentTests(IncidentFixture):
                              format="json")
         self.incident.refresh_from_db()
         self.assertEqual(self.incident.reference, original)
+
+
+class IncidentResolvedAtTests(IncidentFixture):
+    """V8 — la date de résolution suit le statut, quel que soit le chemin.
+
+    Les actions dédiées `resolve/` et `reopen/` la renseignaient déjà, mais une
+    simple mise à jour du statut (PATCH `status=resolved`) la laissait vide :
+    l'incident apparaissait résolu SANS date de résolution.
+    """
+
+    def test_patch_statut_resolu_renseigne_la_date(self):
+        incident = report_incident(ValueError("boum"), module="grades")
+        client = self.as_(self.superadmin)
+        resp = client.patch(f"/api/incidents/{incident.id}/",
+                            {"status": "resolved"}, format="json")
+        self.assertEqual(resp.status_code, 200, resp.data)
+        incident.refresh_from_db()
+        self.assertEqual(incident.status, "resolved")
+        self.assertIsNotNone(incident.resolved_at,
+                             "un incident résolu doit porter sa date de résolution")
+
+    def test_reouverture_efface_la_date(self):
+        incident = report_incident(ValueError("boum"), module="grades")
+        client = self.as_(self.superadmin)
+        client.patch(f"/api/incidents/{incident.id}/", {"status": "resolved"}, format="json")
+        client.patch(f"/api/incidents/{incident.id}/", {"status": "reopened"}, format="json")
+        incident.refresh_from_db()
+        self.assertEqual(incident.status, "reopened")
+        self.assertIsNone(incident.resolved_at)
