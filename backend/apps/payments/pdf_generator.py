@@ -23,6 +23,14 @@ from django.core.files.base import ContentFile
 from django.utils import timezone
 from feba_project.branding import SCHOOL_GROUP_NAME
 
+# V8 — cachet officiel du SECRÉTARIAT, réservé aux REÇUS.
+# (Le cachet « LA DIRECTION » est réservé aux bulletins — ne pas les
+# intervertir : ce sont deux autorités distinctes de l'établissement.)
+SECRETARIAT_STAMP_PATH = os.path.normpath(os.path.join(
+    os.path.dirname(__file__), "..", "..",
+    "feba_project", "static_files", "cachet_secretariat.png",
+))
+
 STATIC_LOGO_PATH = os.path.join(
     os.path.dirname(__file__), '..', '..', 'feba_project', 'static_files', 'logo_feba.jpeg'
 )
@@ -86,6 +94,11 @@ def generate_receipt(payment):
     story = []
 
     def P(text, **kw):
+        # V8 — CORRECTION D'UN CHEVAUCHEMENT : ParagraphStyle utilise par défaut
+        # leading=12. Un texte en 16 pt (nom de l'établissement) débordait donc
+        # de sa ligne et se superposait à l'adresse juste en dessous. On calcule
+        # un interligne proportionnel dès qu'il n'est pas fourni explicitement.
+        kw.setdefault("leading", round(kw.get("fontSize", 10) * 1.25, 1))
         return Paragraph(text, ParagraphStyle("_", **kw))
 
     # Logo
@@ -191,34 +204,55 @@ def generate_receipt(payment):
     story.append(pay_tbl)
     story.append(Spacer(1, 1*cm))
 
-    # Signatures
+    # ── Zone de validation UNIQUE : « Le Secrétariat » (V8) ─────────────────
+    # Les anciennes mentions « Signature du Caissier » et « Cachet de l'École /
+    # School Stamp » sont SUPPRIMÉES : le reçu ne comporte plus qu'une seule
+    # zone de validation, avec le cachet officiel du SECRÉTARIAT (le cachet de
+    # la Direction est réservé aux bulletins).
     story.append(HRFlowable(width="100%", thickness=1, color=colors.lightgrey))
-    story.append(Spacer(1, 0.3*cm))
-    # V7 : cachet officiel dans la case « Cachet de l'École ».
-    cachet_path = os.path.join(
-        os.path.dirname(__file__), "..", "..", "feba_project", "static_files", "cachet_feba.png"
-    )
+    story.append(Spacer(1, 0.35*cm))
+
     stamp_cell = ""
-    if os.path.exists(cachet_path):
+    if os.path.exists(SECRETARIAT_STAMP_PATH):
         try:
-            stamp = Image(cachet_path, width=2.6*cm, height=2.6*cm)
+            stamp = Image(SECRETARIAT_STAMP_PATH, width=3.0*cm, height=3.0*cm)  # ratio 1:1 préservé
             stamp.hAlign = "CENTER"
             stamp_cell = stamp
         except Exception as exc:
-            logger.warning("Cachet reçu non apposé (non bloquant) : %s", exc, exc_info=True)
-    sig_tbl = Table([
-        ["Signature du Caissier", "", "Cachet de l'École / School Stamp"],
-        ["", "", stamp_cell],
-        ["________________________", "", "________________________"],
-    ], colWidths=[6*cm, 5*cm, 6*cm])
-    sig_tbl.setStyle(TableStyle([
-        ("FONTNAME",   (0,0), (-1,-1), "Helvetica-Bold"),
-        ("FONTSIZE",   (0,0), (-1,-1), 9),
-        ("ALIGN",      (0,0), (-1,-1), "CENTER"),
-        ("TOPPADDING", (0,1), (-1,-1), 20),
-        ("TEXTCOLOR",  (0,0), (-1,-1), primary),
+            logger.warning("Cachet du secrétariat non apposé (non bloquant) : %s",
+                           exc, exc_info=True)
+
+    # Colonne gauche : mention légale ; colonne droite : validation + cachet.
+    # Une grille (et non un positionnement absolu) garantit que le bloc reste
+    # solidaire même si le contenu au-dessus varie.
+    mention = P(
+        "Ce reçu atteste du paiement mentionné ci-dessus. "
+        "Il est délivré pour servir et valoir ce que de droit.",
+        fontSize=8, textColor=colors.grey, leading=11,
+    )
+    validation_tbl = Table(
+        [[P("Le Secrétariat", fontSize=10, fontName="Helvetica-Bold",
+            alignment=1, textColor=primary)],
+         [stamp_cell],
+         [P(f"Cotonou, le {timezone.now().strftime('%d/%m/%Y')}",
+            fontSize=8, alignment=1, textColor=colors.grey)]],
+        colWidths=[6.2*cm], rowHeights=[0.6*cm, 3.3*cm, 0.6*cm],
+    )
+    validation_tbl.setStyle(TableStyle([
+        ("ALIGN",  (0,0), (-1,-1), "CENTER"),
+        ("VALIGN", (0,1), (0,1), "MIDDLE"),
+        ("TOPPADDING",    (0,0), (-1,-1), 2),
+        ("BOTTOMPADDING", (0,0), (-1,-1), 2),
     ]))
-    story.append(sig_tbl)
+
+    bottom_tbl = Table([[mention, validation_tbl]], colWidths=[10.6*cm, 6.4*cm])
+    bottom_tbl.setStyle(TableStyle([
+        ("VALIGN", (0,0), (0,0), "TOP"),
+        ("VALIGN", (1,0), (1,0), "TOP"),
+        ("LEFTPADDING",  (0,0), (-1,-1), 0),
+        ("RIGHTPADDING", (0,0), (-1,-1), 0),
+    ]))
+    story.append(bottom_tbl)
     story.append(Spacer(1, 0.4*cm))
     story.append(HRFlowable(width="100%", thickness=1, color=colors.lightgrey))
     story.append(P(

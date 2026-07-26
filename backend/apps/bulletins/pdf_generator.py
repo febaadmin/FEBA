@@ -26,7 +26,8 @@ from reportlab.lib.styles import ParagraphStyle
 from reportlab.lib.units import cm
 from reportlab.lib import colors
 from reportlab.platypus import (
-    SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, HRFlowable, Image
+    SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, HRFlowable, Image,
+    KeepTogether,
 )
 from django.core.files.base import ContentFile
 from feba_project.branding import SCHOOL_GROUP_NAME
@@ -404,7 +405,11 @@ def _subject_rows_trimester(entries, scale=20):
             )
         else:
             details = 'Non noté'
-        weighted = (float(avg) * info['coefficient']) if avg is not None else None
+        # V8 : la moyenne pondérée s'exprime dans le MÊME barème que la colonne
+        # « Moy. » affichée (sinon on lisait « 6.00/10 » en face de « 48.00 »,
+        # calculé sur l'échelle interne /20 — incohérent pour le lecteur).
+        weighted = (float(convert_average_for_scale(avg, scale)) * info['coefficient']
+                    if avg is not None else None)
         letter, _, _ = get_letter_grade(avg)
         rows.append([
             C(info['subject_name'], bold=True),
@@ -774,42 +779,85 @@ def _add_signatures(story, bulletin):
     stamp_cell = ''
     if cachet_path:
         try:
-            stamp = Image(cachet_path, width=2.6 * cm, height=2.6 * cm)
+            # 2,5 cm : lisible à l'impression sans gonfler la hauteur du bulletin.
+            stamp = Image(cachet_path, width=2.5 * cm, height=2.5 * cm)  # ratio 1:1 conservé
             stamp.hAlign = 'CENTER'
             stamp_cell = stamp
         except Exception as exc:
             logger.warning("Cachet non apposé (non bloquant) : %s", exc, exc_info=True)
-    sig_data = [
-        [C('Commentaire du Directeur / Principal\'s Comment', bold=True),
-         '', C('Signature & Cachet / Stamp', bold=True)],
-        [C(comment), '', stamp_cell],
-        ['', '', C('________________________', align='CENTER')],
-        ['', '', C(f'Cotonou, le {timezone.now().strftime("%d/%m/%Y")}', align='CENTER')],
-    ]
-    sig_tbl = Table(sig_data, colWidths=[9.4 * cm, 0.8 * cm, 8.3 * cm],
-                    rowHeights=[0.55 * cm, 1.15 * cm, 0.55 * cm, 0.5 * cm])
-    sig_tbl.setStyle(TableStyle([
-        ('FONTSIZE', (0, 0), (-1, -1), 8),
+    # V8 — Zone de validation de la Direction repensée.
+    #
+    # Avant : le cachet flottait dans une cellule partagée avec la ligne de
+    # signature et la date, sans marge ni alignement — il paraissait posé au
+    # hasard et frôlait le bord droit.
+    #
+    # Maintenant : un bloc dédié, empilé et centré — intitulé, cachet centré,
+    # puis lieu/date — assemblé dans sa PROPRE table (donc insécable) et placé
+    # à droite du commentaire du directeur. Aucune coordonnée absolue : la
+    # grille s'adapte si le commentaire s'allonge.
+    validation_tbl = Table(
+        [[C('La Direction / The Principal', bold=True, align='CENTER')],
+         [stamp_cell],
+         [C(f'Cotonou, le {timezone.now().strftime("%d/%m/%Y")}', align='CENTER')]],
+        colWidths=[8.3 * cm],
+    )
+    validation_tbl.setStyle(TableStyle([
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('VALIGN', (0, 1), (0, 1), 'MIDDLE'),   # cachet centré dans sa case
+        ('TOPPADDING', (0, 0), (-1, -1), 2),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 2),
+    ]))
+
+    # Colonne de gauche : commentaire du directeur PUIS signature du parent
+    # (empilés). Le bloc « signature du parent » qui occupait auparavant une
+    # ligne pleine largeur est ainsi absorbé : la zone de validation gagne la
+    # hauteur nécessaire à un cachet correctement rendu, SANS allonger le
+    # bulletin (un bulletin chargé tient toujours sur une seule page A4).
+    comment_box = Table(
+        [[C('Commentaire du Directeur / Principal\'s Comment', bold=True)],
+         [C(comment)]],
+        colWidths=[9.4 * cm], rowHeights=[0.5 * cm, 2.4 * cm],
+    )
+    comment_box.setStyle(TableStyle([
+        ('BOX', (0, 0), (-1, -1), 0.25, colors.lightgrey),
+        ('LINEBELOW', (0, 0), (0, 0), 0.25, colors.lightgrey),
         ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-        ('VALIGN', (2, 2), (2, 3), 'MIDDLE'),
-        ('GRID', (0, 0), (0, -1), 0.25, colors.lightgrey),
         ('LEFTPADDING', (0, 0), (-1, -1), 5),
         ('RIGHTPADDING', (0, 0), (-1, -1), 5),
         ('TOPPADDING', (0, 0), (-1, -1), 3),
         ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
     ]))
-    story.append(sig_tbl)
-    story.append(Spacer(1, 0.25 * cm))
     parent_sig = Table(
-        [[C('Signature du Parent / Parent\'s Signature:', bold=True), '',
+        [[C('Signature du Parent / Parent\'s Signature:', bold=True),
           C('________________________', align='CENTER')]],
-        colWidths=[7.5 * cm, 3.7 * cm, 7.3 * cm]
+        colWidths=[5.2 * cm, 4.2 * cm], rowHeights=[0.7 * cm],
     )
     parent_sig.setStyle(TableStyle([
-        ('FONTSIZE', (0, 0), (-1, -1), 8),
         ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('LEFTPADDING', (0, 0), (-1, -1), 5),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 0),
+        ('TOPPADDING', (0, 0), (-1, -1), 4),
     ]))
-    story.append(parent_sig)
+    left_column = Table([[comment_box], [parent_sig]], colWidths=[9.4 * cm])
+    left_column.setStyle(TableStyle([
+        ('LEFTPADDING', (0, 0), (-1, -1), 0),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 0),
+        ('TOPPADDING', (0, 0), (-1, -1), 0),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 0),
+    ]))
+
+    sig_tbl = Table([[left_column, '', validation_tbl]],
+                    colWidths=[9.4 * cm, 0.8 * cm, 8.3 * cm])
+    sig_tbl.setStyle(TableStyle([
+        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+        ('LEFTPADDING', (0, 0), (-1, -1), 0),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 0),
+        ('TOPPADDING', (0, 0), (-1, -1), 0),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 0),
+    ]))
+    # Le bloc « commentaire + validation » ne doit jamais être coupé en deux
+    # pages : le cachet reste solidaire de sa zone de validation.
+    story.append(KeepTogether(sig_tbl))
 
 
 def _add_footer(story, student=None, school_year=None):
