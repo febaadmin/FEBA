@@ -1,4 +1,38 @@
-# STAMP_INTEGRATION_REPORT.md — Cachet officiel (V7-P3, 25/07/2026)
+# STAMP_INTEGRATION_REPORT.md — Cachets officiels (V7 + V8)
+
+## V8 — Deux cachets, deux autorités (26/07/2026)
+
+| Document | Cachet | Fichiers |
+|---|---|---|
+| **Bulletin** | **LA DIRECTION** | `cachet_feba.png` (600 px transparent), `cachet_feba_hd.png` (1000 px), `cachet_feba.webp` |
+| **Reçu** | **LE SECRETARIAT** | `cachet_secretariat.png` (600 px transparent), `cachet_secretariat_hd.png` (1000 px), `cachet_secretariat.webp` |
+
+Les intervertir est **interdit** — et impossible sans faire échouer les tests.
+
+### Extraction du cachet « LE SECRETARIAT »
+
+Produit à partir du PNG officiel fourni (1254 × 1254) : auto-rognage aux
+limites du sceau, mise au carré, ratio **1:1** conservé, fond blanc rendu
+transparent pour l'incrustation PDF. **Le graphisme et le texte ne sont pas
+modifiés** ; le fichier source est conservé.
+
+### Intégration
+
+- **Reçu** (`apps/payments/pdf_generator.py`) : cachet **3 cm** dans la zone de
+  validation unique « Le Secrétariat ».
+- **Bulletin** (`apps/bulletins/pdf_generator.py`) : cachet **2,5 cm** centré
+  dans le bloc « La Direction / The Principal ».
+- Dégradation gracieuse : fichier absent → document généré sans cachet, sans
+  exception.
+
+### Vérification du cachet réellement embarqué
+
+ReportLab **ré-encode** les images : comparer les octets source aux octets
+extraits du PDF ne fonctionne pas. Les tests comparent la **signature visuelle
+de la bande de texte** du sceau (seule zone où les deux diffèrent) — distance
+≈ 2/1024 pour un même cachet ré-échantillonné, ≈ 223/1024 entre les deux
+(seuil : 40). `tests/test_pdf_stamps.py` — **22 cas**.
+
 
 ## 1. Extraction fidèle
 

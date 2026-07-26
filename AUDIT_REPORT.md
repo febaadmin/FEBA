@@ -1,4 +1,39 @@
-# AUDIT_REPORT.md — Missions V4 + V6
+# AUDIT_REPORT.md — Missions V4 → V8
+
+## Audit V8 (26/07/2026)
+
+### Anomalies trouvées et corrigées
+
+| # | Domaine | Anomalie | Gravité | Correction |
+|---|---|---|---|---|
+| 1 | Profils | Matricule enseignant généré via `count()+1` → collision d'unicité → **500** | Critique | Génération sur le **max existant** + reprise + création atomique |
+| 2 | Sécurité | Filtrage multi-établissement **inopérant** sur les champs DRF `many=True` | **Élevée** | `child_relation.queryset` + test dédié |
+| 3 | Transparence | « L'équipe technique a été notifiée » **sans aucune notification** | Élevée | Système d'incidents réel + message honnête avec référence |
+| 4 | Notes | Poids d'évaluation hétérogènes (examen ×3) | Métier | Poids unique 1 + migration + source centralisée |
+| 5 | Bulletins | Primaire noté /20 au lieu de /10 | Métier | Barème par `Level.order`, conversion unique |
+| 6 | Documents | Mauvais cachet sur les reçus | Métier | Cachet SECRÉTARIAT sur reçus, DIRECTION sur bulletins |
+| 7 | Documents | Cachet débordant d'une cellule fixe (chevauchement date/signature) | Moyenne | Bloc dédié insécable |
+| 8 | Documents | Nom de l'école chevauchant l'adresse (reçu) | Moyenne | Interligne proportionnel |
+| 9 | Documents | « Moy. Pond. » sur /20 face à une moyenne /10 | Moyenne | Pondérée exprimée dans le barème affiché |
+| 10 | Documents | **Observations tronquées** au bord droit du reçu | Moyenne | Valeurs longues en `Paragraph` (repli) |
+| 11 | Incidents | `resolved_at` non renseigné par un PATCH de statut | Faible | Règle portée par le serializer |
+| 12 | Migrations | Dérive de l'état du modèle (`note_coefficient`) | Faible | Migration `grades/0012` ; `makemigrations --check` propre |
+
+### Points vérifiés sans anomalie
+
+Authentification et sessions ; rôles et permissions (403/401 conformes) ;
+multi-établissement (après correctif n°2) ; transactions et rollback ;
+contraintes d'unicité (validées sur PostgreSQL) ; calculs de moyennes et
+arrondis ; appréciations et lettres ; notes (10 reste 10 — V7) ; bulletins et
+reçus ; paiements ; notifications ; tableau de bord Parent ; site vitrine
+(carrousel, galerie, vidéo, menu, formulaires) ; migrations ; build de
+production.
+
+### État final
+
+Backend **393** (SQLite) / **394** (PostgreSQL) ; frontend **70** ; ESLint
+**0 erreur** ; build **OK**. Aucune régression critique constatée.
+
 
 ## Audit V7 (25/07/2026)
 Anomalie critique corrigée : altération silencieuse des notes (10→9,5/9,75) — cause frontend

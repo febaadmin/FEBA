@@ -1,4 +1,53 @@
-# TEST_REPORT.md — Missions V4 → V7 (25/07/2026)
+# TEST_REPORT.md — Missions V4 → V8 (26/07/2026)
+
+## Résultats V8
+
+| # | Suite | Commande | Tests | Réussis | Échecs | Ignorés |
+|---|---|---|---|---|---|---|
+| 1 | Backend **SQLite** | `DJANGO_SETTINGS_MODULE=…test_sqlite pytest --no-migrations -q` | 394 | **393** | 0 | **1** |
+| 2 | Backend **PostgreSQL 16** | `DJANGO_SETTINGS_MODULE=…test_postgres pytest -q` | 394 | **394** | 0 | **0** |
+| 3 | Frontend | `npx vitest run` | 70 (9 fichiers) | **70** | 0 | 0 |
+| 4 | ESLint | `npx eslint src` | — | **0 erreur** (63 avertissements hérités) | 0 | — |
+| 5 | Build production | `npx vite build` | — | **✓ built** | 0 | — |
+
+### Le test ignoré (SQLite uniquement)
+
+`tests/test_parent_student.py:325` — test de **concurrence multi-thread**.
+SQLite en mémoire verrouille la table entière (« database table is locked ») ;
+il exige un vrai serveur de base. **Il s'exécute et réussit sur PostgreSQL**
+(d'où 394/394 sans aucun ignoré en ligne 2). Aucun test n'est donc réellement
+laissé de côté.
+
+### PostgreSQL : ce que SQLite ne pouvait pas prouver
+
+La suite PostgreSQL applique la **chaîne de migrations complète** (impossible
+sur la SQLite embarquée : une migration historique utilise une syntaxe refusée
+— limitation **pré-existante**, vérifiable sur un test antérieur à la V8, d'où
+`--no-migrations`). Elle valide donc aussi : les 3 migrations V8, les
+contraintes d'unicité réelles, les transactions et la concurrence.
+
+### Suites ajoutées en V8
+
+| Fichier | Tests | Objet |
+|---|---|---|
+| `tests/test_profile_creation.py` | 16 | création Enseignant (régression matricule), atomicité, doublons, permissions, isolation établissement, Élève, Parent |
+| `tests/test_technical_incidents.py` | 20 | 500 réelle → incident + notification, dédoublonnage, sanitisation, permissions, cycle de traitement, date de résolution |
+| `tests/test_grade_weighting_and_scale.py` | 19 | poids unique (12+5 = 8,50), cas limites, barèmes /10 et /20, appréciations |
+| `tests/test_pdf_stamps.py` | 22 | deux cachets distincts, mentions supprimées, positions, non-chevauchement, textes non tronqués |
+| `tests/test_data_migrations.py` | 5 | logique des migrations de données (avant/après, idempotence) |
+
+### Vérifications navigateur (réelles, non automatisées)
+
+Création d'un profil Enseignant **depuis le formulaire**, sur une base
+présentant un **trou de séquence** (`count()+1` = `ENS-2026-0006`, déjà pris) :
+profil créé avec **`ENS-2026-0007`**, 2 classes et 2 matières conservées,
+modification sans 500. Incidents : page, compteurs, filtres, cloche, changement
+de statut, admin **403**, anonyme **401**. Notes : 8,50 en base, via l'API et
+dans le résumé. Parent : tableau de bord chargé, moyennes présentes. Site
+public : 5 slides, 6 albums / 42 médias dont la vidéo, formulaire contact 201.
+Documents : reçus (court, partiel, soldé, duplicata, multiligne) et bulletins
+(court, chargé, primaire, collège) **rendus en images et inspectés**.
+
 
 ## Résultats V7
 

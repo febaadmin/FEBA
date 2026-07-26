@@ -1,4 +1,50 @@
-# CHANGELOG_FIXES.md — Missions V4 → V7 (juillet 2026)
+# CHANGELOG_FIXES.md — Missions V4 → V8 (juillet 2026)
+
+## V8 — Profils, incidents techniques, poids des notes, barèmes, cachets (26/07/2026)
+
+- **P1 — Création du profil Enseignant réparée.** Cause racine : le matricule
+  était généré à partir de `Teacher.objects.count() + 1`. Après toute
+  suppression, le compteur retombait sur un matricule déjà pris → violation
+  d'unicité → **erreur 500**. Le matricule dérive désormais du **plus grand
+  suffixe existant** (+ reprise en cas de collision concurrente), la création
+  est **atomique**, et les erreurs deviennent des **400 exploitables**.
+- **P2 — Audit de tous les profils.** Faille corrigée : le filtrage
+  multi-établissement des champs DRF `many=True` était **inopérant** (DRF lit
+  `child_relation.queryset`) — un admin pouvait rattacher des matières/classes
+  d'un AUTRE établissement. 16 tests (Enseignant, Élève, Parent).
+- **P3 — Remontée RÉELLE des erreurs techniques.** Application `incidents` :
+  modèle `TechnicalIncident` (référence `ERR-XXXXXX`, gravité, statut, module,
+  empreinte, occurrences…), capture des 500 uniquement, **dédoublonnage** par
+  empreinte, **sanitisation** centrale (mots de passe, jetons, cookies, cartes),
+  **notification réelle** des super administrateurs pointant vers l'incident,
+  interface « Incidents techniques » (compteurs, filtres, recherche, statut,
+  note, résolution/réouverture) réservée aux super admins. Le message affirmant
+  faussement « l'équipe technique a été notifiée » est supprimé : la référence
+  n'est annoncée que si l'incident a **réellement** été enregistré.
+- **P4 — Poids d'évaluation unique.** Toutes les évaluations pèsent **1** :
+  `12` (interrogation) et `5` (examen) donnent **8,50**. Distinction nette
+  entre **poids d'évaluation** (toujours 1) et **coefficient de matière**
+  (inchangé). Source unique `apps/grades/grading.py`. Migration de données
+  (rapport avant / exécution / vérification après) + champ retiré des
+  interfaces.
+- **P5 — Bulletins sur 10 pour les niveaux 1 à 11.** Barème déduit d'un champ
+  **stable** (`Level.order`), conversion appliquée **une seule fois** à
+  l'affichage ; appréciations et lettres restent calculées sur l'équivalent
+  /20 (6,00/10 ≡ 12/20). Collège et au-delà conservent /20.
+- **P6 — Reçu « Le Secrétariat ».** « Signature du Caissier » et « Cachet de
+  l'École / School Stamp » supprimés ; zone de validation unique avec le
+  **cachet LE SECRETARIAT**.
+- **P7 — Cachet « LA DIRECTION » repositionné.** Il débordait d'une cellule à
+  hauteur fixe et chevauchait la date. Bloc dédié, centré, insécable, sans
+  allonger le bulletin.
+- **Défauts trouvés en inspectant les documents réels** : chevauchement du nom
+  de l'école et de l'adresse sur le reçu (interligne) ; « Moy. Pond. » restée
+  sur l'échelle /20 face à une moyenne /10 ; **observations tronquées** au bord
+  droit du reçu ; **date de résolution** d'un incident non renseignée par un
+  simple PATCH de statut. Tous corrigés et couverts par des tests.
+- Backend **393 tests** (SQLite) / **394** (PostgreSQL 16, chaîne de migrations
+  complète), frontend **70**, ESLint **0 erreur**, build prod **OK**.
+
 
 ## V7 — Noms officiels, cachet, précision des notes, façade, vidéo, admissions (25/07/2026)
 

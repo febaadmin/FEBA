@@ -1,4 +1,24 @@
-# CORRECTIONS — FEBA V4 + V5 + V6 (20/07/2026)
+# CORRECTIONS — FEBA V4 → V8 (26/07/2026)
+
+## V8 (26/07/2026)
+
+P1 création du profil Enseignant réparée (matricule `count()+1` → `max+1`,
+création atomique, erreurs 400 exploitables) ; P2 audit de tous les profils +
+faille de cloisonnement multi-établissement corrigée ; P3 remontée **réelle**
+des erreurs techniques aux super administrateurs (incidents, sanitisation,
+dédoublonnage, notifications, interface dédiée) ; P4 poids d'évaluation unique
+(12 + 5 = **8,50**) ; P5 bulletins **sur 10** pour les niveaux 1 à 11 (collège
+sur 20) ; P6 reçu « Le Secrétariat » + cachet dédié ; P7 cachet « LA
+DIRECTION » repositionné. Défauts supplémentaires corrigés sur les documents
+réels (chevauchement d'en-tête, pondérée incohérente, texte tronqué) et sur les
+incidents (date de résolution).
+
+Backend **393** (SQLite) / **394** (PostgreSQL 16) ; frontend **70** ; ESLint
+**0 erreur** ; build **OK**. Détails : `FINAL_REPORT.md`,
+`PROFILE_CREATION_REPORT.md`, `TECHNICAL_INCIDENTS_REPORT.md`,
+`GRADE_WEIGHTING_REPORT.md`, `GRADING_SCALE_REPORT.md`,
+`STAMP_INTEGRATION_REPORT.md`, `PDF_LAYOUT_REPORT.md`.
+
 
 ## V7 (25/07/2026)
 P1 nom officiel « Faith & Excellence Bilingual Academy » (& partout, source centralisée) ;

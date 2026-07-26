@@ -1,4 +1,33 @@
-# KNOWN_LIMITATIONS.md — Missions V4 + V5 + V6
+# KNOWN_LIMITATIONS.md — Missions V4 → V8
+
+## Ajouts V8 (26/07/2026)
+
+1. **Migrations non rejouables sur la SQLite embarquée.** Une migration
+   *historique* utilise une syntaxe refusée par SQLite 3.53 (« near EXISTS »).
+   Les tests SQLite tournent donc avec `--no-migrations` — limitation
+   **pré-existante** (vérifiée sur un test antérieur à la V8), pas une
+   conséquence des migrations V8. **La chaîne complète est validée sur
+   PostgreSQL 16** (394/394) et la logique des migrations de données est en
+   outre testée directement (`tests/test_data_migrations.py`).
+
+2. **Barème /10 appliqué au bulletin PDF.** Les écrans ERP (tableaux de bord,
+   listes de notes, espaces Parent/Élève) affichent toujours l'échelle interne
+   /20. Les fonctions centrales (`get_grading_scale`,
+   `convert_average_for_scale`) sont prêtes à y être branchées.
+
+3. **Anciens poids d'évaluation non reconstituables.** La migration ramène tous
+   les poids à 1 sans conserver les valeurs précédentes : seul un dump antérieur
+   permet de les retrouver (cf. `RESTORE_GUIDE.md`).
+
+4. **Notifications d'incident : paliers fixes** (1, 5, 25, 100, 500), non
+   configurables depuis l'interface.
+
+5. **Pas de service externe d'erreurs** (type Sentry) configuré : le système
+   interne fonctionne seul. Un connecteur s'ajouterait dans `report_incident()`.
+
+6. **63 avertissements ESLint** hérités (hooks, variables inutilisées) —
+   **0 erreur**. Non traités pour ne pas élargir le périmètre.
+
 
 ## Ajouts V7 (25/07/2026)
 - Cachet : fichier statique unique packagé (défaut fourni) ; gestion fine par établissement
