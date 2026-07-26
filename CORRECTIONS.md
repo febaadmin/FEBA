@@ -13,7 +13,7 @@ DIRECTION » repositionné. Défauts supplémentaires corrigés sur les document
 réels (chevauchement d'en-tête, pondérée incohérente, texte tronqué) et sur les
 incidents (date de résolution).
 
-Backend **393** (SQLite) / **394** (PostgreSQL 16) ; frontend **70** ; ESLint
+Backend **405** (SQLite) / **406** (PostgreSQL 16) ; frontend **70** ; ESLint
 **0 erreur** ; build **OK**. Détails : `FINAL_REPORT.md`,
 `PROFILE_CREATION_REPORT.md`, `TECHNICAL_INCIDENTS_REPORT.md`,
 `GRADE_WEIGHTING_REPORT.md`, `GRADING_SCALE_REPORT.md`,

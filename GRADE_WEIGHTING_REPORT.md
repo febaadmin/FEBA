@@ -51,8 +51,27 @@ Barèmes hétérogènes → normalisation préalable :
 | — et 10 | Non noté + Devoir | — et 1 | 10/1 | 10 (le « non noté » n'est pas 0) | 10 ✅ |
 | 45/50 et 16/20 | Barèmes différents | 1 et 1 | (18+16)/2 | 17 | 17 ✅ |
 
-Le cas imposé **12 + 5 → 8,50** est vérifié **de bout en bout** (API → base →
-`get_subject_averages`), pour la saisie simple **et** groupée.
+Le cas imposé **12 + 5 → 8,50** est vérifié **de bout en bout**, pour la saisie
+simple **et** groupée.
+
+### Rejoué par l'INTERFACE réelle (26/07/2026)
+
+Les deux notes ont été saisies dans le formulaire de l'espace Enseignant
+(Marie Dossou → Estelle Acakpo, Français, T3) : « Interrogation / Devoir de
+classe » **12** puis « Examen / Évaluation » **5** — deux `POST /api/grades/`
+en **201**, aucun champ de poids dans le formulaire.
+
+| Contrôle | Résultat |
+|---|---|
+| Base (`Grade`) | `12.00` et `5.00`, `note_coefficient = 1` pour les deux |
+| API (`/grades/student-summary/`) | `"average": 8.5` |
+| Espace **Enseignant** | 8,5 |
+| Espace **Administrateur** | 8,5 |
+| Espace **Super administrateur** | 8,5 |
+| Espace **Parent** | 8,5 |
+| Espace **Élève** | 8,5 |
+| **Bulletin PDF** (CE1 → /10) | `E:2.50 I:6.00` → **4.25/10** (≡ 8,50/20), pondérée 17.00 (coeff 4) |
+| **Export CSV** | colonne de poids supprimée ; note exportée `12.00` / `5.00` |
 
 ## 5. Application de la règle
 

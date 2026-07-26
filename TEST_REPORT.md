@@ -2,20 +2,58 @@
 
 ## Résultats V8
 
-| # | Suite | Commande | Tests | Réussis | Échecs | Ignorés |
+Résultats **rejoués intégralement après les derniers correctifs**
+(base de démonstration, interfaces de saisie, clé de notation maternelle,
+échappement des textes du reçu) — commit `a283093`.
+
+| # | Suite | Commande exacte | Tests | Réussis | Échecs | Ignorés |
 |---|---|---|---|---|---|---|
-| 1 | Backend **SQLite** | `DJANGO_SETTINGS_MODULE=…test_sqlite pytest --no-migrations -q` | 394 | **393** | 0 | **1** |
-| 2 | Backend **PostgreSQL 16** | `DJANGO_SETTINGS_MODULE=…test_postgres pytest -q` | 394 | **394** | 0 | **0** |
-| 3 | Frontend | `npx vitest run` | 70 (9 fichiers) | **70** | 0 | 0 |
+| 1 | Backend **SQLite** | `DJANGO_SETTINGS_MODULE=feba_project.settings.test_sqlite pytest -q --no-migrations` | 406 | **405** | 0 | **1** |
+| 2 | Backend **PostgreSQL 16** | `DJANGO_SETTINGS_MODULE=feba_project.settings.test_postgres TEST_DB_PORT=55432 pytest -q` | 406 | **406** | 0 | **0** |
+| 3 | Frontend | `npm run test -- --run` | 70 (9 fichiers) | **70** | 0 | 0 |
 | 4 | ESLint | `npx eslint src` | — | **0 erreur** (63 avertissements hérités) | 0 | — |
-| 5 | Build production | `npx vite build` | — | **✓ built** | 0 | — |
+| 5 | Build production | `npm run build` | — | **✓ built in 8.76s** | 0 | — |
+
+Les deux suites backend comptent en plus **46 sous-tests** (`subtests`).
+
+### Suites ciblées (rejouées séparément, SQLite / PostgreSQL)
+
+| Suite | SQLite | PostgreSQL |
+|---|---|---|
+| `tests/test_pdf_stamps.py` (documents, cachets, textes) | **24** | **24** |
+| `tests/test_grade_weighting_and_scale.py` (calculs, barèmes) | **25** | **25** |
+| `tests/test_profile_creation.py` (profils) | **16** | **16** |
+| `tests/test_technical_incidents.py` (incidents) | **20** | — |
+| `tests/test_data_migrations.py` (migrations de données) | **5** | **5** |
+| `tests/test_bootstrap_demo.py` (base de démonstration) | **4** | **4** |
+| `test_parent_student.py::ParentStudentConcurrencyTest` | *ignoré* | **1 ✅** |
+
+### Chaîne complète vérifiée sur un conteneur PostgreSQL NEUF
+
+```
+docker run -d --name feba-pg-v8 -e POSTGRES_USER=feba_user … postgres:16-alpine
+manage.py migrate            → toute la chaîne appliquée, dont
+                               grades/0011, grades/0012, incidents/0001
+manage.py bootstrap_demo     → migrations + migrations de données + seeds
+  nombre de notes avec poids d'évaluation != 1 = 0   (sur 2400 note(s))
+  ✔ conforme
+```
+
+### Piège d'environnement rencontré (et écarté)
+
+Un passage de la suite frontend a échoué sur `i18n.test.js` avec
+`TypeError: Cannot read properties of undefined (reading 'getItem')`. Cause :
+la commande avait été lancée avec **Node 26** (présent dans `/usr/local/bin`)
+au lieu du **Node 20** du projet ; Node 26 expose un `localStorage` global
+expérimental qui masque celui de jsdom. Rejouée avec la version du projet
+(`v20.20.2`), la suite passe **70/70**. Aucun code n'était en cause.
 
 ### Le test ignoré (SQLite uniquement)
 
 `tests/test_parent_student.py:325` — test de **concurrence multi-thread**.
 SQLite en mémoire verrouille la table entière (« database table is locked ») ;
 il exige un vrai serveur de base. **Il s'exécute et réussit sur PostgreSQL**
-(d'où 394/394 sans aucun ignoré en ligne 2). Aucun test n'est donc réellement
+(d'où 406/406 sans aucun ignoré en ligne 2). Aucun test n'est donc réellement
 laissé de côté.
 
 ### PostgreSQL : ce que SQLite ne pouvait pas prouver

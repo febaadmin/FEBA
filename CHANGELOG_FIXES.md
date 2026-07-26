@@ -42,7 +42,30 @@
   sur l'échelle /20 face à une moyenne /10 ; **observations tronquées** au bord
   droit du reçu ; **date de résolution** d'un incident non renseignée par un
   simple PATCH de statut. Tous corrigés et couverts par des tests.
-- Backend **393 tests** (SQLite) / **394** (PostgreSQL 16, chaîne de migrations
+### Derniers correctifs V8 (après vérification sur données et documents réels)
+
+- **Barème par cycle.** `get_grading_scale` ne consultait que `Level.order`
+  avec un seuil fixe à 11 ; or ce rang est propre à chaque établissement (la
+  démo numérote CP1 = 0 … 3ème = 9), si bien que **tout le collège sortait noté
+  sur 10**. Le barème suit désormais `Level.cycle`, le rang ne servant que de
+  repli.
+- **Détail des notes converti.** Un bulletin sur 10 imprimait encore
+  « E:17.5 » en face de « 8.26/10 » — une note supérieure au barème annoncé.
+- **Clé de notation maternelle.** Le gabarit maternelle n'affiche que des
+  lettres : sa clé était la seule référence chiffrée, et restait sur 20.
+- **Base de démonstration non migrée.** `dev_sqlite` neutralise la chaîne de
+  migrations : la migration des poids n'était jamais jouée, et le seed tirait
+  lui-même un poids au hasard. Nouvelle commande **`bootstrap_demo`**
+  (migrations → migrations de données → seeds → vérification bloquante) et
+  seed corrigé.
+- **Texte des reçus préservé.** Une observation contenant « & » ou
+  « <trimestre 2> » était silencieusement amputée par le parseur mini-XML de
+  ReportLab ; les retours à la ligne sont désormais respectés.
+- **Poids d'évaluation effacé de l'interface** (3 profils) : colonnes, champ
+  figé, états React, exports et traductions. Le coefficient de **matière**
+  reste distinct et visible.
+
+- Backend **405 tests** (SQLite) / **406** (PostgreSQL 16, chaîne de migrations
   complète), frontend **70**, ESLint **0 erreur**, build prod **OK**.
 
 

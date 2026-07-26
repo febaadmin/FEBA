@@ -18,6 +18,12 @@
 | 10 | Documents | **Observations tronquées** au bord droit du reçu | Moyenne | Valeurs longues en `Paragraph` (repli) |
 | 11 | Incidents | `resolved_at` non renseigné par un PATCH de statut | Faible | Règle portée par le serializer |
 | 12 | Migrations | Dérive de l'état du modèle (`note_coefficient`) | Faible | Migration `grades/0012` ; `makemigrations --check` propre |
+| 13 | **Barèmes** | `get_grading_scale` ne lisait que `Level.order` : le collège du jeu de démonstration (rangs 6 à 9) sortait noté **sur 10** | **Élevée** | Barème déduit du **cycle** ; le rang ne sert plus que de repli |
+| 14 | Bulletins | Détail des notes encore imprimé sur 20 (« E:17.5 » face à « 8.26/10 ») | Moyenne | Conversion du détail (`_fmt_note`) + test interdisant toute valeur hors barème |
+| 15 | Bulletins | Clé de notation du gabarit **maternelle** exprimée sur 20 (seule référence chiffrée du document) | Moyenne | Clé générée dans le barème du bulletin (`_grading_key_cells`) |
+| 16 | **Données** | Base de démonstration créée **sans migrations de données** (réglages `dev_sqlite`) + seed tirant le poids au hasard → poids ≠ 1 à chaque nouvelle installation | **Élevée** | Commande `bootstrap_demo` (migrations → migrations de données → seeds → vérification bloquante) + seed corrigé |
+| 17 | Reçus | Observation contenant « & » ou « <…> » **silencieusement amputée** (mini-XML ReportLab) | Moyenne | Échappement du texte saisi + retours à la ligne préservés |
+| 18 | Interfaces | Colonnes « Poids » / « Coeff note », champ figé et états React résiduels du poids d'évaluation | Faible | Notion entièrement retirée de l'UI (3 profils, exports, traductions) |
 
 ### Points vérifiés sans anomalie
 
@@ -31,8 +37,9 @@ production.
 
 ### État final
 
-Backend **393** (SQLite) / **394** (PostgreSQL) ; frontend **70** ; ESLint
-**0 erreur** ; build **OK**. Aucune régression critique constatée.
+Backend **405** (SQLite) / **406** (PostgreSQL 16, conteneur neuf, chaîne de
+migrations complète + seeds + vérification des poids) ; frontend **70** ;
+ESLint **0 erreur** ; build **OK**. Aucune régression critique constatée.
 
 
 ## Audit V7 (25/07/2026)

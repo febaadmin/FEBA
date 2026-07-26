@@ -109,3 +109,21 @@ ceux extraits du PDF ne fonctionne pas. Les tests comparent donc la
 un même cachet ré-échantillonné, ≈ 223/1024 entre les deux cachets (seuil : 40).
 
 `tests/test_pdf_stamps.py` — **14 cas**.
+
+
+## Compléments V8 (vérification sur documents réellement générés)
+
+| Document | Défaut trouvé | Correction | Preuve |
+|---|---|---|---|
+| Bulletin (primaire) | Détail des notes imprimé sur 20 face à des moyennes sur 10 | `_fmt_note` convertit le détail dans le barème du document (2 décimales sur 10) | `bulletin_2_cm2_primaire.pdf` + test interdisant toute valeur hors barème |
+| Bulletin (maternelle) | Clé de notation sur 20 — seule référence chiffrée d'un gabarit en lettres | `_grading_key_cells(scale)` : « A+ (≥9.75) … F (<2) » | `bulletin_1_garderie_maternelle.pdf` |
+| Reçu | Observation contenant « & » ou « <trimestre 2> » **silencieusement amputée** | texte échappé avant `Paragraph`, retours à la ligne convertis en `<br/>` | `recu_2_multiligne.pdf`, test `test_caracteres_speciaux_conserves` |
+
+### Jeu d'exemples livré
+
+Trois bulletins (Garderie/maternelle, CM2/primaire, 6ème/collège) et six reçus
+(simple, multiligne, observation longue, nom long, partiel, duplicata) sont
+générés depuis le HEAD final, rendus en PNG et inspectés un par un : aucune
+troncature, aucun débord à droite, « Le Secrétariat » et son cachet présents,
+« Signature du Caissier » et « Cachet de l'École » absents, en-tête sans
+collision, une seule page A4 par document.

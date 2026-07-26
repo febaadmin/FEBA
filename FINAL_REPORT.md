@@ -10,9 +10,9 @@ Aucun résultat, capture, PDF ou empreinte n'est fabriqué.
 | Élément | Valeur |
 |---|---|
 | Branche | `claude/v8-fixes` (baseline V7 préservée sur `claude/v7-fixes`) |
-| Commits V8 | `b3cc0a4` (P1/P2), `d73920f` (P3), `69c49e9` (P4/P5), `6c1d3c1` (P6/P7), `b90708b` (migration de cohérence + tests de migrations + rapports), `2ce7283` (date de résolution), `365da8d` (texte tronqué du reçu) |
-| Tests backend — SQLite | **393 passed, 1 skipped** (concurrence multi-threads, documentée) |
-| Tests backend — PostgreSQL 16 | **394 passed, 0 skipped** (chaîne de migrations complète) |
+| Commits V8 | `b3cc0a4` (P1/P2), `d73920f` (P3), `69c49e9` (P4/P5), `6c1d3c1` (P6/P7), `b90708b` (migration de cohérence + tests + rapports), `2ce7283` (date de résolution), `365da8d` (texte tronqué du reçu), `95990c4` (rapports), `127748f` (barème par cycle + détail des notes), `a283093` (base de démonstration, UI, maternelle, échappement) |
+| Tests backend — SQLite | **405 passed, 1 skipped** (concurrence multi-threads, documentée) + 46 sous-tests |
+| Tests backend — PostgreSQL 16 | **406 passed, 0 skipped** (chaîne de migrations complète) |
 | Tests frontend | **70 passed** (9 fichiers) |
 | ESLint | **0 erreur** (63 avertissements hérités) |
 | Build production | **✓ built** |
@@ -102,14 +102,24 @@ les deux — l'interversion des cachets est détectée.
 | P7 | Bulletin | bulletins | cachet mal positionné | cellule de hauteur fixe | bloc de validation dédié, insécable | test_pdf_stamps (22) | ✅ |
 | — | Documents | payments, bulletins | 4 défauts vus sur documents réels | mise en page | interligne, pondérée, repli du texte | test_pdf_stamps | ✅ |
 | — | Incidents | incidents | date de résolution absente sur PATCH | règle portée par l'action seule | règle portée par le serializer | IncidentResolvedAtTests | ✅ |
-| — | Migrations | grades | dérive de l'état du modèle | — | `grades/0012` ; `makemigrations --check` propre | PostgreSQL 394/394 | ✅ |
+| — | Migrations | grades | dérive de l'état du modèle | — | `grades/0012` ; `makemigrations --check` propre | PostgreSQL 406/406 | ✅ |
+| — | Barèmes | grades | collège noté **sur 10** sur les données réelles | `Level.order` = rang propre à chaque école | barème déduit du **cycle**, rang en repli | test_grade_weighting_and_scale | ✅ |
+| — | Bulletins | bulletins | détail des notes encore sur 20 | conversion appliquée aux seules moyennes | `_fmt_note` + test interdisant toute valeur hors barème | test_grade_weighting_and_scale | ✅ |
+| — | Bulletins | bulletins | clé de notation maternelle sur 20 | table écrite en dur | clé générée dans le barème du document | test_grade_weighting_and_scale | ✅ |
+| — | Données | schools | démo **non migrée** : poids ≠ 1 à chaque installation | migrations neutralisées par `dev_sqlite` + seed aléatoire | commande `bootstrap_demo` + seed corrigé + vérification bloquante | test_bootstrap_demo | ✅ |
+| — | Reçus | payments | observation avec « & » ou « <…> » **amputée** | mini-XML ReportLab | échappement + retours à la ligne préservés | test_pdf_stamps | ✅ |
+| — | Interfaces | frontend | résidus du poids d'évaluation (colonnes, champ, état, traductions) | héritage pré-V8 | notion retirée des 3 profils, exports et traductions | vérification navigateur | ✅ |
 
 ## 8. Ce que la vérification réelle a apporté
 
-Quatre défauts **invisibles dans les tests** n'ont été trouvés qu'en générant
-les documents, en les rendant en image et en les regardant : chevauchement
+**Neuf** défauts **invisibles dans les tests** n'ont été trouvés qu'en
+produisant les documents, en les rendant en image et en les regardant, ou en
+ouvrant l'application sur les données de démonstration : chevauchement
 d'en-tête du reçu, moyenne pondérée exprimée dans le mauvais barème, texte
-tronqué au bord droit, régression de pagination du bulletin. Chacun est
+tronqué au bord droit, régression de pagination du bulletin, **collège noté sur
+10**, **détail des notes resté sur 20**, **clé de notation maternelle sur 20**,
+**observation amputée dès qu'elle contient « & »**, et une **base de
+démonstration qui n'appliquait aucune migration de données**. Chacun est
 désormais couvert par un test.
 
 De même, la réparation du profil Enseignant n'a été considérée comme prouvée

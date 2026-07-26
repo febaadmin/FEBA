@@ -7,7 +7,7 @@
    Les tests SQLite tournent donc avec `--no-migrations` — limitation
    **pré-existante** (vérifiée sur un test antérieur à la V8), pas une
    conséquence des migrations V8. **La chaîne complète est validée sur
-   PostgreSQL 16** (394/394) et la logique des migrations de données est en
+   PostgreSQL 16** (406/406) et la logique des migrations de données est en
    outre testée directement (`tests/test_data_migrations.py`).
 
 2. **Barème /10 appliqué au bulletin PDF.** Les écrans ERP (tableaux de bord,
@@ -27,6 +27,19 @@
 
 6. **63 avertissements ESLint** hérités (hooks, variables inutilisées) —
    **0 erreur**. Non traités pour ne pas élargir le périmètre.
+
+7. **Base de démonstration : migrations de données rejouées explicitement.**
+   Les réglages `dev_sqlite` neutralisent la chaîne de migrations ; la commande
+   `bootstrap_demo` rejoue donc les migrations de **données** V8 à la main puis
+   **vérifie** l'invariant (aucun poids ≠ 1). Sur PostgreSQL, la chaîne
+   s'applique normalement et la commande se contente de vérifier. Toute
+   nouvelle migration de données devra être ajoutée à `DATA_MIGRATIONS` dans
+   cette commande.
+
+8. **Node 20 requis pour la suite frontend.** Sous Node 26, jsdom est masqué
+   par le `localStorage` global expérimental de Node et `i18n.test.js` échoue
+   (`Cannot read properties of undefined (reading 'getItem')`). Utiliser la
+   version du projet (`.nvmrc` / v20.20.2).
 
 
 ## Ajouts V7 (25/07/2026)
