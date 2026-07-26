@@ -49,6 +49,23 @@ def _flatten(img):
     return PILImage.alpha_composite(background, img).convert("L")
 
 
+def _pixels(img):
+    """Valeurs des pixels, quelle que soit la version de Pillow.
+
+    L'API a changé de nom en cours de route :
+      - jusqu'à Pillow 11.2 (dont la 10.3 épinglée par le projet) : `getdata()`
+        seul existe ;
+      - depuis Pillow 11.3 : `get_flattened_data()`, et `getdata()` est déprécié
+        (suppression annoncée pour Pillow 14).
+    On privilégie donc la nouvelle API quand elle est disponible, sans jamais
+    dépendre d'une version précise. Les deux renvoient exactement la même suite
+    d'entiers pour une image en mode « L » : la signature calculée est
+    identique, et les seuils de comparaison sont inchangés.
+    """
+    lecteur = getattr(img, "get_flattened_data", None) or img.getdata
+    return list(lecteur())
+
+
 def _stamp_signature(img):
     from PIL import Image as PILImage
     grey = _flatten(img)
@@ -56,7 +73,7 @@ def _stamp_signature(img):
     band = grey.crop((int(.10 * width), int(.55 * height),
                       int(.90 * width), int(.80 * height)))
     band = band.resize((64, 16), PILImage.LANCZOS)
-    pixels = list(band.get_flattened_data())
+    pixels = _pixels(band)
     average = sum(pixels) / len(pixels)
     return "".join("1" if p > average else "0" for p in pixels)
 
