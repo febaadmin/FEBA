@@ -100,9 +100,7 @@ E2E navigateur desktop + mobile, build de production) ·
 
 ```bash
 cd backend
-DJANGO_SETTINGS_MODULE=feba_project.settings.dev_sqlite python manage.py migrate --run-syncdb
-DJANGO_SETTINGS_MODULE=feba_project.settings.dev_sqlite python manage.py seed_demo_data
-DJANGO_SETTINGS_MODULE=feba_project.settings.dev_sqlite python manage.py seed_website
+DJANGO_SETTINGS_MODULE=feba_project.settings.dev_sqlite python manage.py bootstrap_demo
 DJANGO_SETTINGS_MODULE=feba_project.settings.dev_sqlite python manage.py runserver 8000
 
 cd frontend

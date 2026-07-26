@@ -26,7 +26,10 @@ MIDDLEWARE = [m for m in MIDDLEWARE if "debug_toolbar" not in m]  # noqa: F405
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db_dev.sqlite3",  # noqa: F405
+        # Surchargeable pour préparer une base de démonstration NEUVE sans
+        # écraser celle en cours d'utilisation :
+        #   DEV_SQLITE_PATH=/tmp/demo.sqlite3 python manage.py bootstrap_demo
+        "NAME": config("DEV_SQLITE_PATH", default=str(BASE_DIR / "db_dev.sqlite3")),  # noqa: F405
     }
 }
 

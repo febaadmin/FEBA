@@ -7,6 +7,7 @@ Corrections:
   - Statut paiement clair (confirmé / en attente)
   - Fallback logo statique si aucun logo configuré
 """
+import html
 import logging
 logger = logging.getLogger("apps")
 import os
@@ -75,6 +76,21 @@ def amount_in_words(amount):
         return f"{int(amount)} FRANCS CFA"
 
 
+def _para_text(text):
+    """Prépare un texte SAISI par un utilisateur pour un Paragraph ReportLab.
+
+    ReportLab interprète les paragraphes comme du mini-XML : une observation
+    contenant « & » ou « <trimestre 2> » était soit refusée, soit SILENCIEUSEMENT
+    amputée (le fragment entre chevrons disparaissait du reçu). On échappe donc
+    le texte, et on convertit les retours à la ligne en <br/> pour préserver la
+    mise en forme voulue par le secrétariat.
+    """
+    if text is None:
+        return ""
+    escaped = html.escape(str(text), quote=False)
+    return escaped.replace("\r\n", "\n").replace("\r", "\n").replace("\n", "<br/>")
+
+
 def generate_receipt(payment):
     logo_path, school = _get_logo_and_school(payment)
     school_name, school_address = _school_info(school)
@@ -99,7 +115,7 @@ def generate_receipt(payment):
         # de sa ligne et se superposait à l'adresse juste en dessous. On calcule
         # un interligne proportionnel dès qu'il n'est pas fourni explicitement.
         kw.setdefault("leading", round(kw.get("fontSize", 10) * 1.25, 1))
-        return Paragraph(text, ParagraphStyle("_", **kw))
+        return Paragraph(_para_text(text), ParagraphStyle("_", **kw))
 
     # Logo
     if logo_path and os.path.exists(logo_path):

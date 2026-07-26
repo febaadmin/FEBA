@@ -88,7 +88,6 @@ export default function AdminGrades() {
       "Matière":        g.subject_name || "",
       "Catégorie":      g.note_type_display || g.note_type || "",
       "Note":           parseFloat(g.value || 0).toFixed(2),
-      "Coefficient":    g.note_coefficient || 1,
       "Lettre":         g.letter || "",
       "Période":        g.period || "",
       "Commentaire":    g.comment || "",
@@ -109,7 +108,6 @@ export default function AdminGrades() {
       "Période":       r.period || "",
       "Type":          r.note_type_display || r.note_type || "",
       "Note":          parseFloat(r.value || 0).toFixed(2),
-      "Coefficient":   r.note_coefficient || 1,
       "Lettre":        r.letter || "",
       "Commentaire":   r.comment || "",
       "Année":         r.school_year_name || "",
@@ -290,11 +288,10 @@ export default function AdminGrades() {
         <LetterBadge letter={r.letter} />
       </div>
     )},
-    { key: "coeff", label: t("Coeff note"), render: r => r.note_coefficient || 1 },
     { key: "year", label: t("Année"), render: r => r.school_year_name || r.school_year },
     { key: "actions", label: "", render: r => (
       <div className="flex items-center gap-1">
-        <button title={t("Modifier")} onClick={() => { setEditItem(r); reset({ student: r.student_id || r.student, subject: r.subject_id || r.subject, period: r.period, value: r.value, note_type: r.note_type, note_coefficient: r.note_coefficient || 1, comment: r.comment, school_year: r.school_year_id || r.school_year || currentYear?.id, justification: "" }); setAddOpen(true); }}
+        <button title={t("Modifier")} onClick={() => { setEditItem(r); reset({ student: r.student_id || r.student, subject: r.subject_id || r.subject, period: r.period, value: r.value, note_type: r.note_type, comment: r.comment, school_year: r.school_year_id || r.school_year || currentYear?.id, justification: "" }); setAddOpen(true); }}
           className="p-1.5 rounded-lg hover:bg-blue-50 text-slate-400 hover:text-blue-600">
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536M9 13l6.768-6.768a2 2 0 012.828 2.828L11.828 15.828a2 2 0 01-.707.414l-3.535.707.707-3.536A2 2 0 019 13z" /></svg>
         </button>
@@ -473,7 +470,6 @@ export default function AdminGrades() {
                     <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500">{t("Période")}</th>
                     <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500">{t("Type")}</th>
                     <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500">{t("Note")}</th>
-                    <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500">{t("Coeff")}</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500">{t("Année")}</th>
                   </tr>
                 </thead>
@@ -507,7 +503,6 @@ export default function AdminGrades() {
                           <LetterBadge letter={r.letter} />
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-center text-gray-500">{r.note_coefficient || 1}</td>
                       <td className="px-4 py-3 text-xs text-gray-400">{r.school_year_name || r.school_year}</td>
                     </tr>
                   ))}
@@ -587,10 +582,6 @@ export default function AdminGrades() {
                         <LetterBadge letter={selectedRow.letter} />
                       </div>
                     </div>
-                    <div className="flex justify-between py-1.5 border-b border-gray-50 text-sm">
-                      <span className="text-gray-500">{t("Coefficient")}</span>
-                      <span className="font-medium">{selectedRow.note_coefficient || 1}</span>
-                    </div>
                     {selectedRow.comment && (
                       <div className="text-xs text-gray-600 bg-gray-50 rounded-lg p-2">{selectedRow.comment}</div>
                     )}
@@ -599,7 +590,7 @@ export default function AdminGrades() {
                       <button
                         onClick={() => {
                           setEditItem(selectedRow);
-                          reset({ student: selectedRow.student_id || selectedRow.student, subject: selectedRow.subject_id || selectedRow.subject, period: selectedRow.period, value: selectedRow.value, note_type: selectedRow.note_type, note_coefficient: selectedRow.note_coefficient || 1, comment: selectedRow.comment, school_year: selectedRow.school_year_id || selectedRow.school_year || currentYear?.id, justification: "" });
+                          reset({ student: selectedRow.student_id || selectedRow.student, subject: selectedRow.subject_id || selectedRow.subject, period: selectedRow.period, value: selectedRow.value, note_type: selectedRow.note_type, comment: selectedRow.comment, school_year: selectedRow.school_year_id || selectedRow.school_year || currentYear?.id, justification: "" });
                           setAddOpen(true);
                         }}
                         className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition"
@@ -976,11 +967,6 @@ export default function AdminGrades() {
               <select {...register("note_type")} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm">
                 {NOTE_TYPES.map(nt => <option key={nt.value} value={nt.value}>{t(nt.label)}</option>)}
               </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">{t("Coeff. note")}</label>
-              <input value="1" readOnly disabled
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm" />
             </div>
           </div>
           <div>

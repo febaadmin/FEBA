@@ -653,6 +653,43 @@ def _build_standard_pdf(buffer, student, period, school_year, subject_data,
 
 # ─── MATERNELLE PDF Template ──────────────────────────────────────────────────
 
+# Seuils officiels des lettres, exprimés sur l'échelle interne /20.
+# (borne basse, borne haute incluse ; None = pas de borne de ce côté)
+_GRADING_KEY = [
+    ('A+', Decimal('19.5'), None), ('A', Decimal('18'), Decimal('19')),
+    ('A-', Decimal('16'), Decimal('17')), ('B+', Decimal('15'), Decimal('15')),
+    ('B', Decimal('13'), Decimal('14')), ('B-', Decimal('12'), Decimal('12')),
+    ('C+', Decimal('11'), Decimal('11')), ('C', Decimal('10'), Decimal('10')),
+    ('C-', Decimal('9'), Decimal('9')), ('D+', Decimal('8'), Decimal('8')),
+    ('D', Decimal('6'), Decimal('7')), ('D-', Decimal('4'), Decimal('5')),
+    ('F', None, Decimal('4')),
+]
+
+
+def _grading_key_cells(scale):
+    """Clé de notation exprimée dans le barème du bulletin.
+
+    Les lettres restent calculées sur l'échelle interne /20 ; seuls les seuils
+    AFFICHÉS suivent le barème du document (÷ 2 pour un bulletin sur 10).
+    """
+    def n(value):
+        converted = convert_average_for_scale(value, scale)
+        texte = f'{converted:.2f}'.rstrip('0').rstrip('.')
+        return texte or '0'
+
+    cells = []
+    for letter, low, high in _GRADING_KEY:
+        if low is None:
+            cells.append(f'{letter} (<{n(high)})')
+        elif high is None:
+            cells.append(f'{letter} (≥{n(low)})')
+        elif low == high:
+            cells.append(f'{letter} ({n(low)})')
+        else:
+            cells.append(f'{letter} ({n(low)}-{n(high)})')
+    return cells
+
+
 def _build_maternelle_pdf(buffer, student, period, school_year, subject_data,
                           average, bulletin, logo_path):
     doc = SimpleDocTemplate(
@@ -668,10 +705,12 @@ def _build_maternelle_pdf(buffer, student, period, school_year, subject_data,
     _add_student_info(story, student, period, school_year)
 
     # Grading key — 13 colonnes égales sur la largeur utile (≤ 18.5 cm).
+    # V8 : les seuils suivent le barème du bulletin. Sur un bulletin de
+    # maternelle (sur 10), afficher « A+ (≥19.5) » revenait à donner la seule
+    # référence chiffrée du document dans une échelle qui n'est pas la sienne.
     story.append(P('Grading key / Clé de notation :', fontSize=9,
                    fontName='Helvetica-Bold', textColor=PRIMARY, spaceAfter=2))
-    key_data = [['A+ (≥19.5)', 'A (18-19)', 'A- (16-17)', 'B+ (15)', 'B (13-14)', 'B- (12)',
-                 'C+ (11)', 'C (10)', 'C- (9)', 'D+ (8)', 'D (6-7)', 'D- (4-5)', 'F (<4)']]
+    key_data = [_grading_key_cells(_student_scale(student))]
     key_tbl = Table(key_data, colWidths=[18.5 / 13 * cm] * 13)
     key_tbl.setStyle(TableStyle([
         ('FONTSIZE', (0, 0), (-1, -1), 6),

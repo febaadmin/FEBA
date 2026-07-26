@@ -316,6 +316,41 @@ class ReceiptTextWrapTests(ReceiptStampTests):
         self.assertIn("banque", text, "l'observation est tronquée dans le reçu")
         self.assertIn("parascolaires", text)
 
+    def test_caracteres_speciaux_conserves(self):
+        """ReportLab lit les paragraphes comme du mini-XML.
+
+        Une observation contenant « & » ou « <trimestre 2> » était
+        SILENCIEUSEMENT amputée : le fragment entre chevrons disparaissait du
+        reçu — perte de texte sur un document comptable.
+        """
+        from apps.payments.models import Payment
+        note = ("Frais de scolarité & cantine <trimestre 2> — réglés à 100 % "
+                'par "chèque" n° 4412.')
+        payment = Payment.objects.create(
+            student=self.student, school_year=self.year, amount=Decimal("50000"),
+            payment_type="tuition", payment_method="cheque",
+            received_by=self.cashier, notes=note)
+        _, doc = self._receipt(payment)
+        text = " ".join(" ".join(p.get_text().split()) for p in doc)
+        for fragment in ("&", "<trimestre 2>", "100 %", "4412"):
+            self.assertIn(fragment, text,
+                          f"fragment perdu dans le reçu : {fragment!r}")
+
+    def test_observation_multiligne_conserve_ses_lignes(self):
+        from apps.payments.models import Payment
+        payment = Payment.objects.create(
+            student=self.student, school_year=self.year, amount=Decimal("50000"),
+            payment_type="tuition", payment_method="cash", received_by=self.cashier,
+            notes="Première tranche réglée.\nSolde attendu en février.")
+        _, doc = self._receipt(payment)
+        brut = "\n".join(p.get_text() for p in doc)
+        self.assertIn("Première tranche réglée.", brut)
+        self.assertIn("Solde attendu en février.", brut)
+        # Les deux phrases sont sur des LIGNES distinctes (retour préservé).
+        lignes = [l.strip() for l in brut.split("\n")]
+        self.assertIn("Première tranche réglée.", lignes)
+        self.assertIn("Solde attendu en février.", lignes)
+
     def test_identite_longue_entierement_presente(self):
         from apps.payments.models import Payment
         self.student.first_name = "Marie-Emmanuelle Christiane"

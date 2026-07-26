@@ -27,6 +27,8 @@ from django.core.management.base import BaseCommand
 from django.db import transaction
 from django.utils import timezone
 
+from apps.grades.grading import ASSESSMENT_WEIGHT
+
 FM = ["Koffi", "Emeka", "Jean", "Pierre", "Marc", "David", "Samuel", "Éric", "Paul", "Hervé",
       "Ayo", "Sègun", "Kwame", "Malik", "Idriss"]
 FF = ["Marie", "Sarah", "Amina", "Rosine", "Chantal", "Grace", "Fatou", "Aïcha", "Josiane",
@@ -308,7 +310,11 @@ class Command(BaseCommand):
                                 teacher=fr_t if subj.language == "fr" else en_t,
                                 value=rgrade(7, 18.5),
                                 note_type=random.choice(["devoir", "interrogation", "controle"]),
-                                note_coefficient=random.choice([1, 1, 2]),
+                                # V8 : toutes les évaluations pèsent 1. Le seed
+                                # tirait auparavant au sort 1 ou 2, ce qui
+                                # réintroduisait d'anciens poids à chaque
+                                # nouvelle installation de démonstration.
+                                note_coefficient=ASSESSMENT_WEIGHT,
                                 graded_at=sy.start_date + datetime.timedelta(days=60 * (["T1", "T2", "T3"].index(period) + 1)),
                             )
             self.stdout.write("  ✅ Notes : 3 années, toutes matières, liées aux inscriptions")

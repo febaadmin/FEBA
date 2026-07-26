@@ -60,8 +60,24 @@ Le cas imposé **12 + 5 → 8,50** est vérifié **de bout en bout** (API → ba
 |---|---|
 | Base | `Grade.save()` ramène systématiquement `note_coefficient` à 1 |
 | API | Le serializer **normalise** toute valeur reçue (envoyer 2 ou 3 n'accorde aucun avantage) ; `note_coefficient` est en lecture seule sur `GradeSerializer` |
-| Interface | Champ retiré de la saisie simple (affiché « 1 » en lecture seule) et de la saisie groupée (colonne supprimée) |
-| Textes | « Examen = 3, devoir = 1 » supprimé partout, y compris des traductions |
+| Interface | Champ retiré de la saisie simple et de la saisie groupée ; **colonnes « Poids » / « Coeff note » supprimées** des listes Enseignant, Admin et Élève, ainsi que du panneau de détail et des exports |
+| État React | Plus aucun `note_coefficient` dans les états de formulaire : il n'est plus relu depuis une note existante, donc **aucun payload ne peut envoyer autre chose que 1** |
+| Textes | « Examen = 3, devoir = 1 » supprimé partout, y compris les traductions désormais orphelines (« Poids », « Coeff note ») |
+
+Le **coefficient de matière** reste affiché là où il a du sens (colonne
+« Coeff » alimentée par `subject_coefficient`) : les deux notions ne se
+confondent plus nulle part dans l'interface.
+
+### Surfaces de saisie auditées (V8, toutes vérifiées)
+
+| Profil | Saisie simple | Saisie groupée | Modification | Affichage détaillé | Export |
+|---|---|---|---|---|---|
+| Enseignant | ✅ aucun champ de poids | ✅ colonne supprimée | ✅ n'envoie que valeur/période/type/commentaire | ✅ colonne supprimée | — |
+| Administrateur | ✅ | ✅ | ✅ poids forcé à 1 dans le payload | ✅ ligne « Coefficient » retirée | ✅ colonne retirée |
+| Super administrateur | ✅ (mêmes écrans) | ✅ | ✅ | ✅ | ✅ |
+
+Les formulaires mobile et desktop sont **le même composant responsive** : il
+n'existe pas de variante mobile distincte pouvant conserver l'ancien champ.
 
 ## 6. Migration des données existantes
 
@@ -84,6 +100,47 @@ Exemple de sortie réelle :
 moyennes sont recalculées à la volée (aucun cache de moyenne persisté).
 Sauvegarde et restauration : voir `RESTORE_GUIDE.md` (dump SQL avant migration ;
 les anciens poids hétérogènes ne sont pas reconstituables autrement).
+
+## 6 bis. Défaut corrigé : la base de démonstration échappait à la migration
+
+La base de démonstration était préparée par `migrate --run-syncdb` puis
+`seed_demo_data`. Or les réglages `dev_sqlite` **neutralisent la chaîne de
+migrations** (`MIGRATION_MODULES = _DisableMigrations()`) : le schéma était bien
+créé à partir des modèles, mais **aucune migration de données ne s'exécutait**.
+La migration `grades/0011` était donc systématiquement sautée. S'ajoutait une
+seconde cause : le seed lui-même tirait le poids au hasard
+(`random.choice([1, 1, 2])`), héritage de l'ancienne règle.
+
+Conséquence : une **installation de démonstration** pouvait afficher des
+moyennes fausses, alors qu'une installation réelle (PostgreSQL, chaîne complète)
+était correcte. Le problème serait revenu à chaque nouvelle installation.
+
+**Correction du processus, pas seulement de la base locale :**
+
+1. `seed_demo_data` écrit désormais `note_coefficient=ASSESSMENT_WEIGHT` ;
+2. nouvelle commande **`python manage.py bootstrap_demo`** : migrations →
+   migrations de **données** V8 (rejouées explicitement si la chaîne est
+   neutralisée) → seeds → **vérification bloquante** ;
+3. la vérification échoue avec un code de sortie non nul s'il subsiste un poids
+   ≠ 1 (`--check-only` permet de l'exécuter seule) ;
+4. `README.md` et `CORRECTIONS.md` ne documentent plus que cette commande.
+
+Sortie réelle sur une base neuve :
+
+```
+4. Vérification des poids d'évaluation
+  nombre de notes avec poids d'évaluation != 1 = 0   (sur 2400 note(s))
+  ✔ conforme
+```
+
+### État des sources de données
+
+| Source de données | Migration appliquée | Notes avec poids ≠ 1 avant | Après | Statut |
+|---|---|---|---|---|
+| Démo SQLite **existante** (créée avant le correctif) | ❌ non — chaîne neutralisée | **796** (sur 2 402) | **0** | ✅ réparée par `bootstrap_demo` |
+| Démo SQLite **neuve** (`bootstrap_demo`) | ✅ oui — `grades/0011` rejouée explicitement | **0** (seed corrigé) | **0** | ✅ conforme |
+| **PostgreSQL 16** (installation réelle, chaîne complète) | ✅ oui — `grades/0011` + `0012` | **0** | **0** | ✅ conforme |
+| Base de test (`--no-migrations`) | ✅ logique testée directement | **3** (injectés en SQL brut) | **0** | ✅ vérifié par test |
 
 ## 7. Tests
 

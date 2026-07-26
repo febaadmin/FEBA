@@ -114,8 +114,7 @@ cd backend
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements/dev.txt
 export DJANGO_SETTINGS_MODULE=feba_project.settings.dev_sqlite
-python manage.py migrate --run-syncdb   # schéma dérivé des modèles (voir dev_sqlite.py)
-python manage.py seed_demo_data          # comptes de démo (voir tableau ci-dessus)
+python manage.py bootstrap_demo          # migrations + migrations de données V8 + seeds + vérification
 python manage.py runserver 8000
 
 # Frontend (Node 20+), autre terminal

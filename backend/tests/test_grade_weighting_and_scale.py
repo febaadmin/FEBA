@@ -284,6 +284,38 @@ class BulletinScaleTests(TestCase):
         self.assertIn("Moy. /10", text)
         self.assertNotIn("12.00/20", text)
 
+    def test_aucune_mention_sur_20_dans_un_bulletin_sur_10(self):
+        """Balayage EXHAUSTIF du texte d'un bulletin destiné au barème /10.
+
+        Aucune valeur ne doit y être exprimée sur 20 : ni dénominateur « /20 »,
+        ni en-tête « Moy. /20 », ni note détaillée supérieure à 10. Seules
+        exceptions tolérées : les dates (26/07/2026 contient « /20 ») et la
+        formule bilingue, qui n'exprime aucune note.
+        """
+        import re
+
+        for cycle, order in (("maternelle", 1), ("primaire", 5), ("primaire", 11)):
+            texte = self._pdf_text(order, "17.5", cycle=cycle)
+
+            # 1. Aucun dénominateur /20 (les dates jj/mm/aaaa sont écartées).
+            sans_dates = re.sub(r"\d{2}/\d{2}/\d{4}", "", texte)
+            interdits = re.findall(r"\d+[.,]\d+\s*/\s*20\b", sans_dates)
+            self.assertEqual(interdits, [],
+                             f"valeurs sur 20 dans un bulletin /10 "
+                             f"({cycle}, rang {order}) : {interdits}")
+            self.assertNotIn("Moy. /20", texte)
+            self.assertNotIn("/20", sans_dates.replace("0-20", ""))
+
+            # 2. Aucune valeur affichée ne dépasse le barème annoncé.
+            for valeur in re.findall(r"(\d+[.,]\d+)\s*/\s*10\b", texte):
+                self.assertLessEqual(float(valeur.replace(",", ".")), 10.0,
+                                     f"{valeur} dépasse le barème /10")
+
+            # 3. Le détail des notes est bien converti (17,5/20 → 8.75/10).
+            self.assertIn("8.75", texte)
+            self.assertNotIn("17.5", texte)
+            self.assertIn("Moy. /10", texte)
+
     def test_college_niveau_12_reste_sur_20(self):
         text = self._pdf_text(12, 12, cycle="college")
         self.assertIn("12.00/20", text)

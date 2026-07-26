@@ -44,7 +44,7 @@ export default function TeacherGrades() {
   const [deleteItem,   setDeleteItem]   = useState(null);
 
   const { register, handleSubmit, reset, control, formState: { errors } } = useForm({
-    defaultValues: { period: "T1", note_type: "devoir", note_coefficient: 1 },
+    defaultValues: { period: "T1", note_type: "devoir" },
   });
 
   /* ── Données ───────────────────────────────────────────────────────────── */
@@ -103,7 +103,7 @@ export default function TeacherGrades() {
       qc.invalidateQueries({ queryKey: ["teacher-grades"] });
       toast.success(t("Note enregistrée !"));
       setModalOpen(false);
-      reset({ period: "T1", note_type: "devoir", note_coefficient: 1 });
+      reset({ period: "T1", note_type: "devoir" });
     },
     onError: (e) => toast.error(extractApiError(e)),
   });
@@ -114,7 +114,7 @@ export default function TeacherGrades() {
       qc.invalidateQueries({ queryKey: ["teacher-grades"] });
       toast.success(t("Note modifiée !"));
       setEditItem(null); setModalOpen(false);
-      reset({ period: "T1", note_type: "devoir", note_coefficient: 1 });
+      reset({ period: "T1", note_type: "devoir" });
     },
     onError: (e) => toast.error(extractApiError(e)),
   });
@@ -135,13 +135,13 @@ export default function TeacherGrades() {
 
   const openEdit = (g) => {
     setEditItem(g);
-    reset({ value: g.value, period: g.period, note_type: g.note_type || "devoir", note_coefficient: g.note_coefficient || 1, comment: g.comment, justification: "" });
+    reset({ value: g.value, period: g.period, note_type: g.note_type || "devoir", comment: g.comment, justification: "" });
     setModalOpen(true);
   };
 
   const openCreate = () => {
     setEditItem(null);
-    reset({ period: period !== "all" ? period : "T1", note_type: "devoir", note_coefficient: 1 });
+    reset({ period: period !== "all" ? period : "T1", note_type: "devoir" });
     setModalOpen(true);
   };
 
@@ -152,7 +152,9 @@ export default function TeacherGrades() {
     if (editItem) {
       updateMut.mutate({ id: editItem.id, data: { value, period: d.period, note_type: d.note_type, comment: d.comment, justification: d.justification } });
     } else {
-      const payload = { ...d, value };
+      // V8 : le poids d'une évaluation vaut toujours 1 — envoyé
+      // explicitement, jamais repris d'un état de formulaire.
+      const payload = { ...d, value, note_coefficient: 1 };
       if (!payload.school_year && currentYear) payload.school_year = currentYear.id;
       createMut.mutate(payload);
     }
@@ -164,7 +166,6 @@ export default function TeacherGrades() {
     { key: "subject",          label: t("Matière"),      accessor: "subject_name" },
     { key: "period",           label: t("Période"),      accessor: "period" },
     { key: "note_type",        label: t("Type"),         render: r => r.note_type_label || r.note_type || "—" },
-    { key: "note_coefficient", label: t("Poids"),        render: r => r.note_coefficient || 1 },
     { key: "value",            label: t("Note"),         render: r => <span className={nc(r.value)}>{r.value}/20</span> },
     { key: "appr",             label: t("Appréciation"), accessor: "appreciation", render: r => r.appreciation ? t(r.appreciation) : "—" },
   ];
@@ -269,7 +270,7 @@ export default function TeacherGrades() {
 
       {/* Modal saisie / modification */}
       <Modal open={modalOpen}
-        onClose={() => { setModalOpen(false); setEditItem(null); reset({ period: "T1", note_type: "devoir", note_coefficient: 1 }); }}
+        onClose={() => { setModalOpen(false); setEditItem(null); reset({ period: "T1", note_type: "devoir" }); }}
         title={editItem ? t("Modifier la note") : t("Saisir une note")}>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           {!editItem && (
@@ -334,22 +335,16 @@ export default function TeacherGrades() {
               </select>
             </div>
             {/* V8 : le poids d'une évaluation vaut TOUJOURS 1 (un examen ne
-                compte pas plus qu'une interrogation). Le champ éditable a été
-                supprimé — la règle est imposée par le backend. */}
-            <div>
-              <label className="label">{t("Poids de l'évaluation")}</label>
-              <input value="1" readOnly disabled className="input bg-slate-50 text-slate-500" />
-              <p className="text-xs text-slate-400 mt-1">
-                {t("Toutes les évaluations comptent pour 1.")}
-              </p>
-            </div>
+                compte pas plus qu'une interrogation). Ni champ ni colonne : la
+                notion a disparu de l'interface, la règle est imposée par le
+                backend. Ne pas confondre avec le coefficient d'une MATIÈRE. */}
           </div>
 
           <div><label className="label">{t("Commentaire")}</label><textarea {...register("comment")} className="input" rows={2} /></div>
           <div><label className="label">{t("Justification")}</label><textarea {...register("justification")} className="input" rows={2} placeholder={t("Raison de la saisie ou modification…")} /></div>
 
           <div className="flex gap-3 justify-end pt-2">
-            <button type="button" onClick={() => { setModalOpen(false); setEditItem(null); reset({ period: "T1", note_type: "devoir", note_coefficient: 1 }); }} className="btn-secondary">{t("Annuler")}</button>
+            <button type="button" onClick={() => { setModalOpen(false); setEditItem(null); reset({ period: "T1", note_type: "devoir" }); }} className="btn-secondary">{t("Annuler")}</button>
             <button type="submit" disabled={createMut.isPending || updateMut.isPending} className="btn-primary flex items-center gap-2">
               <Save className="w-4 h-4" />
               {(createMut.isPending || updateMut.isPending) ? "Enregistrement…" : (editItem ? t("Modifier") : t("Enregistrer"))}

@@ -9,17 +9,35 @@ Conversion : `moyenne_sur_10 = moyenne_sur_20 ÷ 2`.
 
 ## 2. Détermination du niveau — champ STABLE
 
-Le barème est déduit de **`Level.order`**, champ déjà présent et stable — jamais
-du libellé de la classe. Aucune liste de noms de classes en dur nulle part.
+Le barème est déduit de **`Level.cycle`** (maternelle, primaire, collège,
+lycée), champ administrable qui porte le SENS pédagogique — jamais du libellé
+de la classe. Aucune liste de noms de classes en dur nulle part.
 
 ```python
 def get_grading_scale(level):
-    if 1 <= level.order <= PRIMARY_MAX_LEVEL_ORDER:   # 11
+    cycle = (level.cycle or "").strip().lower()
+    if cycle in SECONDARY_CYCLES:          # collège, lycée
+        return REFERENCE_SCALE             # /20
+    if cycle in PRIMARY_CYCLES:            # maternelle, primaire
         return Decimal("10")
-    return Decimal("20")                              # référence
+    # Repli : rang du niveau, si le cycle n'est pas renseigné
+    if 1 <= int(level.order) <= PRIMARY_MAX_LEVEL_ORDER:   # 11
+        return Decimal("10")
+    return REFERENCE_SCALE
 ```
 
 Sans niveau identifiable, on conserve prudemment le barème de référence /20.
+
+### Pourquoi pas `Level.order` seul (défaut corrigé)
+
+La première implémentation ne regardait que `Level.order`, avec un seuil fixe à
+11. Or **`order` est un rang d'affichage propre à chaque établissement** : le
+jeu de démonstration numérote ses niveaux à partir de 0 (CP1 = 0 … 3ème = 9).
+Résultat, constaté en générant un bulletin sur les données réelles : **tout le
+collège sortait noté sur 10** et CP1 sur 20 — l'inverse de la règle. Le cycle,
+lui, ne dépend d'aucune convention de numérotation. Le rang ne sert plus que de
+repli pour un établissement qui n'aurait pas renseigné le cycle (la
+numérotation canonique 1 → 11 = Garderie → CM2 reste alors valable).
 
 ## 3. Architecture : une seule conversion
 
@@ -47,6 +65,29 @@ reçoivent jamais une valeur déjà convertie.
 | 11 (CM2) | /10 | 19 | **9.50** | /10 | EXCELLENT | ✅ |
 | **12 (6ᵉ, Collège)** | **/20** | **12** | **12.00** | **/20** | **PEUT MIEUX FAIRE** | ✅ |
 | 13+ (Collège/Lycée) | /20 | 15 | **15.00** | /20 | SATISFAISANT | ✅ |
+
+## 4 bis. Conformité complète des bulletins réellement générés
+
+Chaque bulletin est produit puis **rendu en image et inspecté**, valeur par
+valeur (le tableau porte sur les trois bulletins de référence de la livraison).
+
+| Niveau | Notes détaillées | Moyennes | Statistiques | Barème final | Statut |
+|---|---|---|---|---|---|
+| **Garderie / Maternelle** (cycle maternelle) | sur 10 | matière, partie FR, partie EN, bilingue, générale : sur 10 | min. et max. de classe : sur 10 | **/10** | ✅ |
+| **CE1 / CM2** (cycle primaire) | sur 10 | idem | idem | **/10** | ✅ |
+| **6ème / Collège** (cycle collège) | sur 20 | sur 20 | sur 20 | **/20** | ✅ |
+
+### Défaut corrigé : le détail des notes restait sur /20
+
+Sur un bulletin sur 10, la colonne « Notes » imprimait encore les valeurs
+brutes : on lisait **« E:17.5 » en face d'une moyenne « 8.26/10 »** — c'est-à-dire
+des notes **supérieures au barème annoncé**. Seules les moyennes avaient été
+converties. La conversion s'applique désormais aussi au détail
+(`_fmt_note`), avec deux décimales sur 10 pour ne rien perdre en divisant par
+deux (17,5/20 → 8,75/10). Les notes restent **stockées sur 20**.
+
+Un test dédié interdit toute chaîne « /20 » et toute valeur > 10 dans un
+bulletin destiné au barème /10.
 
 ## 5. Portée dans le bulletin
 
