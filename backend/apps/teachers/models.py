@@ -20,8 +20,46 @@ class Teacher(models.Model):
         return self.user.get_full_name()
 
     def save(self, *args, **kwargs):
+        # V8 — CORRECTION DU 500 À LA CRÉATION D'UN ENSEIGNANT.
+        #
+        # Cause racine : l'ancien code générait `ENS-<année>-<count()+1>`.
+        # `count()` n'est PAS une séquence : dès qu'un enseignant est supprimé
+        # (ou que deux créations s'entrecroisent), la valeur retombe sur un
+        # matricule DÉJÀ pris → IntegrityError « UNIQUE constraint failed:
+        # teachers_teacher.employee_id » → erreur 500 côté interface.
+        #
+        # Correctif : on repart du plus grand suffixe RÉELLEMENT utilisé pour
+        # l'année, et on réessaie tant que le matricule est pris (course entre
+        # deux requêtes simultanées).
         if not self.employee_id:
-            from django.utils import timezone
-            count = Teacher.objects.count() + 1
-            self.employee_id = f"ENS-{timezone.now().year}-{count:04d}"
-        super().save(*args, **kwargs)
+            self.employee_id = self._generate_employee_id()
+
+        from django.db import IntegrityError, transaction
+        for _ in range(10):
+            try:
+                with transaction.atomic():
+                    return super().save(*args, **kwargs)
+            except IntegrityError as exc:
+                # On ne retente QUE la collision de matricule ; toute autre
+                # erreur d'intégrité (utilisateur en double…) doit remonter.
+                if "employee_id" not in str(exc) or kwargs.get("force_update"):
+                    raise
+                self.employee_id = self._generate_employee_id()
+        # Dernière tentative : laisse remonter l'erreur si elle persiste.
+        return super().save(*args, **kwargs)
+
+    @staticmethod
+    def _generate_employee_id():
+        """Matricule ENS-<année>-<n> basé sur le plus grand suffixe existant."""
+        from django.utils import timezone
+        year = timezone.now().year
+        prefix = f"ENS-{year}-"
+        used = Teacher.objects.filter(employee_id__startswith=prefix).values_list(
+            "employee_id", flat=True
+        )
+        top = 0
+        for value in used:
+            suffix = value[len(prefix):]
+            if suffix.isdigit():
+                top = max(top, int(suffix))
+        return f"{prefix}{top + 1:04d}"

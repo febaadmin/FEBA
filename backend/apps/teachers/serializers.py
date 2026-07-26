@@ -91,8 +91,18 @@ class TeacherSerializer(serializers.ModelSerializer):
         school = get_request_school(request) if request else None
         if school is not None:
             self.fields["user_write"].queryset = CustomUser.objects.filter(role="teacher", school=school)
-            self.fields["subject_ids"].queryset = Subject.objects.filter(school=school)
-            self.fields["class_ids"].queryset = Class.objects.filter(school_year__school=school)
+            # V8 — FAILLE CORRIGÉE : pour un PrimaryKeyRelatedField(many=True),
+            # DRF enveloppe le champ dans un ManyRelatedField. Affecter
+            # `.queryset` sur l'ENVELOPPE n'a aucun effet : la validation
+            # utilise `child_relation.queryset`. Le filtrage par établissement
+            # était donc silencieusement inopérant et un administrateur pouvait
+            # rattacher des matières/classes d'un AUTRE établissement.
+            self.fields["subject_ids"].child_relation.queryset = Subject.objects.filter(
+                school=school
+            )
+            self.fields["class_ids"].child_relation.queryset = Class.objects.filter(
+                school_year__school=school
+            )
 
     def get_full_name(self, obj):
         return obj.user.get_full_name()
@@ -115,20 +125,48 @@ class TeacherSerializer(serializers.ModelSerializer):
                 )
         return value
 
+    def validate(self, attrs):
+        """V8 : le compte utilisateur est OBLIGATOIRE à la création.
+
+        Sans lui, `Teacher.objects.create()` violait la contrainte NOT NULL sur
+        `user_id` → IntegrityError → 500. On renvoie désormais un 400 explicite.
+        """
+        if not self.instance and not attrs.get("user"):
+            raise serializers.ValidationError(
+                {"user_write": "Sélectionnez le compte utilisateur (rôle enseignant)."}
+            )
+        return attrs
+
     def create(self, validated_data):
-        # FIX: Pop M2M data before creating — DRF default create() cannot handle M2M
+        # V8 — création ATOMIQUE : le profil ET ses relations (matières,
+        # classes) sont enregistrés ensemble, ou rien du tout. Aucune donnée
+        # partielle (profil sans matières, relations orphelines) ne subsiste.
+        from django.db import IntegrityError, transaction
+
         subjects = validated_data.pop("subjects", [])
         classes  = validated_data.pop("classes",  [])
 
-        teacher = Teacher.objects.create(**validated_data)
-
-        # FIX: Set M2M relations after instance exists in DB
-        if subjects:
-            teacher.subjects.set(subjects)
-        if classes:
-            teacher.classes.set(classes)
-
-        return teacher
+        try:
+            with transaction.atomic():
+                teacher = Teacher.objects.create(**validated_data)
+                # Les M2M ne peuvent être posées qu'une fois l'instance en base.
+                if subjects:
+                    teacher.subjects.set(subjects)
+                if classes:
+                    teacher.classes.set(classes)
+                return teacher
+        except IntegrityError as exc:
+            # Traduction en erreur métier exploitable (jamais de 500 ni de
+            # traceback exposé à l'utilisateur).
+            message = str(exc).lower()
+            if "user_id" in message:
+                raise serializers.ValidationError(
+                    {"user_write": "Ce compte possède déjà un profil enseignant."}
+                )
+            raise serializers.ValidationError(
+                {"detail": "Impossible d'enregistrer ce profil enseignant : "
+                           "conflit de données. Réessayez."}
+            )
 
     def update(self, instance, validated_data):
         # FIX: Pop M2M data before updating
