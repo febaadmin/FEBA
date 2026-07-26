@@ -56,10 +56,13 @@ export default function AdmissionsPage() {
                 L'accueil des familles
               </p>
             </MediaFrame>
+            {/* V7 : conteneur plus haut + point focal descendu (mediaMeta 50/60)
+                pour montrer le corps entier des enfants et des parents, pas
+                seulement leurs têtes. */}
             <MediaFrame src="/site/img/admissions-famille-1600.webp"
-              alt="Famille visitant l'école"
+              alt="Famille visitant le campus de FEBA"
               overlay="bottom-navy" sizes="(min-width:1024px) 40vw, 100vw"
-              className="rounded-2xl shadow-lg h-56"
+              className="rounded-2xl shadow-lg h-72 sm:h-80"
               contentClass="p-5 flex flex-col justify-end">
               <p className="text-white/90 text-sm font-semibold drop-shadow">La visite du campus</p>
             </MediaFrame>

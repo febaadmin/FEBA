@@ -1,5 +1,13 @@
 # VISUAL_FIXES_REPORT.md — Corrections visuelles V5 + V6 + V6.1
 
+## V7 (25/07/2026)
+P5 façade (panneau « Faith & Excellence » + fresques) sur accueil + galerie ; focal 50/42
+(panneau non coupé, crop simulé vérifié). P6 vidéo galerie : visionneuse à contrôles, portrait
+letterbox, arrêt à la fermeture. P7 Admissions « La visite du campus » : conteneur h-72 sm:h-80
++ focal 50/60 → corps entiers des enfants/parents visibles (capture navigateur). Résolutions
+375/768/1280/1440.
+
+
 ## V6.1 (20/07/2026) — captures annotées : remplacements, image bannie, dégradé
 
 Vérifié dans le navigateur réel sur l'app lancée (dev `:5173` + API `:8000`

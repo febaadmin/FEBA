@@ -1,4 +1,54 @@
-# AUDIT_REPORT.md — Missions V4 + V6
+# AUDIT_REPORT.md — Missions V4 → V8
+
+## Audit V8 (26/07/2026)
+
+### Anomalies trouvées et corrigées
+
+| # | Domaine | Anomalie | Gravité | Correction |
+|---|---|---|---|---|
+| 1 | Profils | Matricule enseignant généré via `count()+1` → collision d'unicité → **500** | Critique | Génération sur le **max existant** + reprise + création atomique |
+| 2 | Sécurité | Filtrage multi-établissement **inopérant** sur les champs DRF `many=True` | **Élevée** | `child_relation.queryset` + test dédié |
+| 3 | Transparence | « L'équipe technique a été notifiée » **sans aucune notification** | Élevée | Système d'incidents réel + message honnête avec référence |
+| 4 | Notes | Poids d'évaluation hétérogènes (examen ×3) | Métier | Poids unique 1 + migration + source centralisée |
+| 5 | Bulletins | Primaire noté /20 au lieu de /10 | Métier | Barème par `Level.order`, conversion unique |
+| 6 | Documents | Mauvais cachet sur les reçus | Métier | Cachet SECRÉTARIAT sur reçus, DIRECTION sur bulletins |
+| 7 | Documents | Cachet débordant d'une cellule fixe (chevauchement date/signature) | Moyenne | Bloc dédié insécable |
+| 8 | Documents | Nom de l'école chevauchant l'adresse (reçu) | Moyenne | Interligne proportionnel |
+| 9 | Documents | « Moy. Pond. » sur /20 face à une moyenne /10 | Moyenne | Pondérée exprimée dans le barème affiché |
+| 10 | Documents | **Observations tronquées** au bord droit du reçu | Moyenne | Valeurs longues en `Paragraph` (repli) |
+| 11 | Incidents | `resolved_at` non renseigné par un PATCH de statut | Faible | Règle portée par le serializer |
+| 12 | Migrations | Dérive de l'état du modèle (`note_coefficient`) | Faible | Migration `grades/0012` ; `makemigrations --check` propre |
+| 13 | **Barèmes** | `get_grading_scale` ne lisait que `Level.order` : le collège du jeu de démonstration (rangs 6 à 9) sortait noté **sur 10** | **Élevée** | Barème déduit du **cycle** ; le rang ne sert plus que de repli |
+| 14 | Bulletins | Détail des notes encore imprimé sur 20 (« E:17.5 » face à « 8.26/10 ») | Moyenne | Conversion du détail (`_fmt_note`) + test interdisant toute valeur hors barème |
+| 15 | Bulletins | Clé de notation du gabarit **maternelle** exprimée sur 20 (seule référence chiffrée du document) | Moyenne | Clé générée dans le barème du bulletin (`_grading_key_cells`) |
+| 16 | **Données** | Base de démonstration créée **sans migrations de données** (réglages `dev_sqlite`) + seed tirant le poids au hasard → poids ≠ 1 à chaque nouvelle installation | **Élevée** | Commande `bootstrap_demo` (migrations → migrations de données → seeds → vérification bloquante) + seed corrigé |
+| 17 | Reçus | Observation contenant « & » ou « <…> » **silencieusement amputée** (mini-XML ReportLab) | Moyenne | Échappement du texte saisi + retours à la ligne préservés |
+| 18 | Interfaces | Colonnes « Poids » / « Coeff note », champ figé et états React résiduels du poids d'évaluation | Faible | Notion entièrement retirée de l'UI (3 profils, exports, traductions) |
+
+### Points vérifiés sans anomalie
+
+Authentification et sessions ; rôles et permissions (403/401 conformes) ;
+multi-établissement (après correctif n°2) ; transactions et rollback ;
+contraintes d'unicité (validées sur PostgreSQL) ; calculs de moyennes et
+arrondis ; appréciations et lettres ; notes (10 reste 10 — V7) ; bulletins et
+reçus ; paiements ; notifications ; tableau de bord Parent ; site vitrine
+(carrousel, galerie, vidéo, menu, formulaires) ; migrations ; build de
+production.
+
+### État final
+
+Backend **405** (SQLite) / **406** (PostgreSQL 16, conteneur neuf, chaîne de
+migrations complète + seeds + vérification des poids) ; frontend **70** ;
+ESLint **0 erreur** ; build **OK**. Aucune régression critique constatée.
+
+
+## Audit V7 (25/07/2026)
+Anomalie critique corrigée : altération silencieuse des notes (10→9,5/9,75) — cause frontend
+(input number step + molette), non un bug backend (DecimalField sain). Autres : noms officiels
+harmonisés (source unique branding.py), cachet sur documents, médias (façade, vidéo, admissions).
+Suites complètes rejouées : backend 311 (+1 skip), frontend 70, eslint 0 erreur, build OK.
+Anciennes corrections V4→V6.2 non régressées (couvertes par leurs suites).
+
 
 ## Audit global V6 (20/07/2026)
 

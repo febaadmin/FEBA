@@ -1,4 +1,32 @@
-# CORRECTIONS — FEBA V4 + V5 + V6 (20/07/2026)
+# CORRECTIONS — FEBA V4 → V8 (26/07/2026)
+
+## V8 (26/07/2026)
+
+P1 création du profil Enseignant réparée (matricule `count()+1` → `max+1`,
+création atomique, erreurs 400 exploitables) ; P2 audit de tous les profils +
+faille de cloisonnement multi-établissement corrigée ; P3 remontée **réelle**
+des erreurs techniques aux super administrateurs (incidents, sanitisation,
+dédoublonnage, notifications, interface dédiée) ; P4 poids d'évaluation unique
+(12 + 5 = **8,50**) ; P5 bulletins **sur 10** pour les niveaux 1 à 11 (collège
+sur 20) ; P6 reçu « Le Secrétariat » + cachet dédié ; P7 cachet « LA
+DIRECTION » repositionné. Défauts supplémentaires corrigés sur les documents
+réels (chevauchement d'en-tête, pondérée incohérente, texte tronqué) et sur les
+incidents (date de résolution).
+
+Backend **405** (SQLite) / **406** (PostgreSQL 16) ; frontend **70** ; ESLint
+**0 erreur** ; build **OK**. Détails : `FINAL_REPORT.md`,
+`PROFILE_CREATION_REPORT.md`, `TECHNICAL_INCIDENTS_REPORT.md`,
+`GRADE_WEIGHTING_REPORT.md`, `GRADING_SCALE_REPORT.md`,
+`STAMP_INTEGRATION_REPORT.md`, `PDF_LAYOUT_REPORT.md`.
+
+
+## V7 (25/07/2026)
+P1 nom officiel « Faith & Excellence Bilingual Academy » (& partout, source centralisée) ;
+P2 « GROUPE ÉDUCATIF FEBA » sur bulletins/reçus ; P3 cachet officiel apposé (bulletins & reçus) ;
+P4 note 10 conservée exactement (champs texte décimaux, plus d'altération molette/flèche) ;
+P5 nouvelle façade ; P6 vidéo galerie (visionneuse à contrôles) ; P7 recadrage Admissions
+(corps entiers). Backend 311 tests, frontend 70, eslint 0, build OK. Voir FINAL_REPORT.md.
+
 
 ## V6 / V6.1 — Carrousel, galerie, doublons, cadrages, menu, saisie groupée
 
@@ -72,9 +100,7 @@ E2E navigateur desktop + mobile, build de production) ·
 
 ```bash
 cd backend
-DJANGO_SETTINGS_MODULE=feba_project.settings.dev_sqlite python manage.py migrate --run-syncdb
-DJANGO_SETTINGS_MODULE=feba_project.settings.dev_sqlite python manage.py seed_demo_data
-DJANGO_SETTINGS_MODULE=feba_project.settings.dev_sqlite python manage.py seed_website
+DJANGO_SETTINGS_MODULE=feba_project.settings.dev_sqlite python manage.py bootstrap_demo
 DJANGO_SETTINGS_MODULE=feba_project.settings.dev_sqlite python manage.py runserver 8000
 
 cd frontend

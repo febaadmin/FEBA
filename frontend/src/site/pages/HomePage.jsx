@@ -72,7 +72,7 @@ export default function HomePage() {
               Bienvenue à FEBA
             </p>
             <h2 className="text-2xl sm:text-4xl font-bold text-feba-navy leading-tight">
-              Faith Excellence Bilingual Academy
+              Faith & Excellence Bilingual Academy
             </h2>
             <p className="mt-5 leading-relaxed">
               Située à Akpakpa (Cotonou, Bénin), FEBA est une école bilingue

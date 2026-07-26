@@ -4,7 +4,8 @@ import {
   LayoutDashboard, Users, Shield, GraduationCap, UserCheck,
   Users2, BookOpen, DollarSign, Megaphone, Settings, LogOut,
   Menu, X, MessageSquare, Layers, ClipboardList, FileText,
-  Calendar, UserCog, FolderOpen, Image, ClipboardCheck, Video, Globe } from "lucide-react";
+  Calendar, UserCog, FolderOpen, Image, ClipboardCheck, Video, Globe,
+  AlertTriangle } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
 import { useBranding } from "../hooks/useBranding";
 import { clsx } from "clsx";
@@ -21,6 +22,7 @@ const nav = [
     { label: "Tous les utilisateurs", icon: Users,            to: "/superadmin/users" },
     { label: "Gestion Admins",        icon: Shield,           to: "/superadmin/admins" },
     { label: "Messages",              icon: MessageSquare,    to: "/superadmin/messages", badge: true },
+    { label: "Incidents techniques",  icon: AlertTriangle,    to: "/superadmin/incidents" },
     { label: "Mon profil",            icon: UserCog,          to: "/superadmin/profile" },
   ]},
   { section: "Gestion École", items: [

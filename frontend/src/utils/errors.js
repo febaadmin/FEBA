@@ -61,7 +61,16 @@ export function extractApiError(axiosError, fallback = "Une erreur inattendue s'
   if (status === 403) return t("Vous n'avez pas la permission d'effectuer cette action.");
   if (status === 404) return t("La ressource demandée est introuvable.");
   if (status === 429) return t("Trop de tentatives. Attendez quelques secondes avant de réessayer.");
-  if (status >= 500)  return t("Erreur interne du serveur. L'équipe technique a été notifiée.");
+  // V8 : on n'annonce une remontée que si le backend a RÉELLEMENT enregistré
+  // l'incident (il renvoie alors sa référence ERR-XXXXXX).
+  if (status >= 500) {
+    const reference = axiosError.response?.data?.incident_reference;
+    if (reference) {
+      return t("Une erreur interne est survenue. L'incident a été transmis à l'équipe technique sous la référence {ref}.")
+        .replace("{ref}", reference);
+    }
+    return t("Une erreur interne est survenue. Veuillez réessayer ou contacter l'assistance.");
+  }
 
   if (!data) return t(fallback);
 

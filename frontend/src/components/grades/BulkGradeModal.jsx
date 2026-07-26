@@ -25,6 +25,7 @@ import { gradesAPI } from "../../api";
 import Modal from "../ui/Modal";
 import SearchableSelect from "../ui/SearchableSelect";
 import { appreciationPreview } from "../../utils/appreciation";
+import { normalizeGradeInput, isValidGrade } from "../../utils/gradeInput";
 import { t } from "../../i18n";
 
 const NOTE_TYPES = [
@@ -116,8 +117,7 @@ export default function BulkGradeModal({
       const e = {};
       if (!r.subject) e.subject = t("Matière obligatoire.");
       if (r.value === "" || r.value == null) e.value = t("Note obligatoire.");
-      else if (Number(r.value) < 0 || Number(r.value) > 20) e.value = t("Note entre 0 et 20.");
-      if (!r.note_coefficient || Number(r.note_coefficient) < 1) e.note_coefficient = t("Coefficient ≥ 1.");
+      else if (!isValidGrade(r.value)) e.value = t("Note entre 0 et 20.");
       if (Object.keys(e).length) localErrors[i] = e;
     });
     if (Object.keys(localErrors).length) {
@@ -131,9 +131,9 @@ export default function BulkGradeModal({
       grades: rows.map((r) => ({
         subject: Number(r.subject),
         period: r.period,
-        value: String(r.value),
+        value: normalizeGradeInput(r.value),
         note_type: r.note_type,
-        note_coefficient: Number(r.note_coefficient),
+        note_coefficient: 1,  // V8 : poids unique
         comment: r.comment || "",
       })),
     });
@@ -179,9 +179,9 @@ export default function BulkGradeModal({
         </div>
 
         {/* En-tête des lignes (desktop) */}
-        <div className="hidden lg:grid grid-cols-[1.4fr_0.9fr_0.7fr_1.1fr_0.7fr_1.2fr_auto] gap-2 px-1 text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+        <div className="hidden lg:grid grid-cols-[1.4fr_0.9fr_0.7fr_1.1fr_1.2fr_auto] gap-2 px-1 text-[11px] font-semibold uppercase tracking-wide text-slate-400">
           <span>{t("Matière")}</span><span>{t("Période")}</span><span>{t("Note /20")}</span>
-          <span>{t("Type")}</span><span>{t("Coeff.")}</span><span>{t("Appréciation")}</span><span></span>
+          <span>{t("Type")}</span><span>{t("Appréciation")}</span><span></span>
         </div>
 
         {/* Lignes : tableau sur desktop, cartes sur mobile */}
@@ -191,7 +191,7 @@ export default function BulkGradeModal({
             const appr = appreciationPreview(r.value);
             return (
               <div key={i}
-                className="lg:grid lg:grid-cols-[1.4fr_0.9fr_0.7fr_1.1fr_0.7fr_1.2fr_auto] lg:gap-2 lg:items-start
+                className="lg:grid lg:grid-cols-[1.4fr_0.9fr_0.7fr_1.1fr_1.2fr_auto] lg:gap-2 lg:items-start
                            grid grid-cols-2 gap-2 p-3 lg:p-0 rounded-xl lg:rounded-none border lg:border-0 border-slate-200 bg-slate-50 lg:bg-transparent">
                 <div className="col-span-2 lg:col-span-1">
                   <span className="lg:hidden label">{t("Matière")}</span>
@@ -208,8 +208,10 @@ export default function BulkGradeModal({
                 </div>
                 <div>
                   <span className="lg:hidden label">{t("Note /20")}</span>
-                  <input type="number" step="0.01" min="0" max="20" className={inputCls(err.value)}
-                    value={r.value} onChange={(e) => setRow(i, { value: e.target.value })} placeholder="0–20" />
+                  {/* V7 : champ TEXTE (inputMode décimal) — insensible molette /
+                      flèches / compteurs ; la note tapée n'est jamais altérée. */}
+                  <input type="text" inputMode="decimal" autoComplete="off" className={inputCls(err.value)}
+                    value={r.value} onChange={(e) => setRow(i, { value: normalizeGradeInput(e.target.value) })} placeholder="0–20" />
                   {err.value && <p className="text-xs text-red-600 mt-1">{err.value}</p>}
                 </div>
                 <div>
@@ -219,12 +221,7 @@ export default function BulkGradeModal({
                     {NOTE_TYPES.map((nt) => <option key={nt.value} value={nt.value}>{t(nt.label)}</option>)}
                   </select>
                 </div>
-                <div>
-                  <span className="lg:hidden label">{t("Coeff.")}</span>
-                  <input type="number" min="1" className={inputCls(err.note_coefficient)}
-                    value={r.note_coefficient} onChange={(e) => setRow(i, { note_coefficient: e.target.value })} />
-                  {err.note_coefficient && <p className="text-xs text-red-600 mt-1">{err.note_coefficient}</p>}
-                </div>
+
                 <div className="col-span-2 lg:col-span-1 flex items-center">
                   <span className="lg:hidden label mr-2">{t("Appréciation")}</span>
                   <span className={`text-xs font-semibold ${appr ? "text-feba-navy" : "text-slate-300"}`}>
@@ -243,7 +240,7 @@ export default function BulkGradeModal({
                   </button>
                 </div>
                 {/* Commentaire optionnel (pleine largeur) */}
-                <div className="col-span-2 lg:col-span-7">
+                <div className="col-span-2 lg:col-span-6">
                   <input className={`${inputCls()} text-xs`} value={r.comment}
                     onChange={(e) => setRow(i, { comment: e.target.value })}
                     placeholder={t("Commentaire (optionnel)")} />

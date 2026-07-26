@@ -26,9 +26,15 @@ from reportlab.lib.styles import ParagraphStyle
 from reportlab.lib.units import cm
 from reportlab.lib import colors
 from reportlab.platypus import (
-    SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, HRFlowable, Image
+    SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, HRFlowable, Image,
+    KeepTogether,
 )
 from django.core.files.base import ContentFile
+from feba_project.branding import SCHOOL_GROUP_NAME
+# V8 — barème d'affichage par niveau (1..11 → /10, au-delà → /20)
+from apps.grades.grading import (
+    convert_average_for_scale, get_grading_scale, scale_label,
+)
 from django.utils import timezone
 
 from apps.grades.models import Grade, get_letter_grade, get_appreciation
@@ -40,6 +46,16 @@ logger = logging.getLogger('apps')
 STATIC_LOGO_PATH = os.path.join(
     os.path.dirname(__file__), '..', '..', 'feba_project', 'static_files', 'logo_feba.jpeg'
 )
+# Cachet officiel (V7) — extrait fidèlement du PDF fourni par la direction.
+STATIC_CACHET_PATH = os.path.join(
+    os.path.dirname(__file__), '..', '..', 'feba_project', 'static_files', 'cachet_feba.png'
+)
+
+
+def _get_cachet_path():
+    """Chemin du cachet officiel à apposer, ou None si le fichier est absent
+    (dégradation gracieuse : le document reste valide, sans cachet)."""
+    return STATIC_CACHET_PATH if os.path.exists(STATIC_CACHET_PATH) else None
 
 # Couleurs de la charte
 PRIMARY = colors.HexColor('#1E3A6E')   # bleu institutionnel
@@ -79,6 +95,46 @@ def _fmt(val):
     if val is None:
         return '—'
     return f'{float(val):.2f}'
+
+
+def _student_scale(student):
+    """Barème d'AFFICHAGE du bulletin, déduit du niveau de l'élève."""
+    level = None
+    klass = getattr(student, 'current_class', None)
+    if klass is not None:
+        level = getattr(klass, 'level', None)
+    return get_grading_scale(level)
+
+
+def _fmt_scale(val, scale):
+    """Moyenne interne /20 → valeur affichée dans le barème du niveau.
+
+    La conversion n'a lieu QU'ICI (une seule fois) ; les lettres et
+    appréciations restent calculées sur l'échelle interne /20.
+    """
+    if val is None:
+        return '—'
+    return f'{float(convert_average_for_scale(val, scale)):.2f}'
+
+
+def _fmt_note(val, scale):
+    """Note individuelle (stockée /20) exprimée dans le barème du bulletin.
+
+    Une décimale sur 20 (format historique), deux sur 10 pour ne pas perdre
+    de précision en divisant par deux (17,5/20 → 8,75/10).
+    """
+    if val is None:
+        return '—'
+    converted = convert_average_for_scale(val, scale)
+    digits = 1 if Decimal(str(scale)) == Decimal('20') else 2
+    return f'{float(converted):.{digits}f}'
+
+
+def _fmt_scale_denom(val, scale):
+    """Idem avec le dénominateur explicite : « 6.00/10 » ou « 12.00/20 »."""
+    if val is None:
+        return '—'
+    return f'{_fmt_scale(val, scale)}/{int(scale)}'
 
 
 def _period_label(period):
@@ -287,6 +343,9 @@ def _add_header(story, student, period, school_year, logo_path, title):
             story.append(logo_img)
         except Exception as exc:
             logger.warning("Erreur non bloquante ignorée : %s", exc, exc_info=True)
+    # V7 : ligne « groupe » (GROUPE ÉDUCATIF FEBA) au-dessus du nom officiel.
+    story.append(P(SCHOOL_GROUP_NAME, fontSize=9, fontName='Helvetica-Bold',
+                   alignment=1, textColor=GOLD, spaceAfter=1))
     story.append(P(name.upper(), fontSize=14, fontName='Helvetica-Bold',
                    alignment=1, textColor=PRIMARY, spaceAfter=2))
     story.append(P(subtitle, fontSize=9, alignment=1, spaceAfter=2))
@@ -344,7 +403,7 @@ def _weighted_section_average(rows):
     return round(total_w / total_c, 2) if total_c else None
 
 
-def _subject_rows_trimester(entries):
+def _subject_rows_trimester(entries, scale=20):
     """Lignes matières pour une période trimestre : notes détaillées."""
     note_labels = {'devoir': 'D', 'interrogation': 'I', 'controle': 'C',
                    'examen': 'E', 'tp': 'TP', 'autre': 'A'}
@@ -353,19 +412,28 @@ def _subject_rows_trimester(entries):
         notes = info.get('notes') or []
         avg = info['average']
         if notes:
+            # V8 : le DÉTAIL des notes suit le barème du bulletin. Sur un
+            # bulletin sur 10, imprimer « E:17.5 » à côté de « 8.26/10 » était
+            # incompréhensible (et affichait des notes supérieures au barème
+            # annoncé). Les notes restent stockées sur 20 ; la conversion a
+            # lieu ici seulement, à l'affichage.
             details = '  '.join(
-                f"{note_labels.get(n.note_type, 'N')}:{float(n.value):.1f}"
+                f"{note_labels.get(n.note_type, 'N')}:{_fmt_note(n.value, scale)}"
                 for n in sorted(notes, key=lambda x: x.note_type)
             )
         else:
             details = 'Non noté'
-        weighted = (float(avg) * info['coefficient']) if avg is not None else None
+        # V8 : la moyenne pondérée s'exprime dans le MÊME barème que la colonne
+        # « Moy. » affichée (sinon on lisait « 6.00/10 » en face de « 48.00 »,
+        # calculé sur l'échelle interne /20 — incohérent pour le lecteur).
+        weighted = (float(convert_average_for_scale(avg, scale)) * info['coefficient']
+                    if avg is not None else None)
         letter, _, _ = get_letter_grade(avg)
         rows.append([
             C(info['subject_name'], bold=True),
             str(info['coefficient']),
             C(details, align='CENTER', size=7.5),
-            f'{_fmt(avg)}/20' if avg is not None else '—',
+            _fmt_scale_denom(avg, scale),
             f'{weighted:.2f}' if weighted is not None else '—',
             letter or '—',
             C(get_appreciation(avg) if avg is not None else '—', align='CENTER'),
@@ -373,7 +441,7 @@ def _subject_rows_trimester(entries):
     return rows
 
 
-def _subject_rows_annual(entries):
+def _subject_rows_annual(entries, scale=20):
     """Lignes matières pour le bulletin annuel : T1 / T2 / T3 / moyenne."""
     rows = []
     for info in entries:
@@ -383,17 +451,17 @@ def _subject_rows_annual(entries):
         rows.append([
             C(info['subject_name'], bold=True),
             str(info['coefficient']),
-            _fmt(t_avgs.get('T1')),
-            _fmt(t_avgs.get('T2')),
-            _fmt(t_avgs.get('T3')),
-            f'{_fmt(avg)}/20' if avg is not None else '—',
+            _fmt_scale(t_avgs.get('T1'), scale),
+            _fmt_scale(t_avgs.get('T2'), scale),
+            _fmt_scale(t_avgs.get('T3'), scale),
+            _fmt_scale_denom(avg, scale),
             letter or '—',
             C(get_appreciation(avg) if avg is not None else '—', align='CENTER'),
         ])
     return rows
 
 
-def _add_language_section(story, title, entries, period, head_color, zebra_color):
+def _add_language_section(story, title, entries, period, head_color, zebra_color, scale=20):
     """
     Une section de résultats par langue (BUG N°1) : tableau des matières
     de cette langue avec notes, coefficients, moyennes et appréciations,
@@ -416,22 +484,22 @@ def _add_language_section(story, title, entries, period, head_color, zebra_color
                   hcell('Appréciation')]
         col_widths = [4.7 * cm, 1.2 * cm, 1.3 * cm, 1.3 * cm, 1.3 * cm, 2.0 * cm,
                       1.3 * cm, 5.4 * cm]
-        rows = _subject_rows_annual(entries)
+        rows = _subject_rows_annual(entries, scale)
     else:
         header = [hcell('Matière / Subject', 'LEFT'), hcell('Coeff'), hcell('Notes'),
-                  hcell('Moy. /20'), hcell('Moy. Pond.'), hcell('Lettre'),
+                  hcell(scale_label(scale)), hcell('Moy. Pond.'), hcell('Lettre'),
                   hcell('Appréciation')]
         col_widths = [4.6 * cm, 1.2 * cm, 3.6 * cm, 1.9 * cm, 1.9 * cm, 1.3 * cm, 4.0 * cm]
-        rows = _subject_rows_trimester(entries)
+        rows = _subject_rows_trimester(entries, scale)
 
     section_avg = _weighted_section_average(entries)
     letter, _, _ = get_letter_grade(section_avg)
     total_label = C('MOYENNE DE LA PARTIE', bold=True)
     total_row = ([total_label, '', '', '', '',
-                  f'{_fmt(section_avg)}/20', letter or '—',
+                  _fmt_scale_denom(section_avg, scale), letter or '—',
                   C(get_appreciation(section_avg), align='CENTER', bold=True)]
                  if period == 'annual' else
-                 [total_label, '', '', f'{_fmt(section_avg)}/20', '',
+                 [total_label, '', '', _fmt_scale_denom(section_avg, scale), '',
                   letter or '—', C(get_appreciation(section_avg), align='CENTER', bold=True)])
 
     full_rows = [header] + rows + [total_row]
@@ -460,7 +528,7 @@ def _add_language_section(story, title, entries, period, head_color, zebra_color
 
 # ─── Statistiques de classe + moyennes bilingues (BUG N°2 / N°6) ─────────────
 
-def _add_stats_section(story, bilingual_data, class_stats, average, bulletin, period):
+def _add_stats_section(story, bilingual_data, class_stats, average, bulletin, period, scale=20):
     story.append(HRFlowable(width='100%', thickness=1, color=GOLD))
     story.append(P('MOYENNES & STATISTIQUES DE LA CLASSE / AVERAGES & CLASS STATISTICS',
                    fontSize=11, fontName='Helvetica-Bold', textColor=PRIMARY,
@@ -481,13 +549,13 @@ def _add_stats_section(story, bilingual_data, class_stats, average, bulletin, pe
     rows = [
         header,
         [C('Moyenne Française / French Average'),
-         f'{_fmt(fr_avg)}/20', _fmt(class_stats.get('fr_min')), _fmt(class_stats.get('fr_max')),
+         _fmt_scale_denom(fr_avg, scale), _fmt_scale(class_stats.get('fr_min'), scale), _fmt_scale(class_stats.get('fr_max'), scale),
          fr_letter or '—'],
         [C('Moyenne Anglaise / English Average'),
-         f'{_fmt(en_avg)}/20', _fmt(class_stats.get('en_min')), _fmt(class_stats.get('en_max')),
+         _fmt_scale_denom(en_avg, scale), _fmt_scale(class_stats.get('en_min'), scale), _fmt_scale(class_stats.get('en_max'), scale),
          en_letter or '—'],
         [C('Moyenne Bilingue / Bilingual Average ★', bold=True),
-         f'{_fmt(bi_avg)}/20', _fmt(class_stats.get('bi_min')), _fmt(class_stats.get('bi_max')),
+         _fmt_scale_denom(bi_avg, scale), _fmt_scale(class_stats.get('bi_min'), scale), _fmt_scale(class_stats.get('bi_max'), scale),
          bi_letter or '—'],
     ]
     tbl = Table(rows, colWidths=[6.9 * cm, 2.9 * cm, 3.2 * cm, 3.2 * cm, 2.3 * cm])
@@ -519,7 +587,7 @@ def _add_stats_section(story, bilingual_data, class_stats, average, bulletin, pe
     letter, _, _ = get_letter_grade(average)
     summary_data = [[
         C('Moyenne Générale', align='CENTER', bold=True, size=9),
-        C(f'{_fmt(average)}/20', align='CENTER', bold=True, size=9, color=PRIMARY),
+        C(_fmt_scale_denom(average, scale), align='CENTER', bold=True, size=9, color=PRIMARY),
         C('Lettre', align='CENTER', bold=True, size=9),
         C(f'{letter or "—"}', align='CENTER', bold=True, size=9),
         C('Appréciation', align='CENTER', bold=True, size=9),
@@ -550,6 +618,8 @@ def _build_standard_pdf(buffer, student, period, school_year, subject_data,
         title='Bulletin de notes', author='FEBA School Management System',
     )
     story = []
+    # V8 — barème d'affichage du bulletin selon le niveau (1..11 → /10).
+    scale = _student_scale(student)
 
     _add_header(story, student, period, school_year, logo_path,
                 'BULLETIN DE NOTES / PROGRESS REPORT')
@@ -563,25 +633,62 @@ def _build_standard_pdf(buffer, student, period, school_year, subject_data,
 
     _add_language_section(
         story, 'RÉSULTATS — PARTIE FRANÇAISE / FRENCH SECTION',
-        fr_entries, period, FR_HEAD, LIGHT,
+        fr_entries, period, FR_HEAD, LIGHT, scale,
     )
     _add_language_section(
         story, 'ACADEMIC RESULTS — ENGLISH SECTION / PARTIE ANGLAISE',
-        en_entries, period, EN_HEAD, EN_BG,
+        en_entries, period, EN_HEAD, EN_BG, scale,
     )
     if other_entries:
         _add_language_section(
             story, 'AUTRES MATIÈRES / OTHER SUBJECTS',
-            other_entries, period, colors.HexColor('#6B21A8'), colors.HexColor('#FAF5FF'),
+            other_entries, period, colors.HexColor('#6B21A8'), colors.HexColor('#FAF5FF'), scale,
         )
 
-    _add_stats_section(story, bilingual_data, class_stats, average, bulletin, period)
+    _add_stats_section(story, bilingual_data, class_stats, average, bulletin, period, scale)
     _add_signatures(story, bulletin)
     _add_footer(story, student, school_year)
     doc.build(story)
 
 
 # ─── MATERNELLE PDF Template ──────────────────────────────────────────────────
+
+# Seuils officiels des lettres, exprimés sur l'échelle interne /20.
+# (borne basse, borne haute incluse ; None = pas de borne de ce côté)
+_GRADING_KEY = [
+    ('A+', Decimal('19.5'), None), ('A', Decimal('18'), Decimal('19')),
+    ('A-', Decimal('16'), Decimal('17')), ('B+', Decimal('15'), Decimal('15')),
+    ('B', Decimal('13'), Decimal('14')), ('B-', Decimal('12'), Decimal('12')),
+    ('C+', Decimal('11'), Decimal('11')), ('C', Decimal('10'), Decimal('10')),
+    ('C-', Decimal('9'), Decimal('9')), ('D+', Decimal('8'), Decimal('8')),
+    ('D', Decimal('6'), Decimal('7')), ('D-', Decimal('4'), Decimal('5')),
+    ('F', None, Decimal('4')),
+]
+
+
+def _grading_key_cells(scale):
+    """Clé de notation exprimée dans le barème du bulletin.
+
+    Les lettres restent calculées sur l'échelle interne /20 ; seuls les seuils
+    AFFICHÉS suivent le barème du document (÷ 2 pour un bulletin sur 10).
+    """
+    def n(value):
+        converted = convert_average_for_scale(value, scale)
+        texte = f'{converted:.2f}'.rstrip('0').rstrip('.')
+        return texte or '0'
+
+    cells = []
+    for letter, low, high in _GRADING_KEY:
+        if low is None:
+            cells.append(f'{letter} (<{n(high)})')
+        elif high is None:
+            cells.append(f'{letter} (≥{n(low)})')
+        elif low == high:
+            cells.append(f'{letter} ({n(low)})')
+        else:
+            cells.append(f'{letter} ({n(low)}-{n(high)})')
+    return cells
+
 
 def _build_maternelle_pdf(buffer, student, period, school_year, subject_data,
                           average, bulletin, logo_path):
@@ -598,10 +705,12 @@ def _build_maternelle_pdf(buffer, student, period, school_year, subject_data,
     _add_student_info(story, student, period, school_year)
 
     # Grading key — 13 colonnes égales sur la largeur utile (≤ 18.5 cm).
+    # V8 : les seuils suivent le barème du bulletin. Sur un bulletin de
+    # maternelle (sur 10), afficher « A+ (≥19.5) » revenait à donner la seule
+    # référence chiffrée du document dans une échelle qui n'est pas la sienne.
     story.append(P('Grading key / Clé de notation :', fontSize=9,
                    fontName='Helvetica-Bold', textColor=PRIMARY, spaceAfter=2))
-    key_data = [['A+ (≥19.5)', 'A (18-19)', 'A- (16-17)', 'B+ (15)', 'B (13-14)', 'B- (12)',
-                 'C+ (11)', 'C (10)', 'C- (9)', 'D+ (8)', 'D (6-7)', 'D- (4-5)', 'F (<4)']]
+    key_data = [_grading_key_cells(_student_scale(student))]
     key_tbl = Table(key_data, colWidths=[18.5 / 13 * cm] * 13)
     key_tbl.setStyle(TableStyle([
         ('FONTSIZE', (0, 0), (-1, -1), 6),
@@ -722,37 +831,90 @@ def _add_signatures(story, bulletin):
     story.append(HRFlowable(width='100%', thickness=1, color=colors.lightgrey))
     story.append(Spacer(1, 0.2 * cm))
     comment = bulletin.general_comment or '(Aucun commentaire / No comment)'
-    sig_data = [
-        [C('Commentaire du Directeur / Principal\'s Comment', bold=True),
-         '', C('Signature & Cachet / Stamp', bold=True)],
-        [C(comment), '', ''],
-        ['', '', C('________________________', align='CENTER')],
-        ['', '', C(f'Cotonou, le {timezone.now().strftime("%d/%m/%Y")}', align='CENTER')],
-    ]
-    sig_tbl = Table(sig_data, colWidths=[9.4 * cm, 0.8 * cm, 8.3 * cm],
-                    rowHeights=[0.55 * cm, 1.15 * cm, 0.55 * cm, 0.5 * cm])
-    sig_tbl.setStyle(TableStyle([
-        ('FONTSIZE', (0, 0), (-1, -1), 8),
+    # V7 : cachet officiel de la direction apposé dans la case « Cachet ».
+    cachet_path = _get_cachet_path()
+    stamp_cell = ''
+    if cachet_path:
+        try:
+            # 2,5 cm : lisible à l'impression sans gonfler la hauteur du bulletin.
+            stamp = Image(cachet_path, width=2.5 * cm, height=2.5 * cm)  # ratio 1:1 conservé
+            stamp.hAlign = 'CENTER'
+            stamp_cell = stamp
+        except Exception as exc:
+            logger.warning("Cachet non apposé (non bloquant) : %s", exc, exc_info=True)
+    # V8 — Zone de validation de la Direction repensée.
+    #
+    # Avant : le cachet flottait dans une cellule partagée avec la ligne de
+    # signature et la date, sans marge ni alignement — il paraissait posé au
+    # hasard et frôlait le bord droit.
+    #
+    # Maintenant : un bloc dédié, empilé et centré — intitulé, cachet centré,
+    # puis lieu/date — assemblé dans sa PROPRE table (donc insécable) et placé
+    # à droite du commentaire du directeur. Aucune coordonnée absolue : la
+    # grille s'adapte si le commentaire s'allonge.
+    validation_tbl = Table(
+        [[C('La Direction / The Principal', bold=True, align='CENTER')],
+         [stamp_cell],
+         [C(f'Cotonou, le {timezone.now().strftime("%d/%m/%Y")}', align='CENTER')]],
+        colWidths=[8.3 * cm],
+    )
+    validation_tbl.setStyle(TableStyle([
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('VALIGN', (0, 1), (0, 1), 'MIDDLE'),   # cachet centré dans sa case
+        ('TOPPADDING', (0, 0), (-1, -1), 2),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 2),
+    ]))
+
+    # Colonne de gauche : commentaire du directeur PUIS signature du parent
+    # (empilés). Le bloc « signature du parent » qui occupait auparavant une
+    # ligne pleine largeur est ainsi absorbé : la zone de validation gagne la
+    # hauteur nécessaire à un cachet correctement rendu, SANS allonger le
+    # bulletin (un bulletin chargé tient toujours sur une seule page A4).
+    comment_box = Table(
+        [[C('Commentaire du Directeur / Principal\'s Comment', bold=True)],
+         [C(comment)]],
+        colWidths=[9.4 * cm], rowHeights=[0.5 * cm, 2.4 * cm],
+    )
+    comment_box.setStyle(TableStyle([
+        ('BOX', (0, 0), (-1, -1), 0.25, colors.lightgrey),
+        ('LINEBELOW', (0, 0), (0, 0), 0.25, colors.lightgrey),
         ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-        ('VALIGN', (2, 2), (2, 3), 'MIDDLE'),
-        ('GRID', (0, 0), (0, -1), 0.25, colors.lightgrey),
         ('LEFTPADDING', (0, 0), (-1, -1), 5),
         ('RIGHTPADDING', (0, 0), (-1, -1), 5),
         ('TOPPADDING', (0, 0), (-1, -1), 3),
         ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
     ]))
-    story.append(sig_tbl)
-    story.append(Spacer(1, 0.25 * cm))
     parent_sig = Table(
-        [[C('Signature du Parent / Parent\'s Signature:', bold=True), '',
+        [[C('Signature du Parent / Parent\'s Signature:', bold=True),
           C('________________________', align='CENTER')]],
-        colWidths=[7.5 * cm, 3.7 * cm, 7.3 * cm]
+        colWidths=[5.2 * cm, 4.2 * cm], rowHeights=[0.7 * cm],
     )
     parent_sig.setStyle(TableStyle([
-        ('FONTSIZE', (0, 0), (-1, -1), 8),
         ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('LEFTPADDING', (0, 0), (-1, -1), 5),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 0),
+        ('TOPPADDING', (0, 0), (-1, -1), 4),
     ]))
-    story.append(parent_sig)
+    left_column = Table([[comment_box], [parent_sig]], colWidths=[9.4 * cm])
+    left_column.setStyle(TableStyle([
+        ('LEFTPADDING', (0, 0), (-1, -1), 0),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 0),
+        ('TOPPADDING', (0, 0), (-1, -1), 0),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 0),
+    ]))
+
+    sig_tbl = Table([[left_column, '', validation_tbl]],
+                    colWidths=[9.4 * cm, 0.8 * cm, 8.3 * cm])
+    sig_tbl.setStyle(TableStyle([
+        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+        ('LEFTPADDING', (0, 0), (-1, -1), 0),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 0),
+        ('TOPPADDING', (0, 0), (-1, -1), 0),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 0),
+    ]))
+    # Le bloc « commentaire + validation » ne doit jamais être coupé en deux
+    # pages : le cachet reste solidaire de sa zone de validation.
+    story.append(KeepTogether(sig_tbl))
 
 
 def _add_footer(story, student=None, school_year=None):

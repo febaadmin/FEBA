@@ -375,6 +375,16 @@ export const notificationsAPI = {
   markAllRead: ()   => api.put("/notifications/read-all/"),
 };
 
+// V8 — Incidents techniques (super administrateur uniquement)
+export const incidentsAPI = {
+  list:    (p)      => api.get("/incidents/", { params: p }),
+  detail:  (id)     => api.get(`/incidents/${id}/`),
+  stats:   ()       => api.get("/incidents/stats/"),
+  update:  (id, d)  => api.patch(`/incidents/${id}/`, d),
+  resolve: (id, d)  => api.post(`/incidents/${id}/resolve/`, d || {}),
+  reopen:  (id)     => api.post(`/incidents/${id}/reopen/`, {}),
+};
+
 export const bulletinsAPI = {
   list: (p)          => api.get("/bulletins/", { params: { ...BIG, ...p } }),
   generate: (d)      => api.post("/bulletins/generate/", d),

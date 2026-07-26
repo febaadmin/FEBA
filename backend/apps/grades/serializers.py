@@ -1,5 +1,6 @@
 from decimal import Decimal
 from rest_framework import serializers
+from .grading import ASSESSMENT_WEIGHT
 from .models import Grade, GradeHistory, get_letter_grade, get_appreciation
 
 
@@ -33,6 +34,8 @@ class GradeSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Grade
+        # V8 : note_coefficient est imposé à 1 par le backend — jamais saisi.
+        read_only_fields = ['note_coefficient']
         fields = [
             'id', 'student', 'student_name', 'subject', 'subject_name',
             'subject_coefficient', 'teacher', 'teacher_name',
@@ -108,12 +111,19 @@ class BulkGradeLineSerializer(serializers.Serializer):
     note_type = serializers.ChoiceField(
         choices=[c[0] for c in Grade.NOTE_TYPE_CHOICES], default="devoir",
     )
+    # V8 : le poids d'une évaluation vaut toujours 1. Le champ reste accepté
+    # (compatibilité des clients existants) mais sa valeur est NORMALISÉE :
+    # une requête envoyant 2 ou 3 n'accorde aucun avantage à l'évaluation.
     note_coefficient = serializers.IntegerField(
-        min_value=1, default=1,
+        min_value=1, default=ASSESSMENT_WEIGHT, required=False,
         error_messages={"min_value": "Le coefficient doit être au moins 1."},
     )
+
     comment = serializers.CharField(required=False, allow_blank=True, default="")
     justification = serializers.CharField(required=False, allow_blank=True, default="")
+
+    def validate_note_coefficient(self, value):
+        return ASSESSMENT_WEIGHT
 
 
 class BulkGradeCreateSerializer(serializers.Serializer):

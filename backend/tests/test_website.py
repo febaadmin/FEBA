@@ -36,7 +36,7 @@ class PublicContentTests(TestCase):
     def test_settings_public(self):
         resp = self.client.get("/api/website/settings/")
         self.assertEqual(resp.status_code, 200)
-        self.assertEqual(resp.data["school_name"], "Faith Excellence Bilingual Academy")
+        self.assertEqual(resp.data["school_name"], "Faith & Excellence Bilingual Academy")
         # Aucune donnée fictive : coordonnées et stats vides par défaut
         self.assertEqual(resp.data["phone"], "")
         self.assertIsNone(resp.data["stat_students"])

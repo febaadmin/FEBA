@@ -1,5 +1,12 @@
 # MEDIA_INVENTORY.md — Inventaire des médias du site vitrine FEBA (V4 → V6.1)
 
+## Delta V7 (25/07/2026)
+Ajoutés/optimisés : nouvelle façade FEBA → campus-facade-logo (webp 1600+800) ; vidéo
+feba-presentation.mp4 (H.264/AAC, 576×1024, 54 s, 6,6 Mo) + poster ; cachet officiel
+cachet_feba.png (+ hd, webp). Recadrage : admissions-famille (focal 50/60). Originaux
+conservés dans Downloads / static_files.
+
+
 ## Delta V6.1 (20/07/2026)
 
 **Ajoutés** (webp 800+1600 optimisés, points focaux définis) :

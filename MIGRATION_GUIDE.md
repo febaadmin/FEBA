@@ -1,5 +1,7 @@
 # MIGRATION_V6.md — Guide de migration vers V6 (20/07/2026)
 
+> **V7** : 2 migrations de DONNÉES seulement (aucun schéma) — `website/0003` (nom officiel + meta), `schools/0011` (`School.name` → nom officiel). `python manage.py migrate` puis `seed_website`. Réversibles (cf. `RESTORE_GUIDE.md`).
+
 ## 1. Résumé — aucune migration de schéma
 
 **V6 n'ajoute aucune migration.** Vérifié :

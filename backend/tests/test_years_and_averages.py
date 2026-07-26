@@ -140,8 +140,13 @@ class AverageEngineTests(TestCase):
     def test_no_grades_general_average_is_none(self):
         self.assertIsNone(Grade.calculate_average(self.student, self.year, "T1"))
 
-    def test_weighted_by_note_and_subject_coefficients(self):
-        # Maths : devoir 10 (coeff note 1) + contrôle 16 (coeff note 2) → 14
+    def test_weighted_by_subject_coefficients_only(self):
+        """V8 : les ÉVALUATIONS pèsent toutes 1 ; seules les MATIÈRES sont pondérées.
+
+        (Avant V8, un contrôle « coeff note 2 » pesait double dans la matière —
+        règle métier supprimée : un examen ne compte pas plus qu'un devoir.)
+        """
+        # Maths : devoir 10 + contrôle 16 → moyenne ARITHMÉTIQUE = 13
         Grade.objects.create(student=self.student, subject=self.math, school_year=self.year,
                              teacher=self.teacher, period="T1", value=10, note_coefficient=1)
         Grade.objects.create(student=self.student, subject=self.math, school_year=self.year,
@@ -149,6 +154,9 @@ class AverageEngineTests(TestCase):
         # Français : 8
         Grade.objects.create(student=self.student, subject=self.fr, school_year=self.year,
                              teacher=self.teacher, period="T1", value=8)
+        # Le poids d'évaluation demandé (2) est normalisé à 1 par le backend.
+        self.assertTrue(all(g.note_coefficient == 1 for g in Grade.objects.all()))
+
         general = Grade.calculate_average(self.student, self.year, "T1")
-        # (14*4 + 8*2) / (4+2) = 72/6 = 12.00
-        self.assertEqual(float(general), 12.0)
+        # Matière Maths = (10 + 16) / 2 = 13 ; générale = (13*4 + 8*2) / (4+2) = 11.33
+        self.assertEqual(round(float(general), 2), 11.33)

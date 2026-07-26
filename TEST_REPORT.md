@@ -1,4 +1,156 @@
-# TEST_REPORT.md — Missions V4 + V5 + V6 (20/07/2026)
+# TEST_REPORT.md — Missions V4 → V8 (26/07/2026)
+
+## Résultats V8
+
+Résultats **rejoués intégralement après les derniers correctifs**
+(base de démonstration, interfaces de saisie, clé de notation maternelle,
+échappement des textes du reçu) — commit `a283093`.
+
+| # | Suite | Commande exacte | Tests | Réussis | Échecs | Ignorés |
+|---|---|---|---|---|---|---|
+| 1 | Backend **SQLite** | `DJANGO_SETTINGS_MODULE=feba_project.settings.test_sqlite pytest -q --no-migrations` | 406 | **405** | 0 | **1** |
+| 2 | Backend **PostgreSQL 16** | `DJANGO_SETTINGS_MODULE=feba_project.settings.test_postgres TEST_DB_PORT=55432 pytest -q` | 406 | **406** | 0 | **0** |
+| 3 | Frontend | `npm run test -- --run` | 70 (9 fichiers) | **70** | 0 | 0 |
+| 4 | ESLint | `npx eslint src` | — | **0 erreur** (63 avertissements hérités) | 0 | — |
+| 5 | Build production | `npm run build` | — | **✓ built in 8.76s** | 0 | — |
+
+Les deux suites backend comptent en plus **46 sous-tests** (`subtests`).
+
+### Suites ciblées (rejouées séparément, SQLite / PostgreSQL)
+
+| Suite | SQLite | PostgreSQL |
+|---|---|---|
+| `tests/test_pdf_stamps.py` (documents, cachets, textes) | **24** | **24** |
+| `tests/test_grade_weighting_and_scale.py` (calculs, barèmes) | **25** | **25** |
+| `tests/test_profile_creation.py` (profils) | **16** | **16** |
+| `tests/test_technical_incidents.py` (incidents) | **20** | — |
+| `tests/test_data_migrations.py` (migrations de données) | **5** | **5** |
+| `tests/test_bootstrap_demo.py` (base de démonstration) | **4** | **4** |
+| `test_parent_student.py::ParentStudentConcurrencyTest` | *ignoré* | **1 ✅** |
+
+### Chaîne complète vérifiée sur un conteneur PostgreSQL NEUF
+
+```
+docker run -d --name feba-pg-v8 -e POSTGRES_USER=feba_user … postgres:16-alpine
+manage.py migrate            → toute la chaîne appliquée, dont
+                               grades/0011, grades/0012, incidents/0001
+manage.py bootstrap_demo     → migrations + migrations de données + seeds
+  nombre de notes avec poids d'évaluation != 1 = 0   (sur 2400 note(s))
+  ✔ conforme
+```
+
+### Test de l'ARCHIVE EXTRAITE (livraison V8)
+
+Le ZIP a été extrait dans un dossier neuf, puis **son propre code** exécuté
+(chemin des modules vérifié : `/tmp/verif_zip_v8/…/apps/bulletins/pdf_generator.py`).
+
+| Contrôle | Résultat |
+|---|---|
+| Base de données locale, `node_modules`, `venv`, cache, log, `dist` dans l'archive | **aucun** |
+| Secrets | aucun ; `.env.dev` ne contient que des valeurs de développement explicitement marquées |
+| Migrations sur PostgreSQL **vierge** | **109 appliquées**, dont `grades/0011`, `grades/0012`, `incidents/0001` |
+| Seeds + vérification (`bootstrap_demo`) | `nombre de notes avec poids d'évaluation != 1 = 0` (sur 2400) |
+| Tests critiques depuis l'archive | **74 passed** (bootstrap, migrations, barèmes, documents, profils) |
+| Bulletin **/10** généré | `Moy. /10`, **0** valeur sur 20, 1 page |
+| Bulletin **/20** généré | `Moy. /20`, **0** valeur sur 10, 1 page |
+| Reçu généré | « Le Secrétariat » ✔, « Signature du Caissier » ✘, « Cachet de l'École » ✘, texte spécial conservé |
+| **Cachets embarqués** | bulletins → **LA DIRECTION** (et pas le secrétariat) ; reçu → **LE SECRETARIAT** (et pas la direction) |
+| SHA-256 | **58 / 58** conformes |
+| Bundle Git | `git bundle verify` : « complete history » ; clone réel → HEAD `26f1319`, 692 fichiers |
+
+#### Deux défauts d'installation trouvés par ce test (et corrigés)
+
+1. `psycopg2-binary==2.9.9` n'a **aucune roue** pour Python ≥ 3.13 : la
+   compilation échoue faute d'en-têtes PostgreSQL → installation impossible.
+   Version portée à **2.9.12**.
+2. **PyMuPDF (« fitz ») n'était déclaré nulle part** alors que les tests
+   documents l'importent : sur une installation neuve, la suite ne pouvait pas
+   démarrer. Ajouté à `requirements/dev.txt`.
+
+#### Ce qui n'a PAS pu être vérifié sur cette machine
+
+L'installation des dépendances **à partir de PyPI** n'a pas pu être menée à son
+terme : le réseau sortant est coupé (`ConnectTimeoutError` sur `pypi.org`) et
+seul **Python 3.14** est disponible localement, alors que le projet cible
+3.12+. Les deux correctifs ci-dessus lèvent les blocages identifiés, mais un
+`pip install -r requirements/dev.txt` complet reste à rejouer sur une machine
+disposant d'un accès réseau. Tout le reste du contrôle a été effectué sur le
+code réellement extrait de l'archive.
+
+### Piège d'environnement rencontré (et écarté)
+
+Un passage de la suite frontend a échoué sur `i18n.test.js` avec
+`TypeError: Cannot read properties of undefined (reading 'getItem')`. Cause :
+la commande avait été lancée avec **Node 26** (présent dans `/usr/local/bin`)
+au lieu du **Node 20** du projet ; Node 26 expose un `localStorage` global
+expérimental qui masque celui de jsdom. Rejouée avec la version du projet
+(`v20.20.2`), la suite passe **70/70**. Aucun code n'était en cause.
+
+### Le test ignoré (SQLite uniquement)
+
+`tests/test_parent_student.py:325` — test de **concurrence multi-thread**.
+SQLite en mémoire verrouille la table entière (« database table is locked ») ;
+il exige un vrai serveur de base. **Il s'exécute et réussit sur PostgreSQL**
+(d'où 406/406 sans aucun ignoré en ligne 2). Aucun test n'est donc réellement
+laissé de côté.
+
+### PostgreSQL : ce que SQLite ne pouvait pas prouver
+
+La suite PostgreSQL applique la **chaîne de migrations complète** (impossible
+sur la SQLite embarquée : une migration historique utilise une syntaxe refusée
+— limitation **pré-existante**, vérifiable sur un test antérieur à la V8, d'où
+`--no-migrations`). Elle valide donc aussi : les 3 migrations V8, les
+contraintes d'unicité réelles, les transactions et la concurrence.
+
+### Suites ajoutées en V8
+
+| Fichier | Tests | Objet |
+|---|---|---|
+| `tests/test_profile_creation.py` | 16 | création Enseignant (régression matricule), atomicité, doublons, permissions, isolation établissement, Élève, Parent |
+| `tests/test_technical_incidents.py` | 20 | 500 réelle → incident + notification, dédoublonnage, sanitisation, permissions, cycle de traitement, date de résolution |
+| `tests/test_grade_weighting_and_scale.py` | 19 | poids unique (12+5 = 8,50), cas limites, barèmes /10 et /20, appréciations |
+| `tests/test_pdf_stamps.py` | 22 | deux cachets distincts, mentions supprimées, positions, non-chevauchement, textes non tronqués |
+| `tests/test_data_migrations.py` | 5 | logique des migrations de données (avant/après, idempotence) |
+
+### Vérifications navigateur (réelles, non automatisées)
+
+Création d'un profil Enseignant **depuis le formulaire**, sur une base
+présentant un **trou de séquence** (`count()+1` = `ENS-2026-0006`, déjà pris) :
+profil créé avec **`ENS-2026-0007`**, 2 classes et 2 matières conservées,
+modification sans 500. Incidents : page, compteurs, filtres, cloche, changement
+de statut, admin **403**, anonyme **401**. Notes : 8,50 en base, via l'API et
+dans le résumé. Parent : tableau de bord chargé, moyennes présentes. Site
+public : 5 slides, 6 albums / 42 médias dont la vidéo, formulaire contact 201.
+Documents : reçus (court, partiel, soldé, duplicata, multiligne) et bulletins
+(court, chargé, primaire, collège) **rendus en images et inspectés**.
+
+
+## Résultats V7
+
+```bash
+cd backend && DJANGO_SETTINGS_MODULE=feba_project.settings.test_sqlite \
+  .venv-test/bin/python -m pytest --no-migrations -q     # 311 passed, 1 skipped
+cd frontend && npx vitest run                            # 70 passed
+npx eslint src                                           # 0 erreur
+npx vite build                                           # ✓ built
+```
+
+Ajouts V7 :
+
+| Suite | Fichier | Tests | Couvre |
+|---|---|---|---|
+| Backend | `tests/test_grade_precision.py` | 5 | saisir 10 → 10.00 (DB+API) ; 14 valeurs 0..20 ; bulk ; modification |
+| Backend | `tests/test_document_branding.py` | 6 | nom avec « & », GROUPE ÉDUCATIF présent, GROUPE SCOLAIRE absent, cachet embarqué, 1 page |
+| Frontend | `src/utils/gradeInput.test.js` | 8 | 10 reste 10 ; décimales ; virgule ; bornes ; signe |
+
+Vérif navigateur : formulaire notes (champ texte décimal, 10 immuable) ;
+bulletin & reçu réels (noms + cachet) ; galerie vidéo (contrôles, readyState 4) ;
+Admissions (corps entiers) ; façade (panneau visible). PDF réels extraits +
+rendus PNG (aucune fabrication).
+
+## Résultats V4 + V5 + V6
+
+
 
 ## Résultats V6.2 (conformité visuelle exacte aux captures annotées)
 

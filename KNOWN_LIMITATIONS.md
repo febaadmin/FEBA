@@ -1,4 +1,63 @@
-# KNOWN_LIMITATIONS.md — Missions V4 + V5 + V6
+# KNOWN_LIMITATIONS.md — Missions V4 → V8
+
+## Ajouts V8 (26/07/2026)
+
+1. **Migrations non rejouables sur la SQLite embarquée.** Une migration
+   *historique* utilise une syntaxe refusée par SQLite 3.53 (« near EXISTS »).
+   Les tests SQLite tournent donc avec `--no-migrations` — limitation
+   **pré-existante** (vérifiée sur un test antérieur à la V8), pas une
+   conséquence des migrations V8. **La chaîne complète est validée sur
+   PostgreSQL 16** (406/406) et la logique des migrations de données est en
+   outre testée directement (`tests/test_data_migrations.py`).
+
+2. **Barème /10 appliqué au bulletin PDF.** Les écrans ERP (tableaux de bord,
+   listes de notes, espaces Parent/Élève) affichent toujours l'échelle interne
+   /20. Les fonctions centrales (`get_grading_scale`,
+   `convert_average_for_scale`) sont prêtes à y être branchées.
+
+3. **Anciens poids d'évaluation non reconstituables.** La migration ramène tous
+   les poids à 1 sans conserver les valeurs précédentes : seul un dump antérieur
+   permet de les retrouver (cf. `RESTORE_GUIDE.md`).
+
+4. **Notifications d'incident : paliers fixes** (1, 5, 25, 100, 500), non
+   configurables depuis l'interface.
+
+5. **Pas de service externe d'erreurs** (type Sentry) configuré : le système
+   interne fonctionne seul. Un connecteur s'ajouterait dans `report_incident()`.
+
+6. **63 avertissements ESLint** hérités (hooks, variables inutilisées) —
+   **0 erreur**. Non traités pour ne pas élargir le périmètre.
+
+7. **Base de démonstration : migrations de données rejouées explicitement.**
+   Les réglages `dev_sqlite` neutralisent la chaîne de migrations ; la commande
+   `bootstrap_demo` rejoue donc les migrations de **données** V8 à la main puis
+   **vérifie** l'invariant (aucun poids ≠ 1). Sur PostgreSQL, la chaîne
+   s'applique normalement et la commande se contente de vérifier. Toute
+   nouvelle migration de données devra être ajoutée à `DATA_MIGRATIONS` dans
+   cette commande.
+
+8. **Installation depuis PyPI non rejouée de bout en bout.** Sur la machine de
+   validation, le réseau sortant est coupé et seul Python 3.14 est disponible
+   (le projet cible 3.12+). Deux blocages ont été trouvés et corrigés
+   (`psycopg2-binary` 2.9.9 → 2.9.12, ajout de `PyMuPDF`), mais un
+   `pip install -r requirements/dev.txt` complet reste à confirmer sur une
+   machine connectée.
+
+9. **Node 20 requis pour la suite frontend.** Sous Node 26, jsdom est masqué
+   par le `localStorage` global expérimental de Node et `i18n.test.js` échoue
+   (`Cannot read properties of undefined (reading 'getItem')`). Utiliser la
+   version du projet (`.nvmrc` / v20.20.2).
+
+
+## Ajouts V7 (25/07/2026)
+- Cachet : fichier statique unique packagé (défaut fourni) ; gestion fine par établissement
+  (activation/taille/position, réservée aux profils autorisés) = évolution possible. Dégradation
+  gracieuse si fichier absent.
+- Vérification navigateur du site public via le volet intégré ; la lecture programmatique de la
+  vidéo est bloquée en arrière-plan (économie d'énergie) — `readyState=4` prouve la disponibilité.
+- Captures headless Chrome parfois indisponibles (mise à jour Chrome en attente sur la machine) :
+  la vérification s'appuie alors sur le volet intégré + assertions DOM + rendus PDF réels.
+
 
 ## Ajouts V6 (20/07/2026)
 

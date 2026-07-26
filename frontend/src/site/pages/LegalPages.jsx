@@ -7,14 +7,14 @@ export function LegalPage() {
   const settings = useSiteSettings();
   return (
     <>
-      <Seo title="Mentions légales" description="Mentions légales du site de Faith Excellence Bilingual Academy." />
+      <Seo title="Mentions légales" description="Mentions légales du site de Faith & Excellence Bilingual Academy." />
       <PageBanner title="Mentions légales" />
       <Section tone="white">
         <div className="max-w-3xl mx-auto space-y-6 text-sm leading-relaxed">
           <div>
             <h2 className="font-bold text-feba-navy text-lg mb-2">Éditeur du site</h2>
             <p>
-              {settings.school_name || "Faith Excellence Bilingual Academy"} (FEBA),
+              {settings.school_name || "Faith & Excellence Bilingual Academy"} (FEBA),
               établissement scolaire bilingue situé à {settings.address || "Akpakpa, Cotonou, Bénin"}.
               {settings.email && <> Contact : <a className="text-feba-navy font-semibold hover:text-feba-gold" href={`mailto:${settings.email}`}>{settings.email}</a>.</>}
             </p>
@@ -39,7 +39,7 @@ export function PrivacyPage() {
   return (
     <>
       <Seo title="Politique de confidentialité"
-        description="Politique de confidentialité du site de Faith Excellence Bilingual Academy." />
+        description="Politique de confidentialité du site de Faith & Excellence Bilingual Academy." />
       <PageBanner title="Politique de confidentialité" />
       <Section tone="white">
         <div className="max-w-3xl mx-auto space-y-6 text-sm leading-relaxed">

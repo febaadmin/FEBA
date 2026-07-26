@@ -1,4 +1,50 @@
-# SECURITY_NOTES.md — Missions V4 + V6
+# SECURITY_NOTES.md — Missions V4 → V8
+
+## V8 (26/07/2026)
+
+### Faille corrigée : cloisonnement multi-établissement inopérant
+
+Le filtrage par établissement des champs DRF `many=True` ne s'appliquait pas :
+
+```python
+self.fields["subject_ids"].queryset = Subject.objects.filter(school=school)  # sans effet
+```
+
+Pour un `PrimaryKeyRelatedField(many=True)`, DRF enveloppe le champ dans un
+`ManyRelatedField` : la validation lit **`child_relation.queryset`**, jamais
+celui de l'enveloppe. Un administrateur pouvait donc rattacher à un enseignant
+des **matières et classes d'un AUTRE établissement**. Corrigé et couvert par un
+test dédié. À auditer partout où ce motif est utilisé.
+
+### Incidents techniques : aucune donnée sensible enregistrée
+
+Sanitisation centrale (`sanitize_text` / `sanitize_data`), appliquée
+**récursivement** : mots de passe, jetons, `Authorization: Bearer <jwt>`, JWT
+nus, cookies, clés d'API, secrets, numéros de carte → `[expurgé]`.
+Vérifié en conditions réelles (4 secrets injectés, 4 expurgés).
+Aucun **traceback** ni détail interne n'est renvoyé au client : seule une
+référence `ERR-XXXXXX` non devinable est communiquée.
+
+Accès aux incidents : **super administrateur uniquement** (admin → 403,
+enseignant/parent/élève → 403, anonyme → 401). Les données techniques sont
+**immuables** ; seuls statut, gravité, assignation et notes sont modifiables ;
+la création manuelle est refusée.
+
+### Intégrité des données
+
+Création de profil **atomique** (`transaction.atomic`) : aucun profil partiel,
+aucune relation orpheline après échec. Les erreurs d'intégrité sont traduites
+en **400 exploitables** — plus de 500 exposant l'état interne.
+
+
+## V7 (25/07/2026)
+- Précision des notes : la valeur saisie n'est jamais transformée en silence ; aucune règle
+  cachée (`if score==10`), aucun arrondi d'affichage masquant la base. Backend = source de vérité
+  (DecimalField, validation 0..20). Permissions de saisie inchangées (enseignant→ses matières,
+  anti-IDOR de V6 conservé).
+- Cachet : fichier statique packagé, apposé côté serveur sur les PDF ; aucune donnée sensible
+  exposée. Noms officiels centralisés (branding.py).
+
 
 ## Saisie groupée de notes (V6, P7)
 

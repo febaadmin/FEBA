@@ -1,5 +1,7 @@
 # INSTALL_V6.md — Guide d'installation (V6, 20/07/2026)
 
+> **V7** : après `seed_website`/`seed_demo_data`, le nom officiel est « Faith & Excellence Bilingual Academy », les bulletins/reçus portent « GROUPE ÉDUCATIF FEBA » + le cachet (`static_files/cachet_feba.png`), la vidéo galerie est dans `public/site/video/`. Rien de plus à installer (ffmpeg/PDF déjà gérés côté génération).
+
 ## 1. Prérequis
 
 - Docker 24+ et Docker Compose 2+ (voie recommandée), ou Python 3.12+ / Node 20+

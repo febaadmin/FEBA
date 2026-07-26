@@ -1,4 +1,99 @@
-# CHANGELOG_FIXES.md — Missions V4 + V5 + V6 (juillet 2026)
+# CHANGELOG_FIXES.md — Missions V4 → V8 (juillet 2026)
+
+## V8 — Profils, incidents techniques, poids des notes, barèmes, cachets (26/07/2026)
+
+- **P1 — Création du profil Enseignant réparée.** Cause racine : le matricule
+  était généré à partir de `Teacher.objects.count() + 1`. Après toute
+  suppression, le compteur retombait sur un matricule déjà pris → violation
+  d'unicité → **erreur 500**. Le matricule dérive désormais du **plus grand
+  suffixe existant** (+ reprise en cas de collision concurrente), la création
+  est **atomique**, et les erreurs deviennent des **400 exploitables**.
+- **P2 — Audit de tous les profils.** Faille corrigée : le filtrage
+  multi-établissement des champs DRF `many=True` était **inopérant** (DRF lit
+  `child_relation.queryset`) — un admin pouvait rattacher des matières/classes
+  d'un AUTRE établissement. 16 tests (Enseignant, Élève, Parent).
+- **P3 — Remontée RÉELLE des erreurs techniques.** Application `incidents` :
+  modèle `TechnicalIncident` (référence `ERR-XXXXXX`, gravité, statut, module,
+  empreinte, occurrences…), capture des 500 uniquement, **dédoublonnage** par
+  empreinte, **sanitisation** centrale (mots de passe, jetons, cookies, cartes),
+  **notification réelle** des super administrateurs pointant vers l'incident,
+  interface « Incidents techniques » (compteurs, filtres, recherche, statut,
+  note, résolution/réouverture) réservée aux super admins. Le message affirmant
+  faussement « l'équipe technique a été notifiée » est supprimé : la référence
+  n'est annoncée que si l'incident a **réellement** été enregistré.
+- **P4 — Poids d'évaluation unique.** Toutes les évaluations pèsent **1** :
+  `12` (interrogation) et `5` (examen) donnent **8,50**. Distinction nette
+  entre **poids d'évaluation** (toujours 1) et **coefficient de matière**
+  (inchangé). Source unique `apps/grades/grading.py`. Migration de données
+  (rapport avant / exécution / vérification après) + champ retiré des
+  interfaces.
+- **P5 — Bulletins sur 10 pour les niveaux 1 à 11.** Barème déduit d'un champ
+  **stable** (`Level.order`), conversion appliquée **une seule fois** à
+  l'affichage ; appréciations et lettres restent calculées sur l'équivalent
+  /20 (6,00/10 ≡ 12/20). Collège et au-delà conservent /20.
+- **P6 — Reçu « Le Secrétariat ».** « Signature du Caissier » et « Cachet de
+  l'École / School Stamp » supprimés ; zone de validation unique avec le
+  **cachet LE SECRETARIAT**.
+- **P7 — Cachet « LA DIRECTION » repositionné.** Il débordait d'une cellule à
+  hauteur fixe et chevauchait la date. Bloc dédié, centré, insécable, sans
+  allonger le bulletin.
+- **Défauts trouvés en inspectant les documents réels** : chevauchement du nom
+  de l'école et de l'adresse sur le reçu (interligne) ; « Moy. Pond. » restée
+  sur l'échelle /20 face à une moyenne /10 ; **observations tronquées** au bord
+  droit du reçu ; **date de résolution** d'un incident non renseignée par un
+  simple PATCH de statut. Tous corrigés et couverts par des tests.
+### Derniers correctifs V8 (après vérification sur données et documents réels)
+
+- **Barème par cycle.** `get_grading_scale` ne consultait que `Level.order`
+  avec un seuil fixe à 11 ; or ce rang est propre à chaque établissement (la
+  démo numérote CP1 = 0 … 3ème = 9), si bien que **tout le collège sortait noté
+  sur 10**. Le barème suit désormais `Level.cycle`, le rang ne servant que de
+  repli.
+- **Détail des notes converti.** Un bulletin sur 10 imprimait encore
+  « E:17.5 » en face de « 8.26/10 » — une note supérieure au barème annoncé.
+- **Clé de notation maternelle.** Le gabarit maternelle n'affiche que des
+  lettres : sa clé était la seule référence chiffrée, et restait sur 20.
+- **Base de démonstration non migrée.** `dev_sqlite` neutralise la chaîne de
+  migrations : la migration des poids n'était jamais jouée, et le seed tirait
+  lui-même un poids au hasard. Nouvelle commande **`bootstrap_demo`**
+  (migrations → migrations de données → seeds → vérification bloquante) et
+  seed corrigé.
+- **Texte des reçus préservé.** Une observation contenant « & » ou
+  « <trimestre 2> » était silencieusement amputée par le parseur mini-XML de
+  ReportLab ; les retours à la ligne sont désormais respectés.
+- **Poids d'évaluation effacé de l'interface** (3 profils) : colonnes, champ
+  figé, états React, exports et traductions. Le coefficient de **matière**
+  reste distinct et visible.
+
+- Backend **405 tests** (SQLite) / **406** (PostgreSQL 16, chaîne de migrations
+  complète), frontend **70**, ESLint **0 erreur**, build prod **OK**.
+
+
+## V7 — Noms officiels, cachet, précision des notes, façade, vidéo, admissions (25/07/2026)
+
+- **P1** — Nom officiel **« Faith & Excellence Bilingual Academy »** (avec « & »)
+  partout ; source de vérité `backend/feba_project/branding.py` ; 0 occurrence
+  restante sans « & » ; migrations de données (website 0003, schools 0011).
+- **P2** — **« GROUPE ÉDUCATIF FEBA »** remplace « GROUPE SCOLAIRE FEBA » ;
+  affiché en tête des bulletins & reçus ; l'école ERP prend son nom officiel.
+- **P3** — **Cachet officiel** extrait fidèlement du PDF (1320×1301) → PNG HD +
+  transparent + WebP ; apposé automatiquement sur bulletins & reçus (case
+  direction), non déformé, dégradation gracieuse si absent.
+- **P4** — **La note 10 n'est plus altérée en 9,5/9,75** : cause racine =
+  `input type=number step` modifié en silence par la molette/les flèches →
+  champs de note en **texte décimal** + normalisation + garde globale
+  anti-molette. 8 tests front + 5 tests back (10 reste 10 : DB, API, bulletin).
+- **P5** — Nouvelle **façade FEBA** (panneau « Faith & Excellence » + fresques)
+  intégrée (accueil + galerie), point focal relevé (panneau visible).
+- **P6** — **Vidéo** fournie optimisée (11→6,6 Mo, H.264/AAC, faststart) +
+  poster ; visionneuse avec contrôles (lecture/pause, volume, plein écran),
+  arrêt à la fermeture, pas de lecture auto avec son.
+- **P7** — **Admissions « La visite du campus »** : conteneur agrandi + focal
+  descendu → corps entiers des enfants et parents visibles (plus que les têtes).
+- Backend **311 tests** (+1 skip), frontend **70 tests**, eslint **0 erreur**,
+  build prod OK. Détails : `OFFICIAL_NAMING_REPORT`, `STAMP_INTEGRATION_REPORT`,
+  `GRADE_PRECISION_REPORT`, `VIDEO_INTEGRATION_REPORT`, `FINAL_REPORT`.
+
 
 ## V6.2 — Conformité visuelle exacte aux captures annotées (20/07/2026)
 
