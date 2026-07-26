@@ -19,3 +19,5 @@ backend/.venv-test/
 # Artefacts d'exécution locale
 backend/db_dev.sqlite3
 backend/celerybeat-schedule
+
+.claude/
