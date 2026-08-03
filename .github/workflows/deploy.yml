@@ -53,14 +53,14 @@ jobs:
           cd /opt/feba/app/FEBA
 
           echo "==> Sauvegarde Restic pré-déploiement"
-          systemctl start feba-backup.service
+          sudo -n /usr/bin/systemctl start feba-backup.service
 
-          backup_result="$(systemctl show \
+          backup_result="$(sudo -n /usr/bin/systemctl show \
             feba-backup.service \
             --property=Result \
             --value)"
 
-          exec_status="$(systemctl show \
+          exec_status="$(sudo -n /usr/bin/systemctl show \
             feba-backup.service \
             --property=ExecMainStatus \
             --value)"
@@ -70,8 +70,8 @@ jobs:
 
           if [ "$backup_result" != "success" ] || [ "$exec_status" != "0" ]; then
             echo "ERREUR : la sauvegarde pré-déploiement a échoué."
-            systemctl status feba-backup.service --no-pager -l || true
-            journalctl -u feba-backup.service -n 100 --no-pager || true
+            sudo -n /usr/bin/systemctl status feba-backup.service --no-pager -l || true
+            sudo -n /usr/bin/journalctl -u feba-backup.service -n 100 --no-pager || true
             exit 1
           fi
 
