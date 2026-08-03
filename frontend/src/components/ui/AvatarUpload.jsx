@@ -83,7 +83,7 @@ export default function AvatarUpload({ user, onUpdate, size = "lg" }) {
           className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-primary text-white rounded-xl hover:bg-primary/90 transition-colors"
         >
           <Camera className="w-3.5 h-3.5" />
-          {user?.avatar ? "Changer" : "Ajouter une photo"}
+          {user?.avatar ? t("Changer") : t("Ajouter une photo")}
         </button>
         {user?.avatar && (
           <button

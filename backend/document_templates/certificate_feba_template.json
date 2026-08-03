@@ -1,0 +1,208 @@
+{
+  "id": "certificate_feba",
+  "version": 2,
+  "label": "Certificat FEBA",
+  "description": "Certificat de réussite — fond verrouillé, seuls les champs variables sont rendus.",
+  "background": {
+    "file": "certificat_feba_2.png",
+    "sha256": "6ff65e31f6eef6da4da516f7ba80c680f74c067f903444f7fd79e00b223ffa36",
+    "width_px": 1491,
+    "height_px": 1055,
+    "_commentaire": "Empreinte du PNG d'origine, autorité de référence. Une variante transcodée peut être acceptée nommément ; elle ne s'y substitue pas.",
+    "accepted_variants": [
+      {
+        "sha256": "bccead70bc0e6643ae60c82ce932b717443e57b578a22ab529a477693958f41a",
+        "source": "fichier PNG fourni à l'installation",
+        "reason": "Visuel transmis par le canal de conversation, qui ré-encode les images jointes en WebP avec perte avant de les remettre. Dimensions vérifiées identiques à l'original (géométrie intacte, calibrage valide) ; pixels ré-encodés, donc empreinte du PNG d'origine inatteignable. À remplacer par le PNG d'origine dès qu'il parvient par un canal sans transcodage.",
+        "accepted_by": "Livraison V8 — opérateur d'intégration",
+        "accepted_at": "2026-08-01",
+        "lossy": false
+      }
+    ],
+    "original_filename": "Certificat FEBA(2).png",
+    "_commentaire_nom": "Le fichier est stocké sous un nom ASCII. Le nom d'usage de l'établissement est « Certificat FEBA(2).png », conservé ci-dessus pour mémoire. Ce n'est pas un détail cosmétique : « unzip » recode les noms non-ASCII (« Dipl#U00f4me FEBA(2).png »), et le moteur ne retrouvait plus son fond dans une archive extraite. L'identité d'un fond est son empreinte SHA-256, jamais son nom de fichier."
+  },
+  "page": {
+    "format": "A4",
+    "orientation": "landscape",
+    "width_mm": 297.0,
+    "height_mm": 210.0,
+    "fit": "contain",
+    "_commentaire_fit": "Rapport 1491/1055 = 1,41327. Le fond occupe 296,79 × 210,00 mm, centré, avec 0,107 mm de bande à gauche et à droite."
+  },
+  "origin": "top-left",
+  "calibrated": true,
+  "calibration": {
+    "tolerance_mm": 0.2,
+    "method": "Mesure automatique par « manage.py document_probe », report des coordonnées, vérification par grille millimétrée et comparaison pixel à pixel des zones statiques.",
+    "date": "2026-08-01",
+    "operator": "document_probe v1",
+    "reference_anchors": [
+      {
+        "nom": "règle d'écriture du nom",
+        "px": "y 689–691, x 338–1153",
+        "mm": "y 137,15 · x 67,39 → 229,61"
+      },
+      {
+        "nom": "règle DATE",
+        "px": "y 902–904, x 374–587",
+        "mm": "y 179,55 · x 74,55 → 116,95"
+      },
+      {
+        "nom": "règle SIGNATURE",
+        "px": "y 902–904, x 904–1116",
+        "mm": "y 179,55 · x 180,05 → 222,25"
+      },
+      {
+        "nom": "disque intérieur du médaillon",
+        "px": "centre (1283,5 · 197,5), ⌀ 119",
+        "mm": "centre (255,59 · 39,31), ⌀ 23,69"
+      }
+    ]
+  },
+  "placeholder_masks": [],
+  "_commentaire_masques": "Le certificat n'a AUCUNE mention d'exemple à neutraliser : sa ligne d'écriture est vide sur le visuel d'origine. Le seul placeholder est « YOUR SEAL », traité comme un asset et non comme un masque — voir plus bas.",
+  "fields": [
+    {
+      "name": "student_name",
+      "label": "Nom du récipiendaire",
+      "type": "text",
+      "required": true,
+      "box": {
+        "x_mm": 71.0,
+        "y_mm": 121.62,
+        "width_mm": 155.0,
+        "height_mm": 14.33
+      },
+      "align": "center",
+      "vertical_align": "bottom",
+      "font": {
+        "family": "FEBA-Script",
+        "size_pt": 34,
+        "min_size_pt": 14
+      },
+      "color": "#B08A2E",
+      "shrink_to_fit": true,
+      "max_lines": 2,
+      "truncate": false,
+      "_commentaire_boite": "Centrée sur la règle d'écriture (67,39 → 229,61 mm, milieu 148,5 mm) avec 3,6 mm de retrait de chaque côté.",
+      "bleed_mm": 3.0,
+      "_commentaire_debord": "Les jambages descendants (« p », « g », « j ») passent sous la ligne de base et franchissent la règle d'écriture. Ce débord appartient à la zone VARIABLE : sans lui, la comparaison compterait le jambage d'un nom comme une altération du fond.",
+      "_commentaire_lignes": "DEUX lignes autorisées. Un patronyme composé de la diaspora dépasse couramment soixante-dix caractères : sur une seule ligne il ne tient pas, et refuser de produire n'est pas un service rendu à l'élève. Le repli est calculé par apps/documents/textfit.py à partir des métriques réelles de la police — boîte englobante du dessin de chaque lettre — et non d'une estimation du type « hauteur = corps × 0,75 », qui se trompait de 30 % et faisait remonter la première ligne sur la phrase gravée dans le fond.",
+      "safe_zone": {
+        "y_top_mm": 121.62,
+        "y_bottom_mm": 135.95,
+        "x_left_mm": 71.0,
+        "x_right_mm": 226.0,
+        "engraved_phrase_bottom_mm": 121.02,
+        "writing_rule_top_mm": 136.95,
+        "_mesure": "MESURÉ sur le fond réellement dessiné, pas estimé. Bord inférieur de la phrase gravée « Ce certificat est fièrement décerné à » : px y 587–607, soit 121.02 mm ; dégagement 0.6 mm. Bord supérieur de la règle d'écriture : px y 688–691, soit 136.95 mm ; dégagement 1.0 mm. La règle s'étend de 67.19 à 229.81 mm : le nom reste à l'intérieur du trait sur lequel il est écrit.",
+        "_commande": "manage.py document_calibrate --template <id> — la commande réimprime ces nombres depuis le fond installé et échoue si le fond a bougé."
+      },
+      "line_spacing": 1.0,
+      "baseline_reserve_em": 0.23
+    },
+    {
+      "name": "issue_date",
+      "label": "Date de délivrance",
+      "type": "date",
+      "required": true,
+      "box": {
+        "x_mm": 74.6,
+        "y_mm": 172.5,
+        "width_mm": 42.4,
+        "height_mm": 6.5
+      },
+      "align": "center",
+      "vertical_align": "bottom",
+      "font": {
+        "family": "FEBA-Text",
+        "size_pt": 11,
+        "min_size_pt": 8
+      },
+      "color": "#1E3A6E",
+      "format": "%d/%m/%Y"
+    },
+    {
+      "name": "signatory_name",
+      "label": "Nom du signataire",
+      "type": "text",
+      "required": false,
+      "box": {
+        "x_mm": 180.1,
+        "y_mm": 172.5,
+        "width_mm": 42.2,
+        "height_mm": 6.5
+      },
+      "align": "center",
+      "vertical_align": "bottom",
+      "font": {
+        "family": "FEBA-TextItalic",
+        "size_pt": 10,
+        "min_size_pt": 7
+      },
+      "color": "#1E3A6E",
+      "_commentaire": "Rendu uniquement en l'absence de signature officielle. Un nom dactylographié ne prétend pas être une signature."
+    },
+    {
+      "name": "document_number",
+      "label": "Numéro du certificat",
+      "type": "text",
+      "required": false,
+      "box": {
+        "x_mm": 45.0,
+        "y_mm": 190.5,
+        "width_mm": 50.0,
+        "height_mm": 5.0
+      },
+      "align": "left",
+      "vertical_align": "middle",
+      "font": {
+        "family": "FEBA-Text",
+        "size_pt": 7.5,
+        "min_size_pt": 6
+      },
+      "color": "#8A7A55",
+      "_commentaire": "Zone MESURÉE libre à 100 % (x 43–95 mm, y 190–196). Le coin bas-droit du certificat porte la vague dorée et marine : un numéro y serait illisible."
+    }
+  ],
+  "assets": [
+    {
+      "name": "official_seal",
+      "label": "Sceau officiel — remplace « YOUR SEAL »",
+      "required": false,
+      "resource": "seal_official",
+      "box": {
+        "x_mm": 245.09,
+        "y_mm": 28.81,
+        "width_mm": 21.0,
+        "height_mm": 21.0
+      },
+      "fit": "contain",
+      "backdrop": "#F7F2E6",
+      "backdrop_shape": "circle",
+      "backdrop_diameter_mm": 22.5,
+      "_commentaire": "Disque intérieur du médaillon MESURÉ : centre (255,59 · 39,31) mm, ⌀ 23,69 mm (px : centre 1283,5 · 197,5, ⌀ 119). Le fond de disque fait 22,5 mm — délibérément PLUS PETIT que le disque, pour que l'anneau marine reste visible et que la couronne dorée crantée ne soit jamais recouverte. Le sceau lui-même s'inscrit dans 21 mm.",
+      "_commentaire_absence": "Sans sceau officiel dans les ressources du projet, la mention « YOUR SEAL » du fond RESTE VISIBLE. Elle n'est ni masquée ni remplacée par un ersatz : c'est le signal, pour l'établissement, que le document n'est pas finalisé."
+    },
+    {
+      "name": "signatory_signature",
+      "label": "Signature officielle",
+      "required": false,
+      "resource": "signature_director",
+      "box": {
+        "x_mm": 183.0,
+        "y_mm": 165.5,
+        "width_mm": 36.0,
+        "height_mm": 13.0
+      },
+      "fit": "contain",
+      "_commentaire": "Aucun fichier de signature n'existe dans les ressources du projet : la zone reste vide."
+    }
+  ],
+  "_commentaire_motif": "Aucun champ « motif » n'est déclaré. L'espace entre la règle d'écriture (137,15 mm) et le paragraphe fixe du fond (142,9 mm) ne fait que 5,7 mm : une ligne ajoutée s'y superposerait au texte imprimé. Le fond porte déjà sa propre formule de félicitations — la doubler n'ajouterait rien et abîmerait la mise en page.",
+  "academies": [
+    "FEBA"
+  ],
+  "_commentaire_academies": "Codes internes des académies autorisées à émettre ce document. Le fond porte l'identité visuelle de FEBA (Cotonou) : l'utiliser pour FEBA French Heritage Academy produirait un document au nom d'une académie et à l'effigie d'une autre. Liste vide ou absente = toutes les académies. Le jour où l'académie en ligne fournit son propre fond, il fera l'objet d'un gabarit distinct."
+}

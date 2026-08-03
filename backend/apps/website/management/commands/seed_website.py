@@ -17,6 +17,109 @@ from apps.website.models import (
     SiteSettings, HeroSlide, GalleryAlbum, GalleryItem,
 )
 
+# ── Traductions anglaises du contenu par défaut (P1) ────────────────────
+# Le carrousel et la galerie sont du contenu ADMINISTRÉ : le sélecteur
+# EN/FR ne pouvait donc pas les traduire, et un visiteur anglophone voyait
+# une page d'accueil française par-dessus un menu anglais. Le seed remplit
+# désormais les champs `_en` en même temps que les champs français.
+#
+# La table est indexée par la chaîne FRANÇAISE plutôt que dupliquée dans
+# chaque définition : les libellés du seed servent aussi au frontend de
+# repli, et deux listes parallèles finiraient par diverger.
+EN = {
+    # Slides du carrousel
+    "Bienvenue à FEBA": "Welcome to FEBA",
+    "Faith & Excellence Bilingual Academy — école bilingue à Akpakpa, Cotonou.":
+        "Faith & Excellence Bilingual Academy — a bilingual school in Akpakpa, Cotonou.",
+    "Découvrir l'école": "Discover the school",
+    "Grandir dans l'excellence": "Growing in excellence",
+    "Un encadrement de qualité, des valeurs et un suivi personnalisé.":
+        "Quality supervision, strong values and personalised follow-up.",
+    "Nos programmes": "Our programmes",
+    "Français et anglais au quotidien": "French and English every day",
+    "Un enseignement bilingue dès le plus jeune âge.":
+        "Bilingual teaching from the earliest age.",
+    "Le bilinguisme à FEBA": "Bilingualism at FEBA",
+    "Apprendre, grandir et s'épanouir": "Learn, grow and flourish",
+    "Musique, arts, sport et jeux éducatifs dans un cadre sécurisé.":
+        "Music, arts, sport and educational games in a safe setting.",
+    "La vie à FEBA": "Life at FEBA",
+    "Admissions ouvertes": "Admissions are open",
+    "Rejoignez la famille FEBA : la préinscription ne prend que quelques minutes.":
+        "Join the FEBA family: pre-registration takes only a few minutes.",
+    "Inscrire mon enfant": "Enrol my child",
+    # Albums
+    "Vie de classe": "Classroom life",
+    "Apprentissages quotidiens, lecture et travaux de groupe.":
+        "Daily learning, reading and group work.",
+    "Activités et épanouissement": "Activities and personal growth",
+    "Musique, arts, sport et expression.": "Music, arts, sport and self-expression.",
+    "Notre campus": "Our campus",
+    "Les espaces de l'école à Akpakpa.": "The school's spaces in Akpakpa.",
+    "Petite enfance": "Early years",
+    "Garderie et maternelle : éveil et jeux éducatifs.":
+        "Nursery and kindergarten: awakening and educational games.",
+    "FEBA French Heritage Academy": "FEBA French Heritage Academy",
+    "Cours de français en ligne pour les enfants de la diaspora.":
+        "Online French lessons for children of the diaspora.",
+    "Moments FEBA": "FEBA moments",
+    "Instantanés de la vie de l'école.": "Snapshots of school life.",
+    # Légendes des médias
+    "Cours en classe": "A lesson in class",
+    "Découverte du monde": "Discovering the world",
+    "Participation en classe": "Taking part in class",
+    "Travail en primaire": "Primary-school work",
+    "Lecture en classe": "Reading in class",
+    "Lecture accompagnée": "Guided reading",
+    "À la bibliothèque": "In the library",
+    "Atelier sciences": "Science workshop",
+    "Initiation au numérique": "Introduction to digital skills",
+    "Travaux d'écriture": "Writing work",
+    "Temps d'étude": "Study time",
+    "Devoirs en classe": "Homework in class",
+    "Soutien individualisé": "One-to-one support",
+    "Accompagnement personnalisé": "Personalised support",
+    "Groupe de musique": "The school band",
+    "Atelier musique": "Music workshop",
+    "Répétition musicale": "Music rehearsal",
+    "Percussions et héritage culturel": "Percussion and cultural heritage",
+    "Arts plastiques": "Visual arts",
+    "Football": "Football",
+    "Sport dans la cour": "Sport in the playground",
+    "Expression orale": "Public speaking",
+    "Jeux dans la cour": "Playground games",
+    "Marelle en maternelle": "Hopscotch in kindergarten",
+    "Le bâtiment principal": "The main building",
+    "Façade FEBA — logo et fresques": "FEBA frontage — logo and murals",
+    "La devise de l'école": "The school motto",
+    "La cour de récréation": "The playground",
+    "La crèche FEBA": "The FEBA crèche",
+    "Éveil en garderie": "Awakening in nursery",
+    "Jeux de construction": "Building games",
+    "Activités en maternelle": "Kindergarten activities",
+    "Cours en visioconférence": "Video-conference lesson",
+    "Cours de français en ligne": "Online French lesson",
+    "Leçon interactive": "Interactive lesson",
+    "Esprit d'équipe": "Team spirit",
+    "Travail de groupe": "Group work",
+    "L'équipe pédagogique": "The teaching team",
+    "Accueil des familles": "Welcoming families",
+    "Mosaïque de la vie scolaire": "School-life mosaic",
+    "Mosaïque des apprentissages": "Learning mosaic",
+    "FEBA en vidéo": "FEBA on video",
+    "Vidéo de présentation de l'école": "Video introducing the school",
+}
+
+
+def en(text):
+    """
+    Traduction anglaise d'un libellé de contenu par défaut.
+
+    Repli sur le français si la traduction manque : mieux vaut un libellé
+    non traduit qu'un titre vide dans le carrousel.
+    """
+    return EN.get(text, text)
+
 IMG = "/site/img/{}-1600.webp"
 
 # Points focaux (V5) : position du sujet principal de chaque visuel, en %
@@ -165,7 +268,7 @@ ALBUMS = [
         ("niveau-garderie-jeux", "Jeux de construction"),
         ("niveau-maternelle", "Activités en maternelle"),
     ]),
-    ("FEBA Online", "Cours en ligne pour les enfants de la diaspora.", [
+    ("FEBA French Heritage Academy", "Cours de français en ligne pour les enfants de la diaspora.", [
         ("online-visio", "Cours en visioconférence"),
         ("online-cours-francais", "Cours de français en ligne"),
         ("online-lecon", "Leçon interactive"),
@@ -193,14 +296,26 @@ class Command(BaseCommand):
 
         for data in HERO_SLIDES:
             HeroSlide.objects.update_or_create(
-                order=data["order"], defaults={**data, "is_active": True},
+                order=data["order"],
+                defaults={
+                    **data,
+                    "title_en": en(data["title"]),
+                    "subtitle_en": en(data["subtitle"]),
+                    "cta_label_en": en(data["cta_label"]),
+                    "is_active": True,
+                },
             )
         self.stdout.write(f"✅ {len(HERO_SLIDES)} slides du carrousel")
 
         for order, (title, description, items) in enumerate(ALBUMS, start=1):
             album, _ = GalleryAlbum.objects.update_or_create(
                 title=title,
-                defaults={"description": description, "order": order, "is_active": True},
+                defaults={
+                    "title_en": en(title),
+                    "description": description,
+                    "description_en": en(description),
+                    "order": order, "is_active": True,
+                },
             )
             wanted_paths = []
             for i, (slug, caption) in enumerate(items, start=1):
@@ -210,7 +325,9 @@ class Command(BaseCommand):
                 GalleryItem.objects.update_or_create(
                     album=album, image_path=path,
                     defaults={
-                        "kind": "image", "caption": caption, "alt_text": caption,
+                        "kind": "image",
+                        "caption": caption, "caption_en": en(caption),
+                        "alt_text": caption, "alt_text_en": en(caption),
                         "order": i, "is_active": True,
                         "focal_x": fx, "focal_y": fy,
                     },
@@ -231,7 +348,9 @@ class Command(BaseCommand):
             video_url="/site/video/feba-presentation.mp4",
             defaults={
                 "caption": "FEBA en vidéo",
+                "caption_en": en("FEBA en vidéo"),
                 "alt_text": "Vidéo de présentation de l'école",
+                "alt_text_en": en("Vidéo de présentation de l'école"),
                 "image_path": "/site/video/feba-presentation-poster.webp",
                 "order": 99, "is_active": True,
             },

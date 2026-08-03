@@ -19,6 +19,7 @@ import pytest
 from pypdf import PdfReader
 
 from apps.bulletins import pdf_generator as G
+from tests.branding_fixtures import make_palette
 
 A4_W, A4_H = 595, 842  # points (portrait)
 
@@ -55,9 +56,8 @@ def _standard_pdf(fr, en, period="T1"):
     stats = {"fr_min": 10.82, "fr_max": 14.71, "en_min": 8.93, "en_max": 16.39,
              "bi_min": 10.85, "bi_max": 15.33}
     buf = BytesIO()
-    logo = G._get_school_logo_path(student)
     G._build_standard_pdf(buf, student, period, sy, subject_data, bilingual,
-                          stats, 11.63, bull, logo)
+                          stats, 11.63, bull, make_palette())
     return buf.getvalue()
 
 
@@ -121,6 +121,5 @@ def test_maternelle_single_page_with_long_names():
     ]
     sd = {e["subject_id"]: e for e in data}
     buf = BytesIO()
-    logo = G._get_school_logo_path(student)
-    G._build_maternelle_pdf(buf, student, "T1", sy, sd, 15.0, bull, logo)
+    G._build_maternelle_pdf(buf, student, "T1", sy, sd, 15.0, bull, make_palette())
     assert len(_pages(buf.getvalue())) == 1

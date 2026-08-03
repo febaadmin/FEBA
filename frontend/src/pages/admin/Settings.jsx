@@ -20,6 +20,8 @@ import DataTable from "../../components/ui/DataTable";
 import { Save, Plus, Trash2, Check, Calendar, DoorOpen, Pencil, Tag } from "lucide-react";
 import { extractApiError } from "../../utils/errors";
 import { t } from "../../i18n";
+import { useAcademyKey, useEntityContext } from "../../hooks/useEntityContext";
+import AcademyBadge from "../../components/AcademyBadge";
 
 /** Types statiques par défaut (toujours présents dans le dropdown). */
 const STATIC_ROOM_TYPES = [
@@ -34,6 +36,9 @@ const STATIC_ROOM_TYPES = [
 ];
 
 export default function AdminSettings() {
+  const { allEntitiesMode } = useEntityContext();
+  const academyKey = useAcademyKey();
+
   const qc = useQueryClient();
 
   // ── Modal states ──────────────────────────────────────────────────────────
@@ -64,12 +69,12 @@ export default function AdminSettings() {
   const roomTypeValue = wrr("room_type");
 
   // ── Queries ───────────────────────────────────────────────────────────────
-  const { data: schoolData }    = useQuery({ queryKey: ["school"],            queryFn: schoolsAPI.list });
-  const { data: subjectsData }  = useQuery({ queryKey: ["subjects-settings"], queryFn: () => subjectsAPI.list() });
-  const { data: yearsData }     = useQuery({ queryKey: ["years"],             queryFn: schoolsAPI.years });
-  const { data: classData }     = useQuery({ queryKey: ["classes"],           queryFn: () => classesAPI.list() });
-  const { data: roomsData }     = useQuery({ queryKey: ["rooms"],             queryFn: () => schoolsAPI.rooms() });
-  const { data: roomTypesData } = useQuery({ queryKey: ["room-types"],        queryFn: () => schoolsAPI.roomTypes() });
+  const { data: schoolData }    = useQuery({ queryKey: ["school", academyKey],            queryFn: schoolsAPI.list });
+  const { data: subjectsData }  = useQuery({ queryKey: ["subjects-settings", academyKey], queryFn: () => subjectsAPI.list() });
+  const { data: yearsData }     = useQuery({ queryKey: ["years", academyKey],             queryFn: schoolsAPI.years });
+  const { data: classData }     = useQuery({ queryKey: ["classes", academyKey],           queryFn: () => classesAPI.list() });
+  const { data: roomsData }     = useQuery({ queryKey: ["rooms", academyKey],             queryFn: () => schoolsAPI.rooms() });
+  const { data: roomTypesData } = useQuery({ queryKey: ["room-types", academyKey],        queryFn: () => schoolsAPI.roomTypes() });
 
   const school       = schoolData?.data?.results?.[0]  || schoolData?.data?.[0];
   const subjects     = subjectsData?.data?.results     || subjectsData?.data     || [];
@@ -95,28 +100,28 @@ export default function AdminSettings() {
   // ── Mutations : École ──────────────────────────────────────────────────────
   const updateMut = useMutation({
     mutationFn: d => schoolsAPI.update(school.id, d),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["school"] }); toast.success(t("École mise à jour !")); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["school", academyKey] }); toast.success(t("École mise à jour !")); },
   });
 
   // ── Mutations : Matières ───────────────────────────────────────────────────
   const createSubjectMut = useMutation({
     mutationFn: subjectsAPI.create,
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["subjects-settings"] }); toast.success(t("Matière créée !")); setSubjectModal(false); rss(); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["subjects-settings", academyKey] }); toast.success(t("Matière créée !")); setSubjectModal(false); rss(); },
   });
   const updateSubjectMut = useMutation({
     mutationFn: ({ id, data }) => subjectsAPI.update(id, data),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["subjects-settings"] }); toast.success(t("Matière modifiée !")); setEditSubject(null); rsedit(); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["subjects-settings", academyKey] }); toast.success(t("Matière modifiée !")); setEditSubject(null); rsedit(); },
     onError: (e) => toast.error(extractApiError(e)),
   });
   const deleteSubjectMut = useMutation({
     mutationFn: subjectsAPI.delete,
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["subjects-settings"] }); toast.success(t("Supprimée.")); setDeleteSubject(null); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["subjects-settings", academyKey] }); toast.success(t("Supprimée.")); setDeleteSubject(null); },
   });
 
   // ── Mutations : Années ─────────────────────────────────────────────────────
   const createYearMut = useMutation({
     mutationFn: schoolsAPI.createYear,
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["years"] }); toast.success(t("Année créée !")); setYearModal(false); rsy(); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["years", academyKey] }); toast.success(t("Année créée !")); setYearModal(false); rsy(); },
     onError: (e) => {
       const detail = e.response?.data?.detail || e.response?.data?.non_field_errors?.[0]
         || JSON.stringify(e.response?.data) || "Erreur lors de la création.";
@@ -125,13 +130,13 @@ export default function AdminSettings() {
   });
   const activateYearMut = useMutation({
     mutationFn: schoolsAPI.activateYear,
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["years"] }); toast.success(t("Année activée !")); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["years", academyKey] }); toast.success(t("Année activée !")); },
   });
   // BUG N°5 — CRUD complet : modification et suppression d'une année
   const updateYearMut = useMutation({
     mutationFn: ({ id, data }) => schoolsAPI.updateYear(id, data),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["years"] });
+      qc.invalidateQueries({ queryKey: ["years", academyKey] });
       toast.success(t("Année scolaire modifiée !"));
       setYearModal(false); setEditYear(null); rsy();
     },
@@ -140,7 +145,7 @@ export default function AdminSettings() {
   const deleteYearMut = useMutation({
     mutationFn: schoolsAPI.deleteYear,
     onSuccess: (d) => {
-      qc.invalidateQueries({ queryKey: ["years"] });
+      qc.invalidateQueries({ queryKey: ["years", academyKey] });
       toast.success(d.data?.detail || "Année scolaire supprimée.");
       setDeleteYear(null);
     },
@@ -151,7 +156,7 @@ export default function AdminSettings() {
   });
   const closeYearMut = useMutation({
     mutationFn: schoolsAPI.closeYear,
-    onSuccess: (d) => { qc.invalidateQueries({ queryKey: ["years"] }); toast.success(d.data?.detail || "Année clôturée."); },
+    onSuccess: (d) => { qc.invalidateQueries({ queryKey: ["years", academyKey] }); toast.success(d.data?.detail || "Année clôturée."); },
     onError: (e) => toast.error(extractApiError(e)),
   });
 
@@ -159,7 +164,7 @@ export default function AdminSettings() {
   const createRoomTypeMut = useMutation({
     mutationFn: schoolsAPI.createRoomType,
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["room-types"] });
+      qc.invalidateQueries({ queryKey: ["room-types", academyKey] });
       toast.success(t("Type de salle créé !"));
       setRoomTypeModal(false);
       rsrt();
@@ -169,7 +174,7 @@ export default function AdminSettings() {
   const updateRoomTypeMut = useMutation({
     mutationFn: ({ id, data }) => schoolsAPI.updateRoomType(id, data),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["room-types"] });
+      qc.invalidateQueries({ queryKey: ["room-types", academyKey] });
       toast.success(t("Type modifié !"));
       setEditRoomType(null);
       rsrt();
@@ -179,8 +184,8 @@ export default function AdminSettings() {
   const deleteRoomTypeMut = useMutation({
     mutationFn: schoolsAPI.deleteRoomType,
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["room-types"] });
-      qc.invalidateQueries({ queryKey: ["rooms"] });
+      qc.invalidateQueries({ queryKey: ["room-types", academyKey] });
+      qc.invalidateQueries({ queryKey: ["rooms", academyKey] });
       toast.success(t("Type supprimé."));
       setDeleteRoomType(null);
     },
@@ -189,15 +194,15 @@ export default function AdminSettings() {
   // ── Mutations : Salles ─────────────────────────────────────────────────────
   const createRoomMut = useMutation({
     mutationFn: schoolsAPI.createRoom,
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["rooms"] }); toast.success(t("Salle créée !")); setRoomModal(false); setEditRoom(null); rsr({ room_type: "classroom", capacity: 30 }); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["rooms", academyKey] }); toast.success(t("Salle créée !")); setRoomModal(false); setEditRoom(null); rsr({ room_type: "classroom", capacity: 30 }); },
   });
   const updateRoomMut = useMutation({
     mutationFn: ({ id, data }) => schoolsAPI.updateRoom(id, data),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["rooms"] }); toast.success(t("Salle modifiée !")); setRoomModal(false); setEditRoom(null); rsr({ room_type: "classroom", capacity: 30 }); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["rooms", academyKey] }); toast.success(t("Salle modifiée !")); setRoomModal(false); setEditRoom(null); rsr({ room_type: "classroom", capacity: 30 }); },
   });
   const deleteRoomMut = useMutation({
     mutationFn: schoolsAPI.deleteRoom,
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["rooms"] }); toast.success(t("Supprimée.")); setDeleteRoom(null); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["rooms", academyKey] }); toast.success(t("Supprimée.")); setDeleteRoom(null); },
   });
 
   // ── Helpers salles ─────────────────────────────────────────────────────────
@@ -369,7 +374,14 @@ export default function AdminSettings() {
           {years.map(y => (
             <div key={y.id} className="flex items-center justify-between py-2 px-3 bg-slate-50 rounded-xl">
               <div>
-                <p className="text-sm font-medium text-slate-800">{y.name}</p>
+                <p className="text-sm font-medium text-slate-800 flex items-center gap-2">
+                  {/* P3 : deux académies peuvent avoir une année du même
+                      nom (« 2025-2026 ») — le badge les distingue. */}
+                  {allEntitiesMode && (
+                    <AcademyBadge code={y.academy_code} name={y.academy_name} />
+                  )}
+                  {y.name}
+                </p>
                 <p className="text-xs text-slate-400">{y.start_date} → {y.end_date}</p>
               </div>
               <div className="flex items-center gap-2">
@@ -422,7 +434,12 @@ export default function AdminSettings() {
           {subjects.map(s => (
             <div key={s.id} className="flex items-center justify-between py-2 px-3 bg-slate-50 rounded-xl">
               <div>
-                <p className="text-sm font-medium text-slate-800">{s.name}</p>
+                <p className="text-sm font-medium text-slate-800 flex items-center gap-2">
+                  {allEntitiesMode && (
+                    <AcademyBadge code={s.academy_code} name={s.academy_name} />
+                  )}
+                  {s.name}
+                </p>
                 <p className="text-xs text-slate-400">
                   Code: {s.code} | Coeff: {s.coefficient} |{" "}
                   <span className={`font-medium ${s.language === "fr" ? "text-blue-600" : s.language === "en" ? "text-green-600" : "text-purple-600"}`}>

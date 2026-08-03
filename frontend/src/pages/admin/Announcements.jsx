@@ -10,6 +10,7 @@ import Modal from "../../components/ui/Modal";
 import ConfirmDialog from "../../components/ui/ConfirmDialog";
 import { extractApiError } from "../../utils/errors";
 import { t } from "../../i18n";
+import { useSchoolYearScope } from "../../hooks/useSchoolYearScope";
 
 const TARGET_OPTIONS = [
   { value: "all", label: "Tous les profils" },
@@ -31,7 +32,9 @@ export default function AdminAnnouncements() {
 
   const { data: yearsData } = useQuery({ queryKey: ["years"], queryFn: schoolsAPI.years });
   const years = yearsData?.data?.results || yearsData?.data || [];
-  const currentYear = years.find(y => y.is_current);
+  // P2 : en mode « Toutes les Académies », aucune année ne peut
+  // représenter les deux académies — voir useSchoolYearScope.
+  const { currentYear: currentYear, yearLabel } = useSchoolYearScope(years);
   const [filterYear, setFilterYear] = useState("");
 
   const { data, isLoading } = useQuery({
@@ -115,7 +118,7 @@ export default function AdminAnnouncements() {
         <label className="text-sm font-semibold text-slate-600">{t("Année scolaire :")}</label>
         <select value={filterYear} onChange={e => setFilterYear(e.target.value)} className="input w-auto text-sm">
           <option value="">— Toutes ({currentYear?.name || "actuelle"}) —</option>
-          {years.map(y => <option key={y.id} value={y.id}>{y.name}{y.is_current ? " ✓" : ""}</option>)}
+          {years.map(y => <option key={y.id} value={y.id}>{yearLabel(y)}{y.is_current ? " ✓" : ""}</option>)}
         </select>
       </div>
       <div className="card">
@@ -149,7 +152,7 @@ export default function AdminAnnouncements() {
               </span>
             </div>
             <p className="text-sm text-slate-400">{viewItem.created_at?.slice(0,10)} — {viewItem.author?.first_name} {viewItem.author?.last_name}</p>
-            <div className="bg-slate-50 rounded-xl p-4 text-slate-700 text-sm whitespace-pre-wrap leading-relaxed">
+            <div className="bg-slate-50 rounded-xl p-4 text-slate-700 text-sm text-longform leading-relaxed">
               {viewItem.content}
             </div>
             {viewItem.has_attachment && (

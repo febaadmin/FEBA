@@ -87,16 +87,27 @@ class SchoolYearViewSet(viewsets.ModelViewSet):
         payload, sinon — cas mono-établissement — l'unique établissement.
         """
         from rest_framework.exceptions import ValidationError
+        # V4 multi-entités : `get_request_school` couvre désormais aussi
+        # l'entité active persistée du superadmin — un superadmin ayant
+        # basculé sur FEBA ou FEBA FHA n'a plus besoin de préciser
+        # l'établissement dans le payload.
         school = get_request_school(self.request)
         if school is None:
             school = serializer.validated_data.get('school')
         if school is None and self.request.user.is_superadmin():
+            # Repli mono-établissement : ne s'applique que si la plateforme
+            # n'héberge réellement qu'une seule entité. Dès que FEBA et
+            # FEBA FHA coexistent, l'ambiguïté doit être levée
+            # explicitement plutôt que devinée.
             schools = list(School.objects.all()[:2])
             if len(schools) == 1:
                 school = schools[0]
         if school is None:
             raise ValidationError({
-                'school': "Précisez l'établissement de cette année scolaire.",
+                'school': (
+                    "Précisez l'établissement de cette année scolaire, "
+                    "ou sélectionnez une entité active."
+                ),
             })
         return school
 

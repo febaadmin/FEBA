@@ -1,7 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { ChevronUp, ChevronDown, Search, ChevronLeft, ChevronRight, Trash2 } from "lucide-react";
 import { clsx } from "clsx";
 import { t } from "../../i18n";
+import AcademyBadge from "../AcademyBadge";
+import { useAcademy } from "../../context/AcademyContext";
 
 /**
  * DataTable with optional bulk-select support.
@@ -10,11 +12,49 @@ import { t } from "../../i18n";
  *   onBulkDelete      {fn}       – called with array of selected ids
  *   bulkDeleteLabel   {string}   – label (default "Supprimer la sélection")
  *   bulkDeletePending {boolean}  – loading state
+ *   academyColumn     {boolean}  – false pour désactiver la colonne Académie
+ *
+ * COLONNE « ACADÉMIE » AUTOMATIQUE (P2)
+ * -------------------------------------
+ * En mode « Toutes les Académies », les listes renvoyaient l'union des deux
+ * académies sans qu'aucune colonne ne dise à laquelle chaque ligne
+ * appartenait : deux élèves homonymes de deux académies étaient
+ * indiscernables, et rien n'empêchait de modifier le mauvais.
+ *
+ * La colonne est ajoutée ICI plutôt que dans chaque écran : une trentaine
+ * de tableaux passent par ce composant, et les annoter un par un aurait
+ * garanti d'en oublier. Elle n'apparaît que si deux conditions sont
+ * réunies — le mode consolidé est actif ET les lignes portent réellement
+ * `academy_code` — de sorte qu'un tableau sans rapport avec les académies
+ * (historique d'une note, participants d'une salle) n'hérite pas d'une
+ * colonne vide.
  */
 export default function DataTable({
   columns, data = [], loading, actions, onRowClick, pageSize = 15,
   selectable = false, onBulkDelete, bulkDeleteLabel = "Supprimer la sélection", bulkDeletePending = false, bulkConfirmMessage, emptyMessage,
+  academyColumn = true,
 }) {
+  const { isAllAcademies } = useAcademy();
+
+  const showAcademy =
+    academyColumn && isAllAcademies && data.some((row) => row && "academy_code" in row);
+
+  const tableColumns = useMemo(() => {
+    if (!showAcademy) return columns;
+    return [
+      {
+        key: "__academy",
+        // `accessor` renseigné pour que la recherche et le tri portent aussi
+        // sur l'académie : filtrer « FEBA FHA » doit fonctionner.
+        accessor: "academy_short_name",
+        label: t("Académie"),
+        render: (row) => (
+          <AcademyBadge code={row.academy_code} name={row.academy_name} />
+        ),
+      },
+      ...columns,
+    ];
+  }, [columns, showAcademy]);
   const [search, setSearch]     = useState("");
   const [sortCol, setSortCol]   = useState(null);
   const [sortDir, setSortDir]   = useState("asc");
@@ -24,7 +64,7 @@ export default function DataTable({
   useEffect(() => { setSelected(new Set()); }, [data]);
 
   const filtered = data.filter(row =>
-    columns.some(col => String(col.accessor ? (row[col.accessor] ?? "") : "").toLowerCase().includes(search.toLowerCase()))
+    tableColumns.some(col => String(col.accessor ? (row[col.accessor] ?? "") : "").toLowerCase().includes(search.toLowerCase()))
   );
   const sorted = sortCol
     ? [...filtered].sort((a, b) => {
@@ -45,7 +85,7 @@ export default function DataTable({
 
   if (loading) return <div className="space-y-3">{[...Array(6)].map((_, i) => <div key={i} className="skeleton h-12 w-full" />)}</div>;
 
-  const colSpanTotal = columns.length + (actions ? 1 : 0) + (selectable ? 1 : 0);
+  const colSpanTotal = tableColumns.length + (actions ? 1 : 0) + (selectable ? 1 : 0);
 
   return (
     <div>
@@ -74,7 +114,7 @@ export default function DataTable({
                     onChange={toggleAll} className="w-4 h-4 accent-blue-600 cursor-pointer" title={t("Tout sélectionner cette page")} />
                 </th>
               )}
-              {columns.map(col => (
+              {tableColumns.map(col => (
                 <th key={col.key} onClick={() => col.sortable !== false && toggleSort(col.accessor)}
                   className={clsx("px-4 py-3 text-left font-semibold text-slate-600", col.sortable !== false && "cursor-pointer hover:text-primary select-none")}>
                   <div className="flex items-center gap-1">
@@ -99,7 +139,7 @@ export default function DataTable({
                       <input type="checkbox" checked={isSel} onChange={() => row.id && toggleOne(row.id)} className="w-4 h-4 accent-blue-600 cursor-pointer" />
                     </td>
                   )}
-                  {columns.map(col => (
+                  {tableColumns.map(col => (
                     <td key={col.key} className="px-4 py-3 text-slate-700">{col.render ? col.render(row) : row[col.accessor]}</td>
                   ))}
                   {actions && <td className="px-4 py-3 text-right" onClick={e => e.stopPropagation()}>{actions(row)}</td>}

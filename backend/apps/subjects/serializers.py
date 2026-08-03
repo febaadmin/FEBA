@@ -1,15 +1,19 @@
 from rest_framework import serializers
 from .models import Subject
+from apps.core.academy_serializers import ACADEMY_FIELDS, AcademyMetadataMixin
 
 
-class SubjectSerializer(serializers.ModelSerializer):
+class SubjectSerializer(AcademyMetadataMixin, serializers.ModelSerializer):
+    # P3 : chaque objet expose son académie, sans quoi la vue
+    # « Toutes les Académies » ne peut pas étiqueter ses lignes.
+    academy_source = "school"
     level_name = serializers.SerializerMethodField()
     language_display = serializers.SerializerMethodField()
 
     class Meta:
         model = Subject
         fields = ['id', 'school', 'level', 'level_name', 'name', 'code',
-                  'coefficient', 'language', 'language_display', 'order']
+                  'coefficient', 'language', 'language_display', 'order'] + ACADEMY_FIELDS
 
     def get_level_name(self, obj):
         return obj.level.name if obj.level else None

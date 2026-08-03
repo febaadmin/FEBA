@@ -19,6 +19,7 @@ import Modal from "../../components/ui/Modal";
 import SearchableSelect from "../../components/ui/SearchableSelect";
 import { extractApiError } from "../../utils/errors";
 import { t } from "../../i18n";
+import { useSchoolYearScope } from "../../hooks/useSchoolYearScope";
 
 const PERIODS = [
   { value: "T1", label: "Trimestre 1" },
@@ -42,7 +43,9 @@ export default function AdminBulletins() {
   const students   = studData?.data?.results   || studData?.data   || [];
   const classes    = classData?.data?.results  || classData?.data  || [];
   const years      = yearsData?.data?.results  || yearsData?.data  || [];
-  const currentYear = years.find(y => y.is_current);
+  // P2 : en mode « Toutes les Académies », aucune année ne peut
+  // représenter les deux académies — voir useSchoolYearScope.
+  const { currentYear: currentYear, yearLabel } = useSchoolYearScope(years);
 
   // 2. Bulletins filtrés par année (FIX v20 : par défaut = année active)
   const activeYearId = filterYear === "all" ? "" : (filterYear || currentYear?.id || "");

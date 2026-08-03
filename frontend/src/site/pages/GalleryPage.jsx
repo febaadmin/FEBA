@@ -6,9 +6,11 @@ import { siteAPI } from "../siteApi";
 import Seo from "../components/Seo";
 import Lightbox from "../components/Lightbox";
 import { Section, PageBanner } from "../components/SiteSection";
-import { DEFAULT_ALBUMS } from "../siteDefaults";
+import { DEFAULT_ALBUMS, pickLang } from "../siteDefaults";
+import { useSiteLang } from "../useSiteLang";
 
 export default function GalleryPage() {
+  const { lang, t } = useSiteLang();
   const { data, isLoading } = useQuery({
     queryKey: ["site-gallery"], queryFn: siteAPI.gallery, staleTime: 300000, retry: 1,
   });
@@ -25,10 +27,16 @@ export default function GalleryPage() {
 
   return (
     <>
-      <Seo title="Galerie photos et vidéos"
-        description="La galerie de FEBA : vie de classe, activités, campus et moments forts de l'école, en photos et en vidéo." />
-      <PageBanner title="Galerie"
-        intro="L'école en images : la vie de classe, les activités et notre campus."
+      <Seo title={t("Galerie photos et vidéos", "Photo and video gallery")}
+        description={t(
+          "La galerie de FEBA : vie de classe, activités, campus et moments forts de l'école, en photos et en vidéo.",
+          "The FEBA gallery: classroom life, activities, campus and school highlights, in photos and video.",
+        )} />
+      <PageBanner title={t("Galerie", "Gallery")}
+        intro={t(
+          "L'école en images : la vie de classe, les activités et notre campus.",
+          "The school in pictures: classroom life, activities and our campus.",
+        )}
         image="/site/img/galerie-mosaique-1-1600.webp" />
 
       <Section tone="white">
@@ -43,20 +51,28 @@ export default function GalleryPage() {
         <div className="space-y-14">
           {albums.map((album) => (
             <div key={album.id}>
-              <h2 className="text-xl sm:text-2xl font-bold text-feba-navy">{album.title}</h2>
-              {album.description && (
-                <p className="text-sm text-feba-gray mt-1">{album.description}</p>
+              <h2 className="text-xl sm:text-2xl font-bold text-feba-navy">
+                {pickLang(album, "title", lang)}
+              </h2>
+              {pickLang(album, "description", lang) && (
+                <p className="text-sm text-feba-gray mt-1">{pickLang(album, "description", lang)}</p>
               )}
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 mt-5">
                 {album.items.map((item, i) => (
                   <button key={item.id ?? i} type="button"
                     onClick={() => setViewer({ items: album.items, index: i })}
                     aria-label={item.kind === "video"
-                      ? `Lire la vidéo : ${item.caption || "vidéo FEBA"}`
-                      : `Agrandir la photo : ${item.caption || "photo FEBA"}`}
+                      ? t(
+                          `Lire la vidéo : ${pickLang(item, "caption", lang) || "vidéo FEBA"}`,
+                          `Play the video: ${pickLang(item, "caption", lang) || "FEBA video"}`,
+                        )
+                      : t(
+                          `Agrandir la photo : ${pickLang(item, "caption", lang) || "photo FEBA"}`,
+                          `Enlarge the photo: ${pickLang(item, "caption", lang) || "FEBA photo"}`,
+                        )}
                     className="relative rounded-xl overflow-hidden h-36 sm:h-44 group focus-visible:ring-4 ring-feba-gold/60">
                     <img src={item.image_src} loading="lazy" width="400" height="300"
-                      alt={item.alt_text || item.caption || ""}
+                      alt={pickLang(item, "alt_text", lang) || pickLang(item, "caption", lang) || ""}
                       style={{ objectPosition: item.focal || "50% 50%" }}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                     {item.kind === "video" && (
@@ -66,7 +82,7 @@ export default function GalleryPage() {
                     )}
                     {item.caption && (
                       <span className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-feba-navy/80 to-transparent text-white text-[11px] px-2.5 py-2 text-left truncate">
-                        {item.caption}
+                        {pickLang(item, "caption", lang)}
                       </span>
                     )}
                   </button>

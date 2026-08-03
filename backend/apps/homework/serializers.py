@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from .models import Homework, HomeworkAttachment
+from apps.core.academy_serializers import ACADEMY_FIELDS, AcademyMetadataMixin
 
 
 class HomeworkAttachmentSerializer(serializers.ModelSerializer):
@@ -16,7 +17,10 @@ class HomeworkAttachmentSerializer(serializers.ModelSerializer):
         return None
 
 
-class HomeworkSerializer(serializers.ModelSerializer):
+class HomeworkSerializer(AcademyMetadataMixin, serializers.ModelSerializer):
+    #: Chemin ORM vers l'académie propriétaire de l'objet.
+    academy_source = "school_year.school"
+
     class_name = serializers.CharField(source="cls.name", read_only=True)
     subject_name = serializers.CharField(source="subject.name", read_only=True)
     teacher_name = serializers.SerializerMethodField()

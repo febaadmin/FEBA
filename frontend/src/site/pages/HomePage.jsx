@@ -1,7 +1,7 @@
 /**
  * Page d'accueil du site vitrine FEBA — P4 v4.
  * Sections : hero carrousel administrable, présentation & valeurs, niveaux,
- * pourquoi FEBA, bilinguisme, vie à FEBA, FEBA Online (vert), chiffres
+ * pourquoi FEBA, bilinguisme, vie à FEBA, FEBA French Heritage Academy (vert), chiffres
  * (uniquement si renseignés), actualités réelles, aperçu galerie, appel à
  * l'action final. Aucune donnée fictive : les blocs sans contenu sont masqués.
  */
@@ -18,12 +18,18 @@ import SiteImage from "../components/SiteImage";
 import MediaFrame from "../components/MediaFrame";
 import HeroCarousel from "../components/HeroCarousel";
 import { Section, SectionHeading } from "../components/SiteSection";
-import { DEFAULT_ALBUMS } from "../siteDefaults";
+import { DEFAULT_ALBUMS, pickLang } from "../siteDefaults";
 import { LEVELS, WHY_FEBA, VALUES, ACTIVITIES, ONLINE_FEATURES } from "../content";
+import { FHA_GROUPS, tr } from "../fhaContent";
+import { useSiteLang } from "../useSiteLang";
+import { HOME } from "../siteTranslations";
 
 const WHY_ICONS = [Languages, Users, HeartHandshake, ShieldCheck, Award, Globe2];
 
 export default function HomePage() {
+  // P1 : la page d'accueil restait en français même en mode EN — le
+  // sélecteur ne pilotait que la navigation et la page FEBA FHA.
+  const { lang, t } = useSiteLang();
   const settings = useSiteSettings();
   const { data: slidesData } = useQuery({
     queryKey: ["site-hero"], queryFn: siteAPI.heroSlides, staleTime: 300000, retry: 1,
@@ -47,17 +53,19 @@ export default function HomePage() {
     .slice(0, 8);
 
   const stats = [
-    { value: settings.stat_students, label: "Élèves épanouis" },
-    { value: settings.stat_teachers, label: "Enseignants dévoués" },
-    { value: settings.stat_years, label: "Années d'expérience" },
-    { value: settings.stat_success_rate, label: "% de réussite", suffix: "%" },
+    { value: settings.stat_students, label: t("Élèves épanouis", "Thriving students") },
+    { value: settings.stat_teachers, label: t("Enseignants dévoués", "Dedicated teachers") },
+    { value: settings.stat_years, label: t("Années d'expérience", "Years of experience") },
+    { value: settings.stat_success_rate, label: t("% de réussite", "% success rate"), suffix: "%" },
   ].filter((s) => s.value != null && s.value !== "");
 
   return (
     <>
       <Seo
-        description={settings.meta_description ||
-          "École bilingue français-anglais à Akpakpa, Cotonou : garderie, maternelle et primaire."}
+        description={pickLang(settings, "meta_description", lang) || t(
+          "École bilingue français-anglais à Akpakpa, Cotonou : garderie, maternelle et primaire.",
+          "French-English bilingual school in Akpakpa, Cotonou: nursery, kindergarten and primary.",
+        )}
         image={settings.og_image || "/site/img/hero-campus-1600.webp"}
       />
 
@@ -69,29 +77,31 @@ export default function HomePage() {
         <div className="grid lg:grid-cols-2 gap-10 lg:gap-16 items-center">
           <div>
             <p className="text-feba-gold font-bold uppercase tracking-[0.2em] text-xs mb-3">
-              Bienvenue à FEBA
+              {tr(HOME.welcomeOverline, lang)}
             </p>
             <h2 className="text-2xl sm:text-4xl font-bold text-feba-navy leading-tight">
               Faith & Excellence Bilingual Academy
             </h2>
             <p className="mt-5 leading-relaxed">
-              Située à Akpakpa (Cotonou, Bénin), FEBA est une école bilingue
-              français-anglais qui accueille les enfants de la garderie au CM2.
-              Notre mission : <strong className="text-feba-navy">développer les talents et
-              construire l'avenir</strong> de chaque enfant, dans un cadre chaleureux,
-              sécurisé et exigeant.
+              {tr(HOME.presentationBody, lang)}{" "}
+              <strong className="text-feba-navy">{tr(HOME.presentationHighlight, lang)}</strong>{" "}
+              {tr(HOME.presentationEnd, lang)}
             </p>
             <p className="mt-3 leading-relaxed">
-              Notre vision : former des enfants épanouis, enracinés dans leurs
-              valeurs et ouverts sur le monde — <em className="text-feba-navy">l'école
-              autrement, avec vous</em>.
+              {t(
+                "Notre vision : former des enfants épanouis, enracinés dans leurs valeurs et ouverts sur le monde — ",
+                "Our vision: to raise fulfilled children, rooted in their values and open to the world — ",
+              )}
+              <em className="text-feba-navy">
+                {t("l'école autrement, avec vous", "school done differently, with you")}
+              </em>.
             </p>
             <div className="mt-7 grid sm:grid-cols-3 gap-4">
               {VALUES.map((v) => (
-                <div key={v.title} className="rounded-2xl border border-feba-gold/30 bg-feba-cream p-4">
+                <div key={v.title.fr} className="rounded-2xl border border-feba-gold/30 bg-feba-cream p-4">
                   <Sparkles className="w-5 h-5 text-feba-gold mb-2" aria-hidden="true" />
-                  <p className="font-bold text-feba-navy text-sm">{v.title}</p>
-                  <p className="text-xs mt-1 leading-relaxed">{v.desc}</p>
+                  <p className="font-bold text-feba-navy text-sm">{tr(v.title, lang)}</p>
+                  <p className="text-xs mt-1 leading-relaxed">{tr(v.desc, lang)}</p>
                 </div>
               ))}
             </div>
@@ -100,15 +110,22 @@ export default function HomePage() {
             {/* V6.2 : « Bonne image » demandée — façade FEBA avec logo, nom
                 « Faith & Excellence » et fresques pédagogiques (composition
                 verticale propre). Remplace l'ancienne vue drone non retenue. */}
-            <SiteImage src="/site/img/campus-facade-logo-1600.webp" alt="Façade de FEBA avec le logo, le nom Faith & Excellence Bilingual Academy et des fresques pédagogiques"
+            <SiteImage src="/site/img/campus-facade-logo-1600.webp"
+              alt={t(
+                "Façade de FEBA avec le logo, le nom Faith & Excellence Bilingual Academy et des fresques pédagogiques",
+                "The FEBA frontage with its logo, the name Faith & Excellence Bilingual Academy and educational murals",
+              )}
               sizes="(min-width:1024px) 25vw, 50vw" className="rounded-2xl object-cover w-full h-52 sm:h-64 shadow-lg" />
-            <SiteImage src="/site/img/valeurs-equipe-1600.webp" alt="Élèves de FEBA collaborant sur un projet"
+            <SiteImage src="/site/img/valeurs-equipe-1600.webp"
+              alt={t("Élèves de FEBA collaborant sur un projet", "FEBA pupils working together on a project")}
               sizes="(min-width:1024px) 25vw, 50vw" className="rounded-2xl object-cover w-full h-52 sm:h-64 shadow-lg mt-8" />
-            <SiteImage src="/site/img/accompagnement-individuel-1600.webp" alt="Enseignante accompagnant deux élèves"
+            <SiteImage src="/site/img/accompagnement-individuel-1600.webp"
+              alt={t("Enseignante accompagnant deux élèves", "A teacher supporting two pupils")}
               sizes="(min-width:1024px) 25vw, 50vw" className="rounded-2xl object-cover w-full h-52 sm:h-64 shadow-lg" />
             {/* V6 : campus-cour (grand ciel/crème en haut) remplacé par une
                 scène de classe qui remplit le cadre — pas de zone vide. */}
-            <SiteImage src="/site/img/academique-lecture-1600.webp" alt="Deux élèves de FEBA lisant ensemble"
+            <SiteImage src="/site/img/academique-lecture-1600.webp"
+              alt={t("Deux élèves de FEBA lisant ensemble", "Two FEBA pupils reading together")}
               sizes="(min-width:1024px) 25vw, 50vw" className="rounded-2xl object-cover w-full h-52 sm:h-64 shadow-lg mt-8" />
           </div>
         </div>
@@ -116,21 +133,27 @@ export default function HomePage() {
 
       {/* 4. Niveaux */}
       <Section>
-        <SectionHeading overline="Notre offre" title="De la garderie au CM2"
-          intro="Un parcours complet et cohérent, de la petite enfance à l'entrée au collège." />
+        <SectionHeading
+          overline={t("Notre offre", "What we offer")}
+          title={tr(HOME.levelsTitle, lang)}
+          intro={t(
+            "Un parcours complet et cohérent, de la petite enfance à l'entrée au collège.",
+            "A complete, coherent pathway from early childhood to secondary school.",
+          )} />
         {/* V5 : cartes-compositions — l'image occupe toute la carte, le texte
             est posé sur un dégradé FEBA (en pied, ou dans la zone crème
             libre pour CM1·CM2 — plus aucune zone vide sans intention). */}
         <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-5">
           {LEVELS.map((lvl) => (
-            <MediaFrame key={lvl.name} src={lvl.img} alt={`${lvl.name} à FEBA`}
+            <MediaFrame key={lvl.name.fr} src={lvl.img}
+              alt={t(`${tr(lvl.name, lang)} à FEBA`, `${tr(lvl.name, lang)} at FEBA`)}
               overlay={lvl.overlay} sizes="(min-width:1024px) 20vw, 50vw"
               className="h-60 sm:h-64 rounded-2xl shadow-md hover:shadow-xl transition-shadow"
               contentClass={lvl.textSide === "left"
                 ? "p-4 flex flex-col justify-center items-start max-w-[68%]"
                 : "p-4 flex flex-col justify-end"}>
-              <h3 className="font-bold text-white drop-shadow">{lvl.name}</h3>
-              <p className="text-xs mt-1.5 leading-relaxed text-white/85 drop-shadow">{lvl.desc}</p>
+              <h3 className="font-bold text-white drop-shadow">{tr(lvl.name, lang)}</h3>
+              <p className="text-xs mt-1.5 leading-relaxed text-white/85 drop-shadow">{tr(lvl.desc, lang)}</p>
             </MediaFrame>
           ))}
         </div>
@@ -138,18 +161,20 @@ export default function HomePage() {
 
       {/* 5. Pourquoi choisir FEBA */}
       <Section tone="navy">
-        <SectionHeading light overline="Nos engagements" title="Pourquoi choisir FEBA ?" />
+        <SectionHeading light
+          overline={t("Nos engagements", "Our commitments")}
+          title={tr(HOME.whyTitle, lang)} />
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {WHY_FEBA.map((item, i) => {
             const Icon = WHY_ICONS[i % WHY_ICONS.length];
             return (
-              <div key={item.title}
+              <div key={item.title.fr}
                 className="rounded-2xl bg-white/5 border border-white/10 p-6 hover:border-feba-gold/60 transition-colors">
                 <div className="w-11 h-11 rounded-xl bg-feba-gold/15 flex items-center justify-center mb-4">
                   <Icon className="w-5 h-5 text-feba-gold" aria-hidden="true" />
                 </div>
-                <h3 className="font-bold text-white">{item.title}</h3>
-                <p className="text-sm text-white/75 mt-2 leading-relaxed">{item.desc}</p>
+                <h3 className="font-bold text-white">{tr(item.title, lang)}</h3>
+                <p className="text-sm text-white/75 mt-2 leading-relaxed">{tr(item.desc, lang)}</p>
               </div>
             );
           })}
@@ -159,24 +184,29 @@ export default function HomePage() {
       {/* 6. Enseignement bilingue */}
       <Section tone="white" id="bilinguisme">
         <div className="grid lg:grid-cols-2 gap-10 lg:gap-16 items-center">
-          <SiteImage src="/site/img/hero-bilingue-1600.webp" alt="Cours bilingue : manuels de français et d'anglais"
+          <SiteImage src="/site/img/hero-bilingue-1600.webp"
+            alt={t("Cours bilingue : manuels de français et d'anglais", "Bilingual lesson: French and English textbooks")}
             sizes="(min-width:1024px) 50vw, 100vw" className="rounded-3xl shadow-xl object-cover w-full h-72 sm:h-96" />
           <div>
-            <p className="text-feba-gold font-bold uppercase tracking-[0.2em] text-xs mb-3">Bilinguisme</p>
+            <p className="text-feba-gold font-bold uppercase tracking-[0.2em] text-xs mb-3">
+              {tr(HOME.bilingualOverline, lang)}
+            </p>
             <h2 className="text-2xl sm:text-4xl font-bold text-feba-navy">
-              Le français et l'anglais, chaque jour
+              {t("Le français et l'anglais, chaque jour", "French and English, every single day")}
             </h2>
             <p className="mt-5 leading-relaxed">
-              À FEBA, le bilinguisme n'est pas une matière : c'est un mode de vie.
-              Le <strong className="text-feba-navy">français</strong> structure les apprentissages
-              fondamentaux, et l'<strong className="text-feba-navy">anglais</strong> est pratiqué
-              quotidiennement en classe, dans les activités et dans les échanges.
+              {t(
+                "À FEBA, le bilinguisme n'est pas une matière : c'est un mode de vie. Le français structure les apprentissages fondamentaux, et l'anglais est pratiqué quotidiennement en classe, dans les activités et dans les échanges.",
+                "At FEBA, bilingualism is not a subject: it is a way of life. French structures the core learning, and English is used daily in class, in activities and in conversation.",
+              )}
             </p>
             <ul className="mt-5 space-y-3 text-sm">
-              {["Immersion progressive dès la garderie",
-                "Enseignants qualifiés dans les deux langues",
-                "Évaluations et bulletins intégrant les deux parcours",
-                "Une longueur d'avance pour le collège et au-delà"].map((li) => (
+              {[
+                t("Immersion progressive dès la garderie", "Gradual immersion from nursery onwards"),
+                t("Enseignants qualifiés dans les deux langues", "Teachers qualified in both languages"),
+                t("Évaluations et bulletins intégrant les deux parcours", "Assessments and report cards covering both pathways"),
+                t("Une longueur d'avance pour le collège et au-delà", "A head start for secondary school and beyond"),
+              ].map((li) => (
                 <li key={li} className="flex gap-3">
                   <BookOpen className="w-4 h-4 text-feba-gold shrink-0 mt-0.5" aria-hidden="true" />{li}
                 </li>
@@ -188,58 +218,98 @@ export default function HomePage() {
 
       {/* 7. Vie à FEBA */}
       <Section>
-        <SectionHeading overline="Vie scolaire" title="Apprendre, grandir et s'épanouir"
-          intro="Musique, arts, sport, sciences et jeux : l'épanouissement fait partie du programme." />
+        <SectionHeading
+          overline={tr(HOME.activitiesOverline, lang)}
+          title={t("Apprendre, grandir et s'épanouir", "Learn, grow and flourish")}
+          intro={t(
+            "Musique, arts, sport, sciences et jeux : l'épanouissement fait partie du programme.",
+            "Music, arts, sport, science and games: personal growth is part of the curriculum.",
+          )} />
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
           {ACTIVITIES.slice(0, 8).map((act) => (
-            <MediaFrame key={act.title} src={act.img} alt={act.title}
+            <MediaFrame key={act.title.fr} src={act.img} alt={tr(act.title, lang)}
               overlay="bottom-navy" sizes="(min-width:1024px) 25vw, 50vw"
               className="h-56 rounded-2xl shadow-md"
               contentClass="p-4 flex flex-col justify-end">
-              <h3 className="text-white font-bold">{act.title}</h3>
-              <p className="text-white/80 text-xs mt-1 leading-relaxed">{act.desc}</p>
+              <h3 className="text-white font-bold">{tr(act.title, lang)}</h3>
+              <p className="text-white/80 text-xs mt-1 leading-relaxed">{tr(act.desc, lang)}</p>
             </MediaFrame>
           ))}
         </div>
         <div className="text-center mt-8">
           <Link to="/vie-scolaire" className="inline-flex items-center gap-2 text-feba-navy font-bold text-sm hover:text-feba-gold transition-colors">
-            Découvrir la vie à FEBA <ArrowRight className="w-4 h-4" />
+            {tr(HOME.discoverSchoolLife, lang)} <ArrowRight className="w-4 h-4" />
           </Link>
         </div>
       </Section>
 
-      {/* 8. FEBA Online (identité verte) */}
+      {/* 8. FEBA French Heritage Academy (identité verte).
+          Section développée : le programme est une entité à part entière,
+          pas une simple carte. Le détail complet vit sur /feba-fha pour ne
+          pas surcharger la page d'accueil de l'école de Cotonou. */}
       <Section tone="green">
         <div className="grid lg:grid-cols-2 gap-10 lg:gap-16 items-center">
           <div>
             <p className="text-white/90 font-bold uppercase tracking-[0.2em] text-xs mb-3">
-              Programme international
+              {t("Programme international · FEBA FHA", "International programme · FEBA FHA")}
             </p>
-            <h2 className="text-2xl sm:text-4xl font-bold text-white">FEBA Online</h2>
+            <h2 className="text-2xl sm:text-4xl font-bold text-white">
+              FEBA French Heritage Academy
+            </h2>
+            <p className="text-feba-gold mt-2 font-semibold italic text-sm sm:text-base">
+              From English Speakers to Confident French Speakers
+            </p>
             <p className="mt-5 text-white/90 leading-relaxed">
-              Pour les enfants de la diaspora et les familles du monde entier :
-              FEBA Online transmet la langue française, la culture et le
-              patrimoine africains à travers des cours en ligne vivants,
-              en petits groupes.
+              {t(
+                "Un programme d'apprentissage du français entièrement en ligne, destiné aux enfants de la diaspora africaine vivant aux États-Unis, au Canada et dans d'autres pays anglophones. Les cours sont dispensés depuis FEBA au Bénin par des enseignants formés à l'enseignement du français aux enfants anglophones.",
+                "A fully online French-learning programme for children of the African diaspora living in the United States, Canada and other English-speaking countries. Lessons are delivered from FEBA in Benin by teachers trained to teach French to English-speaking children.",
+              )}
             </p>
-            <ul className="mt-5 space-y-3 text-sm text-white/90">
+
+            {/* Les trois groupes de lancement. */}
+            <div className="mt-6 grid sm:grid-cols-3 gap-3">
+              {FHA_GROUPS.map((g) => (
+                <div key={g.key} className="rounded-xl bg-white/10 p-3.5">
+                  <p className="text-feba-gold text-[11px] font-bold uppercase tracking-wide">
+                    {t(`${g.ages} ans`, `ages ${g.ages}`)}
+                  </p>
+                  <p className="text-white font-bold text-sm mt-0.5">{g.name}</p>
+                </div>
+              ))}
+            </div>
+
+            <ul className="mt-6 space-y-3 text-sm text-white/90">
               {ONLINE_FEATURES.map((f) => (
-                <li key={f} className="flex gap-3">
-                  <Globe2 className="w-4 h-4 text-feba-gold shrink-0 mt-0.5" aria-hidden="true" />{f}
+                <li key={f.fr} className="flex gap-3">
+                  <Globe2 className="w-4 h-4 text-feba-gold shrink-0 mt-0.5" aria-hidden="true" />
+                  {tr(f, lang)}
                 </li>
               ))}
             </ul>
-            <Link to="/feba-online"
-              className="mt-7 inline-block px-6 py-3 rounded-xl bg-white text-feba-green font-bold text-sm hover:bg-feba-cream transition-colors">
-              Découvrir FEBA Online
-            </Link>
+
+            <div className="mt-7 flex flex-wrap gap-3">
+              <Link to="/feba-fha"
+                className="px-6 py-3 rounded-xl bg-white text-feba-green font-bold text-sm hover:bg-feba-cream transition-colors">
+                {t("Découvrir FEBA FHA", "Discover FEBA FHA")}
+              </Link>
+              <Link to="/feba-fha/enroll"
+                className="px-6 py-3 rounded-xl bg-feba-gold text-feba-navy font-bold text-sm hover:brightness-110 transition">
+                {t("Inscrire mon enfant", "Enrol my child")}
+              </Link>
+              <Link to="/feba-fha/placement-test"
+                className="px-6 py-3 rounded-xl border border-white/50 text-white font-bold text-sm hover:bg-white/10 transition-colors">
+                {t("Réserver un test de placement", "Book a placement test")}
+              </Link>
+            </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
-            <SiteImage src="/site/img/online-visio-1600.webp" alt="Élève FEBA Online en visioconférence"
+            <SiteImage src="/site/img/online-visio-1600.webp"
+              alt={t("Élève FEBA French Heritage Academy en visioconférence", "FEBA French Heritage Academy pupil in a video lesson")}
               sizes="(min-width:1024px) 25vw, 50vw" className="rounded-2xl object-cover w-full h-44 sm:h-56 shadow-lg" />
-            <SiteImage src="/site/img/online-lecon-1600.webp" alt="Leçon de français en ligne"
+            <SiteImage src="/site/img/online-lecon-1600.webp" alt={t("Leçon de français en ligne", "Online French lesson")}
               sizes="(min-width:1024px) 25vw, 50vw" className="rounded-2xl object-cover w-full h-44 sm:h-56 shadow-lg mt-6" />
-            <SiteImage src="/site/img/online-cours-francais-1600.webp" alt="Cours de français FEBA Online sur ordinateur"
+            <SiteImage src="/site/img/online-cours-francais-1600.webp"
+              alt={t("Cours de français FEBA French Heritage Academy sur ordinateur", "FEBA French Heritage Academy French lesson on a computer")}
               sizes="(min-width:1024px) 50vw, 100vw" className="rounded-2xl object-cover w-full h-44 sm:h-56 shadow-lg col-span-2" />
           </div>
         </div>
@@ -266,7 +336,9 @@ export default function HomePage() {
       {/* 10. Actualités & événements — contenus réels uniquement */}
       {news.length > 0 && (
         <Section>
-          <SectionHeading overline="La vie de l'école" title="Actualités et événements" />
+          <SectionHeading
+            overline={t("La vie de l'école", "School life")}
+            title={t("Actualités et événements", "News and events")} />
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {news.map((post) => (
               <article key={post.id} className="rounded-2xl bg-white shadow-md overflow-hidden hover:shadow-xl transition-shadow">
@@ -279,20 +351,22 @@ export default function HomePage() {
                 <div className="p-5">
                   <p className="flex items-center gap-2 text-xs text-feba-gold font-semibold uppercase tracking-wide">
                     <CalendarDays className="w-3.5 h-3.5" aria-hidden="true" />
-                    {post.kind === "event" ? "Événement" : "Actualité"}
+                    {post.kind === "event" ? t("Événement", "Event") : t("Actualité", "News")}
                     {post.published_at && <span className="text-feba-gray font-normal normal-case">· {post.published_at.slice(0, 10)}</span>}
                   </p>
                   <h3 className="font-bold text-feba-navy mt-2 leading-snug">
-                    <Link to={`/actualites/${post.slug}`} className="hover:text-feba-gold transition-colors">{post.title}</Link>
+                    <Link to={`/actualites/${post.slug}`} className="hover:text-feba-gold transition-colors">{pickLang(post, "title", lang)}</Link>
                   </h3>
-                  {post.excerpt && <p className="text-sm mt-2 leading-relaxed">{post.excerpt}</p>}
+                  {pickLang(post, "excerpt", lang) && (
+                    <p className="text-sm mt-2 leading-relaxed">{pickLang(post, "excerpt", lang)}</p>
+                  )}
                 </div>
               </article>
             ))}
           </div>
           <div className="text-center mt-8">
             <Link to="/actualites" className="inline-flex items-center gap-2 text-feba-navy font-bold text-sm hover:text-feba-gold transition-colors">
-              Toutes les actualités <ArrowRight className="w-4 h-4" />
+              {tr(HOME.allNews, lang)} <ArrowRight className="w-4 h-4" />
             </Link>
           </div>
         </Section>
@@ -301,11 +375,15 @@ export default function HomePage() {
       {/* 11. Aperçu galerie */}
       {galleryPreview.length >= 4 && (
         <Section tone="white">
-          <SectionHeading overline="En images" title="La galerie FEBA" />
+          <SectionHeading
+            overline={t("En images", "In pictures")}
+            title={t("La galerie FEBA", "The FEBA gallery")} />
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {galleryPreview.map((item, i) => (
               <Link key={item.id ?? i} to="/galerie" className="block rounded-xl overflow-hidden h-36 sm:h-44 group">
-                <img src={item.image_src} alt={item.alt_text || item.caption || "Photo FEBA"} loading="lazy"
+                <img src={item.image_src}
+                  alt={pickLang(item, "alt_text", lang) || pickLang(item, "caption", lang) || t("Photo FEBA", "FEBA photo")}
+                  loading="lazy"
                   style={{ objectPosition: item.focal || "50% 50%" }}
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
               </Link>
@@ -313,7 +391,7 @@ export default function HomePage() {
           </div>
           <div className="text-center mt-8">
             <Link to="/galerie" className="inline-flex items-center gap-2 text-feba-navy font-bold text-sm hover:text-feba-gold transition-colors">
-              Voir toute la galerie <ArrowRight className="w-4 h-4" />
+              {t("Voir toute la galerie", "See the whole gallery")} <ArrowRight className="w-4 h-4" />
             </Link>
           </div>
         </Section>
@@ -323,20 +401,22 @@ export default function HomePage() {
       <Section tone="navy" className="!py-16">
         <div className="text-center max-w-2xl mx-auto">
           <h2 className="text-2xl sm:text-4xl font-bold text-white">
-            Prêts à rejoindre la famille FEBA ?
+            {t("Prêts à rejoindre la famille FEBA ?", "Ready to join the FEBA family?")}
           </h2>
           <p className="text-white/80 mt-4">
-            Inscrivez votre enfant ou venez nous rencontrer à Akpakpa :
-            notre équipe vous accueille avec plaisir.
+            {t(
+              "Inscrivez votre enfant ou venez nous rencontrer à Akpakpa : notre équipe vous accueille avec plaisir.",
+              "Enrol your child or come and meet us in Akpakpa: our team will be glad to welcome you.",
+            )}
           </p>
           <div className="flex flex-wrap justify-center gap-3 mt-8">
             <Link to="/admissions"
               className="px-6 py-3 rounded-xl bg-feba-gold text-feba-navy font-bold text-sm hover:bg-feba-gold2 transition-colors">
-              Inscrire mon enfant
+              {t("Inscrire mon enfant", "Enrol my child")}
             </Link>
             <Link to="/contact"
               className="px-6 py-3 rounded-xl border border-white/40 text-white font-bold text-sm hover:bg-white/10 transition-colors">
-              Demander des informations
+              {t("Demander des informations", "Request information")}
             </Link>
             {settings.whatsapp && (
               <a href={`https://wa.me/${settings.whatsapp.replace(/[^0-9]/g, "")}`}

@@ -1,10 +1,10 @@
-import { Outlet, NavLink, useNavigate } from "react-router-dom";
+import { NavLink, useNavigate } from "react-router-dom";
 import { useState, useEffect, useRef } from "react";
-import {
+import { FileBarChart,
   LayoutDashboard, Users, GraduationCap, UserCheck, BookOpen,
   ClipboardList, DollarSign, Calendar, FileText, Bell, MessageSquare,
   Megaphone, Settings, LogOut, School, Menu, X, UserCog, Layers, FolderOpen,
-  ClipboardCheck, Video, Globe } from "lucide-react";
+  ClipboardCheck, Video, Globe, CreditCard, Award } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
 import { useBranding } from "../hooks/useBranding";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -15,6 +15,9 @@ import { useAuthStore } from "../store/authStore";
 import LanguageSwitcher from "../components/ui/LanguageSwitcher";
 import { t } from "../i18n";
 import logoFeba from "../assets/logo_feba.jpeg"; // fallback only
+import { useEntityContext } from "../hooks/useEntityContext";
+import EntitySwitcher from "../components/EntitySwitcher";
+import AcademyScopedOutlet from "../components/AcademyScopedOutlet";
 
 const nav = [
   { label: "Tableau de bord", icon: LayoutDashboard, to: "/admin/dashboard" },
@@ -28,13 +31,19 @@ const nav = [
   { label: "Bulletins",       icon: FileText,         to: "/admin/bulletins" },
   { label: "Absences",        icon: Calendar,         to: "/admin/attendance" },
   { label: "Emploi du temps", icon: Calendar,         to: "/admin/schedule" },
-  { label: "Salles virtuelles", icon: Video,          to: "/admin/virtual" },
+  // Fonctionnalité conditionnelle : réservée aux entités « académie en
+  // ligne » (FEBA FHA). Masquée pour FEBA — et refusée par l\'API.
+  { label: "Salles virtuelles", icon: Video,          to: "/admin/virtual", feature: "virtual_classrooms" },
   { label: "Devoirs",         icon: BookOpen,         to: "/admin/homework" },
   { label: "Paiements",       icon: DollarSign,       to: "/admin/payments" },
+  { label: "Transactions carte", icon: CreditCard, to: "/admin/card-transactions" },
+  { label: "Documents officiels", icon: Award, to: "/admin/official-documents" },
   { label: "Messages",        icon: MessageSquare,    to: "/admin/messages" },
   { label: "Annonces",        icon: Megaphone,        to: "/admin/announcements" },
   { label: "Utilisateurs",    icon: UserCog,          to: "/admin/users" },
   { label: "Fichiers",         icon: FolderOpen,       to: "/admin/user-files" },
+  { label: "Admissions FEBA FHA", icon: ClipboardList, to: "/admin/fha-admissions", feature: "placement_tests" },
+  { label: "Rapports mensuels", icon: FileBarChart, to: "/admin/monthly-reports", feature: "placement_tests" },
   { label: "Site vitrine",     icon: Globe,            to: "/admin/website" },
   { label: "Branding & Logo",  icon: School,           to: "/admin/branding" },
   { label: "Paramètres",      icon: Settings,         to: "/admin/settings" },
@@ -53,6 +62,17 @@ function useIsMobile() {
 }
 
 export default function AdminLayout() {
+  // P4 : remonte tout le sous-arbre à chaque bascule d'académie —
+  // aucune donnée de l'académie précédente ne peut rester affichée,
+  // et aucun rechargement manuel du navigateur n'est nécessaire.
+
+  // Le menu ne montre que les fonctionnalités auxquelles l'entité de
+  // l'utilisateur a droit. Ce filtrage est un CONFORT D'AFFICHAGE : la
+  // protection réelle est côté serveur (permission HasEntityFeature),
+  // qui refuse l'endpoint même si l'URL est saisie à la main.
+  const { hasFeature } = useEntityContext();
+  const visibleNav = nav.filter((item) => !item.feature || hasFeature(item.feature));
+
   const isMobile = useIsMobile();
   const [sidebarOpen, setSidebarOpen] = useState(!isMobile);
   const [notifOpen, setNotifOpen] = useState(false);
@@ -137,7 +157,7 @@ export default function AdminLayout() {
               )}
             </div>
             <nav className="flex-1 p-3 overflow-y-auto space-y-0.5">
-              {nav.map(item => (
+              {visibleNav.map(item => (
                 <NavLink key={item.to} to={item.to}
                   onClick={closeSidebarOnMobile}
                   className={({ isActive }) => clsx(
@@ -231,7 +251,7 @@ export default function AdminLayout() {
           </div>
         </header>
         <main className="flex-1 overflow-y-auto p-3 sm:p-6">
-          <Outlet />
+          <AcademyScopedOutlet />
         </main>
       </div>
     </div>

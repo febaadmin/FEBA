@@ -11,6 +11,7 @@ import ConfirmDialog from "../../components/ui/ConfirmDialog";
 import SearchableSelect from "../../components/ui/SearchableSelect";
 import { extractApiError } from "../../utils/errors";
 import { t } from "../../i18n";
+import { useSchoolYearScope } from "../../hooks/useSchoolYearScope";
 
 export default function AdminClasses() {
   const qc = useQueryClient();
@@ -30,7 +31,9 @@ export default function AdminClasses() {
   const { data: levelsData } = useQuery({ queryKey: ["levels"], queryFn: schoolsAPI.levels });
   const { data: yearsData } = useQuery({ queryKey: ["years"], queryFn: schoolsAPI.years });
   const _years = yearsData?.data?.results || yearsData?.data || [];
-  const activeYear = _years.find(y => y.is_current);
+  // P2 : en mode « Toutes les Académies », aucune année ne peut
+  // représenter les deux académies — voir useSchoolYearScope.
+  const { currentYear: activeYear, yearLabel } = useSchoolYearScope(_years);
   const effectiveYearId = yearFilter || activeYear?.id || "";
   const { data, isLoading } = useQuery({
     queryKey: ["classes", effectiveYearId],
@@ -214,7 +217,7 @@ export default function AdminClasses() {
           return (
             <button key={y.id} onClick={() => setYearFilter(y.id)}
               className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all ${isSelected ? "bg-primary text-white shadow" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}>
-              {y.name}{y.is_current ? " ✓" : ""}
+              {yearLabel(y)}{y.is_current ? " ✓" : ""}
             </button>
           );
         })}

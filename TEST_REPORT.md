@@ -1,378 +1,266 @@
-# TEST_REPORT.md — Missions V4 → V8 (26/07/2026)
+# TEST_REPORT — V9
 
-## Résultats V8
+Chaque ligne correspond à une commande réellement exécutée depuis le
+commit final, sur cette instance. Les nombres sont ceux qu'elle a
+affichés, pas ceux qu'on attendait. Le rapport de la livraison précédente
+est conservé sous `TEST_REPORT_V8.md`.
 
-Résultats **rejoués intégralement après les derniers correctifs**
-(base de démonstration, interfaces de saisie, clé de notation maternelle,
-échappement des textes du reçu) — commit `a283093`.
+Date d'exécution : 2 août 2026.
+Services actifs : PostgreSQL 16, Redis 7, serveur Django, serveur Vite,
+Chromium.
 
-| # | Suite | Commande exacte | Tests | Réussis | Échecs | Ignorés |
-|---|---|---|---|---|---|---|
-| 1 | Backend **SQLite** | `DJANGO_SETTINGS_MODULE=feba_project.settings.test_sqlite pytest -q --no-migrations` | 406 | **405** | 0 | **1** |
-| 2 | Backend **PostgreSQL 16** | `DJANGO_SETTINGS_MODULE=feba_project.settings.test_postgres TEST_DB_PORT=55432 pytest -q` | 406 | **406** | 0 | **0** |
-| 3 | Frontend | `npm run test -- --run` | 70 (9 fichiers) | **70** | 0 | 0 |
-| 4 | ESLint | `npx eslint src` | — | **0 erreur** (63 avertissements hérités) | 0 | — |
-| 5 | Build production | `npm run build` | — | **✓ built in 8.76s** | 0 | — |
+---
 
-Les deux suites backend comptent en plus **46 sous-tests** (`subtests`).
+## 1. Suites automatisées
 
-### Suites ciblées (rejouées séparément, SQLite / PostgreSQL)
-
-| Suite | SQLite | PostgreSQL |
+| Suite | Commande | Résultat |
 |---|---|---|
-| `tests/test_pdf_stamps.py` (documents, cachets, textes) | **24** | **24** |
-| `tests/test_grade_weighting_and_scale.py` (calculs, barèmes) | **25** | **25** |
-| `tests/test_profile_creation.py` (profils) | **16** | **16** |
-| `tests/test_technical_incidents.py` (incidents) | **20** | — |
-| `tests/test_data_migrations.py` (migrations de données) | **5** | **5** |
-| `tests/test_bootstrap_demo.py` (base de démonstration) | **4** | **4** |
-| `test_parent_student.py::ParentStudentConcurrencyTest` | *ignoré* | **1 ✅** |
+| Backend PostgreSQL | `pytest tests/ -q` | **1057 réussis, 529 sous-tests** |
+| Backend PostgreSQL, base de test **recréée** | `pytest tests/ -q --create-db` | **1044 réussis, 529 sous-tests** (avant la correction du limiteur) |
+| Backend SQLite | `DJANGO_SETTINGS_MODULE=…test_sqlite pytest tests/ -q` | **1056 réussis, 1 ignoré, 529 sous-tests** |
+| Frontend | `npx vitest run` | **163 réussis, 18 fichiers** |
+| ESLint | `npx eslint src` | **0 erreur**, 83 avertissements |
+| Build de production | `npm run build` | réussi, `dist/` produit en 9,77 s |
 
-### Chaîne complète vérifiée sur un conteneur PostgreSQL NEUF
+Le test ignoré sous SQLite porte son motif dans son propre message : test
+de concurrence multi-processus, et SQLite en mémoire verrouille la table
+entière. Il s'exécute sur PostgreSQL.
+
+Les 83 avertissements ESLint sont la référence antérieure, inchangée :
+variables inutilisées et dépendances de hooks, aucune erreur.
+
+### Ce que la V9 ajoute
+
+| Fichier | Volume | Ce qu'il tient |
+|---|---|---|
+| `backend/tests/test_textfit.py` | 50 tests, 147 sous-tests | Métriques réelles de la police, composition du nom, analyse de pixels du rendu |
+| `backend/tests/test_academy_identity_separation.py` | +2 tests | La formulation exacte de la limitation du cachet, et le fait que le nom sur deux lignes n'en soit plus une |
+| `frontend/src/router/roleRedirect.test.jsx` | 2 tests | Un rôle pas encore chargé n'oriente personne |
+| `backend/tests/test_ratelimit_degrade.py` | 13 tests | La connexion répond 503 et non 500 quand le cache est injoignable, et ne délivre aucun jeton |
+
+Progression : 974 → **1057** tests backend, 161 → **163** frontend.
+
+---
+
+## 2. Installation neuve
+
+Base PostgreSQL créée vide, chaîne de migrations complète appliquée.
 
 ```
-docker run -d --name feba-pg-v8 -e POSTGRES_USER=feba_user … postgres:16-alpine
-manage.py migrate            → toute la chaîne appliquée, dont
-                               grades/0011, grades/0012, incidents/0001
-manage.py bootstrap_demo     → migrations + migrations de données + seeds
-  nombre de notes avec poids d'évaluation != 1 = 0   (sur 2400 note(s))
-  ✔ conforme
+DROP DATABASE IF EXISTS feba_v9_final ; CREATE DATABASE feba_v9_final
+manage.py migrate
 ```
-
-### Test de l'ARCHIVE EXTRAITE (livraison V8)
-
-Le ZIP a été extrait dans un dossier neuf, puis **son propre code** exécuté
-(chemin des modules vérifié : `/tmp/verif_zip_v8/…/apps/bulletins/pdf_generator.py`).
 
 | Contrôle | Résultat |
 |---|---|
-| Base de données locale, `node_modules`, `venv`, cache, log, `dist` dans l'archive | **aucun** |
-| Secrets | aucun ; `.env.dev` ne contient que des valeurs de développement explicitement marquées |
-| Migrations sur PostgreSQL **vierge** | **109 appliquées**, dont `grades/0011`, `grades/0012`, `incidents/0001` |
-| Seeds + vérification (`bootstrap_demo`) | `nombre de notes avec poids d'évaluation != 1 = 0` (sur 2400) |
-| Tests critiques depuis l'archive | **74 passed** (bootstrap, migrations, barèmes, documents, profils) |
-| Bulletin **/10** généré | `Moy. /10`, **0** valeur sur 20, 1 page |
-| Bulletin **/20** généré | `Moy. /20`, **0** valeur sur 10, 1 page |
-| Reçu généré | « Le Secrétariat » ✔, « Signature du Caissier » ✘, « Cachet de l'École » ✘, texte spécial conservé |
-| **Cachets embarqués** | bulletins → **LA DIRECTION** (et pas le secrétariat) ; reçu → **LE SECRETARIAT** (et pas la direction) |
-| SHA-256 | **58 / 58** conformes |
-| Bundle Git | `git bundle verify` : « complete history » ; clone réel → HEAD `26f1319`, 692 fichiers |
+| Migrations appliquées | **126** |
+| Migrations en attente | **0** |
+| Échec, saut ou avertissement | aucun |
 
-#### Deux défauts d'installation trouvés par ce test (et corrigés)
+### Les documents sont produisibles sans commande supplémentaire
 
-1. `psycopg2-binary==2.9.9` n'a **aucune roue** pour Python ≥ 3.13 : la
-   compilation échoue faute d'en-têtes PostgreSQL → installation impossible.
-   Version portée à **2.9.12**.
-2. **PyMuPDF (« fitz ») n'était déclaré nulle part** alors que les tests
-   documents l'importent : sur une installation neuve, la suite ne pouvait pas
-   démarrer. Ajouté à `requirements/dev.txt`.
+`manage.py documents_ready` — **17 contrôles passés**, tels qu'affichés :
 
-#### Ce qui n'a PAS pu être vérifié sur cette machine
-
-L'installation des dépendances **à partir de PyPI** n'a pas pu être menée à son
-terme : le réseau sortant est coupé (`ConnectTimeoutError` sur `pypi.org`) et
-seul **Python 3.14** est disponible localement, alors que le projet cible
-3.12+. Les deux correctifs ci-dessus lèvent les blocages identifiés, mais un
-`pip install -r requirements/dev.txt` complet reste à rejouer sur une machine
-disposant d'un accès réseau. Tout le reste du contrôle a été effectué sur le
-code réellement extrait de l'archive.
-
-### Piège d'environnement rencontré (et écarté)
-
-Un passage de la suite frontend a échoué sur `i18n.test.js` avec
-`TypeError: Cannot read properties of undefined (reading 'getItem')`. Cause :
-la commande avait été lancée avec **Node 26** (présent dans `/usr/local/bin`)
-au lieu du **Node 20** du projet ; Node 26 expose un `localStorage` global
-expérimental qui masque celui de jsdom. Rejouée avec la version du projet
-(`v20.20.2`), la suite passe **70/70**. Aucun code n'était en cause.
-
-### Le test ignoré (SQLite uniquement)
-
-`tests/test_parent_student.py:325` — test de **concurrence multi-thread**.
-SQLite en mémoire verrouille la table entière (« database table is locked ») ;
-il exige un vrai serveur de base. **Il s'exécute et réussit sur PostgreSQL**
-(d'où 406/406 sans aucun ignoré en ligne 2). Aucun test n'est donc réellement
-laissé de côté.
-
-### PostgreSQL : ce que SQLite ne pouvait pas prouver
-
-La suite PostgreSQL applique la **chaîne de migrations complète** (impossible
-sur la SQLite embarquée : une migration historique utilise une syntaxe refusée
-— limitation **pré-existante**, vérifiable sur un test antérieur à la V8, d'où
-`--no-migrations`). Elle valide donc aussi : les 3 migrations V8, les
-contraintes d'unicité réelles, les transactions et la concurrence.
-
-### Suites ajoutées en V8
-
-| Fichier | Tests | Objet |
-|---|---|---|
-| `tests/test_profile_creation.py` | 16 | création Enseignant (régression matricule), atomicité, doublons, permissions, isolation établissement, Élève, Parent |
-| `tests/test_technical_incidents.py` | 20 | 500 réelle → incident + notification, dédoublonnage, sanitisation, permissions, cycle de traitement, date de résolution |
-| `tests/test_grade_weighting_and_scale.py` | 19 | poids unique (12+5 = 8,50), cas limites, barèmes /10 et /20, appréciations |
-| `tests/test_pdf_stamps.py` | 22 | deux cachets distincts, mentions supprimées, positions, non-chevauchement, textes non tronqués |
-| `tests/test_data_migrations.py` | 5 | logique des migrations de données (avant/après, idempotence) |
-
-### Vérifications navigateur (réelles, non automatisées)
-
-Création d'un profil Enseignant **depuis le formulaire**, sur une base
-présentant un **trou de séquence** (`count()+1` = `ENS-2026-0006`, déjà pris) :
-profil créé avec **`ENS-2026-0007`**, 2 classes et 2 matières conservées,
-modification sans 500. Incidents : page, compteurs, filtres, cloche, changement
-de statut, admin **403**, anonyme **401**. Notes : 8,50 en base, via l'API et
-dans le résumé. Parent : tableau de bord chargé, moyennes présentes. Site
-public : 5 slides, 6 albums / 42 médias dont la vidéo, formulaire contact 201.
-Documents : reçus (court, partiel, soldé, duplicata, multiligne) et bulletins
-(court, chargé, primaire, collège) **rendus en images et inspectés**.
-
-
-## Résultats V7
-
-```bash
-cd backend && DJANGO_SETTINGS_MODULE=feba_project.settings.test_sqlite \
-  .venv-test/bin/python -m pytest --no-migrations -q     # 311 passed, 1 skipped
-cd frontend && npx vitest run                            # 70 passed
-npx eslint src                                           # 0 erreur
-npx vite build                                           # ✓ built
+```
+✓ polices — 3 embarquées
+✓ stockage privé — backend/private_media
+✓ certificate_feba        · fond original — variante acceptée
+✓ certificate_feba        · calibrage — tolérance 0.2 mm
+✓ certificate_feba        · rendu — 997 Ko produits
+✓ certificate_feba_fha    · fond original — empreinte conforme
+✓ certificate_feba_fha    · fond neutralisé — 94bf155423f558b0… conforme
+✓ certificate_feba_fha    · calibrage — tolérance 0.2 mm
+✓ certificate_feba_fha    · rendu — 2163 Ko produits
+✓ diploma_feba            · fond original — variante acceptée
+✓ diploma_feba            · fond neutralisé — f233b6bcfe3d5672… conforme
+✓ diploma_feba            · calibrage — tolérance 0.2 mm
+✓ diploma_feba            · rendu — 1684 Ko produits
+✓ diploma_feba_fha        · fond original — empreinte conforme
+✓ diploma_feba_fha        · fond neutralisé — 9fa7d7a23dfaf511… conforme
+✓ diploma_feba_fha        · calibrage — tolérance 0.2 mm
+✓ diploma_feba_fha        · rendu — 3244 Ko produits
 ```
 
-Ajouts V7 :
+Aucun `document_neutralize` n'est à lancer : les fonds neutralisés sont
+versionnés et vérifiés par empreinte avant chaque émission.
 
-| Suite | Fichier | Tests | Couvre |
+### Empreintes des fonds dérivés
+
+| Gabarit | Dérivé installé | Déclarée | Conforme |
 |---|---|---|---|
-| Backend | `tests/test_grade_precision.py` | 5 | saisir 10 → 10.00 (DB+API) ; 14 valeurs 0..20 ; bulk ; modification |
-| Backend | `tests/test_document_branding.py` | 6 | nom avec « & », GROUPE ÉDUCATIF présent, GROUPE SCOLAIRE absent, cachet embarqué, 1 page |
-| Frontend | `src/utils/gradeInput.test.js` | 8 | 10 reste 10 ; décimales ; virgule ; bornes ; signe |
+| `diploma_feba` | `f233b6bc…9de2cbc902` | `f233b6bc…9de2cbc902` | oui |
+| `diploma_feba_fha` | `9fa7d7a2…50fe2371` | `9fa7d7a2…50fe2371` | oui |
+| `certificate_feba_fha` | `94bf1554…5a5efc66c6` | `94bf1554…5a5efc66c6` | oui |
+| `certificate_feba` | — | — | sans objet |
 
-Vérif navigateur : formulaire notes (champ texte décimal, 10 immuable) ;
-bulletin & reçu réels (noms + cachet) ; galerie vidéo (contrôles, readyState 4) ;
-Admissions (corps entiers) ; façade (panneau visible). PDF réels extraits +
-rendus PNG (aucune fabrication).
+Il y a **trois** dérivés et non quatre : le certificat de Cotonou ne
+porte aucune mention d'exemple à neutraliser. Lui déclarer un dérivé
+reviendrait à vérifier l'empreinte d'un fichier sans raison d'exister.
 
-## Résultats V4 + V5 + V6
+---
 
+## 3. Contrôles dédiés
 
-
-## Résultats V6.2 (conformité visuelle exacte aux captures annotées)
-
-```bash
-cd backend && DJANGO_SETTINGS_MODULE=feba_project.settings.test_sqlite \
-  .venv-test/bin/python -m pytest --no-migrations -q     # 300 passed, 1 skipped
-cd frontend && npx vitest run                            # 62 passed (8 fichiers)
-npx eslint src                                           # 0 erreur
-npx vite build                                           # ✓ built
-```
-
-- **Nouveau fichier** `src/site/visual-conformity.test.jsx` (6 cas) : vérifie le
-  **slug exact** attendu à chaque emplacement corrigé — pas seulement qu'une
-  image existe, mais que c'est **la bonne** :
-  - carrousel slide 1 = `campus-logo` ;
-  - « Notre campus » (fallback) = `[campus-logo, campus-facade-logo,
-    campus-devise, campus-cour]`, **sans** `campus-facade` ni `campus-fresque` ;
-  - mosaïque d'accueil = `campus-facade-logo` (et **pas** `campus-fresque`) ;
-  - À propos « La direction » = `apropos-direction-2` (et **pas**
-    `apropos-direction`) + cartes distinctes ;
-  - Académique = `bilingue-accompagnement` avec focal `50% 66%`.
-- `mediaMeta.test.js` : invariant slug ↔ fichier maintenu après ajout de
-  `campus-facade-logo`, `campus-devise`, restauration d'`apropos-direction-2`.
-- Vérif navigateur (captures 375 + 1440 + DOM) : les 4 corrections conformes ;
-  cadrage Académique correct sur desktop **et** mobile (overlay responsive).
-
-## Résultats V6.1 (corrections visuelles finales sur captures annotées)
-
-```bash
-cd backend && DJANGO_SETTINGS_MODULE=feba_project.settings.test_sqlite \
-  .venv-test/bin/python -m pytest --no-migrations -q     # 300 passed, 1 skipped
-cd frontend && npx vitest run                            # 56 passed (7 fichiers)
-npx eslint src                                           # 0 erreur
-npx vite build                                           # ✓ built
-```
-
-- `mediaMeta.test.js` valide l'invariant bidirectionnel slug ↔ fichiers après
-  ajout de 4 médias et **suppression** de 3 (apropos-direction,
-  apropos-direction-2, galerie-mosaique-3) : chaque slug a ses fichiers
-  800+1600 **et** chaque fichier a une entrée de focal.
-- `seed_website` idempotent + élagage : « Notre campus » −2, « Petite enfance »
-  +1 (crèche), « Moments FEBA » −1 (mosaïque bannie).
-- Vérif navigateur déterministe (DOM) : slide 1 = `campus-logo` ; mosaïque =
-  `campus-fresque` ; focals vignettes = 50/66, 50/68, 66/46, 66/46, 52/64 ;
-  overlays hero `hero-left`+`hero-gold` présents ; `apropos-direction*` /
-  `galerie-mosaique-3` absents du DOM.
-
-## Résultats V6 (carrousel/galerie, dédoublonnage, recadrages, menu, saisie groupée)
-
-```bash
-cd backend && DJANGO_SETTINGS_MODULE=feba_project.settings.test_sqlite \
-  .venv-test/bin/python -m pytest --no-migrations -q
-# → 300 passed, 1 skipped (concurrence PostgreSQL, documentée), 46 subtests passed
-
-cd frontend && npx vitest run          # → 56 passed (7 fichiers)
-npx eslint src                         # → 0 erreur (62 avertissements, base projet)
-npx vite build                         # → ✓ built (~8 s)
-```
-
-Détail des ajouts V6 :
-
-| Suite | Fichier | Tests | Couvre |
-|---|---|---|---|
-| Backend | `tests/test_bulk_grades.py` | 16 | atomicité, rollback, erreurs indexées, permissions (enseignant/admin/superadmin/parent/anonyme), IDOR, doublons, coefficient |
-| Frontend | `src/components/grades/BulkGradeModal.test.jsx` | 6 | charge utile groupée, succès, mapping erreurs par ligne, validations cliente |
-| Frontend | `src/site/carousel-gallery.test.jsx` | 9 | 0/1/N slides, repli galerie vide/erreur/pleine, déduplication `siteDefaults` |
-
-**Régressions détectées par la passe complète et corrigées :**
-
-1. `tests/test_website.py::FocalPointTests::test_gallery_items_expose_focal` —
-   assertion sur l'ancien point focal de `academique-participation` (`82% 28%`)
-   alignée sur la valeur V6 seedée voulue (`26% 64%`, enseignante en bas-gauche
-   hors mur crème). *Correction : test.*
-2. `src/i18n/translations.js` — 4 clés dupliquées (`no-dupe-keys`) introduites
-   avec les libellés de saisie groupée, retirées (valeurs EN identiques, aucun
-   changement de comportement). *eslint : 4 erreurs → 0.*
-
-E2E navigateur (session enseignant réelle + site public 375/1280/1920) :
-voir `BULK_GRADES_REPORT.md` §4.3 et `VISUAL_FIXES_REPORT.md`.
-
-## Résultats V5 (corrections visuelles)
-
-```bash
-cd backend && DJANGO_SETTINGS_MODULE=feba_project.settings.test_sqlite \
-  .venv-test/bin/python -m pytest --no-migrations -q
-# → 284 passed, 1 skipped (concurrence PostgreSQL), 46 subtests passed
-
-cd frontend && npx vitest run   # → 41 passed (5 fichiers)
-npx eslint src --ext .js,.jsx --quiet   # → 0 erreur
-npx vite build                  # → ✓ built (~10 s, chunks identiques V4)
-```
-
-Nouveaux tests V5 : `frontend/src/site/mediaMeta.test.js` (6 — chaque
-fichier packagé a un point focal, chaque entrée du registre correspond à un
-fichier réel, positions valides, overlays 100 % couleurs de marque) ;
-`backend/tests/test_website.py::FocalPointTests` (4 — focal exposé par
-l'API avec les valeurs seedées, bornes 0–100 validées, PATCH admin
-répercuté sur l'API publique).
-
-Vérifications navigateur V5 réellement effectuées :
-- captures pleine page AVANT/APRÈS des 10 pages publiques × 3 largeurs
-  (livraison_v5/captures/avant|apres, 60 fichiers) ;
-- accueil aux 9 largeurs imposées 320/375/390/430/768/1024/1280/1440/1920
-  (captures/breakpoints) ;
-- 0 débordement horizontal à 320 px sur les 12 pages (scrollWidth mesuré) ;
-- 36 images accueil, 0 cassée après lazy-load ; console sans erreur ;
-- slides 4 et 5 vérifiées interactivement en mobile (texte lisible, sujets
-  entiers, plus de flèche sous le titre) ;
-- non-régression ERP : login admin → dashboard 200, notes 200 ; login
-  parent → moyennes + appréciation « PEUT MIEUX FAIRE » (12,67) intactes.
-
-
-# Rappel V4
-
-Tous les résultats ci-dessous proviennent de commandes réellement exécutées
-sur cette machine (macOS, Python 3.14.5 via `backend/.venv-test`, Node/Vite).
-
-## 1. Tests backend (pytest, SQLite en mémoire)
-
-```bash
-cd backend
-DJANGO_SETTINGS_MODULE=feba_project.settings.test_sqlite \
-  .venv-test/bin/python -m pytest --no-migrations -q
-```
-
-| Étape | Résultat |
-|---|---|
-| **Baseline avant mission** | 219 passed, 1 skipped |
-| Après P1+P3 | 238 passed, 1 skipped (2 anciens tests mis à jour : ils attendaient l'ancienne échelle « Bien » — la règle métier a changé) |
-| Après P2 | 261 passed, 1 skipped |
-| **Final (P4 inclus)** | **280 passed, 1 skipped, 46 subtests passed** |
-
-Le skip unique est documenté : test de concurrence multi-threads
-impossible sur SQLite en mémoire (verrou de table globale), exécuté sur la
-stack PostgreSQL (`settings.test_postgres`) — Docker indisponible sur cette
-machine au moment de la mission (voir KNOWN_LIMITATIONS).
-
-Nouveaux fichiers de tests :
-- `tests/test_note_types_appreciations.py` — 19 tests + 40 subtests
-  (bornes du barème, normalisation, invalides, migration bulletins, P1 API).
-- `tests/test_password_reset.py` — 23 tests (matrice de permissions
-  complète, effets, journal, parcours must_change_password).
-- `tests/test_website.py` — 19 tests (contenu public, formulaires +
-  honeypot, non-exposition des soumissions, permissions admin, seed).
-
-`manage.py check` : « System check identified no issues (0 silenced). »
-
-## 2. Tests frontend (vitest, jsdom)
-
-```bash
-cd frontend && npx vitest run
-```
-
-| Étape | Résultat |
-|---|---|
-| Baseline avant mission | 22 passed (3 fichiers) |
-| **Final** | **35 passed (4 fichiers)** |
-
-Nouveau : `src/site/site.test.jsx` — 13 tests : layout + menu complet +
-lien Connexion → /login, menu mobile accessible (aria-expanded), accueil
-sans crash (carrousel administrable, sections), chiffres masqués si non
-renseignés / affichés si saisis, actualités (état vide sans fausses
-données, erreur API propre, liste réelle), formulaire contact (validations
-frontend, succès, erreurs backend), formulaire préinscription (champs
-obligatoires, envoi), 404 publique.
-
-`npx eslint src --quiet` : 0 erreur (1 clé i18n dupliquée détectée et
-corrigée pendant l'audit).
-
-## 3. Compilation de production
-
-```bash
-cd frontend && npx vite build
-```
-
-✓ built in ~8 s — bundle initial 295 Ko (95,8 Ko gzip) + chunks lazy par
-page (site vitrine : 1–19 Ko). Avant la mission : chunk unique de
-1 534 Ko (407 Ko gzip). Build servi et vérifié via
-`BACKEND_ORIGIN=http://localhost:8000 npx vite preview` (page d'accueil
-publique fonctionnelle sur http://localhost:4173, données API chargées).
-
-## 4. Vérifications navigateur réellement effectuées (E2E)
-
-Environnement : backend Django `dev_sqlite` (schéma `migrate --run-syncdb`,
-`seed_demo_data` + `seed_website`), frontend Vite, navigateur intégré.
-
-| # | Parcours | Constat |
+| Contrôle | Commande | Résultat |
 |---|---|---|
-| 1 | Ouverture de `/` | Site vitrine public affiché (hero carrousel 5 slides administrables, sections complètes, pas de section chiffres car stats non renseignées) |
-| 2 | Navigation site (desktop) | Accueil, À propos, Galerie (mosaïque + albums), Contact OK ; aucun débordement horizontal |
-| 3 | Accès connexion depuis le menu | Bouton « Connexion » → `/login` (page bilingue existante) |
-| 4 | Connexion Administrateur | admin@feba.bj → tableau de bord admin (données chargées) |
-| 5 | Réinitialisation mdp d'un enseignant | Modal complet (identité, rôle, avertissement, règles, confirmation explicite) → toast de succès |
-| 6 | Tentative interdite | La liste admin ne contient aucun superadmin ; appel API direct admin→superadmin (id=1) → **HTTP 403** ; mot de passe cible intact |
-| 7 | Note « Interrogation / Devoir de classe » | Créée via le modal UI (élève Koffi Codjo, Français, T1, 17,5) — API : `note_type="interrogation"`, libellé neuf, **appréciation TRÈS SATISFAISANT** |
-| 8 | Note « Examen / Évaluation » | Modification de la même note via PATCH en session réelle → 200, libellé « Examen / Évaluation » |
-| 9 | Anciennes notes | Tableau des notes : les notes seedées `interrogation`/`examen` affichent les nouveaux libellés (compatibilité des données) |
-| 10 | Appréciations en base | Bulletins stockés : 13,80/13,59/13,18 → ACCEPTABLE (migration + seed corrects) |
-| 11 | Connexion enseignant avec mdp temporaire | Redirection automatique vers « Nouveau mot de passe requis » ; impossible d'accéder aux espaces avant changement |
-| 12 | Changement forcé | Nouveau mot de passe accepté → arrivée sur le tableau de bord enseignant |
-| 13 | Connexion Parent | `/parent/home` sans page blanche ; cartes enfants avec moyenne générale + **appréciation PEUT MIEUX FAIRE (12,67)**, Moy T1/T2, Français, Anglais |
-| 14 | Moyennes parent (page Notes) | 4 cartes par enfant : Générale 12,67 · Française 13,84 · Anglaise 11,07 · **Bilingue 12,73** — aucun tiret indu |
-| 15 | Notification | Clic cloche → panneau (la note 17,50 créée en test y figure) ; clic → page Notes correcte, session conservée, pas de redirection annonces |
-| 16 | Formulaires publics (réseau réel, anonyme) | contact → **201** ; préinscription → **201** ; honeypot rempli → **400** ; soumissions visibles dans l'écran admin « Site vitrine » (statut Nouveau) |
-| 17 | Mobile (375×812) | Accueil, menu hamburger accessible (tous liens + Mon espace + Inscrire mon enfant), page Contact — aucune coupure ni débordement |
-| 18 | Console navigateur | Aucune erreur sur l'ensemble des parcours |
+| Vue exposant un modèle d'académie sans filtrage | `manage.py academy_scope_audit --strict` | **0 sur 13 examinées**, 11 exemptées avec motif écrit |
+| Champ collecté mais perdu dans la chaîne | `manage.py field_mapping_audit --strict` | aucun |
+| Identité codée en dur hors de la source unique | `pytest tests/test_branding_source.py` | 17 tests, 5 sous-tests |
+| Documents officiels — ensemble des suites | six fichiers de tests dédiés | **155 réussis, 215 sous-tests** |
 
-## 5. Commandes d'environnement propre exécutées
+### Noms longs
 
-```bash
-# Base de démo recréée de zéro pendant la mission :
-cd backend
-rm -f db_dev.sqlite3
-DJANGO_SETTINGS_MODULE=feba_project.settings.dev_sqlite .venv-test/bin/python manage.py migrate --run-syncdb
-DJANGO_SETTINGS_MODULE=feba_project.settings.dev_sqlite .venv-test/bin/python manage.py seed_demo_data
-DJANGO_SETTINGS_MODULE=feba_project.settings.dev_sqlite .venv-test/bin/python manage.py seed_website
-DJANGO_SETTINGS_MODULE=feba_project.settings.dev_sqlite .venv-test/bin/python manage.py runserver 8000
-# Frontend :
-cd frontend && BACKEND_ORIGIN=http://localhost:8000 npm run dev
-```
+Le nom de test de **79 caractères** —
+`Marie-Élisabeth Joséphine Adjovi-Bokô d'Almeida de Souza Hounkpatin Ahouangonou`
+— est composé sur deux lignes centrées sur les quatre gabarits :
 
-Comptes de démonstration (seed) :
-superadmin@feba.bj / SuperAdmin@2024 · admin@feba.bj / Admin@2024 ·
-prof.math@feba.bj (mot de passe modifié pendant l'E2E : MonNouveauProf#26) ·
-parent1@feba.bj / Parent@2024 · eleve1@feba.bj / Student@2024.
+| Gabarit | Lignes | Corps | Encre (y) | Zone autorisée |
+|---|---|---|---|---|
+| `diploma_feba` | 2 | 22,75 pt | 120,83 – 136,79 mm | 119,93 – 136,85 mm |
+| `diploma_feba_fha` | 2 | 21,00 pt | 127,84 – 142,57 mm | 126,50 – 142,62 mm |
+| `certificate_feba` | 2 | 19,75 pt | 122,05 – 135,90 mm | 121,62 – 135,95 mm |
+| `certificate_feba_fha` | 2 | 15,00 pt | 126,68 – 137,20 mm | 126,30 – 137,24 mm |
+
+Le contrôle décisif n'est pas ce tableau mais une **analyse de pixels** :
+le document est produit, rastérisé à 200 dpi, puis comparé au même fond
+posé par le même calcul, sans un seul champ. Les deux pages passent par
+`drawImage` avec la même transformation ; leur différence est, au pixel
+près, ce que le moteur a ajouté.
+
+C'est le seul contrôle qui voyait le défaut d'origine : la phrase gravée
+est un dessin dans le fond, et aucune analyse de la structure du PDF ne
+peut constater qu'un nom la recouvre. Trois versions successives du repli
+sur deux lignes ont passé les contrôles géométriques et recouvert cette
+phrase.
+
+### Les contrôles mordent-ils ?
+
+Un test qui ne peut pas échouer ne prouve rien. Trois mutations
+volontaires ont été appliquées, observées, puis annulées :
+
+| Mutation | Résultat |
+|---|---|
+| Réserve de jambage 0,23 → 0,002 em | **52 échecs** |
+| Limiteur remis à `django_ratelimit` nu | les **13** tests du limiteur échouent |
+| Zone du diplôme FEBA étendue à y 114 mm, sur la phrase gravée | `test_la_zone_tient_entre_la_phrase_gravee_et_la_regle` échoue |
+| `RoleRedirect` sans attente du rôle | les 2 tests du routeur échouent |
+
+### Téléchargement sécurisé et autorisations
+
+Éprouvés dans le navigateur (§ 4) et par
+`tests/test_official_documents.py` : fichiers hors du répertoire public,
+permissions `0600`, `Cache-Control: private, no-store`, et **404 et non
+403** pour un identifiant d'une autre académie — répondre « interdit »
+confirmerait que le dossier existe.
+
+---
+
+## 4. Parcours navigateur
+
+Chromium réel, backend et frontend lancés, PostgreSQL et Redis en
+service.
+
+| Parcours | Commande | Contrôles |
+|---|---|---|
+| Documents officiels, deux académies | `node e2e/parcours-documents-officiels.mjs` | **54 / 54** |
+| Préinscriptions FEBA | `node e2e/parcours-preinscription-feba.mjs` | 41 |
+| Rapports mensuels FEBA FHA | `node e2e/parcours-rapports-mensuels.mjs` | 30 |
+| Envoi réel via Mailpit | script de vérification SMTP | 19 |
+
+Le parcours des documents couvre : production d'un certificat **et** d'un
+diplôme pour chacune des deux académies, délivrance, attribution du
+numéro officiel, téléchargement réel des PDF, vérification que
+l'empreinte affichée est bien celle des octets reçus, changement
+d'académie **sans rechargement**, cloisonnement des deux administrateurs
+dans les deux sens, six sondes anti-IDOR, recherche d'élève, liste vide
+et erreur maîtrisée.
+
+Le changement d'académie est vérifié par un **témoin** posé sur `window`
+avant la bascule : s'il a disparu après, la page a rechargé. Une liste
+qui se met à jour après un rechargement complet a l'air correcte et ne
+l'est pas.
+
+Dix captures nommées : `e2e/captures/documents-01…10-*.png`.
+
+### Les erreurs de console sont comptées, pas filtrées
+
+Le scénario provoque lui-même sept réponses en erreur — un refus de
+gabarit (400) et six sondes anti-IDOR (404) — et **leur nombre est une
+assertion**. S'il change, c'est qu'une requête a échoué là où on ne
+l'attendait pas, ou qu'une sonde a cessé d'être refusée.
+
+Deux familles sont écartées, chacune avec sa raison nommée :
+
+- la feuille de style de Google Fonts, coupée par la politique réseau du
+  bac à sable — un CDN tiers, sans effet sur le rendu ;
+- les annulations volontaires de requêtes au changement d'académie. Leur
+  nombre n'est **pas** une assertion : il dépend de ce qui est en vol à
+  cet instant précis, et un contrôle sur une course est un contrôle qui
+  échouera un jour sans qu'il se soit rien passé.
+
+### Deux défauts trouvés par ce parcours
+
+1. **Un administrateur qui rechargeait sa page atterrissait dans l'espace
+   élève.** `RoleRedirect` attendait la réhydratation du magasin
+   d'authentification, mais pas le chargement de l'utilisateur ; dans
+   cette fenêtre `role` vaut `undefined` et le repli final envoyait vers
+   `/student/home`. Corrigé, avec deux tests qui échouent contre
+   l'ancien code.
+
+2. **Un identifiant de gabarit inconnu renvoyait le chemin absolu du
+   serveur** au navigateur. Corrigé : le chemin ne sort plus, la liste
+   des gabarits disponibles reste.
+
+### Le limiteur de débit, vérifié en conditions réelles
+
+Redis réellement arrêté puis relancé, contre le serveur de
+développement — pas seulement simulé dans un test.
+
+| Situation | Attendu | Obtenu |
+|---|---|---|
+| Redis actif | 200, jeton délivré | 200, jeton délivré |
+| Redis arrêté, `Accept-Language: fr` | 503, message français | 503, `Retry-After: 30`, message français |
+| Redis arrêté, `Accept-Language: en` | 503, message anglais | 503, message anglais |
+| Redis arrêté | incident ouvert | `ERR-4C707E`, `module=ratelimit`, `status_code=503`, `severity=high` |
+| Redis relancé | service rétabli | 200 sans intervention |
+
+---
+
+## 5. Inspection visuelle
+
+Huit rendus produits, ouverts et examinés : diplôme et certificat × FEBA
+et FEBA FHA × nom de 12 et de 79 caractères.
+
+Ce que l'inspection a montré et qu'aucun test ne disait :
+
+- les signatures du diplôme FEBA FHA flottaient 8,3 mm au-dessus de leur
+  trait, et sa date 1,1 mm ; le certificat FEBA FHA avait le même défaut
+  de 5,2 mm ;
+- une fois recalées, elles **traversaient un fleuron** — un ornement
+  centré de 4,4 mm posé au-dessus de chaque règle, propre à ce fond.
+  Pour un détecteur, un fleuron est un trait horizontal de plus ; il a
+  fallu regarder.
+
+Les deux sont corrigés et documentés dans
+`DOCUMENT_TEMPLATE_CALIBRATION.md`.
+
+---
+
+## 6. Ce que ce rapport ne prouve pas
+
+- Les suites ne remplacent pas une relecture humaine de la mise en page.
+  Un test affirme qu'un nom ne touche pas une règle ; il n'affirme pas
+  qu'il est bien posé.
+- La recherche de secrets porte sur les fichiers suivis par Git et sur
+  des motifs connus. Un secret d'une forme inhabituelle passerait.
+- `academy_scope_audit` détecte une vue qui **ignore** l'académie. Il ne
+  prouve pas qu'une vue qui la mentionne filtre correctement — cela
+  relève des tests de cloisonnement par module, qui existent.
+- Le parcours navigateur s'exécute sur un serveur de développement
+  mono-processus. Le comportement sous charge réelle n'est pas mesuré
+  ici.
+- `RATELIMIT_ENABLE = False` reste dans les réglages de test, pour que
+  les autres suites ne se bloquent pas elles-mêmes en enchaînant les
+  connexions. Le limiteur n'est donc éprouvé que par
+  `test_ratelimit_degrade.py`, qui le rallume explicitement. Aucune autre
+  suite ne mesure son comptage.

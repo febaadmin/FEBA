@@ -18,6 +18,7 @@ urlpatterns = [
     path('api/schedule/', include('apps.schedule.urls')),
     path('api/homework/', include('apps.homework.urls')),
     path('api/payments/', include('apps.payments.urls')),
+    path('api/documents/', include('apps.documents.urls')),
     path('api/messages/', include('apps.messaging.urls')),
     path('api/announcements/', include('apps.announcements.urls')),
     path('api/notifications/', include('apps.notifications.urls')),
@@ -26,6 +27,7 @@ urlpatterns = [
     path('api/virtual-rooms/', include('apps.virtualclass.urls')),
     path('api/health/', include('apps.dashboard.health_urls')),
     path('api/website/', include('apps.website.urls')),
+    path('api/monthly-reports/', include('apps.monthly_reports.urls')),
     path('api/incidents/', include('apps.incidents.urls')),
     path('api/', include('apps.core.urls')),  # plateforme SaaS (superadmin)
 ]

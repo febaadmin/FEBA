@@ -37,10 +37,27 @@ services:
       - XMPP_GUEST_DOMAIN=guest.meet.jitsi
       - XMPP_MUC_DOMAIN=muc.meet.jitsi
       - TZ=${TZ:-Africa/Porto-Novo}
+      # IPv6 désactivable : sur un hôte ou un runtime conteneur SANS pile
+      # IPv6 (CI, VM minimale, certains hébergeurs), nginx échoue au
+      # démarrage avec « socket() [::]:80 failed (97: Address family not
+      # supported by protocol) » et redémarre en boucle — l'instance
+      # paraît « running » mais ne répond jamais.
+      # Valeur par défaut 0 : fonctionne partout ; passez ENABLE_IPV6=1
+      # dans .env.jitsi si votre infrastructure sert de l'IPv6.
+      - ENABLE_IPV6=${ENABLE_IPV6:-0}
     volumes:
       - jitsi-web-config:/config
     networks: [jitsi]
     depends_on: [prosody]
+    healthcheck:
+      # Le health check porte sur une VRAIE réponse HTTP, pas sur la
+      # présence du process : c'est précisément la distinction qui
+      # manquait pour détecter la boucle de redémarrage nginx ci-dessus.
+      test: ["CMD-SHELL", "curl -fsS -o /dev/null http://localhost/ || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
 
   prosody:
     image: jitsi/prosody:stable

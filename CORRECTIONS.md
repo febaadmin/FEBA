@@ -1,4 +1,57 @@
 # CORRECTIONS — FEBA V4 → V8 (26/07/2026)
+## V9-bis
+
+### Le nom d'un élève tient sur son diplôme, quel qu'il soit
+
+Le repli sur deux lignes avait été tenté trois fois et retiré : le bloc
+remontait sur la phrase gravée dans le fond. La cause n'était pas
+l'algorithme mais la MESURE — la hauteur d'une ligne était déduite de la
+fonte (ascendante nominale 0,896 em), ou d'une constante `corps × 0,75`.
+Les lettres d'un nom montent en réalité à 0,766 em au plus.
+
+`backend/apps/documents/textfit.py` lit les tables du fichier TrueType :
+chasse dans `hmtx`, boîte englobante du dessin dans `glyf`. Le module ne
+dessine rien et ne dépend ni de Django ni d'une base : il s'éprouve
+isolément, ce qu'une mesure enfouie dans un moteur de rendu ne permet
+pas. Ses largeurs sont confrontées à celles de ReportLab, qui dessinera.
+
+Le corps ne dépend plus des lettres du nom : sans hauteur de référence,
+« Élise Kponou » sortait à 31 pt et « Jean Dossou » à 34 pt sur le même
+certificat, l'accent montant plus haut que toute lettre du second.
+
+### Un administrateur n'est pas un élève
+
+`frontend/src/router/index.jsx` — `RoleRedirect` attendait la
+réhydratation du magasin d'authentification mais pas le chargement de
+l'utilisateur. Dans cette fenêtre, `role` vaut `undefined`, aucun test ne
+passe, et le repli final envoyait vers `/student/home`.
+
+Le repli n'est plus « élève » mais « on ne sait pas encore » : on attend
+le rôle au lieu de l'inventer.
+
+### Une panne de cache n'est pas un défaut de l'application
+
+`backend/apps/core/ratelimit.py` — le limiteur de débit comptait dans
+Redis ; Redis absent, la connexion répondait 500. Refuser était juste,
+le message non : il envoyait chercher un bug applicatif au lieu d'un
+service à redémarrer.
+
+La réponse est maintenant 503, avec un message localisé, un
+`Retry-After`, la dépendance nommée (`cache`) et un incident ouvert.
+Aucun jeton n'est délivré : on reste fermé, parce que ce limiteur est ce
+qui sépare une base de comptes d'une attaque par force brute.
+
+Seul l'appel au compteur est entouré. La vue s'exécute sans filet — un
+défaut dedans doit continuer de sortir en 500.
+
+### Le chemin du serveur ne sort plus
+
+`backend/apps/documents/templates_registry.py` — un identifiant de
+gabarit inconnu affichait l'arborescence du serveur au navigateur. La
+liste des gabarits disponibles reste : elle est déjà publiée par l'API et
+aide à corriger.
+
+---
 
 ## V8 (26/07/2026)
 

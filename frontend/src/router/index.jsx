@@ -12,7 +12,12 @@ const SiteCampus = lazy(() => import("../site/pages/CampusPage"));
 const SiteAcademics = lazy(() => import("../site/pages/AcademicsPage"));
 const SiteAdmissions = lazy(() => import("../site/pages/AdmissionsPage"));
 const SiteSchoolLife = lazy(() => import("../site/pages/SchoolLifePage"));
-const SiteOnline = lazy(() => import("../site/pages/OnlinePage"));
+// FEBA French Heritage Academy (ex-« FEBA Online ») : page programme,
+// fiche d'inscription en 12 étapes et formulaire de contact dédiés.
+const SiteFha = lazy(() => import("../site/pages/FhaPage"));
+const SiteFhaEnroll = lazy(() => import("../site/pages/FhaEnrollPage"));
+const SiteFhaContact = lazy(() => import("../site/pages/FhaContactPage"));
+const SiteFhaPlacement = lazy(() => import("../site/pages/FhaPlacementTestPage"));
 const SiteNews = lazy(() => import("../site/pages/NewsPage"));
 const SiteNewsDetail = lazy(() => import("../site/pages/NewsDetailPage"));
 const SiteGallery = lazy(() => import("../site/pages/GalleryPage"));
@@ -55,6 +60,8 @@ const AdminParents = lazy(() => import("../pages/admin/Parents"));
 const AdminClasses = lazy(() => import("../pages/admin/Classes"));
 const AdminGrades = lazy(() => import("../pages/admin/Grades"));
 const AdminPayments = lazy(() => import("../pages/admin/Payments"));
+const AdminCardTransactions = lazy(() => import("../pages/admin/CardTransactions"));
+const AdminOfficialDocuments = lazy(() => import("../pages/admin/OfficialDocuments"));
 const AdminAttendance = lazy(() => import("../pages/admin/Attendance"));
 const AdminHomework = lazy(() => import("../pages/admin/Homework"));
 const AdminAnnouncements = lazy(() => import("../pages/admin/Announcements"));
@@ -68,6 +75,8 @@ const AdminLevels = lazy(() => import("../pages/admin/Levels"));
 const AdminBranding = lazy(() => import("../pages/admin/Branding"));
 const AdminEnrollments = lazy(() => import("../pages/admin/Enrollments"));
 const AdminProfile = lazy(() => import("../pages/admin/Profile"));
+const FhaAdmissions = lazy(() => import("../pages/admin/FhaAdmissions"));
+const MonthlyReports = lazy(() => import("../pages/admin/MonthlyReports"));
 const AdminWebsite = lazy(() => import("../pages/admin/Website"));
 
 // Teacher pages
@@ -127,6 +136,21 @@ function ProtectedRoute({ children, allowedRoles }) {
 
   if (!accessToken) return <Navigate to="/login" replace />;
 
+  // Même fenêtre que dans `RoleRedirect` : jeton réhydraté, utilisateur
+  // pas encore là. Décider maintenant reviendrait à comparer le rôle
+  // attendu à `undefined` — c'est-à-dire à refuser l'accès à quelqu'un
+  // qui y a droit, puis à le rediriger sur une supposition.
+  if (!user?.role) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+        <div className="flex flex-col items-center gap-3 text-slate-400">
+          <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+          <span className="text-sm">Chargement…</span>
+        </div>
+      </div>
+    );
+  }
+
   // P2 : mot de passe réinitialisé par un administrateur — l'utilisateur ne
   // peut pas naviguer dans son espace tant qu'il n'a pas choisi son propre
   // mot de passe (le backend lève le drapeau après change-password).
@@ -145,16 +169,40 @@ function ProtectedRoute({ children, allowedRoles }) {
 }
 
 // ── Redirige vers le tableau de bord selon le rôle ────────────────────────
+//
+// UN RÔLE QU'ON NE CONNAÎT PAS ENCORE N'EST PAS « ÉLÈVE ».
+//
+// La version précédente attendait la réhydratation du magasin, mais pas
+// le chargement de l'UTILISATEUR. Entre les deux existe une fenêtre où
+// `_hasHydrated` vaut true, le jeton est là, et `user` vaut encore null :
+// `role` est alors `undefined`, aucun test ne passe, et le repli final
+// envoyait la personne vers l'espace ÉLÈVE.
+//
+// Vu dans le navigateur : un administrateur qui recharge une page de son
+// espace se retrouvait sur /student/home. Ce n'est pas une faille — le
+// serveur continue de refuser tout ce que ce compte n'a pas le droit de
+// lire, et l'espace élève s'affiche vide — mais l'administrateur est
+// éjecté de son travail sans explication, et l'écran lui dit qu'il est
+// un élève.
+//
+// Le repli n'est plus « élève » : c'est « on ne sait pas encore », et on
+// n'oriente pas quelqu'un sur une supposition.
 function RoleRedirect() {
   const { user, accessToken, _hasHydrated } = useAuthStore();
   if (!_hasHydrated) return null;
   if (!accessToken) return <Navigate to="/login" replace />;
-  const role = user?.role;
+  // Jeton présent, utilisateur pas encore chargé : on patiente.
+  if (!user?.role) return null;
+
+  const role = user.role;
   if (role === "superadmin") return <Navigate to="/superadmin/dashboard" replace />;
   if (role === "admin")      return <Navigate to="/admin/dashboard" replace />;
   if (role === "teacher")    return <Navigate to="/teacher/dashboard" replace />;
   if (role === "parent")     return <Navigate to="/parent/home" replace />;
-  return <Navigate to="/student/home" replace />;
+  if (role === "student")    return <Navigate to="/student/home" replace />;
+  // Rôle inconnu du routeur : la connexion est valide mais aucun espace
+  // ne lui correspond. Le dire vaut mieux que de le déposer au hasard.
+  return <Navigate to="/login" replace />;
 }
 
 // ── P2 : écran de changement de mot de passe obligatoire ──────────────────
@@ -186,7 +234,20 @@ export default function AppRouter() {
         <Route path="/academique" element={<SiteAcademics />} />
         <Route path="/admissions" element={<SiteAdmissions />} />
         <Route path="/vie-scolaire" element={<SiteSchoolLife />} />
-        <Route path="/feba-online" element={<SiteOnline />} />
+        <Route path="/feba-fha" element={<SiteFha />} />
+        <Route path="/feba-fha/enroll" element={<SiteFhaEnroll />} />
+        <Route path="/feba-fha/contact" element={<SiteFhaContact />} />
+        {/* « Réserver un test » ouvre un parcours PROPRE, plus le
+            formulaire d'inscription complet. */}
+        <Route path="/feba-fha/placement-test" element={<SiteFhaPlacement />} />
+        {/* Ancien lien ?intent=placement : redirigé vers la route dédiée. */}
+        <Route path="/feba-fha/enroll/placement" element={<Navigate to="/feba-fha/placement-test" replace />} />
+        {/* Redirection permanente de l'ancienne route « FEBA Online » :
+            les liens déjà partagés (flyers, réseaux sociaux, e-mails)
+            continuent de fonctionner et n'affichent plus l'ancien nom.
+            `replace` évite de laisser l'ancienne URL dans l'historique. */}
+        <Route path="/feba-online" element={<Navigate to="/feba-fha" replace />} />
+        <Route path="/feba-online/*" element={<Navigate to="/feba-fha" replace />} />
         <Route path="/actualites" element={<SiteNews />} />
         <Route path="/actualites/:slug" element={<SiteNewsDetail />} />
         <Route path="/galerie" element={<SiteGallery />} />
@@ -213,6 +274,8 @@ export default function AppRouter() {
         <Route path="grades"        element={<AdminGrades />} />
         <Route path="bulletins"     element={<AdminBulletins />} />
         <Route path="payments"      element={<AdminPayments />} />
+        <Route path="card-transactions" element={<AdminCardTransactions />} />
+        <Route path="official-documents" element={<AdminOfficialDocuments />} />
         <Route path="attendance"    element={<AdminAttendance />} />
         <Route path="homework"      element={<AdminHomework />} />
         <Route path="schedule"      element={<AdminSchedule />} />
@@ -223,6 +286,13 @@ export default function AppRouter() {
         <Route path="enrollments"   element={<AdminEnrollments />} />
         <Route path="virtual"       element={<VirtualRooms />} />
         <Route path="website"       element={<AdminWebsite />} />
+        {/* P2 : les dossiers FHA étaient enregistrés sans écran pour
+            les consulter — voici leur back-office dédié. */}
+        <Route path="fha-admissions" element={<FhaAdmissions />} />
+        {/* P3 : rapports mensuels — académie en ligne uniquement. Le
+            backend refuse toute autre académie, l'entrée de menu ne fait
+            que suivre. */}
+        <Route path="monthly-reports" element={<MonthlyReports />} />
         <Route path="incidents"     element={<SuperAdminIncidents />} />
         <Route path="incidents/:id" element={<SuperAdminIncidents />} />
         <Route path="profile"       element={<SuperAdminProfile />} />
@@ -242,6 +312,8 @@ export default function AppRouter() {
         <Route path="levels"        element={<AdminLevels />} />
         <Route path="grades"        element={<AdminGrades />} />
         <Route path="payments"      element={<AdminPayments />} />
+        <Route path="card-transactions" element={<AdminCardTransactions />} />
+        <Route path="official-documents" element={<AdminOfficialDocuments />} />
         <Route path="attendance"    element={<AdminAttendance />} />
         <Route path="homework"      element={<AdminHomework />} />
         <Route path="announcements" element={<AdminAnnouncements />} />
@@ -255,6 +327,13 @@ export default function AppRouter() {
         <Route path="enrollments"   element={<AdminEnrollments />} />
         <Route path="virtual"       element={<VirtualRooms />} />
         <Route path="website"       element={<AdminWebsite />} />
+        {/* P2 : les dossiers FHA étaient enregistrés sans écran pour
+            les consulter — voici leur back-office dédié. */}
+        <Route path="fha-admissions" element={<FhaAdmissions />} />
+        {/* P3 : rapports mensuels — académie en ligne uniquement. Le
+            backend refuse toute autre académie, l'entrée de menu ne fait
+            que suivre. */}
+        <Route path="monthly-reports" element={<MonthlyReports />} />
         <Route path="profile"       element={<AdminProfile />} />
       </Route>
       <Route path="/teacher" element={

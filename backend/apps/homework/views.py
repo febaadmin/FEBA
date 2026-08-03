@@ -38,10 +38,10 @@ class HomeworkViewSet(BulkDeleteMixin, viewsets.ModelViewSet):
             not self.request.query_params.get("school_year")
             and self.request.query_params.get("all_years") != "1"
         ):
-            from apps.schools.models import SchoolYear
-            active_year = SchoolYear.objects.filter(school=school, is_current=True).first()
-            if active_year:
-                qs = qs.filter(school_year=active_year)
+            from apps.core.tenancy import current_school_years
+            active_years = current_school_years(school)
+            if active_years.exists():
+                qs = qs.filter(school_year__in=active_years)
 
         if user.role_level >= 80:
             return qs

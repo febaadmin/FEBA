@@ -1,4 +1,47 @@
 # CHANGELOG_FIXES.md — Missions V4 → V8 (juillet 2026)
+## V9-bis — 2 août 2026
+
+### Corrigé
+
+- **Nom de plus de 76 caractères refusé.** Nouveau moteur de composition
+  (`apps/documents/textfit.py`) fondé sur les métriques réelles de la
+  police. Le nom de test de 79 caractères tient sur deux lignes sur les
+  quatre gabarits. 50 tests, 147 sous-tests, dont une analyse de pixels
+  du rendu.
+- **Zone du nom des gabarits FEBA FHA plus large que leur règle** de
+  11,4 mm et 10,0 mm. Recalibrée sur chaque fond.
+- **Signatures et date du diplôme FEBA FHA** 8,3 mm au-dessus de leur
+  trait ; certificat FEBA FHA, 5,2 mm. Recalibrés sur leurs propres
+  ancres, mesurées par `document_analyze`.
+- **Signature traversant le fleuron** des règles FEBA FHA. La ligne
+  d'écriture utile de ce fond est le sommet du fleuron, pas le trait.
+- **`getAscent()` doublement mise à l'échelle.** Placement conservé,
+  expression corrigée.
+- **Une ligne minuscule préférée à deux lignes lisibles.** Une et deux
+  lignes sont désormais essayées à chaque corps.
+- **Un administrateur rechargeant sa page atterrissait dans l'espace
+  élève.** `RoleRedirect` et `ProtectedRoute` attendent le rôle au lieu
+  de le supposer.
+- **Chemin absolu du serveur exposé** dans le message d'erreur d'un
+  gabarit inconnu.
+- **Erreur interne 500 ambiguë quand Redis est absent.** La connexion
+  répond désormais **503**, avec un message clair et localisé, un
+  `Retry-After`, un incident pour le super administrateur — et toujours
+  aucun jeton : le limiteur reste fermé. 13 tests.
+
+### Ajouté
+
+- `DOCUMENT_TEMPLATE_CALIBRATION.md` — calibrage des quatre gabarits,
+  avec les commandes qui le refont.
+- `e2e/parcours-documents-officiels.mjs` — 54 contrôles, dix captures.
+- `backend/tests/test_textfit.py`, `frontend/src/router/roleRedirect.test.jsx`.
+
+### Levé
+
+- La limitation « un nom de plus de 76 caractères ne tient pas sur une
+  ligne et le document est refusé » n'existe plus.
+
+---
 
 ## V8 — Profils, incidents techniques, poids des notes, barèmes, cachets (26/07/2026)
 
@@ -370,3 +413,90 @@ Passe corrective ciblée (aucune fonctionnalité modifiée) : utiliser
 - i18n : clé dupliquée « Réinitialiser » supprimée (erreur eslint).
 - `.claude/launch.json` : lancement démo locale (backend dev_sqlite +
   Vite) documenté et reproductible.
+
+---
+
+# V9 — multi-académies, inscription FHA, documents
+
+## P0 — Une seule source d'identité par académie
+
+- `apps/schools/branding.py` : 28 champs résolus depuis l'académie.
+- Reçus, bulletins, diplômes, certificats et fiches n'en lisent plus d'autre.
+- Sans académie identifiable, `get_branding` **lève** — l'ancien repli vers
+  `School.objects.first()` produisait un document complet, plausible et faux.
+- Le moteur de rendu ne connaît plus aucun nom de fichier de cachet.
+- Un test lit le code source et refuse le retour d'une identité en dur.
+
+## P1 — Inscription FHA de bout en bout
+
+- Transaction atomique pour l'enregistrement ; PDF, notifications et
+  e-mails volontairement hors transaction.
+- Journal `EmailDelivery` : cinq états explicites, erreur exacte du
+  fournisseur, identifiant de suivi, politique de reprise, action de relance.
+- `fail_silently=True` supprimé.
+- L'écran public ne promet un e-mail que s'il a été accepté.
+- Drapeau `used_real_provider` : « Sans fournisseur » plutôt que « Envoyé ».
+
+## P2 — Audit des champs, exécutable
+
+- `manage.py field_mapping_audit` interroge le code au lieu de décrire
+  l'intention. `FIELD_MAPPING_AUDIT.md` en est la sortie.
+- Un test refuse tout champ saisi qui ne serait relu nulle part.
+
+## P3 — Fiche PDF FHA
+
+- 18 sections, tout ce que la famille a saisi, un champ vide écrit « — ».
+- Nom stable `FHA-2026-0009-fiche-inscription.pdf`.
+- Stockage privé, permissions `0600`, empreinte SHA-256, versions conservées.
+- Téléchargement par vue authentifiée, 404 anti-IDOR, `no-store`.
+
+## P4 — Détail complet et export
+
+- Tous les champs, libellés lisibles, état de la fiche et des envois.
+- Export CSV construit depuis `_meta` : un champ ajouté demain y figure.
+- Même filtrage par académie que la liste.
+
+## P5 — Formulaires de contact
+
+- `whatsapp` ajouté au formulaire FEBA et à son serializer.
+- Le détail affiche tout ce que le visiteur a saisi.
+- Badge d'académie sur chaque ligne en vue consolidée.
+- Contenu saisi en lecture seule ; 404 entre académies.
+
+## P6 — Messages longs
+
+- Composant `LongText` : `pre-wrap`, `overflow-wrap: anywhere`,
+  `word-break`, défilement vertical, débordement horizontal impossible,
+  action « Copier ».
+- Aucun `ellipsis`, aucun `line-clamp`, aucun `slice()`.
+- Rendu comme du texte, jamais `dangerouslySetInnerHTML`.
+
+## P7 — Diplôme disponible dès l'installation
+
+- Fond neutralisé versionné, empreinte déclarée et vérifiée.
+- `render_background_path` ne retombe plus jamais sur l'original.
+- Contrôles au démarrage, à l'installation et à l'émission.
+- Le message demandant `document_neutralize` n'existe plus dans le code.
+
+## P8 — Documents officiels par académie
+
+- `_visible_documents` et `_visible_students` appliquent l'académie
+  sélectionnée, plus seulement `user.school`.
+- Les gabarits déclarent leurs académies autorisées.
+- Le serveur refuse la production croisée ; l'interface exige une
+  confirmation explicite, remise à zéro à chaque changement.
+
+## P11 — Défauts trouvés en balayant le projet
+
+- Huit champs de `School` exposés par aucun serializer — dont ceux qui
+  déterminent l'en-tête de chaque document.
+- La photo de l'enfant stockée dans `MEDIA_ROOT`, servi publiquement par
+  nginx. Déplacée en stockage privé.
+- La liste FHA lisait `parent_*` là où le serializer expose `parent1_*` :
+  recherche muette et colonnes d'export vides.
+
+## Vérifications
+
+- PostgreSQL **794**, SQLite **793 + 1 ignoré**, Vitest **123**,
+  ESLint **0 erreur**, build OK.
+- 34 vérifications navigateur sur cinq parcours, toutes vertes.

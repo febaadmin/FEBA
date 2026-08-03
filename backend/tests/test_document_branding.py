@@ -15,6 +15,7 @@ import fitz  # PyMuPDF
 from django.test import SimpleTestCase
 
 from apps.bulletins import pdf_generator as G
+from tests.branding_fixtures import make_palette
 from tests.test_bulletin_layout import _subj
 
 
@@ -39,9 +40,8 @@ def _bulletin_pdf(school_name="Faith & Excellence Bilingual Academy"):
     stats = {"fr_min": 8.0, "fr_max": 14.0, "en_min": 9.0, "en_max": 16.0,
              "bi_min": 9.0, "bi_max": 15.0}
     buf = BytesIO()
-    logo = G._get_school_logo_path(student)
     G._build_standard_pdf(buf, student, "T1", sy, subject_data, bilingual,
-                          stats, 12.0, bull, logo)
+                          stats, 12.0, bull, make_palette(display_name=school_name))
     return buf.getvalue()
 
 

@@ -1,4 +1,50 @@
 # AUDIT_REPORT.md — Missions V4 → V8
+## Audit V9-bis — ce que la mesure a trouvé
+
+Trois écarts de calibrage, invisibles au code, tous du même type : les
+gabarits FEBA FHA avaient hérité de coordonnées du fond de Cotonou.
+
+| Écart | Ampleur | Conséquence si non corrigé |
+|---|---|---|
+| Zone du nom plus large que la règle | 11,4 mm (diplôme), 10,0 mm (certificat) | un nom long dépasse du trait sur lequel il est écrit |
+| Signatures calées sur les ancres de Cotonou | 8,3 mm (diplôme FHA), 5,2 mm (certificat FHA) | les signatures flottent au-dessus de leur trait |
+| Fleuron central non pris en compte | 4,4 mm | la signature traverse un ornement |
+
+Deux défauts de logique, trouvés en relisant :
+
+- `pdfmetrics.getAscent(police, corps)` rend déjà des points ; le code la
+  divisait par 1000 avant de la remultiplier par le corps, réduisant le
+  terme d'un facteur ~30. Le placement a été **conservé** — c'est contre
+  lui que cinq champs ont été calibrés — mais il est désormais écrit sans
+  détour.
+- Le moteur épuisait tous les corps sur une ligne avant d'envisager la
+  seconde.
+
+Un défaut d'orientation, trouvé au navigateur :
+
+- `RoleRedirect` traitait « rôle pas encore chargé » comme « élève ». Un
+  administrateur rechargeant sa page atterrissait dans l'espace élève.
+  Ce n'est pas une faille — le serveur continue de refuser ce que le
+  compte n'a pas le droit de lire — mais l'écran ment sur qui il a en
+  face de lui.
+
+Une fuite d'information, trouvée au navigateur :
+
+- Un identifiant de gabarit inconnu renvoyait
+  `/home/…/backend/document_templates/None_template.json`. Le chemin ne
+  sort plus.
+
+### Contrôles reconduits, tous verts
+
+| Contrôle | Résultat |
+|---|---|
+| `academy_scope_audit --strict` | 0 vue non filtrée sur 13, 11 exemptées avec motif |
+| `field_mapping_audit --strict` | aucun champ collecté puis perdu |
+| `test_branding_source.py` | 17 tests, 5 sous-tests |
+| `test_academy_identity_separation.py` | 20 tests, 57 sous-tests |
+| `documents_ready` | 17 contrôles |
+
+---
 
 ## Audit V8 (26/07/2026)
 

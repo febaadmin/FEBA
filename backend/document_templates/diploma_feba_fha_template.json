@@ -1,0 +1,241 @@
+{
+  "id": "diploma_feba_fha",
+  "version": 1,
+  "label": "Diplôme FEBA French Heritage Academy",
+  "description": "Diplôme de fin de cycle de l'académie en ligne — fond verrouillé propre à FEBA FHA, seuls les champs variables sont rendus.",
+  "background": {
+    "file": "diplome_feba_fha.png",
+    "directory": "sources/feba_fha",
+    "sha256": "09fa3534d399a8ec9c44f48d047adb1f31830a5b79ca575c13e26bef1c4ef0d5",
+    "width_px": 1492,
+    "height_px": 1054,
+    "original_filename": "diplome_feba_fha.png",
+    "_commentaire": "Visuel officiel de FEBA French Heritage Academy, transmis par le dépôt Git (branche feba-fha-assets, commit 9841977). L'empreinte ci-dessus est celle du fichier reçu et fait autorité : elle est vérifiée au démarrage, et un fond remplacé — même par une version visuellement identique mais ré-encodée — fait refuser la production plutôt que de sortir un document altéré sans prévenir.",
+    "_commentaire_academie": "Ce fond porte « FRENCH HERITAGE ACADEMY ». Il ne doit JAMAIS servir à un élève de l'école de Cotonou, et le fond de Cotonou ne doit jamais servir ici : le document sortirait au nom de l'une et à l'effigie de l'autre.",
+    "date_integration": "2026-08-02",
+    "academie_proprietaire": "FEBA_FHA",
+    "derived_sha256": "9fa7d7a23dfaf511e6f4d42f8d690db4ba8ed28f1f8b2f8da8e6e85950fe2371",
+    "_commentaire_derive": "Empreinte du FOND NEUTRALISÉ, produit une fois depuis l'original et VERSIONNÉ dans le dépôt. Aucun utilisateur n'a à lancer « manage.py document_neutralize » après l'installation ; la commande ne sert qu'à le régénérer lors d'une évolution du visuel."
+  },
+  "page": {
+    "format": "A4",
+    "orientation": "landscape",
+    "width_mm": 297.0,
+    "height_mm": 210.0,
+    "fit": "contain",
+    "_commentaire_fit": "Rapport d'aspect du fond 1492/1054 = 1,41556 contre 1,41429 pour l'A4 paysage. Le fond occupe 297,00 × 209,81 mm, centré, avec 0,095 mm de bande en haut et en bas. L'étirer déplacerait chaque élément d'environ 0,1 mm — la moitié de la tolérance."
+  },
+  "origin": "top-left",
+  "_commentaire_origin": "Millimètres depuis le coin SUPÉRIEUR gauche. 1 px = 0,19906 mm dans les deux axes (1492 px pour 297 mm).",
+  "calibrated": true,
+  "calibration": {
+    "tolerance_mm": 0.2,
+    "method": "Mesure automatique par « manage.py document_analyze » sur le PNG reçu, puis relevé des pixels dorés du bloc d'exemple.",
+    "date": "2026-08-02",
+    "operator": "document_analyze + relevé de pixels",
+    "reference_anchors": [
+      {
+        "nom": "règle d'écriture du nom",
+        "px": "y 722–723, x 423–1081",
+        "mm": "y 143,72–143,92 · x 84,20 → 215,19"
+      },
+      {
+        "nom": "mention d'exemple « Nom Prénom » (pixels dorés)",
+        "px": "y 645–714, x 425–1080",
+        "mm": "y 128,39–142,13 · x 84,60 → 214,99"
+      },
+      {
+        "nom": "ligne DIRECTEUR / ENSEIGNANT",
+        "px": "y 923–924, x 295–413 et 431–549",
+        "mm": "y 183,73 · x 58,72 → 82,21 et 85,80 → 109,29"
+      }
+    ]
+  },
+  "placeholder_masks": [
+    {
+      "name": "nom_prenom_exemple",
+      "kind": "bande",
+      "box": {
+        "x_mm": 83.61,
+        "y_mm": 127.8,
+        "width_mm": 132.37,
+        "height_mm": 16.92
+      },
+      "sample_above_y_mm": 126.01,
+      "sample_below_y_mm": 145.91,
+      "sample_band_mm": 1.6,
+      "preserve": [
+        {
+          "y_mm": 143.52,
+          "height_mm": 0.6,
+          "_commentaire": "Règle d'écriture, px y 721–724. Elle traverse la zone du placeholder et doit rester pixel pour pixel : c'est sur elle que le nom se pose."
+        }
+      ],
+      "note": "Neutralise la mention d'exemple « Nom Prénom », composée en anglaise dorée (px y 645–714). La règle d'écriture est préservée."
+    }
+  ],
+  "fields": [
+    {
+      "name": "student_name",
+      "label": "Nom de l'élève",
+      "type": "text",
+      "required": true,
+      "box": {
+        "x_mm": 85.0,
+        "y_mm": 126.5,
+        "width_mm": 129.6,
+        "height_mm": 16.12
+      },
+      "align": "center",
+      "vertical_align": "bottom",
+      "font": {
+        "family": "FEBA-Script",
+        "size_pt": 34,
+        "min_size_pt": 14
+      },
+      "color": "#B08A2E",
+      "shrink_to_fit": true,
+      "max_lines": 2,
+      "truncate": false,
+      "_commentaire_couleur": "Or moyen relevé sur la mention d'exemple du fond (moyenne des pixels dorés du bloc y 653–685).",
+      "_commentaire_boite": "Largeur volontairement inférieure à celle de la règle (143,13 mm) : un nom qui touche les extrémités du trait paraît à l'étroit.",
+      "_commentaire_alignement": "vertical_align=bottom : la ligne de base se pose au bas de la zone, donc juste au-dessus de la règle d'écriture — comme une signature manuscrite.",
+      "bleed_mm": 3.0,
+      "_commentaire_debord": "Les jambages descendants (« p », « g », « j ») passent sous la ligne de base et franchissent la règle d'écriture. Ce débord appartient à la zone VARIABLE : sans lui, la comparaison compterait le jambage d'un nom comme une altération du fond.",
+      "_commentaire_lignes": "DEUX lignes autorisées. Un patronyme composé de la diaspora dépasse couramment soixante-dix caractères : sur une seule ligne il ne tient pas, et refuser de produire n'est pas un service rendu à l'élève. Le repli est calculé par apps/documents/textfit.py à partir des métriques réelles de la police — boîte englobante du dessin de chaque lettre — et non d'une estimation du type « hauteur = corps × 0,75 », qui se trompait de 30 % et faisait remonter la première ligne sur la phrase gravée dans le fond.",
+      "_commentaire_plafond": "Le haut de la zone est pose SOUS la phrase « Ce diplome est fierement decerne a », dont le fond occupe les pixels y 606-612 (120,6-121,8 mm). Le bas ne bouge pas : avec vertical_align=bottom, la ligne unique se pose exactement au meme endroit qu'avant. Seul le repli sur deux lignes gagne un plafond, et cesse de mordre sur la phrase.",
+      "safe_zone": {
+        "y_top_mm": 126.5,
+        "y_bottom_mm": 142.62,
+        "x_left_mm": 85.0,
+        "x_right_mm": 214.6,
+        "engraved_phrase_bottom_mm": 125.9,
+        "writing_rule_top_mm": 143.62,
+        "_mesure": "MESURÉ sur le fond réellement dessiné, pas estimé. Bord inférieur de la phrase gravée « Ce diplôme est fièrement décerné à » : px y 605–631, soit 125.9 mm ; dégagement 0.6 mm. Bord supérieur de la règle d'écriture : px y 721–723, soit 143.62 mm ; dégagement 1.0 mm. La règle s'étend de 84.0 à 215.58 mm : le nom reste à l'intérieur du trait sur lequel il est écrit.",
+        "_commande": "manage.py document_calibrate --template <id> — la commande réimprime ces nombres depuis le fond installé et échoue si le fond a bougé."
+      },
+      "line_spacing": 1.0,
+      "baseline_reserve_em": 0.23
+    },
+    {
+      "name": "issue_date",
+      "label": "Date de délivrance",
+      "type": "date",
+      "required": true,
+      "box": {
+        "x_mm": 230.31,
+        "y_mm": 172.45,
+        "width_mm": 30.06,
+        "height_mm": 6.5
+      },
+      "align": "center",
+      "vertical_align": "bottom",
+      "font": {
+        "family": "FEBA-Text",
+        "size_pt": 11,
+        "min_size_pt": 8
+      },
+      "color": "#1E3A6E",
+      "format": "%d/%m/%Y",
+      "_commentaire_ancre": "MESURÉ sur le fond FEBA FHA par « manage.py document_analyze » : règle d'écriture px y 923–924, soit 183.83 mm, x 1157–1308 px. Le bas de la boîte est la ligne de base, posée 0.6 mm au-dessus du trait — même convention que le fond de Cotonou. Les coordonnées précédentes venaient de ce fond-là : sur celui-ci, les trois règles sont à la même hauteur, et les signatures flottaient huit millimètres au-dessus de la leur. CORRECTION APRÈS INSPECTION VISUELLE : ce fond pose un FLEURON centré AU-DESSUS de chaque trait, px y 901–922, haut de 4,4 mm et large de 15,9 mm — exactement sous le texte centré. Calée sur le trait (183,23 mm), la signature traversait l'ornement. La ligne d'écriture utile est le SOMMET du fleuron, 179.45 mm, moins 0,5 mm de dégagement. Le fond de Cotonou n'a pas ce motif : ses ornements sont aux extrémités du trait, pas au milieu."
+    },
+    {
+      "name": "director_name",
+      "label": "Nom du directeur",
+      "type": "text",
+      "required": false,
+      "box": {
+        "x_mm": 58.72,
+        "y_mm": 172.45,
+        "width_mm": 50.76,
+        "height_mm": 6.5
+      },
+      "align": "center",
+      "vertical_align": "bottom",
+      "font": {
+        "family": "FEBA-TextItalic",
+        "size_pt": 10,
+        "min_size_pt": 7
+      },
+      "color": "#1E3A6E",
+      "_commentaire": "Rendu UNIQUEMENT si aucune signature officielle n'est disponible. Un nom dactylographié n'est pas une signature et ne prétend pas l'être.",
+      "_commentaire_ancre": "MESURÉ sur le fond FEBA FHA par « manage.py document_analyze » : règle d'écriture px y 923–924, soit 183.83 mm, x 295–550 px. Le bas de la boîte est la ligne de base, posée 0.6 mm au-dessus du trait — même convention que le fond de Cotonou. Les coordonnées précédentes venaient de ce fond-là : sur celui-ci, les trois règles sont à la même hauteur, et les signatures flottaient huit millimètres au-dessus de la leur. CORRECTION APRÈS INSPECTION VISUELLE : ce fond pose un FLEURON centré AU-DESSUS de chaque trait, px y 901–922, haut de 4,4 mm et large de 15,9 mm — exactement sous le texte centré. Calée sur le trait (183,23 mm), la signature traversait l'ornement. La ligne d'écriture utile est le SOMMET du fleuron, 179.45 mm, moins 0,5 mm de dégagement. Le fond de Cotonou n'a pas ce motif : ses ornements sont aux extrémités du trait, pas au milieu."
+    },
+    {
+      "name": "teacher_name",
+      "label": "Nom de l'enseignant",
+      "type": "text",
+      "required": false,
+      "box": {
+        "x_mm": 177.76,
+        "y_mm": 172.45,
+        "width_mm": 37.62,
+        "height_mm": 6.5
+      },
+      "align": "center",
+      "vertical_align": "bottom",
+      "font": {
+        "family": "FEBA-TextItalic",
+        "size_pt": 10,
+        "min_size_pt": 7
+      },
+      "color": "#1E3A6E",
+      "_commentaire_ancre": "MESURÉ sur le fond FEBA FHA par « manage.py document_analyze » : règle d'écriture px y 923–924, soit 183.83 mm, x 893–1082 px. Le bas de la boîte est la ligne de base, posée 0.6 mm au-dessus du trait — même convention que le fond de Cotonou. Les coordonnées précédentes venaient de ce fond-là : sur celui-ci, les trois règles sont à la même hauteur, et les signatures flottaient huit millimètres au-dessus de la leur. CORRECTION APRÈS INSPECTION VISUELLE : ce fond pose un FLEURON centré AU-DESSUS de chaque trait, px y 901–922, haut de 4,4 mm et large de 15,9 mm — exactement sous le texte centré. Calée sur le trait (183,23 mm), la signature traversait l'ornement. La ligne d'écriture utile est le SOMMET du fleuron, 179.45 mm, moins 0,5 mm de dégagement. Le fond de Cotonou n'a pas ce motif : ses ornements sont aux extrémités du trait, pas au milieu."
+    },
+    {
+      "name": "document_number",
+      "label": "Numéro du diplôme",
+      "type": "text",
+      "required": false,
+      "_commentaire_required": "Le numéro officiel n'est attribué qu'à l'émission : l'exiger dès le brouillon rendrait impossible la production d'un document.",
+      "box": {
+        "x_mm": 200.0,
+        "y_mm": 190.5,
+        "width_mm": 50.0,
+        "height_mm": 5.0
+      },
+      "align": "right",
+      "vertical_align": "middle",
+      "font": {
+        "family": "FEBA-Text",
+        "size_pt": 7.5,
+        "min_size_pt": 6
+      },
+      "color": "#8A7A55",
+      "_commentaire": "Zone MESURÉE libre à 100 % de tout ornement (x 200–250 mm, y 190–196). La bordure dorée inférieure commence à 200,7 mm et la courbe marine remonte au-delà de 250 mm : un numéro placé plus à droite serait coupé."
+    }
+  ],
+  "assets": [
+    {
+      "name": "director_signature",
+      "label": "Signature du directeur",
+      "required": false,
+      "resource": "signature_director",
+      "box": {
+        "x_mm": 47.0,
+        "y_mm": 162.0,
+        "width_mm": 44.0,
+        "height_mm": 13.0
+      },
+      "fit": "contain",
+      "_commentaire": "Apposée UNIQUEMENT si un fichier officiel existe dans les ressources du projet. Aucune signature n'est dessinée, reconstituée ni approchée : une signature inventée sur un diplôme est un faux."
+    },
+    {
+      "name": "teacher_signature",
+      "label": "Signature de l'enseignant",
+      "required": false,
+      "resource": "signature_teacher",
+      "box": {
+        "x_mm": 172.0,
+        "y_mm": 162.0,
+        "width_mm": 27.0,
+        "height_mm": 13.0
+      },
+      "fit": "contain"
+    }
+  ],
+  "academies": [
+    "FEBA_FHA"
+  ],
+  "_commentaire_academies": "Codes internes des académies autorisées à émettre ce document. Le fond porte l'identité visuelle de FEBA French Heritage Academy."
+}

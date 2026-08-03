@@ -12,6 +12,7 @@ import StatusBadge from "../../components/ui/StatusBadge";
 import SearchableSelect from "../../components/ui/SearchableSelect";
 import { extractApiError } from "../../utils/errors";
 import { t } from "../../i18n";
+import { useSchoolYearScope } from "../../hooks/useSchoolYearScope";
 
 export default function AdminAttendance() {
   const qc = useQueryClient();
@@ -25,7 +26,9 @@ export default function AdminAttendance() {
 
   const { data: yearsData } = useQuery({ queryKey: ["years"], queryFn: schoolsAPI.years });
   const years = yearsData?.data?.results || yearsData?.data || [];
-  const currentYear = years.find(y => y.is_current);
+  // P2 : en mode « Toutes les Académies », aucune année ne peut
+  // représenter les deux académies — voir useSchoolYearScope.
+  const { currentYear: currentYear, yearLabel } = useSchoolYearScope(years);
   const [filterYear, setFilterYear] = useState("");
 
   const { data, isLoading } = useQuery({
@@ -87,7 +90,7 @@ export default function AdminAttendance() {
         <label className="text-sm font-semibold text-slate-600">{t("Année scolaire :")}</label>
         <select value={filterYear} onChange={e => setFilterYear(e.target.value)} className="input w-auto text-sm">
           <option value="">— Toutes ({currentYear?.name || "actuelle"}) —</option>
-          {years.map(y => <option key={y.id} value={y.id}>{y.name}{y.is_current ? " ✓" : ""}</option>)}
+          {years.map(y => <option key={y.id} value={y.id}>{yearLabel(y)}{y.is_current ? " ✓" : ""}</option>)}
         </select>
       </div>
       <div className="card">

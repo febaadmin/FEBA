@@ -11,6 +11,7 @@ import StatusBadge from "../../components/ui/StatusBadge";
 import SearchableSelect from "../../components/ui/SearchableSelect";
 import { extractApiError } from "../../utils/errors";
 import { t } from "../../i18n";
+import { useSchoolYearScope } from "../../hooks/useSchoolYearScope";
 
 function exportCSV(rows, filename) {
   if (!rows.length) { toast.error(t("Aucune donnée à exporter.")); return; }
@@ -53,11 +54,17 @@ export default function AdminStudents() {
   const years        = yearsData?.data?.results      || yearsData?.data      || [];
   const levels       = levelsData?.data?.results     || levelsData?.data     || [];
   const studentUsers = studentUsersData?.data?.results || studentUsersData?.data || [];
-  const currentYear  = years.find(y => y.is_current);
+  // P2 : en mode « Toutes les Académies », aucune année ne peut représenter
+  // les deux académies — voir useSchoolYearScope.
+  const { currentYear, yearLabel, isAllAcademies } = useSchoolYearScope(years);
 
   useEffect(() => {
-    if (currentYear && yearFilter === null) setYearFilter(currentYear.id);
-  }, [currentYear]);
+    if (yearFilter !== null) return;
+    // Mode consolidé : on n'impose AUCUNE année. Filtrer sur l'année
+    // courante d'une seule académie masquerait l'autre sans le dire.
+    if (isAllAcademies) { setYearFilter("all"); return; }
+    if (currentYear) setYearFilter(currentYear.id);
+  }, [currentYear, isAllAcademies, yearFilter]);
 
   const { data, isLoading } = useQuery({
     queryKey: ["students", yearFilter],
@@ -200,6 +207,9 @@ export default function AdminStudents() {
   const exportStudents = () => {
     const yearName = years.find(y => y.id === yearFilter)?.name || "toutes";
     const rows = students.map(s => ({
+      // P2 : l'export doit rester exploitable hors de l'application, où
+      // rien ne rappelle quelle académie était affichée au moment du clic.
+      "Académie": s.academy_short_name || s.academy_name || "Sans académie",
       "Matricule": s.matricule || "", "Prénom": s.first_name || "", "Nom": s.last_name || "",
       "Genre": s.gender === "M" ? t("Masculin") : t("Féminin"),
       "Date de naissance": s.date_of_birth || "", "Niveau": s.class_level || "",
@@ -270,7 +280,7 @@ export default function AdminStudents() {
           {years.map(y => (
             <button key={y.id} onClick={() => setYearFilter(y.id)}
               className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all ${yearFilter === y.id ? "bg-primary text-white shadow" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}>
-              {y.name}{y.is_current ? " ✓" : ""}
+              {yearLabel(y)}{y.is_current ? " ✓" : ""}
             </button>
           ))}
           <button onClick={() => setYearFilter("all")}

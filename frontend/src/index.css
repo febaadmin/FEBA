@@ -38,6 +38,44 @@
   overflow-wrap: break-word;
 }
 
+/* ── P0 — La règle unique pour tout texte saisi par un humain ──────────────
+   Trois propriétés, jamais séparées, parce qu'elles ne se remplacent pas :
+
+     white-space: pre-wrap  garde les retours à la ligne et les espaces
+                            multiples de l'auteur, ET replie les lignes ;
+     overflow-wrap: anywhere coupe un mot ou une URL qui, seul, dépasse la
+                            largeur disponible — sans cette règle le bloc
+                            s'élargit et le texte sort de l'écran ;
+     word-break: break-word  même intention, pour les moteurs qui ignorent
+                            encore `anywhere`.
+
+   `min-width: 0` est indispensable dès que le bloc est un enfant flex ou
+   grid : la largeur minimale par défaut d'un élément flex est celle de son
+   contenu, donc sans cette ligne un mot de 300 caractères pousse la
+   colonne et fait déborder la page entière, même avec les règles ci-dessus.
+
+   Aucune hauteur fixe, aucun `overflow: hidden`, aucun `-webkit-line-clamp`
+   et aucun `text-overflow: ellipsis` : dans une vue de détail officielle,
+   trois points ne signalent pas un défaut d'affichage, ils font croire que
+   l'auteur s'est arrêté là. */
+.text-longform {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  min-width: 0;
+  max-width: 100%;
+}
+
+/* Variante pour les valeurs qui ne doivent PAS conserver les retours à la
+   ligne (une adresse recomposée, une liste jointe par des virgules) mais
+   qui doivent tout de même se couper au lieu de déborder. */
+.text-wrapsafe {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  min-width: 0;
+  max-width: 100%;
+}
+
 /* ── Site vitrine V5 : point focal des images (voir src/site/mediaMeta.js) ──
    Chaque <SiteImage> reçoit son object-position via variables CSS, avec une
    variante mobile facultative appliquée sous 640 px. */

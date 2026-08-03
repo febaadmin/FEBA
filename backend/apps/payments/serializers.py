@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from .models import Payment, PaymentHistory
+from apps.core.academy_serializers import ACADEMY_FIELDS, AcademyMetadataMixin
 
 
 class PaymentHistorySerializer(serializers.ModelSerializer):
@@ -17,7 +18,25 @@ class PaymentHistorySerializer(serializers.ModelSerializer):
         ]
 
 
-class PaymentSerializer(serializers.ModelSerializer):
+class PaymentSerializer(AcademyMetadataMixin, serializers.ModelSerializer):
+    #: Chemin ORM vers l'académie propriétaire de l'objet.
+    academy_source = "student.school"
+
+    # ── Devise (P0) ───────────────────────────────────────────────────
+    # Le montant seul ne veut rien dire : l'API renvoie systématiquement la
+    # devise, son symbole et le montant DÉJÀ FORMATÉ. Sans cela, chaque
+    # écran devait deviner l'unité — et se trompait pour FEBA FHA.
+    currency = serializers.CharField(read_only=True)
+    currency_symbol = serializers.SerializerMethodField()
+    amount_display = serializers.SerializerMethodField()
+
+    def get_currency_symbol(self, obj):
+        from apps.core.currency import get_currency
+        return get_currency(obj.currency).symbol
+
+    def get_amount_display(self, obj):
+        return obj.formatted_amount
+
     student_name = serializers.CharField(source="student.get_full_name", read_only=True)
     student_class = serializers.SerializerMethodField()
     student_matricule = serializers.CharField(source="student.matricule", read_only=True)
@@ -34,7 +53,10 @@ class PaymentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Payment
         fields = "__all__"
-        read_only_fields = ["reference_number", "received_by"]
+        # `currency` et `amount_minor` sont dérivés de l'académie et du
+        # montant : les accepter en écriture laisserait un client choisir la
+        # monnaie dans laquelle son école facture.
+        read_only_fields = ["reference_number", "received_by", "currency", "amount_minor"]
 
     def validate_amount(self, value):
         if value is None or value <= 0:

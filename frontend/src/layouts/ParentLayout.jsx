@@ -1,4 +1,4 @@
-import { Outlet, NavLink, useNavigate } from "react-router-dom";
+import { NavLink, useNavigate } from "react-router-dom";
 import { Home, Users, ClipboardList, Calendar, FileText, MessageSquare, DollarSign, BookOpen, User, LogOut, School, Menu, X, Bell, Megaphone, Video } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
 import { useBranding } from "../hooks/useBranding";
@@ -10,6 +10,9 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { notificationsAPI, conversationsAPI } from "../api";
 import { t } from "../i18n";
 import LanguageSwitcher from "../components/ui/LanguageSwitcher";
+import { useEntityContext } from "../hooks/useEntityContext";
+import EntitySwitcher from "../components/EntitySwitcher";
+import AcademyScopedOutlet from "../components/AcademyScopedOutlet";
 
 const nav = [
   { label: "Accueil",           icon: Home,           to: "/parent/home" },
@@ -17,7 +20,9 @@ const nav = [
   { label: "Notes",             icon: ClipboardList,  to: "/parent/grades" },
   { label: "Absences",          icon: Calendar,       to: "/parent/attendance" },
   { label: "Emploi du temps",   icon: Calendar,       to: "/parent/schedule" },
-  { label: "Salles virtuelles",  icon: Video,          to: "/parent/virtual" },
+  // Fonctionnalité conditionnelle : réservée aux entités « académie en
+  // ligne » (FEBA FHA). Masquée pour FEBA — et refusée par l\'API.
+  { label: "Salles virtuelles",  icon: Video,          to: "/parent/virtual", feature: "virtual_classrooms" },
   { label: "Devoirs",           icon: FileText,       to: "/parent/homework" },
   { label: "Paiements",         icon: DollarSign,     to: "/parent/payments" },
   { label: "Bulletins",         icon: BookOpen,       to: "/parent/bulletins" },
@@ -37,6 +42,17 @@ function useIsMobile() {
 }
 
 export default function ParentLayout() {
+  // P4 : remonte tout le sous-arbre à chaque bascule d'académie —
+  // aucune donnée de l'académie précédente ne peut rester affichée,
+  // et aucun rechargement manuel du navigateur n'est nécessaire.
+
+  // Le menu ne montre que les fonctionnalités auxquelles l'entité de
+  // l'utilisateur a droit. Ce filtrage est un CONFORT D'AFFICHAGE : la
+  // protection réelle est côté serveur (permission HasEntityFeature),
+  // qui refuse l'endpoint même si l'URL est saisie à la main.
+  const { hasFeature } = useEntityContext();
+  const visibleNav = nav.filter((item) => !item.feature || hasFeature(item.feature));
+
   const { user, logout } = useAuth();
   const { logoSrc } = useBranding();
   const qc = useQueryClient();
@@ -84,7 +100,7 @@ export default function ParentLayout() {
               {isMobile && <button onClick={() => setOpen(false)} className="text-slate-400 hover:text-white"><X className="w-5 h-5" /></button>}
             </div>
             <nav className="flex-1 p-3 overflow-y-auto space-y-0.5">
-              {nav.map(item => (
+              {visibleNav.map(item => (
                 <NavLink key={item.to} to={item.to} onClick={closeSidebarOnMobile}
                   className={({ isActive }) => clsx("flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm transition-all",
                     isActive ? "text-white bg-amber-600/70 shadow-lg" : "text-slate-400 hover:text-white hover:bg-white/10")}>
@@ -157,7 +173,7 @@ export default function ParentLayout() {
             </div>
           </div>
         </header>
-        <main className="flex-1 overflow-y-auto p-3 sm:p-6"><Outlet /></main>
+        <main className="flex-1 overflow-y-auto p-3 sm:p-6"><AcademyScopedOutlet /></main>
       </div>
     </div>
   );

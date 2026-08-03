@@ -49,13 +49,40 @@ class SchoolYearCreationTests(TestCase):
         self.assertEqual(resp.status_code, status.HTTP_201_CREATED, resp.data)
         self.assertEqual(SchoolYear.objects.get(name="2026-2027").school_id, self.school.id)
 
-    def test_superadmin_creates_year_single_school_inferred(self):
-        """Sans school dans le payload : mono-établissement → déduit."""
+    def test_superadmin_year_without_school_rejected_when_several_entities(self):
+        """
+        V4 multi-entités : la plateforme héberge désormais au moins FEBA et
+        FEBA FHA. L'ancienne déduction « mono-établissement » ne s'applique
+        donc plus — deviner l'entité rattacherait l'année scolaire à la
+        mauvaise. Le serveur doit refuser explicitement.
+        """
+        self.assertGreater(School.objects.count(), 1)
+        resp = self.client.post("/api/schools/years/", {
+            "name": "2027-2028",
+            "start_date": "2027-09-01", "end_date": "2028-07-31",
+        }, format="json")
+        self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST, resp.data)
+        self.assertIn("school", resp.data)
+
+    def test_superadmin_year_uses_active_entity_when_switched(self):
+        """
+        Après bascule sur une entité, le superadmin n'a plus besoin de
+        répéter l'établissement : le contexte serveur fait foi.
+        """
+        switch = self.client.post(
+            "/api/auth/entity-context/switch/",
+            {"entity_id": self.school.id}, format="json",
+        )
+        self.assertEqual(switch.status_code, status.HTTP_200_OK, switch.data)
+
         resp = self.client.post("/api/schools/years/", {
             "name": "2027-2028",
             "start_date": "2027-09-01", "end_date": "2028-07-31",
         }, format="json")
         self.assertEqual(resp.status_code, status.HTTP_201_CREATED, resp.data)
+        self.assertEqual(
+            SchoolYear.objects.get(name="2027-2028").school_id, self.school.id,
+        )
 
     def test_end_date_must_be_after_start_date(self):
         resp = self.client.post("/api/schools/years/", {

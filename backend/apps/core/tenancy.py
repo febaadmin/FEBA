@@ -48,15 +48,64 @@ def get_request_school(request):
         return None
 
     if user.is_superadmin():
+        # Ordre de priorité pour un superadmin :
+        #   1. `?school_id=` explicite (consultation ponctuelle, support) ;
+        #   2. entité active PERSISTÉE EN BASE (bascule via l'endpoint dédié) ;
+        #   3. None → mode plateforme « toutes les entités ».
+        #
+        # Le frontend n'a AUCUN moyen d'imposer une entité autrement : il
+        # n'existe pas de lecture d'un `entity_id` de payload ni de
+        # localStorage ici. La bascule passe obligatoirement par
+        # /api/accounts/entity-context/switch/ qui vérifie l'appartenance
+        # et journalise l'opération.
         school_id = None
         if hasattr(request, "query_params"):
             school_id = request.query_params.get("school_id")
         if school_id:
             from apps.schools.models import School
             return School.objects.filter(pk=school_id).first()
-        return None
+        return getattr(user, "active_organization", None)
 
+    # Utilisateur normal : son entité de rattachement, toujours. Un
+    # `?school_id=` ou un `entity_id` envoyé par le client est simplement
+    # IGNORÉ — il ne peut pas élargir la portée de ses droits.
     return getattr(user, "school", None)
+
+
+def current_school_years(school):
+    """
+    Années scolaires actives correspondant à la portée courante.
+
+    PROBLÈME RÉSOLU (P2)
+    --------------------
+    Le filtre « année courante » s'écrivait partout
+    `SchoolYear.objects.filter(school=school, is_current=True).first()`.
+    En mode « Toutes les Académies », `school` vaut None : le filtre
+    retournait `None` et était donc SILENCIEUSEMENT ABANDONNÉ. Résultat,
+    la vue consolidée mélangeait les trois années d'historique alors que
+    chaque académie n'affichait que l'année en cours — d'où des totaux qui
+    ne correspondaient à rien (270 paiements « toutes académies » pour 90
+    à FEBA et 0 à FEBA FHA).
+
+    Renvoyer un QUERYSET plutôt qu'un seul objet règle le cas : en mode
+    consolidé, on filtre sur l'année courante de CHAQUE académie.
+
+    Usage :
+
+        annees = current_school_years(school)
+        if annees.exists():
+            qs = qs.filter(school_year__in=annees)
+
+    Le garde `exists()` conserve le comportement historique : sans année
+    courante déclarée, on n'applique aucun filtre plutôt que de masquer
+    toutes les données.
+    """
+    from apps.schools.models import SchoolYear
+
+    years = SchoolYear.objects.filter(is_current=True)
+    if school is not None:
+        years = years.filter(school=school)
+    return years
 
 
 class TenantScopedQuerySetMixin:

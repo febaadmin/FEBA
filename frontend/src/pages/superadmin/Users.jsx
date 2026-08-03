@@ -13,6 +13,8 @@ import StatusBadge from "../../components/ui/StatusBadge";
 import { extractApiError } from "../../utils/errors";
 import { useAuthStore } from "../../store/authStore";
 import { t } from "../../i18n";
+import AcademyBadge from "../../components/AcademyBadge";
+import { useAcademyKey, useEntityContext } from "../../hooks/useEntityContext";
 
 const ROLE_OPTIONS = [
   { value: "superadmin", label: "Super Admin" },
@@ -23,6 +25,11 @@ const ROLE_OPTIONS = [
 ];
 
 export default function SuperAdminUsers() {
+  const { allEntitiesMode } = useEntityContext();
+  // P0 : l'académie entre dans la clé — une bascule ne peut pas
+  // resservir le cache de l'académie précédente.
+  const academyKey = useAcademyKey();
+
   const qc = useQueryClient();
   const [modalOpen, setModalOpen] = useState(false);
   const [editItem, setEditItem] = useState(null);
@@ -93,6 +100,17 @@ export default function SuperAdminUsers() {
   };
 
   const cols = [
+    // P3 : en mode « Toutes les Académies », chaque ligne DOIT porter son
+    // académie — sans quoi les deux jeux de données sont indiscernables.
+    ...(allEntitiesMode
+      ? [{
+          key: "academy",
+          label: t("Académie"),
+          accessor: "academy_code",
+          sortable: false,
+          render: r => <AcademyBadge code={r.academy_code} name={r.academy_name} />,
+        }]
+      : []),
     { key: "name",  label: t("Nom"),   accessor: "first_name", render: r => `${r.first_name} ${r.last_name}` },
     { key: "email", label: t("Email"), accessor: "email" },
     { key: "role",  label: t("Rôle"),  accessor: "role", render: r => roleBadge(r.role) },

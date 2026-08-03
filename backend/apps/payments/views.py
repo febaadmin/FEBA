@@ -83,10 +83,10 @@ class PaymentViewSet(BulkDeleteMixin, viewsets.ModelViewSet):
 
         # FIX: Default to current active year to avoid inactive year data leaking
         if not self.request.query_params.get("school_year") and self.request.query_params.get("all_years") != "1":
-            from apps.schools.models import SchoolYear
-            current_year = SchoolYear.objects.filter(school=school, is_current=True).first()
-            if current_year:
-                qs = qs.filter(school_year=current_year)
+            from apps.core.tenancy import current_school_years
+            current_years = current_school_years(school)
+            if current_years.exists():
+                qs = qs.filter(school_year__in=current_years)
 
         if user.role_level >= 80:
             return qs
@@ -139,7 +139,10 @@ class PaymentViewSet(BulkDeleteMixin, viewsets.ModelViewSet):
             if payment.student.user:
                 create_notification(
                     payment.student.user, "payment",
-                    f"Paiement enregistré : {payment.amount} FCFA",
+                    # V8 — « FCFA » était codé en dur : un parent de FEBA
+                    # French Heritage Academy recevait « 125.50 FCFA » pour
+                    # un paiement de 125,50 $.
+                    f"Paiement enregistré : {payment.formatted_amount}",
                     f"Référence {payment.reference_number} — {payment.get_payment_type_display()}",
                     related_url=notification_path(payment.student.user, "payments"),
                 )
@@ -149,7 +152,8 @@ class PaymentViewSet(BulkDeleteMixin, viewsets.ModelViewSet):
             for ps in payment.student.parents.select_related("parent__user").all():
                 create_notification(
                     ps.parent.user, "payment",
-                    f"Paiement enregistré pour {payment.student.get_full_name()} : {payment.amount} FCFA",
+                    f"Paiement enregistré pour {payment.student.get_full_name()} : "
+                    f"{payment.formatted_amount}",
                     f"Référence {payment.reference_number} — {payment.get_payment_type_display()}",
                     related_url=notification_path(ps.parent.user, "payments"),
                 )

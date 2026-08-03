@@ -30,65 +30,47 @@ from reportlab.platypus import (
     KeepTogether,
 )
 from django.core.files.base import ContentFile
-from feba_project.branding import SCHOOL_GROUP_NAME
+
+from apps.schools.branding import branding_for
 # V8 — barème d'affichage par niveau (1..11 → /10, au-delà → /20)
 from apps.grades.grading import (
     convert_average_for_scale, get_grading_scale, scale_label,
 )
 from django.utils import timezone
 
+from apps.core.pdf_longtext import pdf_paragraph
 from apps.grades.models import Grade, get_letter_grade, get_appreciation
 from apps.bulletins.models import Bulletin
 
 logger = logging.getLogger('apps')
 
-# Static FEBA logo fallback path
-STATIC_LOGO_PATH = os.path.join(
-    os.path.dirname(__file__), '..', '..', 'feba_project', 'static_files', 'logo_feba.jpeg'
-)
-# Cachet officiel (V7) — extrait fidèlement du PDF fourni par la direction.
-STATIC_CACHET_PATH = os.path.join(
-    os.path.dirname(__file__), '..', '..', 'feba_project', 'static_files', 'cachet_feba.png'
-)
-
-
-def _get_cachet_path():
-    """Chemin du cachet officiel à apposer, ou None si le fichier est absent
-    (dégradation gracieuse : le document reste valide, sans cachet)."""
-    return STATIC_CACHET_PATH if os.path.exists(STATIC_CACHET_PATH) else None
-
-# Couleurs de la charte
-PRIMARY = colors.HexColor('#1E3A6E')   # bleu institutionnel
-GOLD    = colors.HexColor('#C9A227')   # or
-LIGHT   = colors.HexColor('#EEF3FF')   # bleu très clair (partie française)
-FR_HEAD = colors.HexColor('#1E3A6E')   # en-tête tableau FR
+# P0 — L'IDENTITÉ N'EST PLUS ÉCRITE ICI.
+#
+# Le logo, le cachet et les trois couleurs institutionnelles étaient des
+# constantes de module : tous les bulletins des deux académies sortaient
+# donc avec le bleu, l'or et le cachet de l'école de Cotonou. Elles sont
+# désormais résolues par `apps.schools.branding` à partir de l'académie de
+# l'élève, et transportées dans un `Palette` le temps du rendu.
+#
+# Ne restent en dur que les couleurs SÉMANTIQUES, qui ne désignent aucune
+# académie : le vert de la partie anglaise distingue une section du
+# bulletin, exactement comme le rouge d'un solde négatif.
 EN_HEAD = colors.HexColor('#166534')   # vert foncé (partie anglaise)
 EN_BG   = colors.HexColor('#F0FFF4')   # vert très clair
 
 
-def _get_school_logo_path(student):
-    """Return the active logo filesystem path for the student's school."""
-    try:
-        from apps.schools.models import SchoolBranding
-        school = None
-        if student.school_id:
-            school = student.school
-        elif student.school_year and student.school_year.school_id:
-            school = student.school_year.school
-        elif student.current_class and student.current_class.school_year:
-            school = student.current_class.school_year.school
+class Palette:
+    """Couleurs et ressources d'UNE académie, le temps d'un rendu."""
 
-        if school:
-            path = SchoolBranding.get_active_logo_path(school)
-            if path and os.path.exists(path):
-                return path
-    except Exception as e:
-        logger.warning(f"Logo path error: {e}")
+    __slots__ = ('brand', 'primary', 'gold', 'light', 'fr_head')
 
-    static_path = os.path.normpath(STATIC_LOGO_PATH)
-    if os.path.exists(static_path):
-        return static_path
-    return None
+    def __init__(self, brand):
+        self.brand = brand
+        self.primary = colors.HexColor(brand.primary_color)
+        self.gold = colors.HexColor(brand.accent_color)
+        self.light = colors.HexColor(brand.background_color)
+        # L'en-tête du tableau français reprend la couleur institutionnelle.
+        self.fr_head = self.primary
 
 
 def _fmt(val):
@@ -163,7 +145,29 @@ _CELL_BASE = dict(fontName='Helvetica', fontSize=8, leading=9.5,
 
 
 def C(text, *, align='LEFT', bold=False, size=8, color=None):
-    """Cellule de tableau à retour à la ligne automatique."""
+    """
+    Cellule de tableau à retour à la ligne automatique.
+
+    P0 — BUG N°2, TROUVÉ EN AUDITANT LE RENDU DES TEXTES LONGS.
+    Cette fonction reçoit des textes SAISIS PAR UN ENSEIGNANT — nom de
+    matière, appréciation, commentaire général du directeur — et les
+    passait tels quels à `Paragraph`, qui les lit comme du mini-XML.
+
+    Mesuré sur le bulletin produit : une appréciation « progrès <très
+    nets> en lecture » ressortait imprimée « progrès  en lecture ». Le
+    fragment entre chevrons — celui qui portait l'appréciation — était
+    avalé sans erreur ni avertissement. Le bulletin sortait complet en
+    apparence, amputé en réalité, et signé.
+
+    (ReportLab 4.2 tolère en revanche une esperluette isolée : « Bon élève
+    & travailleur » passait. C'est précisément ce qui rendait le défaut
+    difficile à voir — il ne se manifestait que sur certains caractères.)
+
+    `pdf_paragraph` échappe le texte et convertit les retours à la ligne.
+    `P()` reste volontairement non échappée : elle ne sert qu'à des
+    libellés fixes écrits dans ce fichier, dont la mise en forme (`<b>`,
+    `<font>`) est intentionnelle.
+    """
     style = dict(_CELL_BASE)
     style['fontName'] = 'Helvetica-Bold' if bold else 'Helvetica'
     style['fontSize'] = size
@@ -171,7 +175,7 @@ def C(text, *, align='LEFT', bold=False, size=8, color=None):
     style['alignment'] = {'LEFT': 0, 'CENTER': 1, 'RIGHT': 2}[align]
     if color is not None:
         style['textColor'] = color
-    return Paragraph('' if text is None else str(text), ParagraphStyle('_c', **style))
+    return pdf_paragraph(text, **style)
 
 
 # ─── Entry Point ──────────────────────────────────────────────────────────────
@@ -224,16 +228,18 @@ def generate_bulletin(student, period, school_year):
     bulletin.rank_in_class = None
 
     try:
-        logo_path = _get_school_logo_path(student)
+        # P0 — l'identité vient de l'académie DE L'ÉLÈVE, résolue une fois
+        # et transportée jusqu'au dernier trait de couleur du document.
+        palette = Palette(branding_for(student))
         buffer = BytesIO()
 
         if is_maternelle:
             _build_maternelle_pdf(buffer, student, period, school_year,
-                                  subject_data, average, bulletin, logo_path)
+                                  subject_data, average, bulletin, palette)
         else:
             _build_standard_pdf(buffer, student, period, school_year,
                                 subject_data, bilingual_data, class_stats,
-                                average, bulletin, logo_path)
+                                average, bulletin, palette)
 
         pdf_bytes = buffer.getvalue()
         buffer.close()
@@ -321,21 +327,13 @@ def _build_annual_subject_data(student, school_year):
 
 # ─── Header / identité élève (partagés) ──────────────────────────────────────
 
-def _school_display_names(student, school_year):
-    """(nom principal, sous-titre) de l'établissement pour l'en-tête."""
-    school = None
-    if student.school_id:
-        school = student.school
-    elif school_year and getattr(school_year, 'school_id', None):
-        school = school_year.school
-    if school:
-        subtitle = ", ".join(x for x in [school.address, school.city, school.country] if x)
-        return school.name, subtitle or "—"
-    return "FAITH & EXCELLENCE BILINGUAL ACADEMY", "École Bilingue Foi & Excellence — Cotonou, Bénin"
-
-
-def _add_header(story, student, period, school_year, logo_path, title):
-    name, subtitle = _school_display_names(student, school_year)
+def _add_header(story, student, period, school_year, palette, title):
+    brand = palette.brand
+    name = brand.display_name
+    subtitle = ", ".join(
+        x for x in (brand.postal_address, brand.city, brand.country) if x
+    ) or "—"
+    logo_path = brand.document_logo
     if logo_path and os.path.exists(logo_path):
         try:
             logo_img = Image(logo_path, width=2.0 * cm, height=2.0 * cm)
@@ -343,22 +341,24 @@ def _add_header(story, student, period, school_year, logo_path, title):
             story.append(logo_img)
         except Exception as exc:
             logger.warning("Erreur non bloquante ignorée : %s", exc, exc_info=True)
-    # V7 : ligne « groupe » (GROUPE ÉDUCATIF FEBA) au-dessus du nom officiel.
-    story.append(P(SCHOOL_GROUP_NAME, fontSize=9, fontName='Helvetica-Bold',
-                   alignment=1, textColor=GOLD, spaceAfter=1))
+    # V7 : ligne « groupe » au-dessus du nom officiel — libellé administrable
+    # par académie ; absente, la ligne disparaît.
+    if brand.group_name:
+        story.append(P(brand.group_name, fontSize=9, fontName='Helvetica-Bold',
+                       alignment=1, textColor=palette.gold, spaceAfter=1))
     story.append(P(name.upper(), fontSize=14, fontName='Helvetica-Bold',
-                   alignment=1, textColor=PRIMARY, spaceAfter=2))
+                   alignment=1, textColor=palette.primary, spaceAfter=2))
     story.append(P(subtitle, fontSize=9, alignment=1, spaceAfter=2))
-    story.append(HRFlowable(width='100%', thickness=3, color=GOLD))
+    story.append(HRFlowable(width='100%', thickness=3, color=palette.gold))
     story.append(P(f'{title} — {_period_label(period)}',
                    fontSize=13, fontName='Helvetica-Bold', alignment=1,
-                   textColor=GOLD, spaceBefore=4))
+                   textColor=palette.gold, spaceBefore=4))
     story.append(P(f'Année scolaire / School Year : {school_year.name}',
                    fontSize=10, alignment=1, spaceAfter=4))
     story.append(Spacer(1, 0.2 * cm))
 
 
-def _add_student_info(story, student, period, school_year):
+def _add_student_info(story, student, period, school_year, palette):
     """Bloc identité — SANS le rang (BUG N°2)."""
     class_name = student.current_class.name if student.current_class else '—'
     level_name = (student.current_class.level.name
@@ -380,8 +380,8 @@ def _add_student_info(story, student, period, school_year):
     info_tbl.setStyle(TableStyle([
         ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
         ('GRID', (0, 0), (-1, -1), 0.25, colors.lightgrey),
-        ('BACKGROUND', (0, 0), (0, -1), LIGHT),
-        ('BACKGROUND', (2, 0), (2, -1), LIGHT),
+        ('BACKGROUND', (0, 0), (0, -1), palette.light),
+        ('BACKGROUND', (2, 0), (2, -1), palette.light),
         ('LEFTPADDING', (0, 0), (-1, -1), 5),
         ('RIGHTPADDING', (0, 0), (-1, -1), 5),
         ('TOPPADDING', (0, 0), (-1, -1), 3),
@@ -528,10 +528,10 @@ def _add_language_section(story, title, entries, period, head_color, zebra_color
 
 # ─── Statistiques de classe + moyennes bilingues (BUG N°2 / N°6) ─────────────
 
-def _add_stats_section(story, bilingual_data, class_stats, average, bulletin, period, scale=20):
-    story.append(HRFlowable(width='100%', thickness=1, color=GOLD))
+def _add_stats_section(story, bilingual_data, class_stats, average, bulletin, period, palette, scale=20):
+    story.append(HRFlowable(width='100%', thickness=1, color=palette.gold))
     story.append(P('MOYENNES & STATISTIQUES DE LA CLASSE / AVERAGES & CLASS STATISTICS',
-                   fontSize=11, fontName='Helvetica-Bold', textColor=PRIMARY,
+                   fontSize=11, fontName='Helvetica-Bold', textColor=palette.primary,
                    spaceBefore=4, spaceAfter=4))
 
     fr_avg = bilingual_data.get('fr_average')
@@ -560,7 +560,7 @@ def _add_stats_section(story, bilingual_data, class_stats, average, bulletin, pe
     ]
     tbl = Table(rows, colWidths=[6.9 * cm, 2.9 * cm, 3.2 * cm, 3.2 * cm, 2.3 * cm])
     tbl.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), GOLD),
+        ('BACKGROUND', (0, 0), (-1, 0), palette.gold),
         ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
         ('FONTSIZE', (0, 0), (-1, -1), 8),
         ('ALIGN', (1, 0), (-1, -1), 'CENTER'),
@@ -569,7 +569,7 @@ def _add_stats_section(story, bilingual_data, class_stats, average, bulletin, pe
         ('RIGHTPADDING', (0, 0), (-1, -1), 4),
         ('TOPPADDING', (0, 0), (-1, -1), 3),
         ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
-        ('BACKGROUND', (0, 1), (-1, 1), LIGHT),
+        ('BACKGROUND', (0, 1), (-1, 1), palette.light),
         ('BACKGROUND', (0, 2), (-1, 2), EN_BG),
         ('BACKGROUND', (0, 3), (-1, 3), colors.HexColor('#FFF3CD')),
         ('FONTNAME', (0, 3), (-1, 3), 'Helvetica-Bold'),
@@ -578,8 +578,9 @@ def _add_stats_section(story, bilingual_data, class_stats, average, bulletin, pe
 
     story.append(Spacer(1, 0.15 * cm))
     story.append(P(
-        '<font color="#1E3A6E"><b>Formule bilingue / Bilingual formula:</b></font> '
-        'Moyenne Bilingue = (Moyenne Française × 60%) + (Moyenne Anglaise × 40%)',
+        f'<font color="{palette.brand.primary_color}"><b>Formule bilingue / '
+        'Bilingual formula:</b></font> Moyenne Bilingue = '
+        '(Moyenne Française × 60%) + (Moyenne Anglaise × 40%)',
         fontSize=8, spaceAfter=5,
     ))
 
@@ -587,7 +588,8 @@ def _add_stats_section(story, bilingual_data, class_stats, average, bulletin, pe
     letter, _, _ = get_letter_grade(average)
     summary_data = [[
         C('Moyenne Générale', align='CENTER', bold=True, size=9),
-        C(_fmt_scale_denom(average, scale), align='CENTER', bold=True, size=9, color=PRIMARY),
+        C(_fmt_scale_denom(average, scale), align='CENTER', bold=True, size=9,
+          color=palette.primary),
         C('Lettre', align='CENTER', bold=True, size=9),
         C(f'{letter or "—"}', align='CENTER', bold=True, size=9),
         C('Appréciation', align='CENTER', bold=True, size=9),
@@ -595,8 +597,8 @@ def _add_stats_section(story, bilingual_data, class_stats, average, bulletin, pe
     ]]
     s_tbl = Table(summary_data, colWidths=[3.5 * cm, 2.7 * cm, 1.7 * cm, 1.6 * cm, 3.0 * cm, 6.0 * cm])
     s_tbl.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, -1), LIGHT),
-        ('GRID', (0, 0), (-1, -1), 0.5, PRIMARY),
+        ('BACKGROUND', (0, 0), (-1, -1), palette.light),
+        ('GRID', (0, 0), (-1, -1), 0.5, palette.primary),
         ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
         ('TOPPADDING', (0, 0), (-1, -1), 5),
         ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
@@ -608,22 +610,22 @@ def _add_stats_section(story, bilingual_data, class_stats, average, bulletin, pe
 # ─── STANDARD PDF Template (Primaire/Collège/Lycée) ──────────────────────────
 
 def _build_standard_pdf(buffer, student, period, school_year, subject_data,
-                        bilingual_data, class_stats, average, bulletin, logo_path):
+                        bilingual_data, class_stats, average, bulletin, palette):
     # Marges 1.2 cm : largeur utile = 21 - 2×1.2 = 18.6 cm. Toutes les tables
     # sont dimensionnées à ≤ 18.5 cm → marge de sécurité, aucun débordement.
     doc = SimpleDocTemplate(
         buffer, pagesize=A4,
         rightMargin=1.2 * cm, leftMargin=1.2 * cm,
         topMargin=1.0 * cm, bottomMargin=1.0 * cm,
-        title='Bulletin de notes', author='FEBA School Management System',
+        title='Bulletin de notes', author=palette.brand.display_name,
     )
     story = []
     # V8 — barème d'affichage du bulletin selon le niveau (1..11 → /10).
     scale = _student_scale(student)
 
-    _add_header(story, student, period, school_year, logo_path,
+    _add_header(story, student, period, school_year, palette,
                 'BULLETIN DE NOTES / PROGRESS REPORT')
-    _add_student_info(story, student, period, school_year)
+    _add_student_info(story, student, period, school_year, palette)
 
     # BUG N°1 : séparation stricte des données françaises et anglaises.
     entries = list(subject_data.values())
@@ -633,7 +635,7 @@ def _build_standard_pdf(buffer, student, period, school_year, subject_data,
 
     _add_language_section(
         story, 'RÉSULTATS — PARTIE FRANÇAISE / FRENCH SECTION',
-        fr_entries, period, FR_HEAD, LIGHT, scale,
+        fr_entries, period, palette.fr_head, palette.light, scale,
     )
     _add_language_section(
         story, 'ACADEMIC RESULTS — ENGLISH SECTION / PARTIE ANGLAISE',
@@ -645,9 +647,10 @@ def _build_standard_pdf(buffer, student, period, school_year, subject_data,
             other_entries, period, colors.HexColor('#6B21A8'), colors.HexColor('#FAF5FF'), scale,
         )
 
-    _add_stats_section(story, bilingual_data, class_stats, average, bulletin, period, scale)
-    _add_signatures(story, bulletin)
-    _add_footer(story, student, school_year)
+    _add_stats_section(story, bilingual_data, class_stats, average, bulletin,
+                       period, palette, scale)
+    _add_signatures(story, bulletin, palette)
+    _add_footer(story, palette)
     doc.build(story)
 
 
@@ -691,25 +694,25 @@ def _grading_key_cells(scale):
 
 
 def _build_maternelle_pdf(buffer, student, period, school_year, subject_data,
-                          average, bulletin, logo_path):
+                          average, bulletin, palette):
     doc = SimpleDocTemplate(
         buffer, pagesize=A4,
         rightMargin=1.2 * cm, leftMargin=1.2 * cm,
         topMargin=1.0 * cm, bottomMargin=1.0 * cm,
-        title='Bulletin de notes — Maternelle', author='FEBA School Management System',
+        title='Bulletin de notes — Maternelle', author=palette.brand.display_name,
     )
     story = []
 
-    _add_header(story, student, period, school_year, logo_path,
+    _add_header(story, student, period, school_year, palette,
                 'BULLETIN DE NOTES — MATERNELLE')
-    _add_student_info(story, student, period, school_year)
+    _add_student_info(story, student, period, school_year, palette)
 
     # Grading key — 13 colonnes égales sur la largeur utile (≤ 18.5 cm).
     # V8 : les seuils suivent le barème du bulletin. Sur un bulletin de
     # maternelle (sur 10), afficher « A+ (≥19.5) » revenait à donner la seule
     # référence chiffrée du document dans une échelle qui n'est pas la sienne.
     story.append(P('Grading key / Clé de notation :', fontSize=9,
-                   fontName='Helvetica-Bold', textColor=PRIMARY, spaceAfter=2))
+                   fontName='Helvetica-Bold', textColor=palette.primary, spaceAfter=2))
     key_data = [_grading_key_cells(_student_scale(student))]
     key_tbl = Table(key_data, colWidths=[18.5 / 13 * cm] * 13)
     key_tbl.setStyle(TableStyle([
@@ -727,7 +730,7 @@ def _build_maternelle_pdf(buffer, student, period, school_year, subject_data,
 
     # Résultats en lettres, séparés FR / EN (BUG N°1)
     story.append(P('MATIÈRES / SUBJECTS', fontSize=11, fontName='Helvetica-Bold',
-                   textColor=PRIMARY, spaceAfter=4))
+                   textColor=palette.primary, spaceAfter=4))
 
     entries = list(subject_data.values())
     fr_rows = [e for e in entries if e.get('language') == 'fr']
@@ -768,7 +771,7 @@ def _build_maternelle_pdf(buffer, student, period, school_year, subject_data,
 
     g_tbl = Table(full_rows, colWidths=[8.0 * cm, 2.5 * cm, 5.5 * cm, 2.5 * cm])
     style_cmds = [
-        ('BACKGROUND', (0, 0), (-1, 0), PRIMARY),
+        ('BACKGROUND', (0, 0), (-1, 0), palette.primary),
         ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
         ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
         ('FONTSIZE', (0, 0), (-1, -1), 8),
@@ -778,7 +781,7 @@ def _build_maternelle_pdf(buffer, student, period, school_year, subject_data,
     ]
     for i, row in enumerate(full_rows[1:], 1):
         if row[1] == '' and row[2] == '' and row[3] == '':
-            style_cmds.append(('BACKGROUND', (0, i), (-1, i), GOLD))
+            style_cmds.append(('BACKGROUND', (0, i), (-1, i), palette.gold))
             style_cmds.append(('TEXTCOLOR', (0, i), (-1, i), colors.white))
             style_cmds.append(('FONTNAME', (0, i), (-1, i), 'Helvetica-Bold'))
             style_cmds.append(('SPAN', (0, i), (-1, i)))
@@ -791,7 +794,7 @@ def _build_maternelle_pdf(buffer, student, period, school_year, subject_data,
 
     # Conduite
     story.append(P('CONDUITE / CONDUCT', fontSize=11, fontName='Helvetica-Bold',
-                   textColor=PRIMARY, spaceAfter=4))
+                   textColor=palette.primary, spaceAfter=4))
     conduct_items = [
         'Contrôle du langage / Controls talking',
         'Respect de l\'autorité / Respects authority',
@@ -808,7 +811,7 @@ def _build_maternelle_pdf(buffer, student, period, school_year, subject_data,
         conduct_data.append([C(item), C('—', align='CENTER'), ''])
     c_tbl = Table(conduct_data, colWidths=[8.0 * cm, 3.0 * cm, 7.5 * cm])
     c_tbl.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), PRIMARY),
+        ('BACKGROUND', (0, 0), (-1, 0), palette.primary),
         ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
         ('FONTSIZE', (0, 0), (-1, -1), 8),
         ('GRID', (0, 0), (-1, -1), 0.25, colors.lightgrey),
@@ -820,19 +823,20 @@ def _build_maternelle_pdf(buffer, student, period, school_year, subject_data,
     story.append(c_tbl)
     story.append(Spacer(1, 0.3 * cm))
 
-    _add_signatures(story, bulletin)
-    _add_footer(story, student, school_year)
+    _add_signatures(story, bulletin, palette)
+    _add_footer(story, palette)
     doc.build(story)
 
 
 # ─── Signatures & pied de page ────────────────────────────────────────────────
 
-def _add_signatures(story, bulletin):
+def _add_signatures(story, bulletin, palette):
     story.append(HRFlowable(width='100%', thickness=1, color=colors.lightgrey))
     story.append(Spacer(1, 0.2 * cm))
     comment = bulletin.general_comment or '(Aucun commentaire / No comment)'
     # V7 : cachet officiel de la direction apposé dans la case « Cachet ».
-    cachet_path = _get_cachet_path()
+    # P0 — le cachet est celui de CETTE académie ; absent, la case reste vide.
+    cachet_path = palette.brand.stamp
     stamp_cell = ''
     if cachet_path:
         try:
@@ -855,7 +859,9 @@ def _add_signatures(story, bulletin):
     validation_tbl = Table(
         [[C('La Direction / The Principal', bold=True, align='CENTER')],
          [stamp_cell],
-         [C(f'Cotonou, le {timezone.now().strftime("%d/%m/%Y")}', align='CENTER')]],
+         [C((f'{palette.brand.location_line}, le '
+             if palette.brand.location_line else 'Le ')
+            + timezone.now().strftime("%d/%m/%Y"), align='CENTER')]],
         colWidths=[8.3 * cm],
     )
     validation_tbl.setStyle(TableStyle([
@@ -917,11 +923,9 @@ def _add_signatures(story, bulletin):
     story.append(KeepTogether(sig_tbl))
 
 
-def _add_footer(story, student=None, school_year=None):
-    name = 'FEBA School Management System'
-    if student is not None:
-        school_name, _ = _school_display_names(student, school_year)
-        name = f'FEBA School Management System | {school_name}'
+def _add_footer(story, palette):
+    brand = palette.brand
+    name = brand.footer_text or brand.display_name
     story.append(Spacer(1, 0.1 * cm))
     story.append(HRFlowable(width='100%', thickness=1, color=colors.lightgrey))
     story.append(P(

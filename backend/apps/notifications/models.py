@@ -20,3 +20,8 @@ class Notification(models.Model):
 
     def __str__(self):
         return f"{self.user} - {self.title}"
+
+
+# Journal d'envoi des e-mails — voir apps/notifications/email_models.py.
+# Importé ici pour que Django le découvre comme modèle de cette app.
+from .email_models import EmailDelivery  # noqa: E402,F401

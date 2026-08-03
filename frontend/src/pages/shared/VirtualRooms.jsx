@@ -13,6 +13,7 @@ import ConfirmDialog from "../../components/ui/ConfirmDialog";
 import JitsiMeeting from "../../components/JitsiMeeting";
 import { extractApiError } from "../../utils/errors";
 import { t, getLang } from "../../i18n";
+import JitsiInfrastructureBanner from "../../components/JitsiInfrastructureBanner";
 
 const STATUS_STYLE = {
   scheduled: "bg-blue-50 text-blue-600",
@@ -137,20 +138,11 @@ export default function VirtualRooms() {
         )}
       />
 
-      {/* FIX v36 : avertissement clair quand la visioconférence tourne encore
-          sur l'instance publique de démonstration (appels limités à 5 min). */}
-      {rooms.some(r => (r.join_domain || "meet.jit.si") === "meet.jit.si") && (
-        <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
-          <Video className="w-5 h-5 mt-0.5 shrink-0 text-amber-600" />
-          <div>
-            <p className="font-semibold">{t("Mode démonstration (meet.jit.si) — appels limités à 5 minutes")}</p>
-            <p className="mt-0.5">{t("Pour des cours sans limite, sécurisés par jetons FEBA, démarrez l'instance auto-hébergée fournie :")} <code className="bg-amber-100 px-1 rounded">make jitsi-up</code>,
-              puis renseignez <code className="bg-amber-100 px-1 rounded">{t("JITSI_DOMAIN")}</code>,{" "}
-              <code className="bg-amber-100 px-1 rounded">{t("JITSI_APP_ID")}</code> et{" "}
-              <code className="bg-amber-100 px-1 rounded">{t("JITSI_APP_SECRET")}</code> {t("côté backend (guide d'installation §7.1 ; production : guide de déploiement §9).")}</p>
-          </div>
-        </div>
-      )}
+      {/* État réel de l'infrastructure de visioconférence auto-hébergée.
+          Remplace l'ancienne bannière « mode démonstration » : il n'existe
+          plus d'instance publique de repli, donc plus rien à signaler
+          lorsque tout fonctionne. */}
+      <JitsiInfrastructureBanner />
 
       <div className="card">
         {isLoading ? (
@@ -306,7 +298,7 @@ export default function VirtualRooms() {
       {activeMeeting && (
         <JitsiMeeting
           roomName={activeMeeting.room_code}
-          domain={activeMeeting.join_domain || "meet.jit.si"}
+          domain={activeMeeting.join_domain}
           displayName={user ? `${user.first_name || ""} ${user.last_name || ""}`.trim() || user.username : ""}
           subject={activeMeeting.name}
           jwt={activeMeeting.jwt || null}

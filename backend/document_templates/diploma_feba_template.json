@@ -1,0 +1,249 @@
+{
+  "id": "diploma_feba",
+  "version": 2,
+  "label": "Diplôme FEBA",
+  "description": "Diplôme de fin de cycle — fond verrouillé, seuls les champs variables sont rendus.",
+  "background": {
+    "file": "diplome_feba_2.png",
+    "sha256": "d0d52ee219d2850fffd2cdc740b46836aed85d95f66d328de7b443132e79bff8",
+    "width_px": 1492,
+    "height_px": 1054,
+    "_commentaire": "L'empreinte ci-dessus est celle du PNG d'origine. Elle reste l'autorité. Une variante transcodée peut être acceptée nommément ci-dessous ; elle n'y est jamais substituée.",
+    "accepted_variants": [
+      {
+        "sha256": "356e61b8f11e1d4e26c6cb5a7636c1f88cdbcd032f9f5b55a3d9df54541a9732",
+        "source": "fichier PNG fourni à l'installation",
+        "reason": "Visuel transmis par le canal de conversation, qui ré-encode les images jointes en WebP avec perte avant de les remettre. Dimensions vérifiées identiques à l'original (géométrie intacte, calibrage valide) ; pixels ré-encodés, donc empreinte du PNG d'origine inatteignable. À remplacer par le PNG d'origine dès qu'il parvient par un canal sans transcodage.",
+        "accepted_by": "Livraison V8 — opérateur d'intégration",
+        "accepted_at": "2026-08-01",
+        "lossy": false
+      }
+    ],
+    "original_filename": "Diplôme FEBA(2).png",
+    "_commentaire_nom": "Le fichier est stocké sous un nom ASCII. Le nom d'usage de l'établissement est « Diplôme FEBA(2).png », conservé ci-dessus pour mémoire. Ce n'est pas un détail cosmétique : « unzip » recode les noms non-ASCII (« Dipl#U00f4me FEBA(2).png »), et le moteur ne retrouvait plus son fond dans une archive extraite. L'identité d'un fond est son empreinte SHA-256, jamais son nom de fichier.",
+    "derived_sha256": "f233b6bcfe3d56724773793e8f7394eccbbb307ef2eadc005e4ace9de2cbc902",
+    "_commentaire_derive": "Empreinte du FOND NEUTRALISÉ, produit une fois depuis l'original par « document_neutralize », validé visuellement, puis VERSIONNÉ dans le dépôt. Le diplôme est ainsi disponible dès l'installation, sans qu'un utilisateur ait à lancer une commande. Elle est vérifiée avant chaque émission : un dérivé absent ou altéré bloque, il n'est jamais silencieusement remplacé par l'original — le document sortirait avec « Nom Prénom » visible sous le vrai nom."
+  },
+  "page": {
+    "format": "A4",
+    "orientation": "landscape",
+    "width_mm": 297.0,
+    "height_mm": 210.0,
+    "fit": "contain",
+    "_commentaire_fit": "Rapport d'aspect du fond 1492/1054 = 1,41556 contre 1,41429 pour l'A4 paysage. Le fond occupe 297,00 × 209,81 mm, centré, avec 0,095 mm de bande en haut et en bas. L'étirer déplacerait chaque élément d'environ 0,1 mm — la moitié de la tolérance."
+  },
+  "origin": "top-left",
+  "_commentaire_origin": "Millimètres depuis le coin SUPÉRIEUR gauche. 1 px = 0,19906 mm dans les deux axes.",
+  "calibrated": true,
+  "calibration": {
+    "tolerance_mm": 0.2,
+    "method": "Mesure automatique des règles dorées et des blocs de texte par « manage.py document_probe », puis report des coordonnées. Vérifié par superposition de la grille millimétrée (« document_calibrate ») et par comparaison pixel à pixel des zones statiques (« document_compare »).",
+    "date": "2026-08-01",
+    "operator": "document_probe v1",
+    "reference_anchors": [
+      {
+        "nom": "règle d'écriture du nom",
+        "px": "y 692–693, x 386–1105",
+        "mm": "y 137,85 · x 76,84 → 219,96"
+      },
+      {
+        "nom": "règle DIRECTEUR",
+        "px": "y 886, x 216–479",
+        "mm": "y 176,46 · x 43,00 → 95,35"
+      },
+      {
+        "nom": "règle ENSEIGNANT",
+        "px": "y 886, x 853–1010",
+        "mm": "y 176,46 · x 169,80 → 201,05"
+      },
+      {
+        "nom": "règle DATE",
+        "px": "y 920–921, x 1140–1314",
+        "mm": "y 183,23 · x 226,93 → 261,57"
+      }
+    ]
+  },
+  "placeholder_masks": [
+    {
+      "name": "nom_prenom_exemple",
+      "box": {
+        "x_mm": 74.0,
+        "y_mm": 122.0,
+        "width_mm": 148.5,
+        "height_mm": 17.6
+      },
+      "sample_above_y_mm": 120.5,
+      "sample_below_y_mm": 141.5,
+      "sample_band_mm": 1.6,
+      "preserve": [
+        {
+          "y_mm": 137.78,
+          "height_mm": 0.42,
+          "_commentaire": "Règle d'écriture, EXACTEMENT les px y 692–693. Conserver une ligne de plus laisserait les quatre pixels du jambage qui la frôle en 691."
+        }
+      ],
+      "note": "Neutralise la mention d'exemple « Nom Prénom » composée en anglaise dorée (px y 615–687) et ses jambages sous la règle (px y 694–700). La texture est reconstruite par interpolation entre deux bandes saines mesurées : y 120,5 mm (px 600–609, zéro pixel d'encre) et y 141,5 mm (px 706–716, zéro pixel d'encre). Médiane par colonne sur 1,6 mm de haut : recopier une seule ligne reproduirait son grain en stries verticales."
+    }
+  ],
+  "fields": [
+    {
+      "name": "student_name",
+      "label": "Nom de l'élève",
+      "type": "text",
+      "required": true,
+      "box": {
+        "x_mm": 78.0,
+        "y_mm": 119.93,
+        "width_mm": 141.0,
+        "height_mm": 16.92
+      },
+      "align": "center",
+      "vertical_align": "bottom",
+      "font": {
+        "family": "FEBA-Script",
+        "size_pt": 34,
+        "min_size_pt": 14
+      },
+      "color": "#B08A2E",
+      "shrink_to_fit": true,
+      "max_lines": 2,
+      "truncate": false,
+      "_commentaire_couleur": "Or moyen relevé sur la mention d'exemple du fond (moyenne des pixels dorés du bloc y 653–685).",
+      "_commentaire_boite": "Largeur volontairement inférieure à celle de la règle (143,13 mm) : un nom qui touche les extrémités du trait paraît à l'étroit.",
+      "_commentaire_alignement": "vertical_align=bottom : la ligne de base se pose au bas de la zone, donc juste au-dessus de la règle d'écriture — comme une signature manuscrite.",
+      "bleed_mm": 3.0,
+      "_commentaire_debord": "Les jambages descendants (« p », « g », « j ») passent sous la ligne de base et franchissent la règle d'écriture. Ce débord appartient à la zone VARIABLE : sans lui, la comparaison compterait le jambage d'un nom comme une altération du fond.",
+      "_commentaire_lignes": "DEUX lignes autorisées. Un patronyme composé de la diaspora dépasse couramment soixante-dix caractères : sur une seule ligne il ne tient pas, et refuser de produire n'est pas un service rendu à l'élève. Le repli est calculé par apps/documents/textfit.py à partir des métriques réelles de la police — boîte englobante du dessin de chaque lettre — et non d'une estimation du type « hauteur = corps × 0,75 », qui se trompait de 30 % et faisait remonter la première ligne sur la phrase gravée dans le fond.",
+      "_commentaire_plafond": "Le haut de la zone est pose SOUS la phrase « Ce diplome est fierement decerne a », dont le fond occupe les pixels y 606-612 (120,6-121,8 mm). Le bas ne bouge pas : avec vertical_align=bottom, la ligne unique se pose exactement au meme endroit qu'avant. Seul le repli sur deux lignes gagne un plafond, et cesse de mordre sur la phrase.",
+      "safe_zone": {
+        "y_top_mm": 119.93,
+        "y_bottom_mm": 136.85,
+        "x_left_mm": 78.0,
+        "x_right_mm": 219.0,
+        "engraved_phrase_bottom_mm": 119.33,
+        "writing_rule_top_mm": 137.85,
+        "_mesure": "MESURÉ sur le fond réellement dessiné, pas estimé. Bord inférieur de la phrase gravée « Ce diplôme est fièrement décerné à » : px y 577–598, soit 119.33 mm ; dégagement 0.6 mm. Bord supérieur de la règle d'écriture : px y 692–693, soit 137.85 mm ; dégagement 1.0 mm. La règle s'étend de 76.64 à 220.36 mm : le nom reste à l'intérieur du trait sur lequel il est écrit.",
+        "_commande": "manage.py document_calibrate --template <id> — la commande réimprime ces nombres depuis le fond installé et échoue si le fond a bougé."
+      },
+      "line_spacing": 1.0,
+      "baseline_reserve_em": 0.23
+    },
+    {
+      "name": "issue_date",
+      "label": "Date de délivrance",
+      "type": "date",
+      "required": true,
+      "box": {
+        "x_mm": 226.9,
+        "y_mm": 176.2,
+        "width_mm": 34.7,
+        "height_mm": 6.5
+      },
+      "align": "center",
+      "vertical_align": "bottom",
+      "font": {
+        "family": "FEBA-Text",
+        "size_pt": 11,
+        "min_size_pt": 8
+      },
+      "color": "#1E3A6E",
+      "format": "%d/%m/%Y"
+    },
+    {
+      "name": "director_name",
+      "label": "Nom du directeur",
+      "type": "text",
+      "required": false,
+      "box": {
+        "x_mm": 43.0,
+        "y_mm": 169.0,
+        "width_mm": 52.4,
+        "height_mm": 6.5
+      },
+      "align": "center",
+      "vertical_align": "bottom",
+      "font": {
+        "family": "FEBA-TextItalic",
+        "size_pt": 10,
+        "min_size_pt": 7
+      },
+      "color": "#1E3A6E",
+      "_commentaire": "Rendu UNIQUEMENT si aucune signature officielle n'est disponible. Un nom dactylographié n'est pas une signature et ne prétend pas l'être."
+    },
+    {
+      "name": "teacher_name",
+      "label": "Nom de l'enseignant",
+      "type": "text",
+      "required": false,
+      "box": {
+        "x_mm": 169.8,
+        "y_mm": 169.0,
+        "width_mm": 31.3,
+        "height_mm": 6.5
+      },
+      "align": "center",
+      "vertical_align": "bottom",
+      "font": {
+        "family": "FEBA-TextItalic",
+        "size_pt": 10,
+        "min_size_pt": 7
+      },
+      "color": "#1E3A6E"
+    },
+    {
+      "name": "document_number",
+      "label": "Numéro du diplôme",
+      "type": "text",
+      "required": false,
+      "_commentaire_required": "Le numéro officiel n'est attribué qu'à l'émission : l'exiger dès le brouillon rendrait impossible la production d'un document.",
+      "box": {
+        "x_mm": 200.0,
+        "y_mm": 190.5,
+        "width_mm": 50.0,
+        "height_mm": 5.0
+      },
+      "align": "right",
+      "vertical_align": "middle",
+      "font": {
+        "family": "FEBA-Text",
+        "size_pt": 7.5,
+        "min_size_pt": 6
+      },
+      "color": "#8A7A55",
+      "_commentaire": "Zone MESURÉE libre à 100 % de tout ornement (x 200–250 mm, y 190–196). La bordure dorée inférieure commence à 200,7 mm et la courbe marine remonte au-delà de 250 mm : un numéro placé plus à droite serait coupé."
+    }
+  ],
+  "assets": [
+    {
+      "name": "director_signature",
+      "label": "Signature du directeur",
+      "required": false,
+      "resource": "signature_director",
+      "box": {
+        "x_mm": 47.0,
+        "y_mm": 162.0,
+        "width_mm": 44.0,
+        "height_mm": 13.0
+      },
+      "fit": "contain",
+      "_commentaire": "Apposée UNIQUEMENT si un fichier officiel existe dans les ressources du projet. Aucune signature n'est dessinée, reconstituée ni approchée : une signature inventée sur un diplôme est un faux."
+    },
+    {
+      "name": "teacher_signature",
+      "label": "Signature de l'enseignant",
+      "required": false,
+      "resource": "signature_teacher",
+      "box": {
+        "x_mm": 172.0,
+        "y_mm": 162.0,
+        "width_mm": 27.0,
+        "height_mm": 13.0
+      },
+      "fit": "contain"
+    }
+  ],
+  "academies": [
+    "FEBA"
+  ],
+  "_commentaire_academies": "Codes internes des académies autorisées à émettre ce document. Le fond porte l'identité visuelle de FEBA (Cotonou) : l'utiliser pour FEBA French Heritage Academy produirait un document au nom d'une académie et à l'effigie d'une autre. Liste vide ou absente = toutes les académies. Le jour où l'académie en ligne fournit son propre fond, il fera l'objet d'un gabarit distinct."
+}

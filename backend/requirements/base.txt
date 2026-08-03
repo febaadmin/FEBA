@@ -19,5 +19,8 @@ dj-database-url==2.1.0
 django-storages==1.14.3
 django-extensions==3.2.3
 num2words==0.5.13
+# Paiement par carte (V8). Optionnel à l'exécution : l'application démarre
+# sans, et le paiement carte reste simplement indisponible.
+stripe==12.5.1
 openpyxl==3.1.2
 PyJWT>=2.8,<3
