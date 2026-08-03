@@ -52,6 +52,31 @@ jobs:
 
           cd /opt/feba/app/FEBA
 
+          echo "==> Sauvegarde Restic pré-déploiement"
+          systemctl start feba-backup.service
+
+          backup_result="$(systemctl show \
+            feba-backup.service \
+            --property=Result \
+            --value)"
+
+          exec_status="$(systemctl show \
+            feba-backup.service \
+            --property=ExecMainStatus \
+            --value)"
+
+          echo "Résultat du service : $backup_result"
+          echo "Code de sortie : $exec_status"
+
+          if [ "$backup_result" != "success" ] || [ "$exec_status" != "0" ]; then
+            echo "ERREUR : la sauvegarde pré-déploiement a échoué."
+            systemctl status feba-backup.service --no-pager -l || true
+            journalctl -u feba-backup.service -n 100 --no-pager || true
+            exit 1
+          fi
+
+          echo "Sauvegarde pré-déploiement terminée avec succès."
+
           echo "==> Récupération du code"
           git fetch origin main
           git reset --hard origin/main
