@@ -4,8 +4,7 @@ from rest_framework.views import APIView
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from rest_framework_simplejwt.tokens import RefreshToken
-from django_ratelimit.decorators import ratelimit
-from django.utils.decorators import method_decorator
+from apps.core.ratelimit import ratelimit_or_503
 import logging
 
 from .models import CustomUser, PasswordResetLog
@@ -24,7 +23,7 @@ class LoginView(TokenObtainPairView):
     permission_classes = [AllowAny]
     serializer_class = CustomTokenObtainPairSerializer
 
-    @method_decorator(ratelimit(key="ip", rate="20/m", method="POST", block=True))
+    @ratelimit_or_503(key="ip", rate="20/m", method="POST")
     def post(self, request, *args, **kwargs):
         response = super().post(request, *args, **kwargs)
         if response.status_code == 200:
@@ -217,7 +216,7 @@ class AdminResetPasswordView(APIView):
     """
     permission_classes = [IsAuthenticated, IsAdminOrAbove]
 
-    @method_decorator(ratelimit(key="user", rate="10/m", method="POST", block=True))
+    @ratelimit_or_503(key="user", rate="10/m", method="POST")
     def post(self, request, pk):
         requester = request.user
         try:

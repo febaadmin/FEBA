@@ -211,7 +211,7 @@ export default function MessagesPage() {
                       {conv.subject}
                     </p>
                     {latest && (
-                      <p className="text-xs text-slate-400 truncate">
+                      <p className="text-xs text-slate-400 truncate" title={`${latest.sender_name}: ${latest.body}`}>
                         {latest.sender_name}: {latest.body}
                       </p>
                     )}

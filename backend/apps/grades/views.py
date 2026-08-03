@@ -81,9 +81,12 @@ class GradeViewSet(BulkDeleteMixin, viewsets.ModelViewSet):
             # FIX v29 : "année courante" doit être celle du TENANT courant,
             # pas un enregistrement is_current=True arbitraire d'un autre
             # établissement (bug latent depuis l'introduction du multi-tenant).
-            current = SchoolYear.objects.filter(school=school, is_current=True).first()
-            if current:
-                qs = qs.filter(school_year=current)
+            # P2 : en mode consolidé, l'année courante de CHAQUE académie —
+            # sinon le filtre disparaissait et l'historique remontait.
+            from apps.core.tenancy import current_school_years
+            current_years = current_school_years(school)
+            if current_years.exists():
+                qs = qs.filter(school_year__in=current_years)
 
         # Filtre note_type optionnel
         note_type = self.request.query_params.get("note_type")

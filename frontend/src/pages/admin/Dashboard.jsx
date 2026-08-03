@@ -7,10 +7,13 @@ import StatCard from "../../components/ui/StatCard";
 import PageHeader from "../../components/ui/PageHeader";
 import AnnouncementModal from "../../components/ui/AnnouncementModal";
 import { t } from "../../i18n";
+import { useMoney } from "../../hooks/useMoney";
 
 const MONTHS = ["Jan","Fév","Mar","Avr","Mai","Jun","Jul","Aoû","Sep","Oct","Nov","Déc"];
 
 export default function AdminDashboard() {
+  // P0 : la devise vient de l'académie active, jamais d'un symbole codé en dur.
+  const money = useMoney();
   const [selectedAnn, setSelectedAnn] = useState(null);
   const { data, isLoading } = useQuery({ queryKey: ["admin-dashboard"], queryFn: dashboardAPI.admin });
   const { data: annData } = useQuery({ queryKey: ["admin-announcements"], queryFn: () => announcementsAPI.list() });
@@ -45,18 +48,22 @@ export default function AdminDashboard() {
         <StatCard title={t("Élèves actifs")}    value={kpis.total_students ?? 0}  icon={GraduationCap} color="primary"   delay={0} />
         <StatCard title={t("Enseignants")}      value={kpis.total_teachers ?? 0}  icon={Users}         color="secondary" delay={0.1} />
         <StatCard title={t("Classes")}          value={kpis.total_classes ?? 0}   icon={BookOpen}      color="accent"    delay={0.2} />
-        <StatCard title={t("Revenus du mois")}  value={`${(kpis.monthly_revenue ?? 0).toLocaleString()} FCFA`} icon={DollarSign} color="success" delay={0.3} />
+        {/* V8 — Le serveur rend le montant dans la devise de l'académie.
+            Le repli local ne sert qu'aux réponses d'une version antérieure. */}
+        <StatCard title={t("Revenus du mois")}  value={kpis.monthly_revenue_display || money.format(kpis.monthly_revenue ?? 0)} icon={DollarSign} color="success" delay={0.3} />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="card">
-          <h3 className="font-semibold text-slate-800 mb-4">{t("Revenus mensuels (FCFA)")}</h3>
+          <h3 className="font-semibold text-slate-800 mb-4">
+            {t("Revenus mensuels")}{money.symbol ? ` (${money.symbol})` : ""}
+          </h3>
           <ResponsiveContainer width="100%" height={220}>
             <BarChart data={chartData}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
               <XAxis dataKey="month" tick={{ fontSize: 11 }} />
               <YAxis tick={{ fontSize: 11 }} tickFormatter={v => `${(v/1000).toFixed(0)}k`} />
-              <Tooltip formatter={v => [`${v.toLocaleString()} FCFA`, t("Montant")]} />
+              <Tooltip formatter={v => [money.format(v), t("Montant")]} />
               <Bar dataKey="montant" fill="#6366F1" radius={[6,6,0,0]} />
             </BarChart>
           </ResponsiveContainer>
@@ -68,7 +75,7 @@ export default function AdminDashboard() {
               <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
               <XAxis dataKey="month" tick={{ fontSize: 11 }} />
               <YAxis tick={{ fontSize: 11 }} />
-              <Tooltip formatter={v => [`${v.toLocaleString()} FCFA`]} />
+              <Tooltip formatter={v => [money.format(v)]} />
               <Line type="monotone" dataKey="montant" stroke="#6366F1" strokeWidth={2} dot={{ fill: "#6366F1", r: 4 }} />
             </LineChart>
           </ResponsiveContainer>
@@ -85,7 +92,7 @@ export default function AdminDashboard() {
                   <p className="text-sm font-medium text-slate-800">{p.student}</p>
                   <p className="text-xs text-slate-400">{t(p.type)} • {p.date} • {p.reference_number}</p>
                 </div>
-                <span className="text-sm font-bold text-success">{p.amount?.toLocaleString()} FCFA</span>
+                <span className="text-sm font-bold text-success">{money.amountOf(p)}</span>
               </div>
             ))}
             {(d?.recent_payments || []).length === 0 && <p className="text-sm text-slate-400 text-center py-4">{t("Aucun paiement")}</p>}

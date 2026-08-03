@@ -25,6 +25,9 @@ import BulkGradeModal from "../../components/grades/BulkGradeModal";
 import { extractApiError } from "../../utils/errors";
 import { isValidGrade, gradePayloadValue } from "../../utils/gradeInput";
 import { t, dateLocale } from "../../i18n";
+import AcademyBadge from "../../components/AcademyBadge";
+import { useAcademy } from "../../context/AcademyContext";
+import { useSchoolYearScope } from "../../hooks/useSchoolYearScope";
 
 const PERIODS = [
   { value: "T1", label: "Trimestre 1" },
@@ -59,6 +62,7 @@ function LetterBadge({ letter }) {
 }
 
 export default function AdminGrades() {
+  const { isAllAcademies } = useAcademy();
   const qc = useQueryClient();
   const [view, setView] = useState("list"); // "list" | "summary" | "bilingual" | "deleted" | "allhistory"
   const [addOpen, setAddOpen] = useState(false);
@@ -82,6 +86,7 @@ export default function AdminGrades() {
   // CSV export (native, no dependency)
   const exportDeletedCSV = () => {
     const rows = deletedGrades.map(g => ({
+      "Académie":       g.academy_short_name || g.academy_name || "Sans académie",
       "Élève":          g.student_name || "",
       "Matricule":      g.student_matricule || "",
       "Classe":         g.student_class || "",
@@ -101,6 +106,8 @@ export default function AdminGrades() {
 
   const exportExcel = () => {
     const rows = grades.map(r => ({
+      // P2 : une moyenne exportée hors académie n'est pas interprétable.
+      "Académie":      r.academy_short_name || r.academy_name || "Sans académie",
       "Élève":         r.student_name || "",
       "Matricule":     r.student_matricule || "",
       "Classe":        r.student_class || "",
@@ -128,7 +135,9 @@ export default function AdminGrades() {
   });
 
   const years      = yearsData?.data?.results  || yearsData?.data  || [];
-  const currentYear= years.find(y => y.is_current);
+  // P2 : en mode « Toutes les Académies », aucune année ne peut
+  // représenter les deux académies — voir useSchoolYearScope.
+  const { currentYear: currentYear, yearLabel } = useSchoolYearScope(years);
   const students   = studData?.data?.results   || studData?.data   || [];
   const subjects   = subData?.data?.results    || subData?.data    || [];
   const classes    = classData?.data?.results  || classData?.data  || [];
@@ -363,7 +372,7 @@ export default function AdminGrades() {
           <select value={filterYear} onChange={e => setFilterYear(e.target.value)}
             className="border border-gray-200 rounded-lg px-3 py-2 text-sm">
             <option value="">{t("Année scolaire")}</option>
-            {years.map(y => <option key={y.id} value={y.id}>{y.name}{y.is_current ? " ★" : ""}</option>)}
+            {years.map(y => <option key={y.id} value={y.id}>{yearLabel(y)}{y.is_current ? " ★" : ""}</option>)}
           </select>
         )}
         {view === "list" && (
@@ -465,6 +474,11 @@ export default function AdminGrades() {
                         onChange={e => { const n = new Set(bulkSelected); grades.forEach(r => e.target.checked ? n.add(r.id) : n.delete(r.id)); setBulkSelected(n); }}
                       />
                     </th>
+                    {/* P2 : sans cette colonne, une note de FEBA et une note
+                        de FEBA FHA se ressemblaient trait pour trait. */}
+                    {isAllAcademies && (
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500">{t("Académie")}</th>
+                    )}
                     <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500">{t("Élève")}</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500">{t("Matière")}</th>
                     <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500">{t("Période")}</th>
@@ -491,6 +505,11 @@ export default function AdminGrades() {
                           checked={bulkSelected.has(r.id)}
                           onChange={() => { const n = new Set(bulkSelected); n.has(r.id) ? n.delete(r.id) : n.add(r.id); setBulkSelected(n); }} />
                       </td>
+                      {isAllAcademies && (
+                        <td className="px-4 py-3">
+                          <AcademyBadge code={r.academy_code} name={r.academy_name} />
+                        </td>
+                      )}
                       <td className="px-4 py-3 font-medium text-gray-800">{r.student_name || r.student}</td>
                       <td className="px-4 py-3 text-gray-600">{r.subject_name || r.subject}</td>
                       <td className="px-4 py-3 text-center">
@@ -583,7 +602,7 @@ export default function AdminGrades() {
                       </div>
                     </div>
                     {selectedRow.comment && (
-                      <div className="text-xs text-gray-600 bg-gray-50 rounded-lg p-2">{selectedRow.comment}</div>
+                      <div className="text-xs text-gray-600 bg-gray-50 rounded-lg p-2 text-longform">{selectedRow.comment}</div>
                     )}
                     {/* Actions */}
                     <div className="flex flex-col gap-2 pt-2">

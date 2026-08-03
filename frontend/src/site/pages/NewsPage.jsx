@@ -7,14 +7,18 @@ import { siteAPI } from "../siteApi";
 import Seo from "../components/Seo";
 import SiteImage from "../components/SiteImage";
 import { Section, PageBanner } from "../components/SiteSection";
+import { tr } from "../fhaContent";
+import { pickLang } from "../siteDefaults";
+import { useSiteLang } from "../useSiteLang";
 
 const FILTERS = [
-  { value: "", label: "Tout" },
-  { value: "news", label: "Actualités" },
-  { value: "event", label: "Événements" },
+  { value: "", label: { fr: "Tout", en: "All" } },
+  { value: "news", label: { fr: "Actualités", en: "News" } },
+  { value: "event", label: { fr: "Événements", en: "Events" } },
 ];
 
 export default function NewsPage() {
+  const { lang, t } = useSiteLang();
   const [kind, setKind] = useState("");
   const { data, isLoading, isError } = useQuery({
     queryKey: ["site-news", kind],
@@ -26,14 +30,17 @@ export default function NewsPage() {
 
   return (
     <>
-      <Seo title="Actualités et événements"
-        description="Les actualités et les événements de la vie de l'école FEBA à Cotonou." />
-      <PageBanner title="Actualités & événements"
-        intro="La vie de l'école, au fil des semaines."
+      <Seo title={t("Actualités et événements", "News and events")}
+        description={t(
+          "Les actualités et les événements de la vie de l'école FEBA à Cotonou.",
+          "News and events from school life at FEBA in Cotonou.",
+        )} />
+      <PageBanner title={t("Actualités & événements", "News & events")}
+        intro={t("La vie de l'école, au fil des semaines.", "School life, week by week.")}
         image="/site/img/activite-expression-1600.webp" />
 
       <Section tone="white">
-        <div className="flex gap-2 flex-wrap mb-8" role="group" aria-label="Filtrer les publications">
+        <div className="flex gap-2 flex-wrap mb-8" role="group" aria-label={t("Filtrer les publications", "Filter the posts")}>
           {FILTERS.map((f) => (
             <button key={f.value} onClick={() => setKind(f.value)}
               aria-pressed={kind === f.value}
@@ -42,7 +49,7 @@ export default function NewsPage() {
                   ? "bg-feba-navy text-white"
                   : "bg-feba-cream text-feba-navy hover:bg-feba-gold/20"
               }`}>
-              {f.label}
+              {tr(f.label, lang)}
             </button>
           ))}
         </div>
@@ -57,16 +64,24 @@ export default function NewsPage() {
 
         {isError && (
           <p className="text-center text-sm text-feba-gray py-10">
-            Impossible de charger les actualités pour le moment. Veuillez réessayer plus tard.
+            {t(
+              "Impossible de charger les actualités pour le moment. Veuillez réessayer plus tard.",
+              "News cannot be loaded at the moment. Please try again later.",
+            )}
           </p>
         )}
 
         {!isLoading && !isError && posts.length === 0 && (
           <div className="text-center py-16">
             <Newspaper className="w-10 h-10 text-feba-gold mx-auto mb-4" aria-hidden="true" />
-            <p className="font-semibold text-feba-navy">Aucune publication pour le moment</p>
+            <p className="font-semibold text-feba-navy">
+              {t("Aucune publication pour le moment", "No posts yet")}
+            </p>
             <p className="text-sm mt-2">
-              Les prochaines actualités et les événements de l'école paraîtront ici.
+              {t(
+                "Les prochaines actualités et les événements de l'école paraîtront ici.",
+                "Upcoming school news and events will appear here.",
+              )}
             </p>
           </div>
         )}
@@ -83,7 +98,7 @@ export default function NewsPage() {
               <div className="p-5 flex-1 flex flex-col">
                 <p className="flex items-center gap-2 text-xs text-feba-gold font-semibold uppercase tracking-wide">
                   <CalendarDays className="w-3.5 h-3.5" aria-hidden="true" />
-                  {post.kind === "event" ? "Événement" : "Actualité"}
+                  {post.kind === "event" ? t("Événement", "Event") : t("Actualité", "News")}
                   {(post.event_date || post.published_at) && (
                     <span className="text-feba-gray font-normal normal-case">
                       · {(post.event_date || post.published_at).slice(0, 10)}
@@ -92,10 +107,12 @@ export default function NewsPage() {
                 </p>
                 <h2 className="font-bold text-feba-navy mt-2 leading-snug">
                   <Link to={`/actualites/${post.slug}`} className="hover:text-feba-gold transition-colors">
-                    {post.title}
+                    {pickLang(post, "title", lang)}
                   </Link>
                 </h2>
-                {post.excerpt && <p className="text-sm mt-2 leading-relaxed flex-1">{post.excerpt}</p>}
+                {pickLang(post, "excerpt", lang) && (
+                  <p className="text-sm mt-2 leading-relaxed flex-1">{pickLang(post, "excerpt", lang)}</p>
+                )}
                 {post.location && (
                   <p className="flex items-center gap-1.5 text-xs text-feba-gray mt-3">
                     <MapPin className="w-3.5 h-3.5 text-feba-gold" aria-hidden="true" />{post.location}

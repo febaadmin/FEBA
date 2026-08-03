@@ -46,7 +46,7 @@ export default function ParentHomework() {
               </span>
             </div>
             <div className="bg-slate-50 rounded-xl p-4">
-              <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap">{selected.description}</p>
+              <p className="text-sm text-slate-700 leading-relaxed text-longform">{selected.description}</p>
             </div>
             {selected.attachments?.length > 0 && (
               <div>

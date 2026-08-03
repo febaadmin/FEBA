@@ -1,6 +1,14 @@
 import axios from "axios";
 import { useAuthStore } from "../store/authStore";
 import { getLang } from "../i18n";
+import {
+  HEADER as ACADEMY_SCOPE_HEADER,
+  StaleAcademyResponse,
+  getAcademyScope,
+  isStaleResponse,
+  releaseRequest,
+  trackRequest,
+} from "./academyScope";
 
 const API_URL = import.meta.env.VITE_API_URL || "/api";
 
@@ -12,13 +20,51 @@ api.interceptors.request.use((config) => {
   const token = useAuthStore.getState().accessToken;
   if (token) config.headers.Authorization = `Bearer ${token}`;
   config.headers["Accept-Language"] = getLang();
+
+  // P0 — Portée d'académie. La requête annonce la portée sous laquelle elle
+  // est émise et reçoit un contrôleur d'annulation : au changement
+  // d'académie, tout ce qui est en vol est avorté au lieu d'arriver en
+  // retard et de réafficher les données de l'académie quittée.
+  const scope = getAcademyScope();
+  config.headers[ACADEMY_SCOPE_HEADER] = scope;
+  config.__academyScope = scope;
+  if (!config.signal) {
+    const controller = trackRequest();
+    config.signal = controller.signal;
+    config.__academyController = controller;
+  }
   return config;
 });
+
+// Réponse arrivée alors que l'utilisateur a changé d'académie entre-temps :
+// elle décrit une académie qui n'est plus affichée. La laisser passer
+// remplirait le cache de données périmées — c'est exactement le symptôme
+// « l'ancien contenu reste visible quelques secondes » que l'on corrige.
+api.interceptors.response.use(
+  (response) => {
+    releaseRequest(response.config?.__academyController);
+    const served = response.headers?.[ACADEMY_SCOPE_HEADER.toLowerCase()];
+    if (isStaleResponse(served, response.config?.url)) {
+      return Promise.reject(
+        new StaleAcademyResponse(getAcademyScope(), served, response.config?.url),
+      );
+    }
+    return response;
+  },
+  (error) => {
+    releaseRequest(error.config?.__academyController);
+    return Promise.reject(error);
+  },
+);
 
 // Auto-refresh on 401
 // FIX v20: Endpoints "non-critiques" qui ne doivent PAS provoquer une déconnexion
 //          en cas de 401 (ex: branding appelé avant hydratation du token)
 const NON_CRITICAL_ENDPOINTS = [
+  // Le contexte d'académie est interrogé par un fournisseur qui enveloppe
+  // AUSSI le site vitrine : un 401 y est normal (visiteur non connecté) et
+  // ne doit surtout pas provoquer une redirection vers /login.
+  "/auth/entity-context/",
   "/schools/branding/",
   "/notifications/",
   "/notifications/unread-count/",
@@ -47,6 +93,11 @@ api.interceptors.response.use(
           const { data } = await axios.post(`${API_URL}/auth/refresh/`, { refresh: rt });
           useAuthStore.getState().setAuth(useAuthStore.getState().user, data.access, data.refresh || rt);
           orig.headers.Authorization = `Bearer ${data.access}`;
+          // Le contrôleur d'annulation de la tentative précédente est
+          // consommé : on le retire pour que le rejeu soit à son tour
+          // annulable en cas de bascule d'académie.
+          delete orig.signal;
+          delete orig.__academyController;
           return api(orig);
         } catch {
           // Refresh échoué — déconnecter seulement si l'endpoint était critique
@@ -100,10 +151,62 @@ export const websiteAdminAPI = {
   updateContact: (id, d)  => api.patch(`/website/admin/contact-messages/${id}/`, d),
   deleteContact: (id)     => api.delete(`/website/admin/contact-messages/${id}/`),
   preregistrations: ()    => api.get("/website/admin/preregistrations/", { params: BIG }),
+
+  // ── FEBA French Heritage Academy (P2) ─────────────────────────────────
+  // Ces dossiers étaient enregistrés en base mais AUCUN écran ne les
+  // interrogeait : le back-office n'appelait que /preregistrations/, qui
+  // ne contient que les demandes FEBA. D'où des soumissions « invisibles ».
+  fhaApplications: (params)   => api.get("/website/admin/fha-applications/", { params: { ...BIG, ...params } }),
+  fhaApplication: (id)        => api.get(`/website/admin/fha-applications/${id}/`),
+  fhaChangeStatus: (id, d)    => api.post(`/website/admin/fha-applications/${id}/change-status/`, d),
+  deleteFhaApplication: (id)  => api.delete(`/website/admin/fha-applications/${id}/`),
+  // P3/P4 — La fiche PDF et l'export ne passent JAMAIS par une URL
+  // publique : ce sont des réponses de requêtes authentifiées, en binaire.
+  fhaApplicationSheet: (id)   => api.get(`/website/admin/fha-applications/${id}/sheet/`, { responseType: "blob" }),
+  fhaRegenerateSheet: (id)    => api.post(`/website/admin/fha-applications/${id}/regenerate-sheet/`),
+  fhaResendConfirmation: (id) => api.post(`/website/admin/fha-applications/${id}/resend-confirmation/`),
+  exportFhaApplications: ()   => api.get("/website/admin/fha-applications/export/", { responseType: "blob" }),
+
+  fhaPlacementTests: (params) => api.get("/website/admin/fha-placement-tests/", { params: { ...BIG, ...params } }),
+  fhaPlacementTest: (id)      => api.get(`/website/admin/fha-placement-tests/${id}/`),
+  schedulePlacementTest: (id, d) => api.post(`/website/admin/fha-placement-tests/${id}/schedule/`, d),
+  recordPlacementResult: (id, d) => api.post(`/website/admin/fha-placement-tests/${id}/record-result/`, d),
+  deletePlacementTest: (id)   => api.delete(`/website/admin/fha-placement-tests/${id}/`),
+  prereg: (id)            => api.get(`/website/admin/preregistrations/${id}/`),
   updatePrereg: (id, d)   => api.patch(`/website/admin/preregistrations/${id}/`, d),
   deletePrereg: (id)      => api.delete(`/website/admin/preregistrations/${id}/`),
+  // P2 — La fiche PDF d'une préinscription contient l'adresse et le
+  // téléphone d'une famille, et l'âge d'un mineur. Elle sort d'une
+  // requête AUTHENTIFIÉE, en binaire, jamais d'une URL /media/ devinable.
+  preregSheet: (id)       => api.get(`/website/admin/preregistrations/${id}/sheet/`, { responseType: "blob" }),
+  regeneratePreregSheet: (id) => api.post(`/website/admin/preregistrations/${id}/regenerate-sheet/`),
+  exportPreregs: ()       => api.get("/website/admin/preregistrations/export/", { responseType: "blob" }),
   heroSlides: ()          => api.get("/website/admin/hero-slides/"),
   updateHeroSlide: (id, d) => api.patch(`/website/admin/hero-slides/${id}/`, d),
+};
+
+/**
+ * P3 — Rapports mensuels FEBA French Heritage Academy.
+ *
+ * Le PDF sort d'une requête AUTHENTIFIÉE, en binaire : un rapport
+ * mensuel contient les notes, les absences et les appréciations d'un
+ * mineur, et une URL /media/ devinable suffirait à l'exposer.
+ */
+export const monthlyReportsAPI = {
+  list:          (params) => api.get("/monthly-reports/reports/", { params: { ...BIG, ...params } }),
+  get:           (id)     => api.get(`/monthly-reports/reports/${id}/`),
+  create:        (d)      => api.post("/monthly-reports/reports/", d),
+  update:        (id, d)  => api.patch(`/monthly-reports/reports/${id}/`, d),
+  remove:        (id)     => api.delete(`/monthly-reports/reports/${id}/`),
+  pdf:           (id)     => api.get(`/monthly-reports/reports/${id}/pdf/`, { responseType: "blob" }),
+  preview:       (id)     => api.get(`/monthly-reports/reports/${id}/pdf/?preview=1`, { responseType: "blob" }),
+  regenerate:    (id)     => api.post(`/monthly-reports/reports/${id}/regenerate/`),
+  newVersion:    (id)     => api.post(`/monthly-reports/reports/${id}/new-version/`),
+  send:          (id)     => api.post(`/monthly-reports/reports/${id}/send/`),
+  markReady:     (id)     => api.post(`/monthly-reports/reports/${id}/mark-ready/`),
+  cancel:        (id)     => api.post(`/monthly-reports/reports/${id}/cancel/`),
+  archive:       (id)     => api.post(`/monthly-reports/reports/${id}/archive/`),
+  generateMonth: (d)      => api.post("/monthly-reports/reports/generate-month/", d),
 };
 
 export const schoolsAPI = {
@@ -290,6 +393,30 @@ export const scheduleAPI = {
   byTeacher: (id)   => api.get(`/schedule/teacher/${id}/`, { params: BIG }),
 };
 
+/**
+ * Séances en direct FEBA FHA — endpoint DISTINCT de `scheduleAPI`.
+ *
+ * P3 : les deux académies ne planifient pas la même chose. FEBA planifie un
+ * cours dans une salle physique ; FEBA FHA planifie une séance en ligne,
+ * suivie depuis plusieurs fuseaux horaires, donc stockée en UTC. Les
+ * mélanger dans un même appel obligeait à laisser vides la moitié des
+ * champs et rendait impossible de dire à quelle académie une ligne
+ * appartenait.
+ *
+ * Le serveur refuse cet endpoint (403) à une académie présentielle : ce
+ * n'est pas l'onglet React qui protège, c'est l'API.
+ */
+export const onlineSessionsAPI = {
+  list: (p)        => api.get("/schedule/online-sessions/", { params: { ...BIG, ...p } }),
+  create: (d)      => api.post("/schedule/online-sessions/", d),
+  update: (id, d)  => api.patch(`/schedule/online-sessions/${id}/`, d),
+  delete: (id)     => api.delete(`/schedule/online-sessions/${id}/`),
+  // Conversion faite côté serveur : laisser chaque client convertir l'UTC
+  // lui-même multiplierait les erreurs de changement de jour à minuit.
+  week: (timezone) => api.get("/schedule/online-sessions/week/", { params: { timezone } }),
+  mine: ()         => api.get("/schedule/online-sessions/my_sessions/"),
+};
+
 export const homeworkAPI = {
   list: (p)         => api.get("/homework/", { params: { ...BIG, ...p } }),
   create: (d)       => {
@@ -319,6 +446,44 @@ export const paymentsAPI = {
   pending: ()       => api.get("/payments/pending/"),
   generateReceipt: (id) => api.post(`/payments/${id}/generate-receipt/`),
   history: (id)     => api.get(`/payments/${id}/history/`),
+};
+
+/**
+ * Paiement par carte bancaire.
+ *
+ * Le client n'envoie JAMAIS de montant : il désigne un élève et une nature
+ * de frais, et le serveur lit son propre tarif. Un `amount` transmis
+ * depuis le navigateur serait, par construction, falsifiable.
+ *
+ * Aucune donnée de carte ne transite non plus : `checkout()` renvoie une
+ * URL vers le formulaire hébergé du prestataire, vers lequel on redirige.
+ */
+export const cardPaymentsAPI = {
+  config:   ()          => api.get("/payments/card/config/"),
+  fees:     (studentId) => api.get("/payments/card/fees/", { params: { student: studentId } }),
+  checkout: (d)         => api.post("/payments/card/checkout/", d),
+  transactions: (p)     => api.get("/payments/card/transactions/", { params: p }),
+  refund:   (id, amount) => api.post(`/payments/card/${id}/refund/`,
+                                     amount ? { amount } : {}),
+  receipt:  (id)        => api.get(`/payments/card/${id}/receipt/`),
+};
+
+/**
+ * Documents officiels — diplômes et certificats.
+ *
+ * Le fichier n'a JAMAIS d'URL publique : `download()` passe par une route
+ * authentifiée qui vérifie l'appartenance avant de diffuser l'octet. Un
+ * diplôme accessible par son nom de fichier est un diplôme public.
+ */
+export const documentsAPI = {
+  templates: ()       => api.get("/documents/templates/"),
+  list:      (p)      => api.get("/documents/", { params: p }),
+  create:    (d)      => api.post("/documents/", d),
+  issue:     (id)     => api.post(`/documents/${id}/issue/`),
+  revoke:    (id, reason) => api.post(`/documents/${id}/revoke/`, { reason }),
+  replace:   (id, d)  => api.post(`/documents/${id}/replace/`, d || {}),
+  history:   (id)     => api.get(`/documents/${id}/history/`),
+  download:  (id)     => api.get(`/documents/${id}/download/`, { responseType: "blob" }),
 };
 
 export const conversationsAPI = {

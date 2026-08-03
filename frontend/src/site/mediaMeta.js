@@ -33,7 +33,7 @@ export const OVERLAYS = {
   "left-navy-md": "bg-gradient-to-t from-feba-navy/85 via-feba-navy/35 to-transparent sm:bg-gradient-to-r sm:from-feba-navy/90 sm:via-feba-navy/45 sm:to-transparent",
   // Zone crème à DROITE
   "right-navy": "bg-gradient-to-l from-feba-navy/90 via-feba-navy/45 to-transparent",
-  // Variante FEBA Online (vert réservé à ce programme)
+  // Variante FEBA French Heritage Academy (vert réservé à ce programme)
   "left-green": "bg-gradient-to-r from-feba-green/90 via-feba-green/40 to-transparent",
   // Léger assombrissement du haut (lisibilité du header sur les heros)
   "top-navy": "bg-gradient-to-b from-feba-navy/50 via-transparent to-transparent",
@@ -98,7 +98,7 @@ export const MEDIA_META = {
   "activite-football": { position: "50% 40%" },
   "activite-expression": { position: "48% 30%" },
   "activite-ronde": { position: "72% 62%", mobile: "74% 66%" }, // ronde à droite, crème à gauche → cadrage poussé à droite
-  // FEBA Online
+  // FEBA French Heritage Academy
   "online-visio": { position: "45% 45%" },
   "online-cours-francais": { position: "62% 48%", mobile: "70% 48%" }, // laptop à droite, crème à gauche
   "online-lecon": { position: "42% 45%" },

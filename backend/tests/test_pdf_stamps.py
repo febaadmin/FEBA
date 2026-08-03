@@ -133,7 +133,10 @@ class ReceiptStampTests(TestCase):
     def setUpTestData(cls):
         from apps.accounts.models import CustomUser
         from apps.payments.models import Payment
+        # P0 — l'académie porte son CODE INTERNE : c'est lui qui détermine
+        # l'identité (cachets, couleurs, pied de page) des documents.
         cls.school = School.objects.create(name="Faith & Excellence Bilingual Academy",
+                                           code=School.CODE_FEBA,
                                            address="Akpakpa, Cotonou")
         cls.year = SchoolYear.objects.create(
             school=cls.school, name="2025-2026",
@@ -222,7 +225,10 @@ class BulletinStampTests(TestCase):
 
     @classmethod
     def setUpTestData(cls):
+        # P0 — l'académie porte son CODE INTERNE : c'est lui qui détermine
+        # l'identité (cachets, couleurs, pied de page) des documents.
         cls.school = School.objects.create(name="Faith & Excellence Bilingual Academy",
+                                           code=School.CODE_FEBA,
                                            address="Akpakpa, Cotonou")
         cls.year = SchoolYear.objects.create(
             school=cls.school, name="2025-2026",
@@ -232,6 +238,8 @@ class BulletinStampTests(TestCase):
 
     def _bulletin(self, comment="Bon trimestre.", subjects=1, level_order=11):
         from apps.bulletins import pdf_generator as G
+        from apps.bulletins.pdf_generator import Palette
+        from apps.schools.branding import branding_for
         level = Level.objects.create(school=self.school, name="CM2",
                                      order=level_order, cycle="primaire")
         klass = Class.objects.create(name="CM2-A", level=level, school_year=self.year)
@@ -254,7 +262,8 @@ class BulletinStampTests(TestCase):
                                   "general_comment": comment, "rank_in_class": None})()
         buf = BytesIO()
         G._build_standard_pdf(buf, student, "T1", self.year, data, bilingual, {},
-                              average, bulletin, None)
+                              average, bulletin,
+                              Palette(branding_for(student)))
         return fitz.open(stream=buf.getvalue(), filetype="pdf")
 
     def test_intitule_direction_present(self):

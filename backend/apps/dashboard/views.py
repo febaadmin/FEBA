@@ -10,6 +10,9 @@ from apps.core.tenancy import get_request_school
 logger = logging.getLogger("apps")
 
 
+from apps.core.currency import DEFAULT_CURRENCY, Money, get_currency
+
+
 def safe_float(val):
     try:
         return float(val) if val is not None else 0.0
@@ -46,6 +49,9 @@ class AdminDashboardView(APIView):
         active_year = SchoolYear.objects.filter(school=school, is_current=True).first()
         now = timezone.now()
 
+        # La devise vient de l'ACADÉMIE, jamais d'un réglage d'affichage.
+        currency_code = getattr(school, "currency_code", None) or DEFAULT_CURRENCY
+
         # Revenus mensuels filtrés sur l'année active uniquement
         monthly_revenue = []
         for m in range(1, 13):
@@ -57,8 +63,18 @@ class AdminDashboardView(APIView):
             )
             if active_year:
                 pay_qs = pay_qs.filter(school_year=active_year)
-            total = pay_qs.aggregate(s=Sum("amount"))["s"] or 0
-            monthly_revenue.append({"month": m, "amount": safe_float(total)})
+            # V8 — La somme porte sur `amount_minor`, l'entier de
+            # référence. Sommer `amount` (décimal) fonctionnait, mais la
+            # valeur remontait ensuite en `float` : sur une longue série,
+            # les centimes dérivent. Le graphique reçoit une valeur en
+            # unité majeure pour son axe, ET l'entier exact à côté.
+            total_minor = pay_qs.aggregate(s=Sum("amount_minor"))["s"] or 0
+            monthly_revenue.append({
+                "month": m,
+                "amount_minor": int(total_minor),
+                "amount": safe_float(Money(int(total_minor), currency_code).amount),
+                "currency": currency_code,
+            })
 
         # KPIs filtrés par année active ET par établissement.
         # FIX (audit) : user__is_active=True excluait les élèves SANS compte
@@ -75,12 +91,12 @@ class AdminDashboardView(APIView):
             # Élèves avec une inscription dans la classe courante (année active)
             payment_qs = payment_qs.filter(school_year=active_year)
 
-        monthly_pay = payment_qs.filter(
+        monthly_minor = payment_qs.filter(
             payment_date__month=now.month, payment_date__year=now.year
-        ).aggregate(s=Sum("amount"))["s"]
-        ytd_pay = payment_qs.filter(
+        ).aggregate(s=Sum("amount_minor"))["s"] or 0
+        ytd_minor = payment_qs.filter(
             payment_date__year=now.year
-        ).aggregate(s=Sum("amount"))["s"]
+        ).aggregate(s=Sum("amount_minor"))["s"] or 0
 
         # Classes actives (ayant des élèves cette année, dans cet établissement)
         active_class_qs = Class.objects.filter(school_year__school=school)
@@ -94,12 +110,26 @@ class AdminDashboardView(APIView):
 
         return Response({
             "active_year": {"id": active_year.id, "name": active_year.name} if active_year else None,
+            "currency": currency_code,
+            "currency_symbol": get_currency(currency_code).symbol,
             "kpis": {
                 "total_students": student_qs.count(),
                 "total_teachers": Teacher.objects.filter(user__is_active=True, user__school=school).count(),
                 "total_classes": active_class_qs.count(),
-                "monthly_revenue": safe_float(monthly_pay),
-                "total_revenue_ytd": safe_float(ytd_pay),
+                # Montants rendus PAR LE SERVEUR dans la devise de
+                # l'académie. Le navigateur n'a plus à choisir un symbole :
+                # c'est ainsi que « FCFA » se retrouvait sur les recettes
+                # de FEBA French Heritage Academy, qui facture en dollars.
+                "monthly_revenue": safe_float(
+                    Money(int(monthly_minor), currency_code).amount),
+                "monthly_revenue_minor": int(monthly_minor),
+                "monthly_revenue_display": Money(
+                    int(monthly_minor), currency_code).formatted(),
+                "total_revenue_ytd": safe_float(
+                    Money(int(ytd_minor), currency_code).amount),
+                "total_revenue_ytd_minor": int(ytd_minor),
+                "total_revenue_ytd_display": Money(
+                    int(ytd_minor), currency_code).formatted(),
                 "announcements": Announcement.objects.filter(is_published=True, author__school=school).count(),
                 "total_bulletins": bulletin_count,
             },
@@ -110,6 +140,9 @@ class AdminDashboardView(APIView):
                     "student": p.student.get_full_name(),
                     "student_class": p.student.current_class.name if p.student.current_class else "—",
                     "amount": safe_float(p.amount),
+                    "amount_minor": p.amount_minor,
+                    "currency": p.currency,
+                    "amount_display": p.formatted_amount,
                     "type": p.get_payment_type_display(),
                     "payment_type": p.payment_type,
                     "date": str(p.payment_date),

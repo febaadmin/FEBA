@@ -1,0 +1,75 @@
+=== P2 — Documents officiels, parcours navigateur ===
+Application : http://127.0.0.1:5173   API : http://127.0.0.1:5173/api
+
+--- 1. Super administrateur sur FEBA (Cotonou) ---
+  OK   l'écran des documents officiels s'ouvre
+  OK   l'écran annonce l'académie de Cotonou
+  OK   un élève de Cotonou est disponible — Estelle Acakpo
+  OK   le certificat apparaît dans la liste
+  OK   deux documents de plus dans la liste — 63 → 65
+  OK   certificat et diplôme sont bien tous deux là
+  OK   les deux portent l'académie de Cotonou — FEBA, FEBA
+  OK   les deux types sont distincts — diploma_feba, certificate_feba
+  OK   un brouillon n'a pas encore de numéro officiel
+  OK   délivrance du document 119 — HTTP 200
+  OK   délivrance du document 118 — HTTP 200
+  OK   le numéro officiel est attribué à la délivrance — FEBA-DIP-2026-0012
+  OK   le PDF 119 se télécharge et est un PDF — HTTP 200, 1724531 octets
+  OK   le PDF 119 porte bien son fond — 1724531 octets
+  OK   l'empreinte affichée est celle du fichier remis (119) — 0d62300cf4d1… vs 0d62300cf4d1…
+  OK   le PDF 118 se télécharge et est un PDF — HTTP 200, 1511752 octets
+  OK   le PDF 118 porte bien son fond — 1511752 octets
+  OK   l'empreinte affichée est celle du fichier remis (118) — 0b7fdcb74545… vs 0b7fdcb74545…
+
+--- 2. Changement d'académie sans rechargement ---
+  OK   la liste FEBA contient bien l'élève de Cotonou
+  OK   la page n'a PAS rechargé pendant la bascule — témoin intact
+  OK   l'élève de Cotonou disparaît de la liste sans rechargement
+  OK   l'écran annonce désormais l'académie en ligne
+
+--- 3. Super administrateur sur FEBA FHA (en ligne) ---
+  OK   un élève de l'académie en ligne est disponible — Naomi Adjovi
+  OK   le certificat FEBA FHA apparaît dans la liste
+  OK   certificat et diplôme FEBA FHA sont là
+  OK   les deux portent l'académie en ligne — FEBA_FHA, FEBA_FHA
+  OK   la liste ne contient AUCUN document de l'autre académie — 56 ligne(s)
+  OK   le numéro officiel FEBA FHA est attribué — FHA-DIP-2026-0012
+  OK   le PDF FEBA FHA 121 se télécharge — HTTP 200, 3321899 o
+  OK   l'empreinte FEBA FHA 121 correspond au fichier remis — 58e609c59f6d… vs 58e609c59f6d…
+  OK   le PDF FEBA FHA 120 se télécharge — HTTP 200, 2215220 o
+  OK   l'empreinte FEBA FHA 120 correspond au fichier remis — 0fd4d7e0890b… vs 0fd4d7e0890b…
+
+--- 4. Recherche d'élève, liste vide, erreur maîtrisée ---
+  OK   la recherche trouve l'élève
+  OK   une recherche sans résultat ne propose plus l'élève
+  OK   la liste vide est annoncée, pas laissée muette
+  OK   produire un diplôme de Cotonou pour un élève en ligne est refusé — HTTP 400
+  OK   le refus porte un message, pas une erreur nue — {"detail":"Ce gabarit est réservé à : FEBA. Son fond porte l'identité visuelle de cette académie ; l'utiliser pour « FEBA French Heritage Ac
+  OK   le message d'erreur n'expose aucun chemin du serveur
+
+--- 5. Administrateur FEBA (Cotonou) ---
+  OK   l'écran s'ouvre pour l'administrateur FEBA
+  OK   aucun élève de l'académie en ligne n'apparaît
+  OK   l'administrateur voit ses propres documents — 65 ligne(s)
+  OK   toutes les lignes sont de son académie
+  OK   le document 121 d'une autre académie est INTROUVABLE (404, pas 403) — HTTP 404
+  OK   son PDF 121 est également introuvable — HTTP 404
+  OK   le document 120 d'une autre académie est INTROUVABLE (404, pas 403) — HTTP 404
+  OK   son PDF 120 est également introuvable — HTTP 404
+
+--- 6. Administrateur FEBA FHA (en ligne) ---
+  OK   l'écran s'ouvre pour l'administrateur FEBA FHA
+  OK   aucun élève de Cotonou n'apparaît
+  OK   toutes les lignes sont de l'académie en ligne — 56 ligne(s)
+  OK   le document 119 de Cotonou est INTROUVABLE — HTTP 404
+  OK   le document 118 de Cotonou est INTROUVABLE — HTTP 404
+  OK   demander explicitement l'autre académie n'élargit pas la portée
+
+=== Bilan ===
+  OK   les seules réponses en erreur sont les 7 que le scénario demande — 7 observée(s) : 1 refus de gabarit + 6 sondes anti-IDOR
+  OK   aucune erreur de console imputable à l'application
+  INFO  25 message(s) écarté(s), dont 0 annulation(s) volontaire(s) de requête au changement d'académie et le reste imputable au CDN de polices.
+  INFO  0 requête(s) annulée(s) à la bascule (nombre variable : dépend de ce qui est en vol à cet instant).
+
+54/54 contrôles passés.
+Captures : /home/user/FEBA/e2e/captures

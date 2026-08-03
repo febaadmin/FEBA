@@ -1,8 +1,12 @@
 from rest_framework import serializers
 from .models import Attendance
+from apps.core.academy_serializers import ACADEMY_FIELDS, AcademyMetadataMixin
 
 
-class AttendanceSerializer(serializers.ModelSerializer):
+class AttendanceSerializer(AcademyMetadataMixin, serializers.ModelSerializer):
+    #: Chemin ORM vers l'académie propriétaire de l'objet.
+    academy_source = "student.school"
+
     student_name = serializers.CharField(source="student.get_full_name", read_only=True)
     student_class = serializers.CharField(source="student.current_class.name", read_only=True)
     created_by_name = serializers.SerializerMethodField()

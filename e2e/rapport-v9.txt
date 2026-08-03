@@ -1,0 +1,60 @@
+Vérification navigateur V9 — Chromium réel, build de production
+Application : http://127.0.0.1:5173   API : http://127.0.0.1:5173
+
+1. Parcours public — fiche d'inscription FEBA FHA
+  · capture v9-1-public-fha-formulaire.png
+  ✓ la fiche est acceptée — HTTP 201
+  ✓ un numéro de dossier est attribué — FHA-2026-0009
+  ✓ la fiche PDF est produite à la soumission
+  ✓ l'état de l'e-mail est renvoyé au navigateur — {"status":"sent","accepted":true,"tracking_id":"a1c4f380-d791-48df-a8f9-4d26abde7d58"}
+  ✓ l'e-mail annoncé l'a réellement été
+  ✓ le numéro de dossier est mis en avant — il est acquis, lui
+
+2. Espace administrateur FEBA FHA — le dossier est traitable
+  · capture v9-2-admin-fha-admissions.png
+  ✓ le dossier soumis apparaît dans la liste — FHA-2026-0009
+  ✓ la colonne « Fiche PDF » est présente
+  ✓ la colonne « E-mail parent » est présente
+  ✓ l'état de la fiche est affiché
+  ✓ action « Télécharger la fiche PDF » par ligne — 9 bouton(s)
+  ✓ action « Renvoyer l'e-mail » par ligne — 9 bouton(s)
+  ✓ action « Voir le détail complet » par ligne — 9 bouton(s)
+  · capture v9-2-admin-fha-detail.png
+  ✓ le détail affiche le WhatsApp
+  ✓ le détail affiche l'état de la fiche et des envois
+  ✓ le détail affiche les consentements
+
+3. Super administrateur — la bascule d'académie change l'affichage
+  · capture v9-3-superadmin-documents.png
+  ✓ la page annonce la portée sous laquelle elle travaille
+  ✓ chaque gabarit dit s'il est utilisable par l'académie en cours
+  ✓ chaque gabarit déclare ses académies autorisées
+  · gabarits : certificate_feba[FEBA] diploma_feba[FEBA]
+
+4. Contact — le WhatsApp s'affiche, le message long n'est pas coupé
+  ✓ le formulaire FEBA demande un numéro WhatsApp
+  · capture v9-4-contact-formulaire.png
+  ✓ le message est accepté — HTTP 201
+  · capture v9-4-contact-detail.png
+  ✓ le numéro WhatsApp saisi est affiché — +229 96 11 22 33
+  ✓ le message est rendu par le bloc dédié
+  ✓ les retours à la ligne sont conservés — pre-wrap
+  ✓ les mots très longs se coupent — anywhere
+  ✓ aucune troncature par points de suspension — clip
+  ✓ AUCUN débordement horizontal — 720 ≤ 720
+  ✓ le texte long défile verticalement au lieu de déborder — auto
+  ✓ le message est affiché ENTIER — 1011 caractères affichés sur 1011
+  ✓ aucune balise script n'a été créée dans le DOM
+  ✓ la page ne défile pas horizontalement — 0 px
+
+5. Documents officiels — académie, gabarits et confirmation
+  · capture v9-5-documents-feba.png
+  ✓ aucun message ne demande de lancer « document_neutralize »
+  ✓ aucun gabarit n'est bloqué faute de fond dérivé
+  ✓ le diplôme est présent sur la page
+  ✓ au moins un gabarit se déclare émissible
+  · capture v9-5-documents-modale.png
+  ✓ la production exige une confirmation explicite de l'académie
+  ✓ le bouton reste inactif tant que l'académie n'est pas confirmée
+
+TOUT EST VERT — 140.4 s

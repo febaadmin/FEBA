@@ -12,6 +12,8 @@ import StatCard from "../../components/ui/StatCard";
 import SearchableSelect from "../../components/ui/SearchableSelect";
 import { extractApiError } from "../../utils/errors";
 import { t, dateLocale } from "../../i18n";
+import { useSchoolYearScope } from "../../hooks/useSchoolYearScope";
+import { useMoney } from "../../hooks/useMoney";
 
 function exportCSV(rows, filename) {
   if (!rows.length) { toast.error(t("Aucune donnée à exporter.")); return; }
@@ -25,6 +27,8 @@ function exportCSV(rows, filename) {
 }
 
 export default function AdminPayments() {
+  // P0 : la devise vient de l'académie, jamais d'un symbole codé en dur.
+  const money = useMoney();
   const qc = useQueryClient();
   const [modalOpen, setModalOpen] = useState(false);
   const [deleteItem, setDeleteItem] = useState(null);
@@ -36,7 +40,9 @@ export default function AdminPayments() {
 
   const { data: yearsData } = useQuery({ queryKey: ["years"], queryFn: schoolsAPI.years });
   const years = yearsData?.data?.results || yearsData?.data || [];
-  const currentYear = years.find(y => y.is_current);
+  // P2 : en mode « Toutes les Académies », aucune année ne peut
+  // représenter les deux académies — voir useSchoolYearScope.
+  const { currentYear: currentYear, yearLabel } = useSchoolYearScope(years);
   const [filterYear, setFilterYear] = useState("");
 
   const { data, isLoading } = useQuery({
@@ -106,12 +112,16 @@ export default function AdminPayments() {
   /* ── Excel Export ──────────────────────────────────────────────────────── */
   const exportPayments = () => {
     const rows = payments.map(p => ({
+      // P2 : sans cette colonne, un export consolidé mélange les recettes
+      // des deux académies sans moyen de les séparer.
+      "Académie":      p.academy_short_name || p.academy_name || "Sans académie",
       "Référence":     p.reference_number || "",
       "Élève":         p.student_name || "",
       "Matricule":     p.student_matricule || "",
       "Classe":        p.student_class || "",
       "Type":          p.payment_type_label || p.payment_type || "",
-      "Montant (FCFA)": Number(p.amount || 0).toFixed(0),
+      "Montant": Number(p.amount || 0).toFixed(2),
+      "Devise": p.currency || "",
       "Mode":          p.payment_method_label || p.payment_method || "",
       "Date":          p.payment_date || "",
       "Reçu par":      p.received_by_name || "",
@@ -128,7 +138,7 @@ export default function AdminPayments() {
     { key: "student",label: t("Élève"),      accessor: "student_name" },
     { key: "class",  label: t("Classe"),     accessor: "student_class" },
     { key: "type",   label: t("Type"),       render: r => t(r.payment_type_label || r.payment_type || "—") },
-    { key: "amount", label: t("Montant"),    render: r => <span className="font-bold text-success">{Number(r.amount).toLocaleString()} FCFA</span> },
+    { key: "amount", label: t("Montant"),    render: r => <span className="font-bold text-success">{money.amountOf(r)}</span> },
     { key: "method", label: t("Mode"),       render: r => t(r.payment_method_label || r.payment_method || "—") },
     { key: "date",   label: t("Date"),       accessor: "payment_date" },
     { key: "status", label: t("Statut"),     render: r => r.is_confirmed
@@ -155,14 +165,14 @@ export default function AdminPayments() {
         <label className="text-sm font-semibold text-slate-600">{t("Année :")}</label>
         <select value={filterYear} onChange={e => setFilterYear(e.target.value)} className="input w-auto text-sm">
           <option value="">— {t("Actuelle")} ({currentYear?.name || "—"}) —</option>
-          {years.map(y => <option key={y.id} value={y.id}>{y.name}{y.is_current ? " ✓" : ""}</option>)}
+          {years.map(y => <option key={y.id} value={y.id}>{yearLabel(y)}{y.is_current ? " ✓" : ""}</option>)}
         </select>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <StatCard title={t("Total encaissé")}  value={`${Number(summary.total || 0).toLocaleString()} FCFA`}  icon={DollarSign} color="success" />
-        <StatCard title={t("Inscriptions")}    value={`${Number(summary.by_type?.inscription || 0).toLocaleString()} FCFA`} icon={TrendingUp} color="primary" />
-        <StatCard title={t("Mensualités")}     value={`${Number(summary.by_type?.mensualite  || 0).toLocaleString()} FCFA`} icon={TrendingUp} color="secondary" />
+        <StatCard title={t("Total encaissé")}  value={money.format(summary.total || 0)}  icon={DollarSign} color="success" />
+        <StatCard title={t("Inscriptions")}    value={money.format(summary.by_type?.inscription || 0)} icon={TrendingUp} color="primary" />
+        <StatCard title={t("Mensualités")}     value={money.format(summary.by_type?.mensualite  || 0)} icon={TrendingUp} color="secondary" />
       </div>
 
       <div className="card overflow-x-auto">
@@ -204,7 +214,7 @@ export default function AdminPayments() {
                 ["Élève",     viewItem.student_name],
                 ["Classe",    viewItem.student_class],
                 ["Type",      t(viewItem.payment_type_label || "")],
-                ["Montant",   <span key="amount" className="font-bold text-success">{Number(viewItem.amount).toLocaleString()} FCFA</span>],
+                ["Montant",   <span key="amount" className="font-bold text-success">{money.amountOf(viewItem)}</span>],
                 ["Mode",      t(viewItem.payment_method_label || "")],
                 ["Date",      viewItem.payment_date],
                 ["Reçu par",  viewItem.received_by_name],
@@ -214,7 +224,7 @@ export default function AdminPayments() {
                   <span className="text-slate-500">{label}</span><span>{val}</span>
                 </div>
               ))}
-              {viewItem.notes && <div className="bg-slate-50 rounded-xl p-3 text-slate-600 text-xs py-2">{viewItem.notes}</div>}
+              {viewItem.notes && <div className="bg-slate-50 rounded-xl p-3 text-slate-600 text-xs py-2 text-longform">{viewItem.notes}</div>}
             </div>
             {/* Historique */}
             {paymentHistory.length > 0 && (
@@ -280,7 +290,7 @@ export default function AdminPayments() {
                         <td className="px-3 py-2 font-mono text-xs">{p.reference_number}</td>
                         <td className="px-3 py-2">{p.student_name}</td>
                         <td className="px-3 py-2">{t(p.payment_type_label)}</td>
-                        <td className="px-3 py-2 font-bold text-slate-600">{Number(p.amount).toLocaleString()} FCFA</td>
+                        <td className="px-3 py-2 font-bold text-slate-600">{money.amountOf(p)}</td>
                         <td className="px-3 py-2 text-slate-500">{p.payment_date}</td>
                         <td className="px-3 py-2">
                           <button onClick={() => restoreMut.mutate(p.id)}
@@ -332,7 +342,7 @@ export default function AdminPayments() {
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="label">{t("Montant (FCFA) *")}</label>
+              <label className="label">{t("Montant")} {money.symbol ? `(${money.symbol})` : ""} *</label>
               <input {...register("amount", { required: true, min: 1 })} type="number" className="input" placeholder="0" />
             </div>
             <div>

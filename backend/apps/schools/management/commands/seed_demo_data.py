@@ -23,7 +23,7 @@ import datetime
 import random
 from decimal import Decimal
 
-from django.core.management.base import BaseCommand
+from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 from django.utils import timezone
 
@@ -44,9 +44,28 @@ def rgrade(lo, hi):
 class Command(BaseCommand):
     help = "Génère un jeu complet de données de démonstration (idempotent)."
 
+    def add_arguments(self, parser):
+        parser.add_argument(
+            "--reset", action="store_true",
+            help=(
+                "Supprime les données de démonstration avant de les regénérer. "
+                "REFUSÉ si DEBUG=False (garde-fou production)."
+            ),
+        )
+
     @transaction.atomic
     def handle(self, *args, **options):
         random.seed(42)  # données reproductibles
+
+        # Garde-fou : « seed-reset » ne doit jamais tourner en production.
+        if options.get("reset"):
+            from django.conf import settings as dj_settings
+            if not dj_settings.DEBUG:
+                raise CommandError(
+                    "« --reset » est refusé hors développement (DEBUG=False). "
+                    "Il supprimerait des données réelles."
+                )
+            self._reset_demo_data()
 
         from apps.accounts.models import CustomUser
         from apps.announcements.models import Announcement
@@ -68,12 +87,22 @@ class Command(BaseCommand):
         self.stdout.write(self.style.MIGRATE_HEADING("Seed démonstration FEBA v31"))
 
         # ── ÉTABLISSEMENT ────────────────────────────────────────────────
+        # V5 : identification par le CODE INTERNE STABLE, jamais par le nom.
+        # Rechercher par nom créait un second établissement dès que
+        # l'administration renommait l'académie.
         school, _ = School.objects.get_or_create(
-            name="Faith & Excellence Bilingual Academy",
+            code=School.CODE_FEBA,
             defaults={
+                "name": "Faith & Excellence Bilingual Academy",
+                "legal_name": "Faith & Excellence Bilingual Academy",
+                "slug": "feba",
+                "entity_type": "campus",
                 "address": "Rue des Cocotiers, Akpakpa",
                 "city": "Cotonou", "country": "Bénin",
                 "phone": "+229 97 00 00 00", "email": "contact@feba.bj",
+                "timezone": "Africa/Porto-Novo",
+                "currency_code": "XOF",
+                "default_language": "fr",
                 "matricule_prefix": "FEBA",  # matricules FEBA-26-0001
             },
         )
@@ -445,23 +474,14 @@ class Command(BaseCommand):
                 Notification.objects.create(user=admin_user, type=ntype, title=title, message=msg)
             self.stdout.write("  ✅ Notifications")
 
-        # ── SALLES VIRTUELLES (visioconférence) ──────────────────────────
-        if not VirtualRoom.objects.filter(school=school).exists():
-            VirtualRoom.objects.create(
-                school=school, school_year=year_curr, created_by=admin_user,
-                name="Réunion générale des enseignants",
-                description="Salle permanente de coordination pédagogique.",
-            )
-            VirtualRoom.objects.create(
-                school=school, school_year=year_curr, created_by=admin_user,
-                name=f"Cours en ligne — {demo_levels[2]}-A",
-                description="Cours de soutien hebdomadaire.",
-                class_obj=classes[(year_curr.id, demo_levels[2])],
-                subject=subjects["MATH"],
-                scheduled_at=timezone.now() + datetime.timedelta(days=2),
-                duration_minutes=90,
-            )
-            self.stdout.write("  ✅ Salles virtuelles (Jitsi)")
+        # ── SALLES VIRTUELLES ────────────────────────────────────────────
+        # V5 : AUCUNE salle virtuelle pour FEBA. La visioconférence est une
+        # fonctionnalité d'ACADÉMIE EN LIGNE : l'API la refuse à une entité
+        # `campus` (403), donc en semer ici produisait des données que
+        # personne ne pouvait consulter — et que `make seed-check`
+        # signalait à juste titre comme incohérentes.
+        # Les salles de démonstration sont créées côté FEBA FHA, plus bas.
+        self.stdout.write("  ⏭  Salles virtuelles : réservées à FEBA FHA (académie en ligne)")
 
         # ── RÉSUMÉ ───────────────────────────────────────────────────────
         self.stdout.write(self.style.SUCCESS("\n✅ Seed terminé — application immédiatement exploitable."))
@@ -474,3 +494,367 @@ class Command(BaseCommand):
         self.stdout.write("   prof.math@feba.bj   / Teacher@2024")
         self.stdout.write("   parent1@feba.bj     / Parent@2024")
         self.stdout.write("   eleve1@feba.bj      / Student@2024")
+
+        # ══════════════════════════════════════════════════════════════
+        # ACADÉMIE 2 — FEBA FRENCH HERITAGE ACADEMY
+        # ══════════════════════════════════════════════════════════════
+        # Le seed d'origine ne connaissait qu'une seule école. Sans ce
+        # bloc, une base de démonstration ne permettait pas de tester le
+        # filtre d'académie, l'isolation, ni les parcours FHA.
+        self._seed_fha(school)
+
+    # ──────────────────────────────────────────────────────────────────
+    def _reset_demo_data(self):
+        """
+        Supprime les données de démonstration. Ne touche PAS aux académies
+        elles-mêmes : elles sont recréées à l'identique et référencées par
+        les migrations.
+        """
+        from apps.accounts.models import CustomUser
+        from apps.website.models import (
+            ContactMessage, FHAEnrollmentApplication, FHAPlacementTestRequest,
+            PreRegistration,
+        )
+
+        self.stdout.write(self.style.WARNING("  ⚠ Réinitialisation des données de démonstration…"))
+        FHAPlacementTestRequest.objects.all().delete()
+        FHAEnrollmentApplication.objects.all().delete()
+        PreRegistration.objects.all().delete()
+        ContactMessage.objects.all().delete()
+        # Seuls les comptes de démonstration (@test / @feba.bj) sont retirés.
+        CustomUser.objects.filter(email__endswith="@feba.bj").exclude(
+            role="superadmin",
+        ).delete()
+        CustomUser.objects.filter(email__endswith="@febafha.org").delete()
+
+    # ──────────────────────────────────────────────────────────────────
+    def _seed_fha(self, feba_school):
+        """
+        Peuple FEBA French Heritage Academy : académie, comptes, groupes,
+        salles virtuelles, préinscriptions, demandes de test et contacts.
+
+        Idempotent : `get_or_create` partout, aucune duplication au rejeu.
+        Aucune donnée commerciale inventée (tarifs, dates de rentrée...).
+        """
+        import datetime
+
+        from django.utils import timezone
+
+        from apps.accounts.models import CustomUser
+        from apps.classes.models import Class
+        from apps.schools.models import Level, School, SchoolYear
+        from apps.students.models import Student
+        from apps.teachers.models import Teacher
+        from apps.virtualclass.models import VirtualRoom
+        from apps.website.models import (
+            ContactMessage, FHAEnrollmentApplication, FHAPlacementTestRequest,
+        )
+
+        self.stdout.write(self.style.MIGRATE_HEADING("\nSeed FEBA French Heritage Academy"))
+
+        fha, _ = School.objects.get_or_create(
+            code=School.CODE_FEBA_FHA,
+            defaults={
+                "name": "FEBA French Heritage Academy",
+                "legal_name": "FEBA French Heritage Academy",
+                "slug": "feba-fha",
+                "entity_type": "online",
+                "address": "Programme 100 % en ligne — cours dispensés depuis FEBA, Cotonou.",
+                "city": "Cotonou", "country": "Bénin",
+                "whatsapp": "+1 (215) 715-5406",
+                "timezone": "America/New_York",
+                "currency_code": "USD",
+                "default_language": "en",
+                "matricule_prefix": "FHA",
+                "settings": {
+                    "tagline": "From English Speakers to Confident French Speakers",
+                    # Non validé par la direction → reste nul.
+                    "pending_direction_validation": {
+                        "annual_fee": None, "installments_allowed": None,
+                        "school_year_start_date": None, "group_schedules": None,
+                        "sibling_discount": None, "early_bird_discount": None,
+                        "refund_policy": None, "teacher_names": None,
+                        "payment_provider": None, "zoom_recording_policy": None,
+                    },
+                },
+            },
+        )
+        self.stdout.write("  ✅ Académie FEBA FHA")
+
+        today = timezone.now().date()
+        start = today.year if today.month >= 9 else today.year - 1
+        SchoolYear.objects.filter(school=fha, is_current=True).update(is_current=False)
+        year, _ = SchoolYear.objects.get_or_create(
+            school=fha, name=f"{start}-{start + 1}",
+            defaults={
+                "start_date": datetime.date(start, 9, 1),
+                "end_date": datetime.date(start + 1, 6, 30),
+            },
+        )
+        year.is_current = True
+        year.save(update_fields=["is_current"])
+
+        # Les trois groupes de lancement du document de cadrage.
+        groups = {}
+        for order, (key, label) in enumerate(
+            [("junior_roots", "Junior Roots"),
+             ("french_explorers", "French Explorers"),
+             ("french_ambassadors", "French Ambassadors")], start=1,
+        ):
+            level, _ = Level.objects.get_or_create(
+                school=fha, name=label, defaults={"order": order, "cycle": "primaire"},
+            )
+            groups[key], _ = Class.objects.get_or_create(
+                school_year=year, level=level, name=label,
+                defaults={"max_students": 15},
+            )
+        self.stdout.write("  ✅ Groupes : Junior Roots · French Explorers · French Ambassadors")
+
+        def make_user(email, role, first, last, password):
+            user, created = CustomUser.objects.get_or_create(
+                email=email,
+                defaults={
+                    # Préfixe « fha_ » : le nom d'utilisateur est unique
+                    # GLOBALEMENT, et « admin@febafha.org » produirait
+                    # sinon le même « admin » que le compte FEBA.
+                    "username": f"fha_{email.split('@')[0]}", "role": role,
+                    "first_name": first, "last_name": last, "school": fha,
+                    "preferred_language": "en",
+                },
+            )
+            if created:
+                user.set_password(password)
+                user.save()
+            return user
+
+        admin_fha = make_user("admin@febafha.org", "admin", "Awa", "Koffi", "Admin@2024")
+        teacher_fha = make_user("prof@febafha.org", "teacher", "Céline", "Doe", "Teacher@2024")
+        Teacher.objects.get_or_create(user=teacher_fha)
+        parent_fha = make_user("parent@febafha.org", "parent", "Sylvie", "Adjovi", "Parent@2024")
+
+        students = []
+        for index, (first, last, group) in enumerate([
+            ("Naomi", "Adjovi", "french_explorers"),
+            ("Kofi", "Mensah", "junior_roots"),
+            ("Ama", "Diallo", "french_ambassadors"),
+        ], start=1):
+            user = make_user(f"eleve{index}@febafha.org", "student", first, last, "Student@2024")
+            student, _ = Student.objects.get_or_create(
+                user=user,
+                defaults={
+                    "school": fha, "first_name": first, "last_name": last,
+                    "current_class": groups[group], "school_year": year,
+                    "date_of_birth": datetime.date(2013 + index, 3, 12),
+                },
+            )
+            students.append(student)
+
+        # V8 — Le compte parent FHA existait sans profil `Parent` ni lien
+        # vers les élèves : /api/parents/me/ renvoyait « profil introuvable »,
+        # et le parent ne pouvait donc ni consulter ses enfants ni payer
+        # par carte. C'est l'académie qui facture en dollars : le parcours
+        # de paiement y était précisément intestable.
+        from apps.parents.models import Parent, ParentStudent
+
+        parent_profile, _ = Parent.objects.get_or_create(
+            user=parent_fha, defaults={"profession": "Cadre"},
+        )
+        for index, student in enumerate(students):
+            ParentStudent.objects.get_or_create(
+                parent=parent_profile, student=student,
+                defaults={"relationship": "mother", "is_primary_contact": index == 0},
+            )
+        self.stdout.write("  ✅ Comptes FHA (admin, enseignant, parent lié aux 3 élèves)")
+
+        # Salles virtuelles : réservées aux académies en ligne.
+        for key, label in groups.items():
+            VirtualRoom.objects.get_or_create(
+                school=fha, class_obj=groups[key],
+                name=f"Cours en direct — {groups[key].name}",
+                defaults={
+                    "school_year": year,
+                    "description": "Séance hebdomadaire en visioconférence.",
+                    "scheduled_at": timezone.now() + datetime.timedelta(days=2),
+                    "duration_minutes": 60,
+                    "created_by": teacher_fha,
+                },
+            )
+        self.stdout.write("  ✅ Salles virtuelles FHA (instance auto-hébergée)")
+
+        # ── Emploi du temps FEBA FHA ─────────────────────────────────────
+        # Séances en direct : heure stockée en UTC, jamais en heure locale.
+        # Les créneaux ci-dessous correspondent à des fins d'après-midi
+        # côte est des États-Unis — l'horaire réel reste à valider par la
+        # direction (voir `pending_direction_validation.group_schedules`).
+        from apps.schedule.models import OnlineSessionSchedule
+        from apps.subjects.models import Subject as SubjectModel
+
+        fha_subject, _ = SubjectModel.objects.get_or_create(
+            school=fha, code="FHA-FR",
+            defaults={"name": "Français langue d'héritage", "coefficient": 1, "language": "fr"},
+        )
+        fha_teacher = Teacher.objects.filter(user=teacher_fha).first()
+        # (groupe, jour UTC, heure UTC) — mardi/jeudi/samedi.
+        session_defs = [
+            ("junior_roots", 1, datetime.time(22, 0), 45),
+            ("french_explorers", 3, datetime.time(22, 0), 60),
+            ("french_ambassadors", 5, datetime.time(15, 0), 60),
+        ]
+        for key, day, start_utc, duration in session_defs:
+            OnlineSessionSchedule.objects.get_or_create(
+                academy=fha, group=groups[key], day_of_week=day,
+                start_time_utc=start_utc,
+                defaults={
+                    "subject": fha_subject,
+                    "teacher": fha_teacher,
+                    "school_year": year,
+                    "duration_minutes": duration,
+                    "display_timezone": "America/New_York",
+                    "virtual_room": VirtualRoom.objects.filter(
+                        school=fha, class_obj=groups[key],
+                    ).first(),
+                    "reminders_enabled": True,
+                    "reminder_minutes_before": 30,
+                },
+            )
+        self.stdout.write("  ✅ Emploi du temps FHA (3 séances en direct, heures UTC)")
+
+        # ── Paiements FEBA FHA, en DOLLARS ───────────────────────────────
+        # Sans encaissement FHA, rien ne prouvait à l'écran que l'académie
+        # en ligne facture bien en USD : toutes les recettes visibles
+        # étaient celles de FEBA, donc en francs CFA.
+        #
+        # Les montants ci-dessous sont des VALEURS DE DÉMONSTRATION. Le
+        # tarif réel de FEBA FHA n'est pas validé par la direction (voir
+        # `pending_direction_validation.annual_fee`) : ils ne doivent pas
+        # être présentés comme une grille tarifaire.
+        from apps.payments.models import Payment
+
+        fha_admin = admin_fha
+        for index, student in enumerate(students):
+            for kind, amount in (("inscription", "75.00"), ("mensualite", "125.50")):
+                # `exists()` plutôt que `get_or_create` : dès qu'un second
+                # paiement du même type existe — saisi à la main, ou créé
+                # pendant une vérification —, `get_or_create` lève
+                # MultipleObjectsReturned et fait échouer TOUT le seed, qui
+                # est transactionnel. Le rejeu du seed doit être inoffensif
+                # sur une base déjà utilisée.
+                if Payment.objects.filter(
+                    student=student, payment_type=kind, school_year=year,
+                ).exists():
+                    continue
+                Payment.objects.create(
+                    student=student, payment_type=kind, school_year=year,
+                    # `amount` est saisi en unité majeure ; le modèle en
+                    # dérive l'entier de cents et impose la devise USD
+                    # depuis l'académie.
+                    amount=Decimal(amount),
+                    payment_method="card",
+                    payment_date=today - datetime.timedelta(days=10 + index),
+                    received_by=fha_admin,
+                    notes="Paiement de démonstration — montant non contractuel.",
+                )
+        self.stdout.write("  ✅ Paiements FHA en dollars (démonstration, montants non contractuels)")
+
+        # ── Grille tarifaire de démonstration ────────────────────────────
+        # Le paiement par carte refuse tout montant venu du navigateur : il
+        # lit cette grille. Sans elle, la démonstration afficherait « aucun
+        # tarif publié » — ce qui serait le comportement CORRECT, mais ne
+        # montrerait pas le parcours de paiement.
+        #
+        # Montants NON CONTRACTUELS, identiques aux paiements ci-dessus.
+        from apps.payments.fee_models import FeeSchedule
+
+        feba_year = feba_school.years.filter(is_current=True).first()
+        for academy, year_obj, tarifs in (
+            (fha, year, (("inscription", 7500, "Frais d'inscription (démonstration)"),
+                         ("mensualite", 12550, "Mensualité (démonstration)"))),
+            (feba_school, feba_year,
+             (("inscription", 25000, "Frais d'inscription (démonstration)"),
+              ("mensualite", 35000, "Mensualité (démonstration)"))),
+        ):
+            for kind, minor, label in tarifs:
+                FeeSchedule.objects.get_or_create(
+                    academy=academy, school_year=year_obj, level=None,
+                    payment_type=kind,
+                    defaults={"amount_minor": minor, "label": label},
+                )
+        self.stdout.write("  ✅ Grille tarifaire des deux académies (montants non contractuels)")
+
+        # Fiche d'inscription de démonstration.
+        FHAEnrollmentApplication.objects.get_or_create(
+            entity=fha,
+            parent1_email="demo.parent@example.com",
+            child_first_name="Élise",
+            child_last_name="Kponou",
+            child_birth_date=datetime.date(2015, 5, 4),
+            defaults={
+                "child_country": "United States", "child_state_province": "PA",
+                "child_city": "Philadelphia",
+                "family_origin_country": "Bénin",
+                "home_main_language": "English",
+                "french_levels": ["few_words", "understands_replies_english"],
+                "parent_goals": ["family_conversation", "grandparents"],
+                "parent1_first_name": "Marie", "parent1_last_name": "Kponou",
+                "parent1_phone": "+1 215 555 0100",
+                "parent1_preferred_language": "en",
+                "parent1_timezone": "America/New_York",
+                "family_timezone": "America/New_York",
+                "available_days": [3, 6],
+                "available_time_slots": [{"start": "17:00", "end": "18:30"}],
+                "has_computer": True, "has_internet": True,
+                "consent_rules": True, "consent_privacy": True,
+                "consent_data_processing": True,
+                "consent_parental_authorization": True, "consent_zoom": True,
+                "consents_accepted_at": timezone.now(),
+                "status": FHAEnrollmentApplication.STATUS_FORM_RECEIVED,
+            },
+        )
+
+        # Demande de test de placement de démonstration.
+        FHAPlacementTestRequest.objects.get_or_create(
+            entity=fha,
+            parent_email="demo.test@example.com",
+            child_first_name="Yann",
+            child_last_name="Sossou",
+            child_birth_date=datetime.date(2016, 9, 20),
+            defaults={
+                "child_country": "Canada", "child_state_province": "QC",
+                "parent_first_name": "Paul", "parent_last_name": "Sossou",
+                "parent_phone": "+1 514 555 0111",
+                "parent_timezone": "America/Toronto",
+                "preferred_language": "en",
+                "estimated_level": "few_words",
+                "preferred_date": today + datetime.timedelta(days=7),
+                "preferred_time": datetime.time(17, 0),
+                "consent_video": True,
+                "status": "requested",
+            },
+        )
+
+        # Message de contact FHA (boîte séparée de celle de FEBA).
+        ContactMessage.objects.get_or_create(
+            entity=fha, email="demo.contact@example.com",
+            subject="Question about the placement test",
+            defaults={
+                "name": "Grace Okafor", "message": "How do I book an assessment?",
+                "consent": True, "category": "placement_test",
+                "country": "United States", "state_province": "NY",
+                "timezone": "America/New_York", "preferred_language": "en",
+            },
+        )
+        self.stdout.write("  ✅ Préinscription, demande de test et contact FHA")
+
+        # Le Super Administrateur appartient aux DEUX académies : sans
+        # cela, le sélecteur ne lui proposerait qu'une seule entité.
+        superadmin = CustomUser.objects.filter(role="superadmin").first()
+        if superadmin is not None:
+            superadmin.save()  # le signal crée les appartenances manquantes
+            self.stdout.write("  ✅ Super Administrateur rattaché aux deux académies")
+
+        self.stdout.write(self.style.SUCCESS("\n✅ Seed FEBA FHA terminé."))
+        self.stdout.write("   Comptes FEBA FHA :")
+        self.stdout.write("   admin@febafha.org   / Admin@2024")
+        self.stdout.write("   prof@febafha.org    / Teacher@2024")
+        self.stdout.write("   parent@febafha.org  / Parent@2024")
+        self.stdout.write("   eleve1@febafha.org  / Student@2024")

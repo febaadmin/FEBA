@@ -8,7 +8,7 @@ Couvre :
   4. room_code généré automatiquement, unique et non vide
   5. join/ enregistre une participation et passe le statut à "live"
 """
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from rest_framework.test import APIClient
 from rest_framework import status
 
@@ -19,8 +19,15 @@ from apps.students.models import Student
 from apps.virtualclass.models import VirtualRoom, VirtualRoomAttendance
 
 
-def make_school(name="Ecole Test"):
-    return School.objects.create(name=name, address="Adresse")
+def make_school(name="Ecole Test", entity_type="online"):
+    """
+    V4 multi-entités : les salles virtuelles sont une fonctionnalité des
+    ACADÉMIES EN LIGNE (FEBA French Heritage Academy). Une école
+    présentielle (`campus`, ex. FEBA Cotonou) n'y a pas droit et l'API la
+    refuse — voir test_entity_features.py. Les tests de ce module portent
+    donc sur une entité de type `online`.
+    """
+    return School.objects.create(name=name, address="Adresse", entity_type=entity_type)
 
 
 def make_user(email, role, school=None, password="Pass1234!"):
@@ -61,6 +68,11 @@ class VirtualRoomTenantTests(TestCase):
         self.assertNotEqual(self.room_a.room_code, self.room_b.room_code)
 
 
+@override_settings(
+    JITSI_APP_ID="feba-test",
+    JITSI_APP_SECRET="t" * 32,
+    JITSI_DOMAIN="jitsi.localhost:8443",
+)
 class VirtualRoomRoleTests(TestCase):
     def setUp(self):
         self.school = make_school()

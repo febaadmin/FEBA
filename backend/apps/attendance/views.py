@@ -31,11 +31,12 @@ class AttendanceViewSet(BulkDeleteMixin, viewsets.ModelViewSet):
 
         # FIX: Default to current active year if no school_year filter provided
         if not self.request.query_params.get("school_year") and self.request.query_params.get("all_years") != "1":
-            from apps.schools.models import SchoolYear
             # FIX v29 : scoper "année courante" par établissement (bug latent multi-tenant)
-            current_year = SchoolYear.objects.filter(school=school, is_current=True).first()
-            if current_year:
-                qs = qs.filter(school_year=current_year)
+            # P2 : en mode consolidé, l'année courante de CHAQUE académie.
+            from apps.core.tenancy import current_school_years
+            current_years = current_school_years(school)
+            if current_years.exists():
+                qs = qs.filter(school_year__in=current_years)
 
         if user.role_level >= 80:
             return qs

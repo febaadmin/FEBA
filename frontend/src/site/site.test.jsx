@@ -68,8 +68,10 @@ describe("Site vitrine — layout et navigation", () => {
         </Route>
       </Routes>,
     );
+    // Le menu principal affiche l'abréviation « FEBA FHA » : le nom
+    // complet « FEBA French Heritage Academy » est trop long pour la barre.
     for (const label of ["Accueil", "À propos", "Académique", "Admissions",
-      "Vie scolaire", "FEBA Online", "Actualités", "Galerie", "Contact"]) {
+      "Vie scolaire", "FEBA FHA", "Actualités", "Galerie", "Contact"]) {
       expect(screen.getAllByRole("link", { name: label }).length).toBeGreaterThan(0);
     }
     const login = screen.getByRole("link", { name: "Connexion" });
@@ -101,11 +103,12 @@ describe("Site vitrine — page d'accueil", () => {
       // Titre du slide (h1) + overline de la section présentation
       expect(screen.getAllByText("Bienvenue à FEBA").length).toBeGreaterThan(0);
     });
-    // Présentation, valeurs, niveaux, bilinguisme, FEBA Online
+    // Présentation, valeurs, niveaux, bilinguisme, FEBA FHA
     expect(screen.getAllByText(/Faith & Excellence Bilingual Academy/).length).toBeGreaterThan(0);
     expect(screen.getByText("Excellence")).toBeInTheDocument();
     expect(screen.getByText("Pourquoi choisir FEBA ?")).toBeInTheDocument();
-    expect(screen.getByText("FEBA Online")).toBeInTheDocument();
+    // Les titres et contenus éditoriaux utilisent le NOM COMPLET.
+    expect(screen.getByText("FEBA French Heritage Academy")).toBeInTheDocument();
     // Stats nulles → aucune section chiffres inventée
     expect(screen.queryByText("Élèves épanouis")).not.toBeInTheDocument();
   });
@@ -212,7 +215,9 @@ describe("Site vitrine — formulaire de préinscription", () => {
     siteAPI.sendPreRegistration.mockResolvedValue({ data: { detail: "Merci ! Votre demande de préinscription a bien été enregistrée." } });
     renderWithProviders(<PreRegistrationForm />);
     fireEvent.change(screen.getByLabelText(/Nom du parent/), { target: { value: "Awa T" } });
-    fireEvent.change(screen.getByLabelText(/Téléphone/), { target: { value: "+229 01 02 03 04" } });
+    // P2 — Le formulaire compte désormais DEUX téléphones. Un libellé
+    // partiel remonterait les deux et l'assertion serait ambiguë.
+    fireEvent.change(screen.getByLabelText(/^Téléphone \*/), { target: { value: "+229 01 02 03 04" } });
     fireEvent.change(screen.getByLabelText(/Nom de l'enfant/), { target: { value: "Bintou" } });
     fireEvent.change(screen.getByLabelText(/Niveau souhaité/), { target: { value: "cp" } });
     fireEvent.click(screen.getByRole("button", { name: /Envoyer ma demande/ }));
@@ -222,6 +227,28 @@ describe("Site vitrine — formulaire de préinscription", () => {
     const payload = siteAPI.sendPreRegistration.mock.calls[0][0];
     expect(payload.desired_level).toBe("cp");
     expect(payload.child_age).toBeNull();
+  });
+
+  it("transmet les trois champs ajoutés en P2", async () => {
+    // Téléphone secondaire, adresse et date de naissance étaient
+    // demandés par le secrétariat et n'existaient nulle part. Ce test
+    // vérifie le premier maillon de la chaîne : le payload réseau.
+    siteAPI.sendPreRegistration.mockResolvedValue({ data: { detail: "ok" } });
+    renderWithProviders(<PreRegistrationForm />);
+    fireEvent.change(screen.getByLabelText(/Nom du parent/), { target: { value: "Awa T" } });
+    fireEvent.change(screen.getByLabelText(/^Téléphone \*/), { target: { value: "+229 01" } });
+    fireEvent.change(screen.getByLabelText(/Téléphone secondaire/), { target: { value: "+229 02" } });
+    fireEvent.change(screen.getByLabelText(/Adresse du domicile/), { target: { value: "Lot 42\nAkpakpa" } });
+    fireEvent.change(screen.getByLabelText(/Nom de l'enfant/), { target: { value: "Bintou" } });
+    fireEvent.change(screen.getByLabelText(/Date de naissance/), { target: { value: "2017-04-12" } });
+    fireEvent.change(screen.getByLabelText(/Niveau souhaité/), { target: { value: "cp" } });
+    fireEvent.click(screen.getByRole("button", { name: /Envoyer ma demande/ }));
+
+    await waitFor(() => expect(siteAPI.sendPreRegistration).toHaveBeenCalled());
+    const payload = siteAPI.sendPreRegistration.mock.calls[0][0];
+    expect(payload.phone_secondary).toBe("+229 02");
+    expect(payload.address).toBe("Lot 42\nAkpakpa");
+    expect(payload.child_birth_date).toBe("2017-04-12");
   });
 });
 

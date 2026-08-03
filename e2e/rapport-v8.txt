@@ -1,0 +1,28 @@
+
+=== P0 — Devise imposée par l'académie ===
+  OK  FEBA FHA affiche des dollars
+  OK  aucun « FCFA » sur l'écran FEBA FHA
+  OK  tableau de bord FEBA FHA sans « FCFA »
+  OK  FEBA affiche des francs CFA
+  OK  aucun montant en dollars sur l'écran FEBA
+
+=== P1 — Paiement par carte ===
+  OK  le panneau de paiement par carte est présent
+  OK  aucun champ de saisie de montant n'est proposé au parent
+  OK  les tarifs publiés par l'académie sont affichés
+  OK  les tarifs FHA ne sont pas libellés en FCFA
+  OK  le clic déclenche bien une demande de paiement
+  OK  la requête ne transporte AUCUN montant — {"student":31,"payment_type":"inscription"} {"student":31,"payment_type":"inscription"}
+
+=== P2 / P3 — Diplômes et certificats ===
+  OK  le gabarit du diplôme est listé
+  OK  le gabarit du certificat est listé
+  OK  l'état réel des gabarits est annoncé, sans le masquer
+
+=== Réseau et console ===
+  OK  aucune erreur serveur
+  INFO  2 réponse(s) 502 sur le paiement carte : le prestataire refuse la clé de démonstration. C'est le comportement attendu sans compte marchand — et la preuve qu'aucune interface factice ne simule un encaissement.
+  OK  aucune erreur de console inattendue
+
+Requêtes API observées : 54
+Captures : /home/user/FEBA/e2e/captures

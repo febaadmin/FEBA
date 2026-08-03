@@ -1,4 +1,101 @@
 # SECURITY_NOTES.md — Missions V4 → V8
+## V9-bis
+
+### Une fuite d'information corrigée
+
+Un identifiant de gabarit inconnu renvoyait au navigateur
+« Gabarit « None » introuvable (/home/…/backend/document_templates/
+None_template.json) ». Cette erreur est une erreur de SAISIE (400), donc
+transmise telle quelle au client par le gestionnaire d'exceptions : elle
+offrait l'arborescence du serveur à qui poste un identifiant au hasard.
+
+Le chemin ne sort plus. La liste des gabarits disponibles reste — elle
+est déjà publiée par `/api/documents/templates/`.
+
+Trouvé en produisant un document depuis le navigateur, pas en lisant le
+code.
+
+### Anti-IDOR, vérifié dans un navigateur réel
+
+Six sondes, avec les identifiants de session de chaque administrateur :
+
+| Sonde | Attendu | Obtenu |
+|---|---|---|
+| Fiche d'un document d'une autre académie | 404 | 404 |
+| PDF d'un document d'une autre académie | 404 | 404 |
+| Liste d'élèves d'une autre académie demandée explicitement | portée inchangée | portée inchangée |
+
+**404 et non 403** : répondre « interdit » confirmerait que le dossier
+existe.
+
+### Une orientation corrigée, qui n'était pas une faille
+
+`RoleRedirect` déposait dans l'espace élève un utilisateur dont le rôle
+n'était pas encore chargé. Le serveur continuait de refuser tout ce que
+ce compte n'avait pas le droit de lire, et l'espace élève s'affichait
+vide — aucune donnée n'a pu fuir. Mais un écran qui dit à un
+administrateur qu'il est un élève est un écran auquel on ne peut plus se
+fier pour juger de ses droits.
+
+### Le limiteur de débit tombé : 503, plus 500
+
+Le limiteur de `/api/auth/login/` compte dans le cache Redis. Redis
+indisponible, l'exception remontait au gestionnaire d'exceptions et
+devenait un **500 « Une erreur interne est survenue »**.
+
+Refuser était la bonne décision — c'est le message qui était faux. Un 500
+dit « l'application a un défaut », alors que l'application va bien et
+qu'une dépendance d'infrastructure est absente. L'utilisateur rappelle
+son école, l'école appelle l'éditeur, l'éditeur cherche un bug qui
+n'existe pas, et personne ne redémarre Redis.
+
+**On reste fermé.** La tentation, quand le compteur ne répond plus, est
+de laisser passer : le service reste debout et personne ne se plaint.
+C'est exactement ce qu'il ne faut pas faire. Ce limiteur est ce qui
+sépare une base de comptes d'une attaque par force brute ; le désactiver
+parce qu'un cache est tombé revient à ouvrir la porte au moment précis où
+l'on ne peut plus compter les visiteurs.
+
+La réponse est désormais :
+
+| Élément | Valeur |
+|---|---|
+| Statut | **503 Service Unavailable** |
+| `Retry-After` | 30 s, en en-tête et dans le corps |
+| Message | clair, dans la langue négociée (FR/EN) |
+| `service` | `cache` — nommé, sans adresse ni version |
+| `incident_reference` | référence de l'incident ouvert |
+| Jeton délivré | **aucun** |
+
+Vérifié en conditions réelles, Redis réellement arrêté :
+
+```
+HTTP/1.1 503 Service Unavailable
+Retry-After: 30
+{"detail":"Le service d'authentification est temporairement
+indisponible. …","service":"cache","retry_after":30,
+"incident_reference":"ERR-4C707E"}
+```
+
+L'incident est enregistré avec `module=ratelimit`, `status_code=503`,
+`severity=high` et le chemin tenté ; il apparaît dans l'écran des
+incidents techniques du super administrateur. Redis relancé, la connexion
+repasse à 200 sans intervention.
+
+**Seul l'appel au compteur est protégé.** La vue s'exécute sans filet :
+un défaut dans la connexion elle-même continue de sortir en 500 avec son
+incident. Entourer la vue entière transformerait n'importe quel bug en
+« service temporairement indisponible » — le genre de message rassurant
+derrière lequel un défaut réel vit très longtemps.
+
+Treize tests (`tests/test_ratelimit_degrade.py`) tiennent les deux
+situations ; les treize échouent contre l'ancien code.
+
+Ils ont aussi révélé que `RATELIMIT_ENABLE = False` dans les réglages de
+test : le limiteur n'était éprouvé par **aucun** test, ni son comptage ni
+son comportement en panne. Ces tests le rallument, et eux seuls.
+
+---
 
 ## V8 (26/07/2026)
 

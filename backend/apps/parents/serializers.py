@@ -2,6 +2,7 @@ from rest_framework import serializers
 from django.db import transaction, IntegrityError
 from apps.accounts.models import CustomUser
 from .models import Parent, ParentStudent
+from apps.core.academy_serializers import ACADEMY_FIELDS, AcademyMetadataMixin
 
 
 class NestedStudentSerializer(serializers.Serializer):
@@ -53,7 +54,10 @@ class ParentStudentSerializer(serializers.ModelSerializer):
         return None
 
 
-class ParentSerializer(serializers.ModelSerializer):
+class ParentSerializer(AcademyMetadataMixin, serializers.ModelSerializer):
+    #: Chemin ORM vers l'académie propriétaire de l'objet.
+    academy_source = "user.school"
+
     user_first_name = serializers.CharField(source="user.first_name", read_only=True)
     user_last_name  = serializers.CharField(source="user.last_name",  read_only=True)
     user_email      = serializers.CharField(source="user.email",      read_only=True)
@@ -78,7 +82,7 @@ class ParentSerializer(serializers.ModelSerializer):
             "id", "user", "user_id", "user_first_name", "user_last_name",
             "user_email", "user_phone", "user_photo", "full_name", "profession", "address",
             "created_at", "children_count", "children_names", "children_links",
-        ]
+        ] + ACADEMY_FIELDS
 
     def get_full_name(self, obj):
         return obj.user.get_full_name()

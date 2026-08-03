@@ -21,6 +21,7 @@ from django.contrib.auth.password_validation import validate_password
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from django.contrib.auth import authenticate
 from .models import CustomUser
+from apps.core.academy_serializers import ACADEMY_FIELDS, AcademyMetadataMixin
 
 logger = logging.getLogger("apps.accounts")
 
@@ -69,7 +70,10 @@ def extract_api_error(exc) -> str:
 
 # ── Lecture ────────────────────────────────────────────────────────────────────
 
-class UserSerializer(serializers.ModelSerializer):
+class UserSerializer(AcademyMetadataMixin, serializers.ModelSerializer):
+    # P3 : chaque objet expose son académie, sans quoi la vue
+    # « Toutes les Académies » ne peut pas étiqueter ses lignes.
+    academy_source = "school"
     full_name = serializers.SerializerMethodField()
     role_level = serializers.IntegerField(read_only=True)
     school_name = serializers.CharField(source="school.name", read_only=True, default=None)
@@ -93,7 +97,7 @@ class UserSerializer(serializers.ModelSerializer):
             "full_name", "role", "role_level", "phone", "avatar",
             "school", "school_name", "preferred_language",
             "is_active", "must_change_password", "created_at", "updated_at",
-        ]
+        ] + ACADEMY_FIELDS
         read_only_fields = ["id", "role_level", "must_change_password", "created_at", "updated_at"]
 
     def get_full_name(self, obj):

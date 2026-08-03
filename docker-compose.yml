@@ -27,6 +27,34 @@ services:
       timeout: 5s
       retries: 5
 
+  # ── P3 — Boîte de réception locale ────────────────────────────────
+  #
+  # Mailpit reçoit les messages du développement au lieu de les écrire
+  # dans la console. Ce n'est pas un confort : c'est ce qui permet de
+  # VÉRIFIER un envoi — destinataire, objet, langue, pièce jointe, type
+  # MIME — au lieu de supposer qu'il a eu lieu. Un rapport mensuel dont
+  # on ne peut pas ouvrir la pièce jointe n'est pas un rapport envoyé.
+  #
+  # Aucun secret ici : Mailpit ne relaie rien vers l'extérieur.
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: feba_mailpit_dev
+    ports:
+      - "1025:1025"   # SMTP
+      - "8025:8025"   # interface web et API de lecture
+    environment:
+      MP_MAX_MESSAGES: 5000
+      MP_SMTP_AUTH_ACCEPT_ANY: 1
+      MP_SMTP_AUTH_ALLOW_INSECURE: 1
+    healthcheck:
+      # `wget` est présent dans l'image ; on interroge l'API de lecture,
+      # qui ne répond que si le service est réellement prêt.
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8025/api/v1/info"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+    restart: unless-stopped
+
   backend-dev:
     build:
       context: ./backend
@@ -35,6 +63,7 @@ services:
     env_file: .env.dev
     volumes:
       - ./backend:/app
+      - ./backend/KNOWN_LIMITATIONS.md:/app/KNOWN_LIMITATIONS.md:ro
       - media_dev:/app/media
     ports:
       - "8000:8000"
@@ -42,6 +71,8 @@ services:
       postgres-dev:
         condition: service_healthy
       redis-dev:
+        condition: service_healthy
+      mailpit:
         condition: service_healthy
     command: python /app/entrypoint.dev.py
     healthcheck:
@@ -71,6 +102,16 @@ services:
         # masque l'erreur réelle derrière un deuxième crash redondant.
         condition: service_healthy
     command: celery -A feba_project worker --loglevel=info
+    healthcheck:
+      # `celery inspect ping` interroge le worker LUI-MÊME. Vérifier que
+      # le processus tourne ne dit rien : un worker peut être vivant et
+      # ne plus consommer la file.
+      test: ["CMD-SHELL", "celery -A feba_project inspect ping --timeout=5 | grep -q pong"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 20s
+    restart: unless-stopped
 
   celery-beat-dev:
     build:
@@ -83,7 +124,18 @@ services:
     depends_on:
       backend-dev:
         condition: service_healthy
-    command: celery -A feba_project beat --loglevel=info
+    command: celery -A feba_project beat --loglevel=info --schedule=/tmp/celerybeat-schedule
+    healthcheck:
+      # Beat n'expose pas d'API. On vérifie que son fichier d'état a été
+      # écrit récemment : un planificateur figé ne le met plus à jour, et
+      # c'est exactement la panne qui passe inaperçue — aucun rapport ne
+      # part, et rien ne le signale.
+      test: ["CMD-SHELL", "python -c \"import os,time,sys; f='/tmp/celerybeat-schedule'; sys.exit(0 if os.path.exists(f) and time.time()-os.path.getmtime(f) < 900 else 1)\""]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    restart: unless-stopped
 
   frontend-dev:
     build:

@@ -7,23 +7,48 @@ import { t } from "../i18n";
  *
  * Charge dynamiquement l'API externe Jitsi (https://<domain>/external_api.js)
  * puis monte la conférence dans un conteneur. Fonctionne avec l'instance
- * publique meet.jit.si ou toute instance auto-hébergée (prop `domain`).
+ * FEBA auto-hébergée uniquement (prop `domain`, fournie par le backend).
  *
  * Props :
  *  - roomName    : identifiant de salle (room_code non devinable côté backend)
- *  - domain      : domaine Jitsi (défaut meet.jit.si)
+ *  - domain      : domaine de l'instance FEBA auto-hébergée (REQUIS —
+ *                  aucun défaut public : sans domaine, le composant refuse
+ *                  de charger plutôt que d'ouvrir un serveur tiers)
  *  - displayName : nom affiché du participant
  *  - subject     : titre de la réunion
  *  - onClose     : callback à la fermeture (croix ou fin d'appel)
  */
 const loadedScripts = {};
 
+/**
+ * Schéma de l'instance : `http` en développement local (certificat
+ * auto-signé impossible à charger dans une iframe sans avertissement),
+ * `https` partout ailleurs.
+ */
+function schemeFor(domain) {
+  const host = String(domain || "").split(":")[0];
+  const isLocal =
+    host === "localhost" ||
+    host === "127.0.0.1" ||
+    host.endsWith(".localhost");
+  return isLocal ? "http" : "https";
+}
+
 function loadJitsiScript(domain) {
+  if (!domain) {
+    // Aucun repli public : sans instance FEBA, on échoue explicitement.
+    return Promise.reject(
+      new Error(
+        "Aucune instance de visioconférence FEBA n'est configurée. " +
+          "Contactez le support technique.",
+      ),
+    );
+  }
   if (loadedScripts[domain]) return loadedScripts[domain];
   loadedScripts[domain] = new Promise((resolve, reject) => {
     if (window.JitsiMeetExternalAPI) return resolve();
     const script = document.createElement("script");
-    script.src = `https://${domain}/external_api.js`;
+    script.src = `${schemeFor(domain)}://${domain}/external_api.js`;
     script.async = true;
     script.onload = () => resolve();
     script.onerror = () => {
@@ -37,7 +62,7 @@ function loadJitsiScript(domain) {
 
 export default function JitsiMeeting({
   roomName,
-  domain = "meet.jit.si",
+  domain,
   displayName = "",
   subject = "",
   jwt = null,          // FIX v35 : jeton signé par le backend (instance auto-hébergée)

@@ -21,3 +21,65 @@ backend/db_dev.sqlite3
 backend/celerybeat-schedule
 
 .claude/
+
+# Secrets générés par make install — JAMAIS dans Git
+.env.jitsi
+.env
+!.env.example
+!.env.dev.example
+!.env.prod.example
+!.env.jitsi.example
+
+# Environnement virtuel Python local (recréé par make install)
+backend/venv/
+
+# Captures produites par les tests end-to-end (regénérables)
+e2e/captures/
+
+# Livraison construite par scripts/make_delivery.sh (regénérable)
+dist-livraison/
+# Rendus d'inspection visuelle : regenerables par script, 33 Mio de PDF
+# et de PNG qui n'ont rien a faire dans l'historique.
+dist-rendus/
+
+# Documents officiels produits (diplômes, certificats) : données
+# personnelles d'élèves, stockées hors du répertoire public.
+backend/private_media/
+
+# Fonds des documents officiels : VERSIONNÉS.
+#
+# Ce sont les visuels de l'établissement, pas des secrets, et le moteur
+# documentaire ne peut rien produire sans eux. Les laisser hors du dépôt
+# obligerait chaque déploiement à les réinstaller à la main — et le premier
+# oubli ne se verrait qu'au moment d'imprimer un diplôme.
+#
+# Les DÉRIVÉS, eux, sont régénérables (« manage.py document_neutralize ») :
+# les versionner ferait diverger deux fichiers censés être liés.
+# Le fond NEUTRALISÉ du diplôme est VERSIONNÉ (P7).
+#
+# Il l'a longtemps été « régénérable, donc pas versionné ». En pratique,
+# l'application livrée arrivait avec son diplôme bloqué, et demandait à
+# l'utilisateur de lancer « manage.py document_neutralize » — une commande
+# d'atelier, dans une application finie. Le fichier est produit une fois,
+# validé visuellement, empreint dans le gabarit, et vérifié au démarrage.
+!backend/document_templates/derived/
+
+# Fichiers d'environnement RÉELS — jamais versionnés, jamais livrés.
+#
+# `.env.dev` l'était : il contenait une SECRET_KEY et un JITSI_APP_SECRET
+# de développement, et partait dans chaque archive. Des secrets faibles
+# restent des secrets : livrés, ils deviennent les secrets par défaut de
+# toute installation qui recopie le fichier sans le lire.
+#
+# Les modèles `.env*.example`, eux, restent versionnés : ils documentent
+# chaque variable et ne contiennent aucune valeur.
+.env
+.env.dev
+.env.prod
+.env.jitsi
+.env.local
+.env.validation
+!.env.example
+!.env.dev.example
+!.env.prod.example
+!.env.jitsi.example

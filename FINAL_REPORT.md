@@ -1,211 +1,149 @@
-# FINAL_REPORT.md — Mission V8 (FEBA School Management, 26/07/2026)
+# Rapport de clôture — V9
 
-Toutes les corrections ont été **réellement appliquées**, **testées** (suites
-automatisées SQLite **et** PostgreSQL) et **vérifiées** (navigateur réel +
-documents PDF générés puis rendus en image et inspectés).
-Aucun résultat, capture, PDF ou empreinte n'est fabriqué.
-
-## 1. État du dépôt
-
-| Élément | Valeur |
-|---|---|
-| Branche | `claude/v8-fixes` (baseline V7 préservée sur `claude/v7-fixes`) |
-| Commits V8 | `b3cc0a4` (P1/P2), `d73920f` (P3), `69c49e9` (P4/P5), `6c1d3c1` (P6/P7), `b90708b` (migration de cohérence + tests + rapports), `2ce7283` (date de résolution), `365da8d` (texte tronqué du reçu), `95990c4` (rapports), `127748f` (barème par cycle + détail des notes), `a283093` (base de démonstration, UI, maternelle, échappement) |
-| Tests backend — SQLite | **405 passed, 1 skipped** (concurrence multi-threads, documentée) + 46 sous-tests |
-| Tests backend — PostgreSQL 16 | **406 passed, 0 skipped** (chaîne de migrations complète) |
-| Tests frontend | **70 passed** (9 fichiers) |
-| ESLint | **0 erreur** (63 avertissements hérités) |
-| Build production | **✓ built** |
-
-## 2. Tableau Profils
-
-| Profil | Anomalie constatée | Cause racine | Correction | Vérification |
-|---|---|---|---|---|
-| **Enseignant** | **500** à la création (`UNIQUE constraint failed: teachers_teacher.employee_id`) | Matricule généré par `count()+1` : une suppression crée un trou, le compteur repasse sur un matricule existant | Génération sur le **maximum existant** + reprise sur collision + création **atomique** | Reproduit à l'identique, puis **navigateur réel** : trou provoqué, matricule `ENS-2026-0007` créé, classes et matières enregistrées, matricule conservé à la modification |
-| Enseignant | Requête sans bloc `user` → 500 | Absence de validation | `validate()` → **400** explicite | test dédié |
-| Enseignant | Matières/classes d'un **autre établissement** acceptées | `ManyRelatedField` : le filtrage écrivait sur l'enveloppe, pas sur `child_relation.queryset` | Filtrage sur `child_relation` | test dédié + `SECURITY_NOTES.md` |
-| Super admin / Admin / Parent / Élève | Audit complet (doublons, données manquantes, mauvaise école, rôle incompatible, accès non autorisé, rollback) | — | Aucune anomalie bloquante ; comportements confirmés | `tests/test_profile_creation.py` — **16 cas** |
-| Tous | Échec en cours de création → profil partiel possible | Écritures hors transaction | `transaction.atomic()` | test de rollback |
-
-Détail : `PROFILE_CREATION_REPORT.md`.
-
-## 3. Tableau Incidents
-
-| Exigence | Mise en œuvre | Preuve |
-|---|---|---|
-| Modèle d'incident | `TechnicalIncident` : référence publique `ERR-XXXXXX`, gravité, statut, module, empreinte, occurrences, première/dernière occurrence | migration `incidents/0001` |
-| Capture des 500 uniquement | Gestionnaire d'exceptions DRF : les 4xx **ne créent pas** d'incident | test dédié |
-| Dédoublonnage | Empreinte stable → `occurrences` incrémenté, pas de doublon | vérifié en conditions réelles : `occurrences = 2` |
-| Aucun secret stocké | Sanitisation centrale récursive (mot de passe, jeton/JWT, cookie, clé d'API, secret, numéro de carte) | 4 secrets injectés → **4 expurgés** |
-| Notification réelle | Notification interne aux super administrateurs, `related_url` ouvrant **l'incident** (et non les Annonces), paliers 1/5/25/100/500 | vérifié en base et en navigateur |
-| Message honnête | La référence n'est affichée **que si** l'incident a réellement été enregistré | test dédié |
-| Écran Super Admin | Compteurs, filtres, recherche, changement de statut, notes, résolution/réouverture | vérifié en navigateur |
-| Accès restreint | Super admin seul ; admin → **403**, anonyme → **401** ; données techniques immuables ; création manuelle refusée | tests + vérification réelle |
-| Date de résolution | Renseignée par l'action dédiée **et** par un simple PATCH de statut ; effacée à la réouverture | `IncidentResolvedAtTests` |
-
-`tests/test_technical_incidents.py` — **20 cas**. Détail :
-`TECHNICAL_INCIDENTS_REPORT.md`.
-
-## 4. Tableau Notes (poids d'évaluation)
-
-| Point | Avant | Après |
-|---|---|---|
-| Poids d'une évaluation | Examen ×3, devoir ×1 (modifiable dans l'interface) | **1 pour toutes** — champ retiré de l'interface |
-| Exemple de référence (12 et 5) | 10,75 | **8,50** |
-| Coefficient de matière | Confondu avec le poids d'évaluation | **Distinct** et seul coefficient conservé |
-| Calcul | Dupliqué en plusieurs endroits | **Source unique** (module de calcul central) |
-| Données existantes | Poids hétérogènes | Migration de données + migration de cohérence `grades/0012` |
-| Texte « Examen = 3, devoir = 1 » | Affiché | **Supprimé** |
-
-Vérifié en base, via l'API et dans le résumé : 12 et 5 → **8,50**, tous les
-poids à 1. `tests/test_data_migrations.py` — **5 cas** (la chaîne ne pouvant
-être rejouée sur SQLite, les fonctions de migration sont appelées
-directement ; la chaîne complète est validée sur PostgreSQL). Détail :
-`GRADE_WEIGHTING_REPORT.md`.
-
-## 5. Tableau Barèmes
-
-| Niveaux (champ stable `Level.order`) | Barème du bulletin | Appréciations / lettres |
-|---|---|---|
-| **1 à 11** — Garderie → CM2 | **/10** | calculées sur l'équivalent **/20** |
-| **12 et plus** — Collège | **/20** | inchangées |
-
-Le niveau est déterminé par un **champ stable**, jamais par une liste de noms
-de classes. La conversion est appliquée **une seule fois** (moyennes, moyenne
-générale, moyenne pondérée, minimum/maximum de classe) : aucune double
-division. La moyenne pondérée est exprimée dans le barème affiché.
-Détail : `GRADING_SCALE_REPORT.md`.
-
-## 6. Tableau Documents
-
-| Document | Zone de validation | Cachet | Défauts corrigés | Vérification |
-|---|---|---|---|---|
-| **Reçu de paiement** | **« Le Secrétariat »** — zone unique. « Signature du Caissier » et « Cachet de l'École / School Stamp » **supprimés** | **LE SECRETARIAT** (3 cm) | Nom de l'école chevauchant l'adresse ; **observations tronquées** au bord droit ; identités et montant en lettres tronqués | PDF généré, texte extrait, page rendue en image et inspectée |
-| **Bulletin** | Bloc « La Direction » : titre, cachet centré, date et lieu | **LA DIRECTION** (2,5 cm) | Cachet débordant d'une cellule de hauteur fixe (chevauchement date/signature) ; bloc jamais isolé sur une page ; **1 seule page A4** conservée | idem + comparaison de mise en page avant/après |
-
-Le cachet réellement embarqué est identifié par **signature visuelle** (ReportLab
-ré-encode les images) : distance ≈ 2/1024 pour le même cachet, ≈ 223/1024 entre
-les deux — l'interversion des cachets est détectée.
-`tests/test_pdf_stamps.py` — **22 cas**. Détail : `PDF_LAYOUT_REPORT.md`,
-`STAMP_INTEGRATION_REPORT.md`.
-
-## 7. Tableau Général
-
-| ID | Priorité | Module | Problème | Cause racine | Correction | Tests | Statut |
-|---|---|---|---|---|---|---|---|
-| P1 | Profil Enseignant | teachers | 500 à la création | matricule `count()+1` | `max+1` + reprise + atomicité + 400/403/409 | test_profile_creation | ✅ |
-| P2 | Tous les profils | accounts, teachers, students, parents | audit + faille multi-établissement | `ManyRelatedField` non filtré | `child_relation.queryset` + rollback | test_profile_creation (16) | ✅ |
-| P3 | Incidents | incidents (nouvelle app) | « notifiée » sans notification | aucun mécanisme | modèle, sanitisation, dédoublonnage, notifications, écran super admin | test_technical_incidents (20) | ✅ |
-| P4 | Notes | grades | poids d'évaluation hétérogènes | poids éditable, calculs dupliqués | poids = 1, source unique, migrations | test_data_migrations (5) + suites notes | ✅ |
-| P5 | Barèmes | bulletins | primaire noté /20 | barème unique | /10 par `Level.order`, conversion unique | suites bulletins | ✅ |
-| P6 | Reçu | payments | caissier + cachet école | modèle obsolète | zone unique « Le Secrétariat » + cachet dédié | test_pdf_stamps | ✅ |
-| P7 | Bulletin | bulletins | cachet mal positionné | cellule de hauteur fixe | bloc de validation dédié, insécable | test_pdf_stamps (22) | ✅ |
-| — | Documents | payments, bulletins | 4 défauts vus sur documents réels | mise en page | interligne, pondérée, repli du texte | test_pdf_stamps | ✅ |
-| — | Incidents | incidents | date de résolution absente sur PATCH | règle portée par l'action seule | règle portée par le serializer | IncidentResolvedAtTests | ✅ |
-| — | Migrations | grades | dérive de l'état du modèle | — | `grades/0012` ; `makemigrations --check` propre | PostgreSQL 406/406 | ✅ |
-| — | Barèmes | grades | collège noté **sur 10** sur les données réelles | `Level.order` = rang propre à chaque école | barème déduit du **cycle**, rang en repli | test_grade_weighting_and_scale | ✅ |
-| — | Bulletins | bulletins | détail des notes encore sur 20 | conversion appliquée aux seules moyennes | `_fmt_note` + test interdisant toute valeur hors barème | test_grade_weighting_and_scale | ✅ |
-| — | Bulletins | bulletins | clé de notation maternelle sur 20 | table écrite en dur | clé générée dans le barème du document | test_grade_weighting_and_scale | ✅ |
-| — | Données | schools | démo **non migrée** : poids ≠ 1 à chaque installation | migrations neutralisées par `dev_sqlite` + seed aléatoire | commande `bootstrap_demo` + seed corrigé + vérification bloquante | test_bootstrap_demo | ✅ |
-| — | Reçus | payments | observation avec « & » ou « <…> » **amputée** | mini-XML ReportLab | échappement + retours à la ligne préservés | test_pdf_stamps | ✅ |
-| — | Interfaces | frontend | résidus du poids d'évaluation (colonnes, champ, état, traductions) | héritage pré-V8 | notion retirée des 3 profils, exports et traductions | vérification navigateur | ✅ |
-
-## 8. Ce que la vérification réelle a apporté
-
-**Neuf** défauts **invisibles dans les tests** n'ont été trouvés qu'en
-produisant les documents, en les rendant en image et en les regardant, ou en
-ouvrant l'application sur les données de démonstration : chevauchement
-d'en-tête du reçu, moyenne pondérée exprimée dans le mauvais barème, texte
-tronqué au bord droit, régression de pagination du bulletin, **collège noté sur
-10**, **détail des notes resté sur 20**, **clé de notation maternelle sur 20**,
-**observation amputée dès qu'elle contient « & »**, et une **base de
-démonstration qui n'appliquait aucune migration de données**. Chacun est
-désormais couvert par un test.
-
-De même, la réparation du profil Enseignant n'a été considérée comme prouvée
-qu'après **création réelle dans le navigateur**, sur une base présentant le
-trou de séquence exact qui déclenchait le 500.
-
-Rapports détaillés : `PROFILE_CREATION_REPORT.md`,
-`TECHNICAL_INCIDENTS_REPORT.md`, `GRADE_WEIGHTING_REPORT.md`,
-`GRADING_SCALE_REPORT.md`, `STAMP_INTEGRATION_REPORT.md`,
-`PDF_LAYOUT_REPORT.md`, `TEST_REPORT.md`, `AUDIT_REPORT.md`,
-`SECURITY_NOTES.md`, `KNOWN_LIMITATIONS.md`, `CHANGELOG_FIXES.md`,
-`CORRECTIONS.md`.
+Ce rapport distingue **où** chaque chose a été vérifiée. C'est la seule
+distinction qui compte : cinq défauts de cette itération n'apparaissaient
+pas dans le dépôt source, seulement depuis l'archive extraite.
 
 ---
 
-# FINAL_REPORT.md — Mission V7 (FEBA School Management, 25/07/2026)
+## Ce qui est testé, et où
 
-Toutes les corrections ont été **réellement appliquées**, **testées** (suites
-automatisées) et **vérifiées** (navigateur réel + documents PDF générés).
-Aucun résultat, capture, PDF ou empreinte n'est fabriqué.
+| Vérification | Dépôt source | Archive extraite | SQLite | PostgreSQL | Navigateur | Vu à l'œil |
+|---|:-:|:-:|:-:|:-:|:-:|:-:|
+| Suites backend | ✅ 806 | ✅ 806 | ✅ 805+1 | ✅ 806 | — | — |
+| Suites frontend | ✅ 123 | ✅ 123 | — | — | — | — |
+| ESLint / build | ✅ 0 erreur | ✅ 0 erreur | — | — | — | — |
+| Installation propre | — | ✅ venv neuf, base vide | — | ✅ 0→69 tables | — | — |
+| Diplôme produisible | ✅ | ✅ sans commande | — | ✅ | ✅ | ✅ capture |
+| Certificat produisible | ✅ | ✅ | — | ✅ | ✅ | ✅ capture |
+| Neutralisation du placeholder | ✅ | ✅ 4220→0 px | — | — | — | ✅ PDF |
+| Identité par académie | ✅ | ✅ 7 documents | — | ✅ | ✅ | ✅ PDF |
+| Inscription FEBA FHA | ✅ 43 tests | ✅ bout en bout | ✅ | ✅ SQL direct | ✅ | ✅ capture |
+| Fiche PDF + téléchargement | ✅ | ✅ | — | ✅ | ✅ | ✅ PDF |
+| Contacts + WhatsApp | ✅ 16 tests | ✅ 2 académies | ✅ | ✅ SQL direct | ✅ | ✅ capture |
+| Messages longs non coupés | ✅ 14 tests | ✅ | — | ✅ 6300/6300 car. | ✅ 1011/1011 | ✅ capture |
+| Isolation + anti-IDOR | ✅ | ✅ | ✅ | ✅ | — | ✅ preuve |
+| Stockage privé | ✅ | ✅ | — | ✅ | — | — |
+| Contrôle des secrets | ✅ garde-fou | ✅ ZIP analysé | — | — | — | — |
 
-## 1. État du dépôt
+---
 
-| Élément | Valeur |
-|---|---|
-| Branche | `claude/v7-fixes` (baseline V6.2 préservée sur `claude/v4-vitrine-fixes`) |
-| Commits V7 | `b3dc971` (P4), `86ce49c` (P1/P2/P3), `234f425` (P5/P6/P7) |
-| Tests backend | **311 passed, 1 skipped** (concurrence PostgreSQL, documentée) |
-| Tests frontend | **70 passed** |
-| ESLint | **0 erreur** |
-| Build production | **✓ built** |
-| Résolutions vérifiées | 375 / 768 / 1280 / 1440 |
+## E-mails : ce qui s'est réellement passé
 
-## 2. Tableau général
+Le brief demande de distinguer cinq états. Voici lequel s'applique.
 
-| ID | Priorité | Module | Problème | Cause racine | Fichiers modifiés | Correction | Tests | Statut |
-|---|---|---|---|---|---|---|---|---|
-| P1 | Nom officiel | Site + ERP + PDF | « Faith Excellence » sans « & » | nom en dur sans « & » | branding.py, website/models, seeds, PDF, 12 fichiers front | source centralisée + « & » partout + migrations | test_document_branding, test_website, site.test | ✅ |
-| P2 | Groupe | Bulletins + reçus | « GROUPE SCOLAIRE FEBA » | `School.name` = groupe scolaire | seed_demo_data, PDF (bulletin+reçu), migration schools/0011 | « GROUPE ÉDUCATIF FEBA » en tête + nom officiel | test_document_branding | ✅ |
-| P3 | Cachet | Bulletins + reçus | pas de cachet | — | pdf_generator ×2, static_files/cachet_feba.* | cachet extrait du PDF, apposé (case direction) | test_document_branding | ✅ |
-| P4 | Notes | Saisie notes | 10 → 9,5 / 9,75 | `input type=number step` modifié molette/flèche | gradeInput, useNumberInputGuard, 3 formulaires | champs texte décimaux + normalisation + garde | gradeInput.test (8), test_grade_precision (5) | ✅ |
-| P5 | Façade | Site vitrine | remplacer la façade | — | campus-facade-logo (webp), mediaMeta | nouvelle façade (panneau+fresques) + focal | mediaMeta.test | ✅ |
-| P6 | Vidéo | Galerie | ajouter la vidéo | — | feba-presentation.mp4 + poster | vidéo optimisée + visionneuse (contrôles) | vérif navigateur | ✅ |
-| P7 | Admissions | Site vitrine | corps des enfants coupés | conteneur bas + focal haut | AdmissionsPage, mediaMeta | conteneur agrandi + focal descendu | vérif navigateur | ✅ |
+| État | S'applique ? | Détail |
+|---|:-:|---|
+| Capturé par un backend local | **OUI** | `django.core.mail.backends.console.EmailBackend` |
+| Mis en file | non | Aucune file n'a été employée |
+| Simulé | non | Les messages sont réellement composés et remis au backend |
+| Accepté par un fournisseur externe | **NON** | Aucun fournisseur configuré |
+| Réellement distribué | **NON** | Impossible à affirmer sans fournisseur |
 
-## 3. Tableau des documents
+Le journal `EmailDelivery` porte `status = sent` et
+`backend = console.EmailBackend`. Le drapeau `used_real_provider` vaut
+**faux**, et l'interface affiche « Sans fournisseur » — jamais « Envoyé ».
+`manage.py email_check` sort en erreur dans cet état, exprès.
 
-| Document | Nom officiel | Groupe éducatif | Cachet | Mise en page | Test (extraction) | Statut |
-|---|---|---|---|---|---|---|
-| Bulletin | FAITH & EXCELLENCE BILINGUAL ACADEMY | GROUPE ÉDUCATIF FEBA (en-tête) | ✔ (case direction) | 1 page A4, notes/moyennes non masquées | texte extrait + rendu PNG | ✅ Conforme |
-| Reçu de paiement | Faith & Excellence Bilingual Academy | GROUPE ÉDUCATIF FEBA (en-tête) | ✔ (case cachet) | montant/réf/signature non masqués | texte extrait (2 images) | ✅ Conforme |
+Un fichier HTML a bien été produit pour chaque message. **Cela ne vaut pas
+envoi**, et rien dans cette livraison ne le présente comme tel.
 
-« GROUPE SCOLAIRE FEBA » et « Faith Excellence » (sans « & ») **absents** des
-deux documents.
+---
 
-## 4. Tableau des notes (saisir 10)
+## Les cinq défauts trouvés en validant l'archive
 
-| Rôle | Mode | Note saisie | Valeur en base | Valeur API | Valeur affichée | Valeur bulletin | Statut |
-|---|---|---|---|---|---|---|---|
-| Enseignant | simple | 10 | 10.00 | 10.00 | 10.00/20 | 10.00/20 | ✅ |
-| Admin | simple | 10 | 10.00 | 10.00 | 10.00/20 | 10.00/20 | ✅ |
-| Enseignant | groupée | 10 | 10.00 | 10.00 | 10.00/20 | 10.00/20 | ✅ |
-| — | modification | 8 → 10 | 10.00 | 10.00 | 10.00/20 | 10.00/20 | ✅ |
-| Tous | plage 0..20 | 0, 9.5, 9.75, 10, 10.25, 20… | identique | identique | identique | identique | ✅ |
+Aucun n'était visible depuis le dépôt source.
 
-## 5. Tableau des médias
+**1. La livraison partait avec les rapports de l'itération précédente.**
+La liste était figée sur V8. L'archive V9 ne contenait aucun des douze
+rapports écrits pour elle. Corrigé par une liste vérifiée : un rapport
+annoncé mais absent interrompt la construction.
 
-| Média | Emplacement | Ancien fichier | Nouveau fichier | Desktop | Tablette | Mobile | Statut |
-|---|---|---|---|---|---|---|---|
-| Façade FEBA | Accueil (mosaïque) + Galerie « Notre campus » | campus-facade-logo (V6.2) | campus-facade-logo (nouvelle façade panneau+fresques) | ✔ | ✔ | ✔ | ✅ |
-| Vidéo présentation | Galerie « Moments FEBA » | feba-presentation.mp4 (repère) | feba-presentation.mp4 (54 s, 6,6 Mo) + poster | ✔ | ✔ | ✔ | ✅ |
-| Visite du campus | Admissions | admissions-famille (focal 50/38, h-56) | admissions-famille (focal 50/60, h-72 sm:h-80) | ✔ | ✔ | ✔ | ✅ |
-| Cachet | Bulletins + reçus | — | cachet_feba.png (+ hd, webp) | ✔ | — | — | ✅ |
+**2. La règle d'académie ne tenait que dans la vue HTTP.** Produire un
+diplôme au fond FEBA pour un élève de l'académie en ligne était refusé par
+l'API et **accepté par le service**. Une commande, un script d'import ou un
+test produisait donc un document au nom d'une académie et à l'effigie
+d'une autre. Une règle posée à la porte d'entrée HTTP n'est pas une règle.
 
-## 6. Anciennes corrections re-vérifiées
+**3. L'adresse imprimée se répétait.** `Akpakpa, Cotonou, Bénin, Cotonou,
+Bénin` en tête de chaque reçu — et, pour l'académie en ligne, une ville qui
+n'est pas la sienne affichée deux fois sur ses propres documents.
 
-Couvertes par les suites vertes : saisie groupée V6 (`test_bulk_grades`),
-types de notes & appréciations V4, moyennes parent/périodes
-(`test_parent_averages_missing_period`, `parent/Home.test.jsx`), mots de passe
-(`test_password_reset`), isolation tenant (`test_tenant_security`), site
-vitrine V6.2 (`visual-conformity.test.jsx`, `mediaMeta.test.js`). Le site
-public (carrousel 5 slides, menu une ligne, galerie pleine) reste fonctionnel.
+**4. Deux caractères disparaissaient de chaque message long.** DRF retire
+les blancs de fin par défaut. Un message de 7 014 caractères arrivait à
+7 012. Deux caractères — mais c'est la même mécanique qui modifie ce que le
+visiteur a écrit, pendant que l'application affirme ne rien tronquer.
 
-## 7. Livraison
+**5. Un fichier d'environnement réel partait dans chaque archive.**
+`.env.dev` contenait une `SECRET_KEY` et un `JITSI_APP_SECRET`. Des secrets
+faibles restent des secrets : livrés, ils deviennent les secrets par défaut
+de toute installation qui recopie le fichier sans le lire.
 
-`FEBA/livraison_v7/` : `feba_v1_v7_complet.zip`, `feba_v1_v7.bundle`,
-`changes_v7.diff`, exemples `bulletin.pdf` + `recu.pdf`, cachet, vidéo, façade,
-captures, `.env.example`, guides installation/migration/restauration, tous les
-rapports, `SHA256SUMS.txt`. ZIP extrait et vérifié avant remise.
+Chacun a reçu un test de non-régression. L'archive a été régénérée et
+réinstallée depuis zéro après chaque correction — **quatre tours de
+boucle**.
+
+---
+
+## Non validé faute d'identifiants externes
+
+| Sujet | Ce qui manque | Ce qui a été fait malgré tout |
+|---|---|---|
+| Envoi d'e-mail réel | Un fournisseur SMTP et ses identifiants | Composition, formats, langues, pièces jointes, journal, états d'échec, relance — et un refus explicite de présenter un envoi comme réel |
+| Paiement par carte | Des clés Stripe valides | 54 tests couvrant tentative, webhook, idempotence, ordre, remboursement, reçu, permissions ; signature vérifiée par la bibliothèque officielle, sans réseau |
+
+---
+
+## Limitations réelles restantes
+
+**Aucune signature officielle n'est fournie.** Les zones
+`director_signature` restent vides. Le moteur ne dessine, ne reconstitue et
+n'approche jamais une signature : une signature inventée sur un diplôme
+n'est pas une approximation graphique, c'est un faux.
+
+**L'académie en ligne n'a pas de fond de diplôme ni de certificat.** Les
+deux gabarits sont réservés à FEBA et l'interface le dit, avec sa raison.
+Le jour où le fond est fourni, il fera l'objet d'un gabarit distinct.
+
+**Ni téléphone ni e-mail ne sont renseignés pour les deux académies.** Les
+documents ne les affichent donc pas. C'est une donnée que l'établissement
+doit saisir, pas un défaut de code — et les inventer serait pire.
+
+**Les fonds installés ne sont pas les PNG d'origine** : variantes
+transcodées, acceptées nommément et tracées. Géométrie exacte, calibrage
+valide.
+
+**Les libellés d'état des dossiers FHA restent en français** sur une
+session anglaise. Défaut d'affichage seulement : l'état stocké et transmis
+est le code interne.
+
+**L'interface charge une police depuis `fonts.googleapis.com`.** Injoignable
+derrière le proxy de ce conteneur, elle retombe sur la police système sans
+rien casser. À signaler pour un déploiement hors ligne, et parce que chaque
+visiteur est alors vu par un tiers.
+
+**Redis doit tourner.** `django-ratelimit` et l'authentification passent par
+le cache ; sans lui, le formulaire public et la connexion renvoient 500.
+Documenté dans `INSTALLATION_GUIDE.md` et démarré par `make dev`.
+
+---
+
+## Détail par priorité
+
+| | Sujet | État |
+|---|---|---|
+| P0 | Source unique d'identité par académie | Corrigé et vérifié |
+| P1 | Inscription FEBA FHA de bout en bout | Corrigé et vérifié |
+| P2 | Audit de la chaîne des champs | Corrigé et vérifié |
+| P3 | Fiche PDF + téléchargement sécurisé | Corrigé et vérifié |
+| P4 | Vue détail complète + export | Corrigé et vérifié |
+| P5 | Formulaires de contact | Corrigé et vérifié |
+| P6 | Messages longs jamais tronqués | Corrigé et vérifié |
+| P7 | Diplôme disponible dès l'installation | Corrigé et vérifié |
+| P8 | Documents filtrés par académie | Corrigé et vérifié |
+| P9 | Tests automatisés | 806 backend, 123 frontend |
+| P10 | Vérification navigateur | 34 vérifications, depuis l'archive |
+| P11 | Audit global | 5 défauts trouvés et corrigés |
+
+« Corrigé et vérifié » signifie : exécuté sur cette instance, depuis
+l'archive extraite, avec la sortie reproduite dans `TEST_REPORT.md`.

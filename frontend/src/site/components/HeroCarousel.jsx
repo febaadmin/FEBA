@@ -13,11 +13,14 @@ import { Link } from "react-router-dom";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import SiteImage from "./SiteImage";
 import { OVERLAYS } from "../mediaMeta";
-import { DEFAULT_SLIDES } from "../siteDefaults";
+import { DEFAULT_SLIDES, pickLang } from "../siteDefaults";
+import { useSiteLang } from "../useSiteLang";
 
 const AUTOPLAY_MS = 6000;
 
 export default function HeroCarousel({ slides = [] }) {
+  // P1 : les slides — administrées ou de repli — portent une variante `_en`.
+  const { lang, t } = useSiteLang();
   const [index, setIndex] = useState(0);
   const [paused, setPaused] = useState(false);
   const touchStartX = useRef(null);
@@ -80,18 +83,18 @@ export default function HeroCarousel({ slides = [] }) {
           <div aria-hidden="true" className={`absolute inset-0 ${OVERLAYS["top-navy"]}`} />
           <div className="relative h-full max-w-7xl mx-auto px-4 sm:px-6 flex flex-col justify-end pb-16 sm:pb-20">
             <h1 className="text-white text-[1.7rem] leading-snug sm:text-5xl lg:text-[3.4rem] font-bold max-w-[92%] sm:max-w-2xl sm:leading-tight drop-shadow">
-              {slide.title}
+              {pickLang(slide, "title", lang)}
             </h1>
-            {slide.subtitle && (
+            {pickLang(slide, "subtitle", lang) && (
               <p className="text-white/90 text-sm sm:text-xl mt-3 max-w-[88%] sm:max-w-xl drop-shadow">
-                {slide.subtitle}
+                {pickLang(slide, "subtitle", lang)}
               </p>
             )}
-            {slide.cta_label && slide.cta_url && (
+            {pickLang(slide, "cta_label", lang) && slide.cta_url && (
               <div className="mt-6">
                 <Link to={slide.cta_url}
                   className="inline-block px-6 py-3 rounded-xl bg-feba-gold text-feba-navy font-bold text-sm sm:text-base hover:bg-feba-gold2 focus-visible:ring-4 ring-feba-gold/40 transition-colors">
-                  {slide.cta_label}
+                  {pickLang(slide, "cta_label", lang)}
                 </Link>
               </div>
             )}
@@ -103,18 +106,18 @@ export default function HeroCarousel({ slides = [] }) {
         <>
           {/* V5 : flèches masquées sur mobile (swipe tactile + points suffisent,
               et le titre ne passe plus jamais sous une flèche). */}
-          <button onClick={() => go(-1)} aria-label="Slide précédent"
+          <button onClick={() => go(-1)} aria-label={t("Slide précédent", "Previous slide")}
             className="hidden sm:block absolute left-3 top-1/2 -translate-y-1/2 p-2.5 rounded-full bg-feba-navy/50 text-white hover:bg-feba-gold hover:text-feba-navy transition-colors focus-visible:ring-4 ring-feba-gold/50">
             <ChevronLeft className="w-5 h-5" />
           </button>
-          <button onClick={() => go(1)} aria-label="Slide suivant"
+          <button onClick={() => go(1)} aria-label={t("Slide suivant", "Next slide")}
             className="hidden sm:block absolute right-3 top-1/2 -translate-y-1/2 p-2.5 rounded-full bg-feba-navy/50 text-white hover:bg-feba-gold hover:text-feba-navy transition-colors focus-visible:ring-4 ring-feba-gold/50">
             <ChevronRight className="w-5 h-5" />
           </button>
-          <div className="absolute bottom-5 left-1/2 -translate-x-1/2 flex gap-2" role="tablist" aria-label="Choisir un slide">
+          <div className="absolute bottom-5 left-1/2 -translate-x-1/2 flex gap-2" role="tablist" aria-label={t("Choisir un slide", "Choose a slide")}>
             {activeSlides.map((s, i) => (
               <button key={s.id ?? i} role="tab" aria-selected={i === index}
-                aria-label={`Slide ${i + 1} : ${s.title}`}
+                aria-label={t(`Slide ${i + 1} : ${pickLang(s, "title", lang)}`, `Slide ${i + 1}: ${pickLang(s, "title", lang)}`)}
                 onClick={() => setIndex(i)}
                 className={`h-2.5 rounded-full transition-all ${i === index ? "w-7 bg-feba-gold" : "w-2.5 bg-white/50 hover:bg-white/80"}`} />
             ))}

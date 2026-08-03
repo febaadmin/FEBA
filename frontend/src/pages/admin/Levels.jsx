@@ -9,8 +9,11 @@ import Modal from "../../components/ui/Modal";
 import ConfirmDialog from "../../components/ui/ConfirmDialog";
 import { extractApiError } from "../../utils/errors";
 import { t } from "../../i18n";
+import AcademyBadge from "../../components/AcademyBadge";
+import { useAcademy } from "../../context/AcademyContext";
 
 export default function AdminLevels() {
+  const { isAllAcademies } = useAcademy();
   const qc = useQueryClient();
   const [modalOpen, setModalOpen] = useState(false);
   const [editItem, setEditItem] = useState(null);
@@ -70,6 +73,11 @@ export default function AdminLevels() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-slate-100">
+                  {/* P2 : en vue consolidée, deux niveaux homonymes de deux
+                      académies étaient indiscernables. */}
+                  {isAllAcademies && (
+                    <th className="text-left py-3 px-4 font-semibold text-slate-500 text-xs uppercase tracking-wider">{t("Académie")}</th>
+                  )}
                   <th className="text-left py-3 px-4 font-semibold text-slate-500 text-xs uppercase tracking-wider">{t("Ordre")}</th>
                   <th className="text-left py-3 px-4 font-semibold text-slate-500 text-xs uppercase tracking-wider">{t("Nom du niveau")}</th>
                   <th className="text-left py-3 px-4 font-semibold text-slate-500 text-xs uppercase tracking-wider">{t("École")}</th>
@@ -79,6 +87,11 @@ export default function AdminLevels() {
               <tbody className="divide-y divide-slate-50">
                 {[...levels].sort((a,b) => a.order - b.order).map(level => (
                   <tr key={level.id} className="hover:bg-slate-50/50 transition-colors">
+                    {isAllAcademies && (
+                      <td className="py-3 px-4">
+                        <AcademyBadge code={level.academy_code} name={level.academy_name} />
+                      </td>
+                    )}
                     <td className="py-3 px-4">
                       <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-primary-50 text-primary font-bold text-xs">
                         {level.order}

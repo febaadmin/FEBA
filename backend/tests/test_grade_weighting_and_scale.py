@@ -254,6 +254,8 @@ class BulletinScaleTests(TestCase):
         from io import BytesIO
         import fitz
         from apps.bulletins import pdf_generator as G
+        from apps.bulletins.pdf_generator import Palette
+        from apps.schools.branding import branding_for
 
         level = Level.objects.create(school=self.school, name=f"N{level_order}",
                                      order=level_order, cycle=cycle)
@@ -274,7 +276,8 @@ class BulletinScaleTests(TestCase):
                                   "general_comment": "", "rank_in_class": None})()
         buf = BytesIO()
         G._build_standard_pdf(buf, student, "T1", self.year, subject_data,
-                              bilingual, {}, average, bulletin, None)
+                              bilingual, {}, average, bulletin,
+                              Palette(branding_for(student)))
         doc = fitz.open(stream=buf.getvalue(), filetype="pdf")
         return "\n".join(p.get_text() for p in doc)
 

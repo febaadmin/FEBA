@@ -34,10 +34,10 @@ class AnnouncementViewSet(BulkDeleteMixin, viewsets.ModelViewSet):
             if school_year_id:
                 qs = qs.filter(school_year_id=school_year_id)
             elif not all_years:
-                from apps.schools.models import SchoolYear
-                active = SchoolYear.objects.filter(school=school, is_current=True).first()
-                if active:
-                    qs = qs.filter(school_year=active)
+                from apps.core.tenancy import current_school_years
+                active = current_school_years(school)
+                if active.exists():
+                    qs = qs.filter(school_year__in=active)
             return qs.order_by("-created_at")
 
         # Non-admin: published announcements targeted to this role
@@ -48,10 +48,10 @@ class AnnouncementViewSet(BulkDeleteMixin, viewsets.ModelViewSet):
         if school_year_id:
             qs = qs.filter(school_year_id=school_year_id)
         elif not all_years:
-            from apps.schools.models import SchoolYear
-            active = SchoolYear.objects.filter(school=school, is_current=True).first()
-            if active:
-                qs = qs.filter(school_year=active)
+            from apps.core.tenancy import current_school_years
+            active = current_school_years(school)
+            if active.exists():
+                qs = qs.filter(school_year__in=active)
         return qs.order_by("-created_at")
 
     def get_permissions(self):

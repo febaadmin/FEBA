@@ -1,8 +1,12 @@
 from rest_framework import serializers
 from .models import Class
+from apps.core.academy_serializers import ACADEMY_FIELDS, AcademyMetadataMixin
 
 
-class ClassSerializer(serializers.ModelSerializer):
+class ClassSerializer(AcademyMetadataMixin, serializers.ModelSerializer):
+    # P3 : chaque objet expose son académie, sans quoi la vue
+    # « Toutes les Académies » ne peut pas étiqueter ses lignes.
+    academy_source = "school_year.school"
     level_name       = serializers.CharField(source="level.name",       read_only=True)
     level_cycle      = serializers.CharField(source="level.cycle",      read_only=True)
     school_year_name = serializers.CharField(source="school_year.name", read_only=True)
@@ -29,7 +33,7 @@ class ClassSerializer(serializers.ModelSerializer):
             "subjects_detail", "subject_ids",
             "has_bilingual", "fr_subject_count", "en_subject_count",
             "created_at",
-        ]
+        ] + ACADEMY_FIELDS
 
     def get_student_count(self, obj):
         # FIX v37 (vidéo 3) : l'effectif d'une classe se compte via les

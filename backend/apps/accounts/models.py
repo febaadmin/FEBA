@@ -52,6 +52,18 @@ class CustomUser(AbstractUser):
         related_name='users',
         help_text="Établissement de rattachement. Obligatoire sauf pour le rôle superadmin.",
     )
+    # Entité active du Super Administrateur, PERSISTÉE CÔTÉ SERVEUR.
+    # C'est la seule source d'autorité du contexte d'entité : le frontend
+    # ne peut pas l'imposer via localStorage ni via un entity_id de payload.
+    # Ignoré pour les autres rôles, dont le contexte est toujours `school`.
+    active_organization = models.ForeignKey(
+        'schools.School', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='active_for_users',
+        help_text=(
+            "Entité active du superadmin (NULL = mode « toutes les entités »). "
+            "Modifiable uniquement via l'endpoint de bascule, qui journalise le changement."
+        ),
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

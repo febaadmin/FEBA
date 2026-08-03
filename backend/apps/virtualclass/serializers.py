@@ -2,9 +2,13 @@ from django.conf import settings
 from rest_framework import serializers
 
 from .models import VirtualRoom, VirtualRoomAttendance
+from apps.core.academy_serializers import ACADEMY_FIELDS, AcademyMetadataMixin
 
 
-class VirtualRoomSerializer(serializers.ModelSerializer):
+class VirtualRoomSerializer(AcademyMetadataMixin, serializers.ModelSerializer):
+    #: Chemin ORM vers l'académie propriétaire de l'objet.
+    academy_source = "school"
+
     class_name = serializers.CharField(source="class_obj.name", read_only=True, default=None)
     subject_name = serializers.CharField(source="subject.name", read_only=True, default=None)
     created_by_name = serializers.SerializerMethodField()
@@ -20,7 +24,7 @@ class VirtualRoomSerializer(serializers.ModelSerializer):
             "status", "is_active", "lobby_enabled",
             "created_by", "created_by_name", "created_at",
             "join_domain", "participants_count",
-        ]
+        ] + ACADEMY_FIELDS
         read_only_fields = ["room_code", "created_by", "school", "created_at"]
 
     def get_created_by_name(self, obj):
@@ -29,8 +33,16 @@ class VirtualRoomSerializer(serializers.ModelSerializer):
         return None
 
     def get_join_domain(self, obj):
-        """Domaine Jitsi à utiliser côté client (auto-hébergé ou public)."""
-        return getattr(settings, "JITSI_DOMAIN", "meet.jit.si")
+        """
+        Domaine de l'instance AUTO-HÉBERGÉE. Chaîne vide si l'instance
+        n'est pas configurée : le frontend affiche alors une erreur
+        d'infrastructure au lieu d'ouvrir un serveur public.
+        """
+        from .services import JitsiNotConfigured, jitsi_domain
+        try:
+            return jitsi_domain()
+        except JitsiNotConfigured:
+            return ""
 
     def get_participants_count(self, obj):
         return obj.attendances.values("user").distinct().count()

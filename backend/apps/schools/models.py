@@ -1,6 +1,10 @@
 import logging
 logger = logging.getLogger("apps")
 from django.db import models
+
+from apps.core.currency import (
+    CURRENCY_CHOICES, DEFAULT_CURRENCY, get_currency,
+)
 from django.utils.text import slugify
 
 
@@ -19,7 +23,33 @@ class School(models.Model):
         ("premium", "Premium"),
     ]
 
+    # Codes internes STABLES des entités. La logique métier s'appuie
+    # exclusivement sur ces codes, jamais sur le nom affiché (qui peut être
+    # renommé par l'administration sans casser les règles d'accès).
+    CODE_FEBA = "FEBA"
+    CODE_FEBA_FHA = "FEBA_FHA"
+
+    ENTITY_TYPE_CHOICES = [
+        ("campus", "École présentielle"),
+        ("online", "Académie en ligne"),
+    ]
+
     name = models.CharField(max_length=200)
+    legal_name = models.CharField(
+        max_length=250, blank=True,
+        help_text="Dénomination légale complète (documents officiels, contrats, factures).",
+    )
+    code = models.CharField(
+        max_length=32, unique=True, null=True, blank=True,
+        help_text=(
+            "Identifiant interne STABLE de l'entité (ex: FEBA, FEBA_FHA). "
+            "Utilisé par la logique métier — ne jamais le dériver du nom affiché."
+        ),
+    )
+    entity_type = models.CharField(
+        max_length=20, choices=ENTITY_TYPE_CHOICES, default="campus",
+        help_text="Détermine les fonctionnalités par défaut (présentiel vs académie en ligne).",
+    )
     slug = models.SlugField(
         max_length=80, unique=True, blank=True,
         help_text="Identifiant court unique (sous-domaine / sélection tenant). Généré automatiquement si vide.",
@@ -28,9 +58,53 @@ class School(models.Model):
     city = models.CharField(max_length=100, default="Cotonou")
     country = models.CharField(max_length=100, default="Bénin")
     phone = models.CharField(max_length=20, blank=True)
+    whatsapp = models.CharField(
+        max_length=30, blank=True,
+        help_text="Numéro WhatsApp au format international. Vide = bouton WhatsApp masqué.",
+    )
     email = models.EmailField(blank=True)
     logo = models.ImageField(upload_to="school/", null=True, blank=True)
     description = models.TextField(blank=True)
+
+    # --- Localisation / internationalisation de l'entité ------------------
+    # FEBA FHA cible des familles aux États-Unis et au Canada : la devise, le
+    # fuseau et la langue par défaut ne peuvent pas être ceux de FEBA Cotonou.
+    timezone = models.CharField(
+        max_length=64, default="Africa/Porto-Novo",
+        help_text="Fuseau horaire de référence administrative (ex: America/New_York pour FEBA FHA).",
+    )
+    # ── Devise (P0) ───────────────────────────────────────────────────
+    # `currency_code` est la SOURCE D'AUTORITÉ. Le symbole, le nom et le
+    # nombre de décimales en découlent (voir apps/core/currency.py) et ne
+    # sont volontairement PAS stockés : une colonne « symbole » pourrait
+    # afficher « FCFA » sur une académie dont le code vaut « USD », ce qui
+    # est exactement le défaut que ce champ existe pour empêcher.
+    currency_code = models.CharField(
+        max_length=3, default=DEFAULT_CURRENCY, choices=CURRENCY_CHOICES,
+        verbose_name="Devise",
+        help_text=(
+            "Devise de TOUTES les opérations financières de cette académie : "
+            "tarifs, factures, paiements, reçus, remboursements, statistiques "
+            "et exports. FEBA facture en XOF, FEBA FHA en USD."
+        ),
+    )
+    # Le format d'écriture des nombres peut se régler indépendamment de la
+    # devise (une académie francophone payant en dollars écrit « 1 250,00 »).
+    currency_locale = models.CharField(
+        max_length=10, blank=True, default="",
+        help_text="Format d'écriture des montants (ex. fr-BJ, en-US). Vide = celui de la devise.",
+    )
+    default_language = models.CharField(
+        max_length=5, choices=[("fr", "Français"), ("en", "English")], default="fr",
+        help_text="Langue par défaut des documents et notifications de l'entité.",
+    )
+    # Réglages libres administrables (tarifs non validés, dates de rentrée,
+    # politique de remboursement...). Voir DEFAULT_FEATURES pour les
+    # fonctionnalités, stockées sous la clé « features ».
+    settings = models.JSONField(
+        default=dict, blank=True,
+        help_text="Réglages administrables de l'entité (features, textes, politiques).",
+    )
     # Préfixe court des matricules (ex: FEBA → FEBA-26-0001).
     # Vide = dérivé automatiquement du slug de l'établissement.
     matricule_prefix = models.CharField(
@@ -53,9 +127,134 @@ class School(models.Model):
     )
 
     created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True, null=True)
 
     class Meta:
         verbose_name = "École"
+
+    # ── Matrice de fonctionnalités par entité ────────────────────────────
+    # Chaque drapeau est vérifié CÔTÉ SERVEUR (voir apps/core/features.py).
+    # Masquer un menu React ne suffit jamais : l'API doit refuser.
+    FEATURE_FLAGS = [
+        "virtual_classrooms",
+        "video_conferencing",
+        "placement_tests",
+        "online_lessons",
+        "online_assignments",
+        "learning_library",
+        "skill_progress",
+        "certificates",
+        "payments",
+        "messaging",
+        "schedules",
+        "support_tickets",
+    ]
+
+    # Valeurs par défaut selon le type d'entité.
+    # « campus » (FEBA Cotonou) : école présentielle — pas de salle virtuelle,
+    # pas de visioconférence, pas de test de placement en ligne.
+    DEFAULT_FEATURES = {
+        "campus": {
+            "virtual_classrooms": False,
+            "video_conferencing": False,
+            "placement_tests": False,
+            "online_lessons": False,
+            "online_assignments": False,
+            "learning_library": False,
+            "skill_progress": False,
+            "certificates": False,
+            "payments": True,
+            "messaging": True,
+            "schedules": True,
+            "support_tickets": False,
+        },
+        "online": {
+            "virtual_classrooms": True,
+            "video_conferencing": True,
+            "placement_tests": True,
+            "online_lessons": True,
+            "online_assignments": True,
+            "learning_library": True,
+            "skill_progress": True,
+            "certificates": True,
+            "payments": True,
+            "messaging": True,
+            "schedules": True,
+            "support_tickets": True,
+        },
+    }
+
+    @property
+    def features(self):
+        """
+        Matrice effective des fonctionnalités : valeurs par défaut du type
+        d'entité, surchargées par `settings['features']` (administrable).
+        """
+        base = dict(self.DEFAULT_FEATURES.get(self.entity_type, self.DEFAULT_FEATURES["campus"]))
+        overrides = (self.settings or {}).get("features") or {}
+        for key, value in overrides.items():
+            if key in self.FEATURE_FLAGS:
+                base[key] = bool(value)
+        return base
+
+    def has_feature(self, flag):
+        """True si l'entité a le droit d'utiliser cette fonctionnalité."""
+        return bool(self.features.get(flag, False))
+
+    @property
+    def is_online_academy(self):
+        return self.entity_type == "online"
+
+    @property
+    def display_name(self):
+        """Nom complet à utiliser dans les documents et titres de page."""
+        return self.legal_name or self.name
+
+    @property
+    def short_name(self):
+        """
+        Nom court affichable — badges, colonnes de tableau, exports.
+
+        « FEBA French Heritage Academy » ne tient pas dans une cellule de
+        tableau : en mode « Toutes les Académies », chaque ligne doit porter
+        une étiquette lisible sans élargir la colonne au point de masquer
+        les données. Le nom complet reste disponible via `name`.
+
+        Ordre de résolution : valeur administrable, puis code interne
+        rendu lisible (FEBA_FHA → « FEBA FHA »), puis nom complet.
+        """
+        override = (self.settings or {}).get("short_name")
+        if override:
+            return str(override)
+        if self.code:
+            return self.code.replace("_", " ")
+        return self.name
+
+    # ── Devise : tout est dérivé du code, rien n'est dupliqué ──────────
+    @property
+    def currency(self):
+        """Objet devise complet (symbole, décimales, règles de formatage)."""
+        return get_currency(self.currency_code)
+
+    @property
+    def currency_symbol(self):
+        return self.currency.symbol
+
+    @property
+    def currency_name(self):
+        return self.currency.name
+
+    @property
+    def currency_decimal_places(self):
+        return self.currency.decimal_places
+
+    @property
+    def effective_currency_locale(self):
+        return self.currency_locale or self.currency.locale
+
+    def format_amount(self, amount_minor, with_symbol=True):
+        """Rend un montant dans la devise de CETTE académie."""
+        return self.currency.format(amount_minor, with_symbol=with_symbol)
 
     def __str__(self):
         return self.name
@@ -231,3 +430,113 @@ class Room(models.Model):
         if self.room_type == "custom" and self.custom_type_label:
             return self.custom_type_label
         return self.get_room_type_display()
+
+
+class OrganizationMembership(models.Model):
+    """
+    Appartenance d'un utilisateur à une entité (organisation).
+
+    POURQUOI CE MODÈLE EN PLUS DE `CustomUser.school`
+    --------------------------------------------------
+    `CustomUser.school` reste la SOURCE DE VÉRITÉ du rattachement principal
+    d'un utilisateur normal (admin, enseignant, parent, élève) : c'est ce
+    champ que lit le filtrage de queryset, et le conserver évite de casser
+    les règles d'isolation déjà éprouvées.
+
+    `OrganizationMembership` ajoute ce que le champ simple ne peut pas
+    exprimer :
+      - le Super Administrateur, rattaché à PLUSIEURS entités ;
+      - l'historique des affectations (qui a affecté qui, quand) ;
+      - un statut (active / suspended / revoked) sans supprimer la ligne ;
+      - un rôle porté par l'appartenance elle-même.
+
+    Les deux restent cohérents : `sync_primary_membership()` est appelé à la
+    sauvegarde de l'utilisateur pour refléter `user.school` dans une
+    appartenance principale.
+    """
+    STATUS_CHOICES = [
+        ("active", "Active"),
+        ("suspended", "Suspendue"),
+        ("revoked", "Révoquée"),
+    ]
+
+    user = models.ForeignKey(
+        "accounts.CustomUser", on_delete=models.CASCADE, related_name="memberships",
+    )
+    organization = models.ForeignKey(
+        School, on_delete=models.CASCADE, related_name="memberships",
+    )
+    role = models.CharField(
+        max_length=12,
+        help_text="Rôle porté par cette appartenance (mêmes valeurs que CustomUser.role).",
+    )
+    status = models.CharField(max_length=12, choices=STATUS_CHOICES, default="active")
+    is_primary = models.BooleanField(
+        default=False,
+        help_text="Appartenance principale : entité par défaut à la connexion.",
+    )
+    created_by = models.ForeignKey(
+        "accounts.CustomUser", on_delete=models.SET_NULL, null=True, blank=True,
+        related_name="memberships_created",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Appartenance à une entité"
+        verbose_name_plural = "Appartenances aux entités"
+        ordering = ["-is_primary", "-created_at"]
+        constraints = [
+            # Une seule appartenance par couple (utilisateur, entité) :
+            # empêche les affectations en double / incohérentes.
+            models.UniqueConstraint(
+                fields=["user", "organization"], name="uniq_membership_user_org",
+            ),
+            # Au plus UNE appartenance principale par utilisateur.
+            models.UniqueConstraint(
+                fields=["user"], condition=models.Q(is_primary=True),
+                name="uniq_primary_membership_per_user",
+            ),
+        ]
+
+    def __str__(self):
+        flag = " (principale)" if self.is_primary else ""
+        return f"{self.user_id} → {self.organization.name} [{self.role}]{flag}"
+
+    @property
+    def is_usable(self):
+        return self.status == "active" and self.organization.is_active
+
+
+class EntitySwitchLog(models.Model):
+    """
+    Journal d'audit des changements d'entité active du Super Administrateur.
+
+    Exigence de traçabilité : tout basculement entre FEBA et FEBA FHA est
+    enregistré (qui, depuis quelle entité, vers laquelle, quand, depuis
+    quelle IP).
+    """
+    user = models.ForeignKey(
+        "accounts.CustomUser", on_delete=models.CASCADE, related_name="entity_switches",
+    )
+    from_organization = models.ForeignKey(
+        School, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name="switches_from",
+    )
+    to_organization = models.ForeignKey(
+        School, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name="switches_to",
+        help_text="NULL = bascule vers le mode « Toutes les entités ».",
+    )
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Changement d'entité active"
+        verbose_name_plural = "Changements d'entité active"
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        src = self.from_organization.name if self.from_organization else "toutes"
+        dst = self.to_organization.name if self.to_organization else "toutes"
+        return f"{self.user_id} : {src} → {dst} ({self.created_at:%Y-%m-%d %H:%M})"

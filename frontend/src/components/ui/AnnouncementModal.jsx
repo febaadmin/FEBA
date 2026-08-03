@@ -37,7 +37,7 @@ export default function AnnouncementModal({ announcement, onClose }) {
 
         {/* Body */}
         <div className="flex-1 overflow-y-auto p-5">
-          <div className="text-slate-700 text-sm leading-relaxed whitespace-pre-wrap">
+          <div className="text-slate-700 text-sm leading-relaxed text-longform">
             {announcement.content}
           </div>
         </div>

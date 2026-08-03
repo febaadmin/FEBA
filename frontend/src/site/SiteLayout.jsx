@@ -13,18 +13,28 @@ import { useQuery } from "@tanstack/react-query";
 import { siteAPI } from "./siteApi";
 import { useAuthStore } from "../store/authStore";
 import { useBranding } from "../hooks/useBranding";
+import SiteLangSwitcher from "./components/SiteLangSwitcher";
+import { useSiteLang } from "./useSiteLang";
+import { NAV, UI } from "./siteTranslations";
+import { tr } from "./fhaContent";
 
-const NAV_LINKS = [
-  { to: "/", label: "Accueil", end: true },
-  { to: "/a-propos", label: "À propos" },
-  { to: "/academique", label: "Académique" },
-  { to: "/admissions", label: "Admissions" },
-  { to: "/vie-scolaire", label: "Vie scolaire" },
-  { to: "/feba-online", label: "FEBA Online" },
-  { to: "/actualites", label: "Actualités" },
-  { to: "/galerie", label: "Galerie" },
-  { to: "/contact", label: "Contact" },
-];
+/** Libellés du menu, traduits selon la langue active (P1). */
+function buildNavLinks(lang) {
+  const L = (entry) => tr(entry, lang);
+  return [
+  { to: "/", label: L(NAV.home), end: true },
+  { to: "/a-propos", label: L(NAV.about) },
+  { to: "/academique", label: L(NAV.academics) },
+  { to: "/admissions", label: L(NAV.admissions) },
+  { to: "/vie-scolaire", label: L(NAV.schoolLife) },
+  // Nom complet « FEBA French Heritage Academy » trop long pour la barre
+  // de navigation : le menu principal affiche l'abréviation officielle.
+  { to: "/feba-fha", label: L(NAV.fha) },
+  { to: "/actualites", label: L(NAV.news) },
+  { to: "/galerie", label: L(NAV.gallery) },
+  { to: "/contact", label: L(NAV.contact) },
+  ];
+}
 
 export function useSiteSettings() {
   const { data } = useQuery({
@@ -37,6 +47,11 @@ export function useSiteSettings() {
 }
 
 export default function SiteLayout() {
+  // P1 : la langue pilote désormais TOUT le site, pas seulement /feba-fha.
+  const { lang } = useSiteLang();
+  const L = (entry) => tr(entry, lang);
+  const NAV_LINKS = buildNavLinks(lang);
+
   const [menuOpen, setMenuOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
@@ -63,12 +78,12 @@ export default function SiteLayout() {
   const authButton = accessToken ? (
     <button onClick={goToSpace}
       className="px-4 py-2 rounded-lg border border-feba-gold/70 text-feba-gold text-sm font-semibold hover:bg-feba-gold hover:text-feba-navy transition-colors">
-      Mon espace
+      {L(UI.mySpace)}
     </button>
   ) : (
     <Link to="/login"
       className="px-4 py-2 rounded-lg border border-feba-gold/70 text-feba-gold text-sm font-semibold hover:bg-feba-gold hover:text-feba-navy transition-colors">
-      Connexion
+      {L(UI.login)}
     </Link>
   );
 
@@ -95,7 +110,7 @@ export default function SiteLayout() {
             </Link>
 
             {/* Navigation desktop */}
-            <nav className="hidden min-[1200px]:flex items-center gap-0.5" aria-label="Navigation principale">
+            <nav className="hidden min-[1200px]:flex items-center gap-0.5" aria-label={L(UI.mainNav)}>
               {NAV_LINKS.map((l) => (
                 <NavLink key={l.to} to={l.to} end={l.end}
                   className={({ isActive }) =>
@@ -108,10 +123,14 @@ export default function SiteLayout() {
             </nav>
 
             <div className="hidden min-[1200px]:flex items-center gap-2 shrink-0">
+              {/* P1 : sélecteur FR/EN GLOBAL — monté dans le layout, donc
+                  présent sur TOUTES les pages publiques et plus seulement
+                  sur /feba-fha. */}
+              <SiteLangSwitcher tone="dark" />
               {authButton}
               <Link to="/admissions"
                 className="px-3.5 py-2 rounded-lg bg-feba-gold text-feba-navy text-sm font-bold whitespace-nowrap hover:bg-feba-gold2 transition-colors">
-                Inscrire mon enfant
+                {L(UI.enrollChild)}
               </Link>
             </div>
 
@@ -121,7 +140,7 @@ export default function SiteLayout() {
               onClick={() => setMenuOpen((v) => !v)}
               aria-expanded={menuOpen}
               aria-controls="site-mobile-menu"
-              aria-label={menuOpen ? "Fermer le menu" : "Ouvrir le menu"}>
+              aria-label={menuOpen ? L(UI.closeMenu) : L(UI.openMenu)}>
               {menuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
             </button>
           </div>
@@ -129,7 +148,7 @@ export default function SiteLayout() {
 
         {/* Menu mobile */}
         {menuOpen && (
-          <nav id="site-mobile-menu" aria-label="Navigation mobile"
+          <nav id="site-mobile-menu" aria-label={L(UI.mobileNav)}
             className="min-[1200px]:hidden bg-feba-navy border-t border-white/10 px-4 pb-5 pt-2 space-y-1">
             {NAV_LINKS.map((l) => (
               <NavLink key={l.to} to={l.to} end={l.end}
@@ -140,11 +159,16 @@ export default function SiteLayout() {
                 {l.label}
               </NavLink>
             ))}
-            <div className="flex flex-col gap-2 pt-3">
+            {/* Le sélecteur doit rester atteignable sur mobile : la
+                majorité des familles consulte le site depuis un téléphone. */}
+            <div className="pt-3 pb-1">
+              <SiteLangSwitcher tone="dark" />
+            </div>
+            <div className="flex flex-col gap-2 pt-1">
               {authButton}
               <Link to="/admissions"
                 className="px-4 py-2.5 rounded-lg bg-feba-gold text-feba-navy text-sm font-bold text-center hover:bg-feba-gold2">
-                Inscrire mon enfant
+                {L(UI.enrollChild)}
               </Link>
             </div>
           </nav>
@@ -176,11 +200,11 @@ export default function SiteLayout() {
           </div>
 
           <div>
-            <h3 className="text-white font-semibold mb-4">Liens rapides</h3>
+            <h3 className="text-white font-semibold mb-4">{L(UI.quickLinks)}</h3>
             <ul className="space-y-2 text-sm">
-              {[["/a-propos", "À propos de FEBA"], ["/academique", "Programmes académiques"],
-                ["/admissions", "Admissions"], ["/feba-online", "FEBA Online"],
-                ["/galerie", "Galerie photos"], ["/login", "Espace utilisateurs"]].map(([to, label]) => (
+              {[["/a-propos", L(UI.aboutFeba)], ["/academique", L(UI.academicPrograms)],
+                ["/admissions", L(NAV.admissions)], ["/feba-fha", "FEBA French Heritage Academy"],
+                ["/galerie", L(UI.photoGallery)], ["/login", L(UI.userArea)]].map(([to, label]) => (
                 <li key={to}>
                   <Link to={to} className="hover:text-feba-gold transition-colors inline-flex items-center gap-1.5">
                     <ArrowRight className="w-3 h-3 text-feba-gold" /> {label}
@@ -227,7 +251,7 @@ export default function SiteLayout() {
           </div>
 
           <div>
-            <h3 className="text-white font-semibold mb-4">Nos niveaux</h3>
+            <h3 className="text-white font-semibold mb-4">{L(UI.ourLevels)}</h3>
             <ul className="grid grid-cols-2 gap-x-2 gap-y-2 text-sm">
               {["Garderie", "Maternelle 1", "Maternelle 2", "CI", "CP", "CE1", "CE2", "CM1", "CM2"].map((n) => (
                 <li key={n} className="flex items-center gap-1.5">
@@ -235,9 +259,9 @@ export default function SiteLayout() {
                 </li>
               ))}
             </ul>
-            <Link to="/feba-online"
+            <Link to="/feba-fha"
               className="mt-4 inline-block px-3 py-1.5 rounded-lg bg-feba-green text-white text-xs font-semibold hover:bg-feba-green2 transition-colors">
-              + FEBA Online (diaspora)
+              {L(UI.fhaDiaspora)}
             </Link>
           </div>
         </div>
@@ -245,8 +269,8 @@ export default function SiteLayout() {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-white/60">
             <p>© {new Date().getFullYear()} Faith & Excellence Bilingual Academy — Akpakpa, Cotonou, Bénin</p>
             <p className="flex gap-4">
-              <Link to="/mentions-legales" className="hover:text-feba-gold">Mentions légales</Link>
-              <Link to="/confidentialite" className="hover:text-feba-gold">Confidentialité</Link>
+              <Link to="/mentions-legales" className="hover:text-feba-gold">{L(UI.legalNotice)}</Link>
+              <Link to="/confidentialite" className="hover:text-feba-gold">{L(UI.privacy)}</Link>
             </p>
           </div>
         </div>

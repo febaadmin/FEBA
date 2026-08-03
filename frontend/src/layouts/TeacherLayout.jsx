@@ -1,4 +1,4 @@
-import { Outlet, NavLink, useNavigate } from "react-router-dom";
+import { NavLink, useNavigate } from "react-router-dom";
 import { LayoutDashboard, BookOpen, ClipboardList, Calendar, FileText, MessageSquare, User, LogOut, School, Menu, X, Bell, Megaphone, Video } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
 import { useBranding } from "../hooks/useBranding";
@@ -10,6 +10,9 @@ import logoFeba from "../assets/logo_feba.jpeg";
 import { motion, AnimatePresence } from "framer-motion";
 import { t } from "../i18n";
 import LanguageSwitcher from "../components/ui/LanguageSwitcher";
+import { useEntityContext } from "../hooks/useEntityContext";
+import EntitySwitcher from "../components/EntitySwitcher";
+import AcademyScopedOutlet from "../components/AcademyScopedOutlet";
 
 const nav = [
   { label: "Tableau de bord", icon: LayoutDashboard, to: "/teacher/dashboard" },
@@ -18,7 +21,9 @@ const nav = [
   { label: "Absences",         icon: Calendar,        to: "/teacher/attendance" },
   { label: "Devoirs",          icon: FileText,        to: "/teacher/homework" },
   { label: "Emploi du temps",  icon: Calendar,        to: "/teacher/schedule" },
-  { label: "Salles virtuelles", icon: Video,          to: "/teacher/virtual" },
+  // Fonctionnalité conditionnelle : réservée aux entités « académie en
+  // ligne » (FEBA FHA). Masquée pour FEBA — et refusée par l\'API.
+  { label: "Salles virtuelles", icon: Video,          to: "/teacher/virtual", feature: "virtual_classrooms" },
   { label: "Messages",         icon: MessageSquare,   to: "/teacher/messages" },
   { label: "Annonces",         icon: Megaphone,       to: "/teacher/announcements" },
   { label: "Mon profil",       icon: User,            to: "/teacher/profile" },
@@ -35,6 +40,17 @@ function useIsMobile() {
 }
 
 export default function TeacherLayout() {
+  // P4 : remonte tout le sous-arbre à chaque bascule d'académie —
+  // aucune donnée de l'académie précédente ne peut rester affichée,
+  // et aucun rechargement manuel du navigateur n'est nécessaire.
+
+  // Le menu ne montre que les fonctionnalités auxquelles l'entité de
+  // l'utilisateur a droit. Ce filtrage est un CONFORT D'AFFICHAGE : la
+  // protection réelle est côté serveur (permission HasEntityFeature),
+  // qui refuse l'endpoint même si l'URL est saisie à la main.
+  const { hasFeature } = useEntityContext();
+  const visibleNav = nav.filter((item) => !item.feature || hasFeature(item.feature));
+
   const { user, logout } = useAuth();
   const { logoSrc } = useBranding();
   const isMobile = useIsMobile();
@@ -89,7 +105,7 @@ export default function TeacherLayout() {
               )}
             </div>
             <nav className="flex-1 p-3 overflow-y-auto space-y-0.5">
-              {nav.map(item => (
+              {visibleNav.map(item => (
                 <NavLink key={item.to} to={item.to} onClick={closeSidebarOnMobile}
                   className={({ isActive }) => clsx("flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm transition-all",
                     isActive ? "text-white bg-emerald-600/70 shadow-lg" : "text-slate-400 hover:text-white hover:bg-white/10")}>
@@ -163,7 +179,7 @@ export default function TeacherLayout() {
             </div>
           </div>
         </header>
-        <main className="flex-1 overflow-y-auto p-3 sm:p-6"><Outlet /></main>
+        <main className="flex-1 overflow-y-auto p-3 sm:p-6"><AcademyScopedOutlet /></main>
       </div>
     </div>
   );

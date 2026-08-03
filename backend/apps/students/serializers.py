@@ -12,6 +12,7 @@ Corrections :
 import logging
 from rest_framework import serializers
 from .models import Student, StudentEnrollment
+from apps.core.academy_serializers import ACADEMY_FIELDS, AcademyMetadataMixin
 
 logger = logging.getLogger("apps.students")
 
@@ -77,7 +78,10 @@ class StudentEnrollmentSerializer(serializers.ModelSerializer):
         return attrs
 
 
-class StudentSerializer(serializers.ModelSerializer):
+class StudentSerializer(AcademyMetadataMixin, serializers.ModelSerializer):
+    # P3 : chaque objet expose son académie, sans quoi la vue
+    # « Toutes les Académies » ne peut pas étiqueter ses lignes.
+    academy_source = "school"
     full_name        = serializers.SerializerMethodField()
     class_name       = serializers.SerializerMethodField()
     class_level      = serializers.SerializerMethodField()
@@ -98,7 +102,7 @@ class StudentSerializer(serializers.ModelSerializer):
             'school_year', 'school_year_name',
             'is_active', 'exit_reason', 'exit_date', 'exit_notes',
             'enrollment_date', 'created_at', 'enrollments', 'parent_user_id',
-        ]
+        ] + ACADEMY_FIELDS
         read_only_fields = ['matricule', 'school']
         extra_kwargs = {
             'first_name': {'error_messages': {'required': 'Le prénom est obligatoire.'}},

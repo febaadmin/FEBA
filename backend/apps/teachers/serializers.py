@@ -21,9 +21,13 @@ from apps.accounts.models import CustomUser
 from apps.subjects.models import Subject
 from apps.classes.models import Class
 from .models import Teacher
+from apps.core.academy_serializers import ACADEMY_FIELDS, AcademyMetadataMixin
 
 
-class TeacherSerializer(serializers.ModelSerializer):
+class TeacherSerializer(AcademyMetadataMixin, serializers.ModelSerializer):
+    #: Chemin ORM vers l'académie propriétaire de l'objet.
+    academy_source = "user.school"
+
     # Read-only display fields
     user_id         = serializers.IntegerField(source="user.id",         read_only=True)
     user_first_name = serializers.CharField(source="user.first_name",    read_only=True)
@@ -78,7 +82,7 @@ class TeacherSerializer(serializers.ModelSerializer):
             "subjects_detail",
             "class_ids",
             "classes_detail",
-        ]
+        ] + ACADEMY_FIELDS
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

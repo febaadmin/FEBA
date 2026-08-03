@@ -3,9 +3,11 @@ from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.views import APIView
 
 from feba_project.bulk_delete import BulkDeleteMixin
 from apps.accounts.permissions import IsTeacherOrAbove
+from apps.core.features import HasEntityFeature
 from apps.core.tenancy import get_request_school, IsSameTenant
 
 from .models import VirtualRoom, VirtualRoomAttendance
@@ -26,9 +28,14 @@ class VirtualRoomViewSet(BulkDeleteMixin, viewsets.ModelViewSet):
     Création / modification / suppression : enseignant et au-dessus.
     """
     serializer_class = VirtualRoomSerializer
-    permission_classes = [IsAuthenticated, IsSameTenant]
+    permission_classes = [IsAuthenticated, HasEntityFeature, IsSameTenant]
     search_fields = ["name", "description", "room_code"]
     tenant_lookup = "school"
+    # Fonctionnalité conditionnelle : FEBA (école présentielle) n'a pas de
+    # salles virtuelles — l'API REFUSE, elle ne se contente pas d'un menu
+    # masqué côté React. FEBA French Heritage Academy, académie en ligne,
+    # les a activées.
+    required_feature = "virtual_classrooms"
 
     def get_queryset(self):
         user = self.request.user
@@ -83,9 +90,12 @@ class VirtualRoomViewSet(BulkDeleteMixin, viewsets.ModelViewSet):
         return qs.filter(general)
 
     def get_permissions(self):
+        # `HasEntityFeature` est présent sur TOUTES les actions, y compris
+        # les actions d'écriture : sans lui, un enseignant FEBA pourrait
+        # créer une salle virtuelle que son entité n'a pas le droit d'avoir.
         if self.action in ["create", "update", "partial_update", "destroy", "bulk_delete", "end_meeting"]:
-            return [IsAuthenticated(), IsTeacherOrAbove()]
-        return [IsAuthenticated(), IsSameTenant()]
+            return [IsAuthenticated(), HasEntityFeature(), IsTeacherOrAbove()]
+        return [IsAuthenticated(), HasEntityFeature(), IsSameTenant()]
 
     def perform_create(self, serializer):
         from apps.schools.models import SchoolYear
@@ -103,13 +113,39 @@ class VirtualRoomViewSet(BulkDeleteMixin, viewsets.ModelViewSet):
         connexion Jitsi (domaine + nom de salle). Le client ouvre
         ensuite l'iframe Jitsi avec ces informations.
         """
-        from .services import build_jitsi_jwt
+        from .services import (
+            JitsiAccessDenied, JitsiNotConfigured, assert_can_join, build_jitsi_jwt,
+        )
 
         room = self.get_object()
-        if not room.is_active or room.status == "cancelled":
+
+        # 1. Droit de rejoindre : académie, fonctionnalité, groupe, état.
+        try:
+            assert_can_join(request.user, room)
+        except JitsiAccessDenied as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_403_FORBIDDEN)
+
+        # 2. Infrastructure prête ? Un défaut de configuration renvoie une
+        #    erreur explicite — JAMAIS un repli vers une instance publique.
+        try:
+            jwt_token = build_jitsi_jwt(
+                request.user, room.room_code,
+                moderator=request.user.role_level >= 50,
+                academy=room.school.code if room.school else "",
+                group=room.class_obj.name if room.class_obj else "",
+            )
+        except JitsiNotConfigured as exc:
             return Response(
-                {"detail": "Cette salle n'est plus disponible."},
-                status=status.HTTP_400_BAD_REQUEST,
+                {
+                    "detail": (
+                        "La visioconférence est momentanément indisponible : "
+                        "l'instance FEBA n'est pas joignable. Contactez le "
+                        "support technique."
+                    ),
+                    "infrastructure_error": str(exc),
+                    "code": "jitsi_not_configured",
+                },
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
 
         # FIX v35 : présence liée à l'INSCRIPTION ANNUELLE pour les élèves
@@ -126,13 +162,9 @@ class VirtualRoomViewSet(BulkDeleteMixin, viewsets.ModelViewSet):
             room.save(update_fields=["status"])
 
         data = self.get_serializer(room).data
-        # FIX v35 : jeton JWT signé par le backend (instance auto-hébergée) —
-        # seuls les utilisateurs autorisés par FEBA peuvent ouvrir la salle.
-        # Enseignants/admins = modérateurs.
-        data["jwt"] = build_jitsi_jwt(
-            request.user, room.room_code,
-            moderator=request.user.role_level >= 50,
-        )
+        # Jeton signé par le backend, portant l'académie et le groupe.
+        # Enseignants et administrateurs sont modérateurs.
+        data["jwt"] = jwt_token
         data["attendance_id"] = attendance.id
         return Response(data)
 
@@ -174,3 +206,27 @@ class VirtualRoomViewSet(BulkDeleteMixin, viewsets.ModelViewSet):
             )
         qs = room.attendances.select_related("user").order_by("-joined_at")[:200]
         return Response(VirtualRoomAttendanceSerializer(qs, many=True).data)
+
+
+class JitsiHealthView(APIView):
+    """
+    GET /api/virtual-rooms/health/
+
+    État de l'infrastructure de visioconférence, destiné à l'écran
+    d'administration : « operational », « degraded » ou « unavailable ».
+
+    Réservé aux enseignants et au-dessus : l'état d'infrastructure ne
+    regarde ni les élèves ni les parents.
+    """
+    permission_classes = [IsAuthenticated, IsTeacherOrAbove]
+
+    def get(self, request):
+        from .services import jitsi_health
+        payload = jitsi_health()
+
+        # Le statut HTTP reflète l'état : un moniteur externe peut s'y fier.
+        http_status = (
+            status.HTTP_200_OK if payload["status"] == "operational"
+            else status.HTTP_503_SERVICE_UNAVAILABLE
+        )
+        return Response(payload, status=http_status)

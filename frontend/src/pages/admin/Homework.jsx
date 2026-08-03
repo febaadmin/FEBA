@@ -11,6 +11,7 @@ import SearchableSelect from "../../components/ui/SearchableSelect";
 import ConfirmDialog from "../../components/ui/ConfirmDialog";
 import { extractApiError } from "../../utils/errors";
 import { t } from "../../i18n";
+import { useSchoolYearScope } from "../../hooks/useSchoolYearScope";
 
 export default function AdminHomework() {
   const qc = useQueryClient();
@@ -31,7 +32,9 @@ export default function AdminHomework() {
   const classes = classData?.data?.results || classData?.data || [];
   const subjects = subjData?.data?.results || subjData?.data || [];
   const years = yearsData?.data?.results || yearsData?.data || [];
-  const currentYear = years.find(y => y.is_current);
+  // P2 : en mode « Toutes les Académies », aucune année ne peut
+  // représenter les deux académies — voir useSchoolYearScope.
+  const { currentYear: currentYear, yearLabel } = useSchoolYearScope(years);
 
   const createMut = useMutation({
     mutationFn: (d) => {
@@ -121,7 +124,7 @@ export default function AdminHomework() {
             </div>
             <div className="space-y-3 text-sm">
               <div><span className="text-slate-500 font-medium">{t("Titre")}</span><p className="mt-0.5 text-slate-800 font-semibold">{viewItem.title}</p></div>
-              <div><span className="text-slate-500 font-medium">{t("Description")}</span><p className="mt-0.5 text-slate-700 whitespace-pre-wrap">{viewItem.description || "—"}</p></div>
+              <div><span className="text-slate-500 font-medium">{t("Description")}</span><p className="mt-0.5 text-slate-700 text-longform">{viewItem.description || "—"}</p></div>
               <div className="grid grid-cols-2 gap-3">
                 <div><span className="text-slate-500 font-medium">{t("Classe")}</span><p className="mt-0.5">{viewItem.class_name || "—"}</p></div>
                 <div><span className="text-slate-500 font-medium">{t("Matière")}</span><p className="mt-0.5">{viewItem.subject_name || "—"}</p></div>

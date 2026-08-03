@@ -19,6 +19,7 @@ import ConfirmDialog from "../../components/ui/ConfirmDialog";
 import SearchableSelect from "../../components/ui/SearchableSelect";
 import { extractApiError } from "../../utils/errors";
 import { t } from "../../i18n";
+import { useSchoolYearScope } from "../../hooks/useSchoolYearScope";
 
 /* ── MultiStudentSelect sans mutation (ne référence plus qc) ─────────────── */
 function MultiStudentSelect({ options, value = [], onChange, placeholder }) {
@@ -56,7 +57,9 @@ export default function AdminParents() {
   /* FIX: import statique schoolsAPI (plus de dynamic import) */
   const { data: yearsData } = useQuery({ queryKey: ["years"], queryFn: () => schoolsAPI.years() });
   const years       = yearsData?.data?.results || yearsData?.data || [];
-  const currentYear = years.find(y => y.is_current);
+  // P2 : en mode « Toutes les Académies », aucune année ne peut
+  // représenter les deux académies — voir useSchoolYearScope.
+  const { currentYear: currentYear, yearLabel } = useSchoolYearScope(years);
   const activeYearId = filterYear || currentYear?.id || "";
 
   const { data, isLoading } = useQuery({
@@ -170,7 +173,7 @@ export default function AdminParents() {
           {years.map(y => (
             <button key={y.id} onClick={() => setFilterYear(String(y.id))}
               className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${filterYear === String(y.id) ? "bg-primary text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}>
-              {y.name}{y.is_current ? " ★" : ""}
+              {yearLabel(y)}{y.is_current ? " ★" : ""}
             </button>
           ))}
         </div>

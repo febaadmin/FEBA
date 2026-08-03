@@ -11,6 +11,7 @@ import html
 import logging
 logger = logging.getLogger("apps")
 import os
+from decimal import Decimal
 from io import BytesIO
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
@@ -22,58 +23,83 @@ from reportlab.lib.units import cm
 from reportlab.lib import colors
 from django.core.files.base import ContentFile
 from django.utils import timezone
-from feba_project.branding import SCHOOL_GROUP_NAME
 
-# V8 — cachet officiel du SECRÉTARIAT, réservé aux REÇUS.
-# (Le cachet « LA DIRECTION » est réservé aux bulletins — ne pas les
-# intervertir : ce sont deux autorités distinctes de l'établissement.)
-SECRETARIAT_STAMP_PATH = os.path.normpath(os.path.join(
-    os.path.dirname(__file__), "..", "..",
-    "feba_project", "static_files", "cachet_secretariat.png",
-))
-
-STATIC_LOGO_PATH = os.path.join(
-    os.path.dirname(__file__), '..', '..', 'feba_project', 'static_files', 'logo_feba.jpeg'
-)
+from apps.schools.branding import branding_for
 
 
-def _get_logo_and_school(payment):
-    try:
-        from apps.schools.models import SchoolBranding, School
-        school = None
-        if payment.school_year and payment.school_year.school_id:
-            school = payment.school_year.school
-        if not school:
-            school = School.objects.first()
-        if school:
-            path = SchoolBranding.get_active_logo_path(school)
-            if path and os.path.exists(path):
-                return path, school
-        return None, school
-    except Exception as exc:
-        logger.warning("Erreur non bloquante ignorée : %s", exc, exc_info=True)
-    return None, None
+#: Libellés en toutes lettres, par devise. Ils ne sont PAS déduits du
+#: symbole : « $ » sert à une dizaine de monnaies, et écrire « DOLLARS »
+#: sur un reçu libellé en une autre serait une erreur comptable.
+CURRENCY_WORDS = {
+    "XOF": {"lang": "fr", "unit": "FRANCS CFA", "sub": ""},
+    "USD": {"lang": "en", "unit": "DOLLARS", "sub": "CENTS"},
+}
 
 
-def _school_info(school):
-    if not school:
-        return "FAITH & EXCELLENCE BILINGUAL ACADEMY", "Cotonou, Bénin"
-    name = school.name or "FAITH & EXCELLENCE BILINGUAL ACADEMY"
-    parts = []
-    if school.address: parts.append(school.address)
-    if school.city:    parts.append(school.city)
-    if school.country: parts.append(school.country)
-    if school.phone:   parts.append(f"Tél: {school.phone}")
-    if school.email:   parts.append(school.email)
-    return name, " | ".join(parts) if parts else "Cotonou, Bénin"
+def amount_in_words(amount, currency_code="XOF"):
+    """
+    Montant en toutes lettres, dans la devise réellement encaissée.
 
+    Le montant en lettres est ce qui fait foi en cas de litige sur un reçu :
+    écrire « CENT VINGT-SIX FRANCS CFA » sous un paiement de 125,50 $ n'est
+    pas un défaut d'affichage, c'est un faux document. Les décimales sont
+    donc énoncées quand la devise en a.
+    """
+    words = CURRENCY_WORDS.get((currency_code or "").upper())
+    if words is None:
+        # Devise inconnue : on n'invente pas de libellé. Le code ISO est
+        # exact, là où « FRANCS CFA » par défaut serait faux.
+        return f"{amount} {(currency_code or '').upper()}".strip()
 
-def amount_in_words(amount):
+    # `Decimal(str(...))` et non `int(amount)` : le montant arrive parfois
+    # sous forme de chaîne (« 125.50 »), et `int("125.50")` échoue.
+    value = Decimal(str(amount))
+    whole = int(value)
+    cents = int((abs(value) - abs(Decimal(whole))).quantize(Decimal("0.01")) * 100)
+
     try:
         from num2words import num2words
-        return num2words(int(amount), lang="fr").upper() + " FRANCS CFA"
+        text = num2words(whole, lang=words["lang"]).upper()
+        if cents and words["sub"]:
+            joiner = " ET " if words["lang"] == "fr" else " AND "
+            return (f"{text} {words['unit']}{joiner}"
+                    f"{num2words(cents, lang=words['lang']).upper()} {words['sub']}")
+        return f"{text} {words['unit']}"
     except Exception:
-        return f"{int(amount)} FRANCS CFA"
+        if cents and words["sub"]:
+            return f"{whole} {words['unit']} {cents} {words['sub']}"
+        return f"{whole} {words['unit']}"
+
+
+#: Caractères que les polices Type1 standard de ReportLab (Helvetica &
+#: consorts) n'ont pas, et leur équivalent le plus proche qu'elles ont.
+#:
+#: L'espace fine insécable U+202F est la bonne typographie française pour
+#: séparer les milliers — et c'est ce que le formateur de devise produit.
+#: Helvetica ne la connaît pas : elle sortait en carré noir, « 35■000 FCFA ».
+#: L'espace insécable U+00A0 garde la propriété qui compte (le nombre ne se
+#: coupe pas en fin de ligne) et existe, elle, dans la police.
+PDF_FONT_SUBSTITUTIONS = {
+    "\u202f": "\u00a0",   # espace fine insécable → espace insécable
+    "\u2009": "\u00a0",   # espace fine            → espace insécable
+    "\u2011": "-",        # trait d'union insécable → trait d'union
+}
+
+
+def _pdf_safe(text):
+    """
+    Remplace les caractères absents des polices standard du PDF.
+
+    Sans ce passage, un caractère manquant ne provoque aucune erreur : il
+    est dessiné en rectangle plein. Le reçu part à l'impression avec un
+    montant illisible, et rien ne l'a signalé.
+    """
+    if text is None:
+        return ""
+    result = str(text)
+    for source, target in PDF_FONT_SUBSTITUTIONS.items():
+        result = result.replace(source, target)
+    return result
 
 
 def _para_text(text):
@@ -87,22 +113,25 @@ def _para_text(text):
     """
     if text is None:
         return ""
-    escaped = html.escape(str(text), quote=False)
+    escaped = html.escape(_pdf_safe(text), quote=False)
     return escaped.replace("\r\n", "\n").replace("\r", "\n").replace("\n", "<br/>")
 
 
 def generate_receipt(payment):
-    logo_path, school = _get_logo_and_school(payment)
-    school_name, school_address = _school_info(school)
-    if not logo_path:
-        static = os.path.normpath(STATIC_LOGO_PATH)
-        if os.path.exists(static):
-            logo_path = static
+    # P0 — TOUTE l'identité vient de l'académie du paiement, par une source
+    # unique. Aucun nom, logo, couleur, adresse ni cachet n'est écrit ici :
+    # un reçu de FEBA French Heritage Academy portait l'en-tête, la ville et
+    # les couleurs de l'école de Cotonou dès que l'un de ces éléments était
+    # codé en dur.
+    brand = branding_for(payment)
+    logo_path = brand.document_logo
+    school_name = brand.display_name
+    school_address = brand.address_line
 
-    primary = colors.HexColor("#1E3A6E")
-    gold    = colors.HexColor("#C9A227")
-    green   = colors.HexColor("#10B981")
-    light   = colors.HexColor("#EEF3FF")
+    primary = colors.HexColor(brand.primary_color)
+    gold    = colors.HexColor(brand.accent_color)
+    green   = colors.HexColor("#10B981")   # sémantique (validé), pas identitaire
+    light   = colors.HexColor(brand.background_color)
 
     buffer = BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=A4,
@@ -126,9 +155,12 @@ def generate_receipt(payment):
             story.append(Spacer(1, 0.2*cm))
         except Exception as exc:
             logger.warning("Erreur non bloquante ignorée : %s", exc, exc_info=True)
-    # V7 : ligne « groupe » (GROUPE ÉDUCATIF FEBA) au-dessus du nom officiel.
-    story.append(P(SCHOOL_GROUP_NAME, fontSize=10, fontName="Helvetica-Bold",
-                   alignment=1, textColor=gold, spaceAfter=1))
+    # V7 : ligne « groupe » au-dessus du nom officiel. P0 — le libellé
+    # vient de l'identité de l'académie ; vide, la ligne disparaît au lieu
+    # d'afficher le groupe d'une autre académie.
+    if brand.group_name:
+        story.append(P(brand.group_name, fontSize=10, fontName="Helvetica-Bold",
+                       alignment=1, textColor=gold, spaceAfter=1))
     story.append(P(school_name, fontSize=16, fontName="Helvetica-Bold",
                    alignment=1, textColor=primary, spaceAfter=2))
     story.append(P(school_address, fontSize=10, alignment=1,
@@ -200,9 +232,13 @@ def generate_receipt(payment):
                    fontSize=10, fontName="Helvetica-Bold", textColor=primary, spaceAfter=4))
     pay_data = [
         ["Type de paiement / Payment Type:", payment.get_payment_type_display()],
-        ["Montant (chiffres) / Amount:", f"{payment.amount:,.0f} FCFA"],
+        # V8 — Le montant est rendu par la devise de l'académie. L'ancien
+        # « f"{payment.amount:,.0f} FCFA" » écrivait « 126 FCFA » sur un reçu
+        # de 125,50 $ : mauvaise monnaie ET décimales perdues.
+        ["Montant (chiffres) / Amount:", _pdf_safe(payment.formatted_amount)],
         ["Montant (lettres) / In Words:",
-         P(amount_in_words(payment.amount), fontSize=9, leading=11, wordWrap="CJK")],
+         P(amount_in_words(payment.amount, payment.currency),
+           fontSize=9, leading=11, wordWrap="CJK")],
         ["Mode de paiement / Method:", payment.get_payment_method_display()],
         ["Reçu par / Received by:", payment.received_by.get_full_name() if payment.received_by else "—"],
         ["Statut / Status:", "Confirmé ✓" if confirmed else "En attente"],
@@ -239,9 +275,9 @@ def generate_receipt(payment):
     story.append(Spacer(1, 0.35*cm))
 
     stamp_cell = ""
-    if os.path.exists(SECRETARIAT_STAMP_PATH):
+    if brand.secretary_stamp:
         try:
-            stamp = Image(SECRETARIAT_STAMP_PATH, width=3.0*cm, height=3.0*cm)  # ratio 1:1 préservé
+            stamp = Image(brand.secretary_stamp, width=3.0*cm, height=3.0*cm)  # ratio 1:1 préservé
             stamp.hAlign = "CENTER"
             stamp_cell = stamp
         except Exception as exc:
@@ -260,7 +296,12 @@ def generate_receipt(payment):
         [[P("Le Secrétariat", fontSize=10, fontName="Helvetica-Bold",
             alignment=1, textColor=primary)],
          [stamp_cell],
-         [P(f"Cotonou, le {timezone.now().strftime('%d/%m/%Y')}",
+         # V8 — La ville vient de l'académie : « Cotonou » codé en dur
+         # apparaissait sur les reçus de FEBA French Heritage Academy, qui
+         # n'a pas de campus à Cotonou. P0 — plus aucun repli textuel : une
+         # académie sans ville affiche la date seule.
+         [P((f"{brand.location_line}, le " if brand.location_line else "Le ")
+            + timezone.now().strftime('%d/%m/%Y'),
             fontSize=8, alignment=1, textColor=colors.grey)]],
         colWidths=[6.2*cm], rowHeights=[0.6*cm, 3.3*cm, 0.6*cm],
     )
@@ -281,11 +322,12 @@ def generate_receipt(payment):
     story.append(bottom_tbl)
     story.append(Spacer(1, 0.4*cm))
     story.append(HRFlowable(width="100%", thickness=1, color=colors.lightgrey))
-    story.append(P(
-        f"Généré le {timezone.now().strftime('%d/%m/%Y à %H:%M')} | "
-        f"Réf: {payment.reference_number} | Système FEBA School Management",
-        fontSize=7, alignment=1, textColor=colors.grey, spaceBefore=3,
-    ))
+    footer = (f"Généré le {timezone.now().strftime('%d/%m/%Y à %H:%M')} | "
+              f"Réf: {payment.reference_number}")
+    if brand.footer_text:
+        footer += f" | {brand.footer_text}"
+    story.append(P(footer, fontSize=7, alignment=1,
+                   textColor=colors.grey, spaceBefore=3))
 
     doc.build(story)
     pdf_content = buffer.getvalue()

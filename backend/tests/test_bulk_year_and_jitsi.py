@@ -87,7 +87,9 @@ class BulkRemoveFromYearTests(TestCase):
 @override_settings(JITSI_APP_ID="feba", JITSI_APP_SECRET="s" * 32, JITSI_DOMAIN="meet.example.bj")
 class JitsiJwtTests(TestCase):
     def setUp(self):
-        self.school = School.objects.create(name="Ecole J", address="X")
+        # Salle virtuelle + JWT Jitsi = fonctionnalité des académies en
+        # ligne (FEBA FHA). Une entité `campus` se voit refuser l'accès.
+        self.school = School.objects.create(name="Ecole J", address="X", entity_type="online")
         self.year = SchoolYear.objects.create(
             school=self.school, name="2025-2026", is_current=True,
             start_date="2025-10-01", end_date="2026-07-31",
@@ -140,6 +142,51 @@ class JitsiJwtTests(TestCase):
         self.assertIsNotNone(att.left_at)
         self.assertIsNotNone(att.duration_seconds)
 
-    def test_no_jwt_when_secret_not_configured(self):
+    def test_missing_secret_raises_instead_of_falling_back(self):
+        """
+        V5 — CHANGEMENT DE CONTRAT VOLONTAIRE.
+
+        L'ancienne version renvoyait None quand le secret manquait, et le
+        client rejoignait alors meet.jit.si SANS jeton : une classe
+        d'enfants basculait sur un serveur public non authentifié à cause
+        d'une simple variable oubliée.
+
+        Désormais une configuration incomplète LÈVE une exception, que la
+        vue transforme en 503 explicite. Aucun repli public n'existe plus.
+        """
+        from apps.virtualclass.services import JitsiNotConfigured
+
         with override_settings(JITSI_APP_SECRET=""):
-            self.assertIsNone(build_jitsi_jwt(self.teacher_u, "room-x"))
+            with self.assertRaises(JitsiNotConfigured):
+                build_jitsi_jwt(self.teacher_u, "room-x")
+
+    def test_public_domain_is_rejected(self):
+        """Un domaine public configuré par erreur doit être refusé."""
+        from apps.virtualclass.services import JitsiNotConfigured
+
+        for public in ("meet.jit.si", "8x8.vc"):
+            with override_settings(JITSI_DOMAIN=public):
+                with self.assertRaises(JitsiNotConfigured):
+                    build_jitsi_jwt(self.teacher_u, "room-x")
+
+    def test_jwt_carries_academy_and_group(self):
+        """Le jeton porte l'académie et le groupe, et nomme la salle."""
+        import jwt as pyjwt
+
+        token = build_jitsi_jwt(
+            self.teacher_u, "room-x", moderator=True,
+            academy="FEBA_FHA", group="Junior Roots",
+        )
+        payload = pyjwt.decode(token, "s" * 32, algorithms=["HS256"], audience="jitsi")
+        self.assertEqual(payload["room"], "room-x")
+        self.assertEqual(payload["context"]["feba"]["academy"], "FEBA_FHA")
+        self.assertEqual(payload["context"]["feba"]["group"], "Junior Roots")
+        self.assertTrue(payload["moderator"])
+
+    def test_jwt_lifetime_is_short(self):
+        """Un jeton intercepté ne doit pas ouvrir un accès permanent."""
+        import jwt as pyjwt
+
+        token = build_jitsi_jwt(self.teacher_u, "room-x")
+        payload = pyjwt.decode(token, "s" * 32, algorithms=["HS256"], audience="jitsi")
+        self.assertLessEqual(payload["exp"] - payload["iat"], 3600)

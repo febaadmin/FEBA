@@ -29,6 +29,8 @@ import { extractApiError } from "../../utils/errors";
 import PageHeader from "../../components/ui/PageHeader";
 import SearchableSelect from "../../components/ui/SearchableSelect";
 import { t, dateLocale } from "../../i18n";
+import { useSchoolYearScope } from "../../hooks/useSchoolYearScope";
+import { useMoney } from "../../hooks/useMoney";
 
 /* ── Promotion status labels ──────────────────────────────────────────────── */
 const PROMOTION_STATUSES = [
@@ -133,6 +135,7 @@ function ResultBanner({ result, onClear }) {
 /* ═══════════════════════════════════════════════════════════════════════════ */
 
 export default function AdminEnrollments() {
+  const money = useMoney();
   const qc = useQueryClient();
 
   // ── Données de référence ─────────────────────────────────────────────────
@@ -144,7 +147,9 @@ export default function AdminEnrollments() {
   const classes  = classesData?.data?.results || classesData?.data || [];
   const students = studentsData?.data?.results || studentsData?.data || [];
 
-  const activeYear = years.find(y => y.is_current);
+  // P2 : en mode « Toutes les Académies », aucune année ne peut
+  // représenter les deux académies — voir useSchoolYearScope.
+  const { currentYear: activeYear, yearLabel } = useSchoolYearScope(years);
 
   // ── Onglets ──────────────────────────────────────────────────────────────
   const [tab, setTab] = useState("bulk-year");
@@ -580,7 +585,7 @@ export default function AdminEnrollments() {
                         </span>
                       )}
                       {d.reason && (
-                        <span className="text-xs text-slate-400 italic">{d.reason}</span>
+                        <span className="text-xs text-slate-400 italic text-wrapsafe">{d.reason}</span>
                       )}
                     </div>
                     <button
@@ -674,7 +679,7 @@ export default function AdminEnrollments() {
                       <div><p className="text-slate-400">{t("Notes")}</p><p className="font-semibold text-slate-800">{e.stats.grades_count}</p></div>
                       <div><p className="text-slate-400">{t("Absences")}</p><p className="font-semibold text-slate-800">{e.stats.absences}</p></div>
                       <div><p className="text-slate-400">{t("Retards")}</p><p className="font-semibold text-slate-800">{e.stats.lates}</p></div>
-                      <div><p className="text-slate-400">{t("Paiements")}</p><p className="font-semibold text-slate-800">{e.stats.payments_total ? `${e.stats.payments_total.toLocaleString(dateLocale())} FCFA` : "0 FCFA"}</p></div>
+                      <div><p className="text-slate-400">{t("Paiements")}</p><p className="font-semibold text-slate-800">{money.format(e.stats.payments_total || 0)}</p></div>
                       <div><p className="text-slate-400">{t("Bulletins")}</p><p className="font-semibold text-slate-800">{e.stats.bulletins_count}</p></div>
                       <div><p className="text-slate-400">{t("Devoirs")}</p><p className="font-semibold text-slate-800">{e.stats.homework_count}</p></div>
                     </div>

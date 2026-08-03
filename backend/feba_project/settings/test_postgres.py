@@ -45,3 +45,14 @@ CHANNEL_LAYERS = {
 }
 
 PASSWORD_HASHERS = ["django.contrib.auth.hashers.MD5PasswordHasher"]
+
+# Ces réglages servent aussi à la VÉRIFICATION MANUELLE en navigateur
+# (backend lancé avec ce module + frontend Vite). Sans origine autorisée,
+# chaque appel API était bloqué par la politique CORS et l'écran de
+# connexion échouait silencieusement — alors que l'API elle-même
+# répondait correctement en ligne de commande.
+CORS_ALLOWED_ORIGINS = config(
+    "CORS_ALLOWED_ORIGINS",
+    default="http://localhost:5173,http://127.0.0.1:5173,http://localhost:5174",
+).split(",")
+CORS_ALLOW_CREDENTIALS = True

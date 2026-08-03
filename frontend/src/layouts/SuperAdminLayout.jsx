@@ -1,11 +1,11 @@
-import { Outlet, NavLink } from "react-router-dom";
+import { NavLink } from "react-router-dom";
 import { useState, useEffect } from "react";
-import {
+import { FileBarChart,
   LayoutDashboard, Users, Shield, GraduationCap, UserCheck,
   Users2, BookOpen, DollarSign, Megaphone, Settings, LogOut,
   Menu, X, MessageSquare, Layers, ClipboardList, FileText,
   Calendar, UserCog, FolderOpen, Image, ClipboardCheck, Video, Globe,
-  AlertTriangle } from "lucide-react";
+  AlertTriangle, CreditCard, Award } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
 import { useBranding } from "../hooks/useBranding";
 import { clsx } from "clsx";
@@ -15,6 +15,8 @@ import logoFeba from "../assets/logo_feba.jpeg";
 import { useAuthStore } from "../store/authStore";
 import { t } from "../i18n";
 import LanguageSwitcher from "../components/ui/LanguageSwitcher";
+import EntitySwitcher from "../components/EntitySwitcher";
+import AcademyScopedOutlet from "../components/AcademyScopedOutlet";
 
 const nav = [
   { section: "SuperAdmin", items: [
@@ -35,6 +37,8 @@ const nav = [
     { label: "Notes",             icon: ClipboardList, to: "/superadmin/grades" },
     { label: "Bulletins",         icon: FileText,      to: "/superadmin/bulletins" },
     { label: "Paiements",         icon: DollarSign,    to: "/superadmin/payments" },
+  { label: "Transactions carte", icon: CreditCard, to: "/superadmin/card-transactions" },
+  { label: "Documents officiels", icon: Award, to: "/superadmin/official-documents" },
     { label: "Absences",          icon: Calendar,      to: "/superadmin/attendance" },
     { label: "Devoirs",           icon: BookOpen,      to: "/superadmin/homework" },
     { label: "Emploi du temps",   icon: Calendar,      to: "/superadmin/schedule" },
@@ -42,7 +46,9 @@ const nav = [
     { label: "Annonces",          icon: Megaphone,     to: "/superadmin/announcements" },
     { label: "Paramètres",        icon: Settings,      to: "/superadmin/settings" },
     { label: "Fichiers",           icon: FolderOpen,    to: "/superadmin/user-files" },
-    { label: "Site vitrine",       icon: Globe,         to: "/superadmin/website" },
+    { label: "Admissions FEBA FHA", icon: ClipboardList, to: "/superadmin/fha-admissions", feature: "placement_tests" },
+    { label: "Rapports mensuels", icon: FileBarChart, to: "/superadmin/monthly-reports", feature: "placement_tests" },
+  { label: "Site vitrine",       icon: Globe,         to: "/superadmin/website" },
     { label: "Logo & Branding",    icon: Image,         to: "/superadmin/branding" },
   ]},
 ];
@@ -58,6 +64,10 @@ function useIsMobile() {
 }
 
 export default function SuperAdminLayout() {
+  // P4 : remonte tout le sous-arbre à chaque bascule d'académie —
+  // aucune donnée de l'académie précédente ne peut rester affichée,
+  // et aucun rechargement manuel du navigateur n'est nécessaire.
+
   const isMobile = useIsMobile();
   const [open, setOpen] = useState(!isMobile);
   const { user, logout } = useAuth();
@@ -175,6 +185,10 @@ export default function SuperAdminLayout() {
             <Menu className="w-5 h-5" />
           </button>
           <div className="flex items-center gap-3">
+            {/* Indicateur PERMANENT de l'entité active + bascule.
+                L'entité affichée vient du serveur : elle reflète toujours
+                la portée réelle des données consultées. */}
+            <EntitySwitcher />
             <LanguageSwitcher />
             <span className="text-xs font-bold px-3 py-1 rounded-full bg-gradient-to-r from-purple-100 to-pink-100 text-purple-700">
               🛡️ Super Admin
@@ -191,7 +205,7 @@ export default function SuperAdminLayout() {
           </div>
         </header>
         <main className="flex-1 overflow-y-auto p-3 sm:p-6">
-          <Outlet />
+          <AcademyScopedOutlet />
         </main>
       </div>
     </div>

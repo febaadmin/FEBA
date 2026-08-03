@@ -7,8 +7,11 @@ import Seo from "../components/Seo";
 import SiteImage from "../components/SiteImage";
 import { Section } from "../components/SiteSection";
 import SiteNotFound from "./SiteNotFound";
+import { useSiteLang } from "../useSiteLang";
+import { pickLang } from "../siteDefaults";
 
 export default function NewsDetailPage() {
+  const { lang, t } = useSiteLang();
   const { slug } = useParams();
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ["site-news-detail", slug],
@@ -34,7 +37,10 @@ export default function NewsDetailPage() {
     return (
       <Section tone="white">
         <p className="text-center text-sm py-10">
-          Impossible de charger cette publication. Veuillez réessayer plus tard.
+          {t(
+            "Impossible de charger cette publication. Veuillez réessayer plus tard.",
+            "This post cannot be loaded. Please try again later.",
+          )}
         </p>
       </Section>
     );
@@ -43,17 +49,18 @@ export default function NewsDetailPage() {
   const post = data.data;
   return (
     <>
-      <Seo title={post.title} description={post.excerpt || post.title}
+      <Seo title={pickLang(post, "title", lang)}
+        description={pickLang(post, "excerpt", lang) || pickLang(post, "title", lang)}
         image={post.image_src} type="article" />
       <Section tone="white">
         <article className="max-w-3xl mx-auto">
           <Link to="/actualites"
             className="inline-flex items-center gap-2 text-sm font-semibold text-feba-navy hover:text-feba-gold transition-colors mb-6">
-            <ArrowLeft className="w-4 h-4" /> Toutes les actualités
+            <ArrowLeft className="w-4 h-4" /> {t("Toutes les actualités", "All news")}
           </Link>
           <p className="flex items-center gap-2 text-xs text-feba-gold font-semibold uppercase tracking-wide">
             <CalendarDays className="w-3.5 h-3.5" aria-hidden="true" />
-            {post.kind === "event" ? "Événement" : "Actualité"}
+            {post.kind === "event" ? t("Événement", "Event") : t("Actualité", "News")}
             {(post.event_date || post.published_at) && (
               <span className="text-feba-gray font-normal normal-case">
                 · {(post.event_date || post.published_at).slice(0, 10)}
@@ -61,7 +68,7 @@ export default function NewsDetailPage() {
             )}
           </p>
           <h1 className="text-2xl sm:text-4xl font-bold text-feba-navy mt-3 leading-tight">
-            {post.title}
+            {pickLang(post, "title", lang)}
           </h1>
           {post.location && (
             <p className="flex items-center gap-1.5 text-sm text-feba-gray mt-3">
@@ -72,12 +79,14 @@ export default function NewsDetailPage() {
             <SiteImage src={post.image_src} alt="" eager position={post.focal} sizes="(min-width:768px) 720px, 100vw"
               className="rounded-2xl shadow-lg w-full object-cover max-h-[420px] mt-6" />
           )}
-          {post.excerpt && (
-            <p className="text-lg text-feba-navy/80 font-medium mt-6 leading-relaxed">{post.excerpt}</p>
+          {pickLang(post, "excerpt", lang) && (
+            <p className="text-lg text-feba-navy/80 font-medium mt-6 leading-relaxed">
+              {pickLang(post, "excerpt", lang)}
+            </p>
           )}
-          {post.body && (
-            <div className="mt-5 leading-relaxed space-y-4 whitespace-pre-line text-[15px]">
-              {post.body}
+          {pickLang(post, "body", lang) && (
+            <div className="mt-5 leading-relaxed space-y-4 text-longform text-[15px]">
+              {pickLang(post, "body", lang)}
             </div>
           )}
         </article>

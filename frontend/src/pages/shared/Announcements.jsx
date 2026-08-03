@@ -56,12 +56,12 @@ export default function SharedAnnouncements() {
                     </div>
                   </div>
                   <p className="text-sm text-slate-500 mt-0.5">{t("Par")} {a.author_name || "Administration"}</p>
-                  {expanded !== a.id && <p className="text-sm text-slate-600 mt-1 line-clamp-2">{a.content}</p>}
+                  {expanded !== a.id && <p className="text-sm text-slate-600 mt-1 line-clamp-2 text-wrapsafe">{a.content}</p>}
                 </div>
               </button>
               {expanded === a.id && (
                 <div className="mt-4 pt-4 border-t border-slate-100">
-                  <p className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed">{a.content}</p>
+                  <p className="text-sm text-slate-700 text-longform leading-relaxed">{a.content}</p>
                   {a.attachment && (
                     <a href={a.attachment} target="_blank" rel="noreferrer"
                       className="inline-flex items-center gap-2 mt-4 text-sm text-primary bg-primary-50 hover:bg-primary/10 rounded-xl px-4 py-2 transition-colors">

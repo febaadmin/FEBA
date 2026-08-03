@@ -4,8 +4,8 @@ Salles virtuelles (visioconférence) — module FEBA.
 Implémentation basée sur Jitsi Meet (open source, gratuit) :
 la salle est identifiée par un `room_code` non devinable ; le client
 rejoint la réunion via l'API externe Jitsi (iframe), soit sur
-l'instance publique meet.jit.si, soit sur une instance auto-hébergée
-configurée via JITSI_DOMAIN.
+l'instance FEBA AUTO-HÉBERGÉE configurée via JITSI_DOMAIN.
+Aucune instance publique n'est utilisée : voir apps/virtualclass/services.py.
 
 Sécurité :
  - le room_code contient un segment aléatoire (uuid) → non énumérable ;
