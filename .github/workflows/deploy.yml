@@ -52,6 +52,16 @@ jobs:
 
           cd /opt/feba/app/FEBA
 
+          echo "==> Identification du dernier snapshot Restic"
+          snapshot_before="$(sudo -n /usr/bin/restic snapshots \
+              --repo /opt/feba/backups/restic-repository \
+              --password-file /root/.feba-restic-password \
+              --latest 1 \
+              --json \
+            | python3 -c 'import json,sys; data=json.load(sys.stdin); print(data[-1]["short_id"] if data else "")')"
+
+          echo "Snapshot avant sauvegarde : ${snapshot_before:-aucun}"
+
           echo "==> Sauvegarde Restic pré-déploiement"
           sudo -n /usr/bin/systemctl start feba-backup.service
 
@@ -76,6 +86,20 @@ jobs:
           fi
 
           echo "Sauvegarde pré-déploiement terminée avec succès."
+
+          snapshot_after="$(sudo -n /usr/bin/restic snapshots \
+              --repo /opt/feba/backups/restic-repository \
+              --password-file /root/.feba-restic-password \
+              --latest 1 \
+              --json \
+            | python3 -c 'import json,sys; data=json.load(sys.stdin); print(data[-1]["short_id"] if data else "")')"
+
+          echo "Snapshot après sauvegarde : ${snapshot_after:-aucun}"
+
+          if [ -z "$snapshot_after" ] || [ "$snapshot_after" = "$snapshot_before" ]; then
+            echo "ERREUR : aucun nouveau snapshot Restic n'a été créé."
+            exit 1
+          fi
 
           echo "==> Récupération du code"
           git fetch origin main
