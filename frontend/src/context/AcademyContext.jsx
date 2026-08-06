@@ -35,10 +35,63 @@
 import { createContext, useContext, useEffect, useMemo } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import api from "../api";
-import { SCOPE_ALL, SCOPE_UNKNOWN, setAcademyScope } from "../api/academyScope";
+import { SCOPE_ALL, SCOPE_UNKNOWN, getAcademyScope, setAcademyScope } from "../api/academyScope";
 import { useAuthStore } from "../store/authStore";
 
 export const ENTITY_CONTEXT_KEY = ["entity-context"];
+
+/**
+ * CYCLE DE DÉMARRAGE EXPLICITE (P1)
+ * ---------------------------------
+ * Le bug « tableau de bord à zéro après actualisation » venait d'une course :
+ * au rechargement, les écrans métier se montaient AVANT que la portée
+ * d'académie soit connue. Ils émettaient donc leurs requêtes avec
+ * `X-Academy-Scope: UNKNOWN` ; quand le contexte arrivait enfin, la bascule
+ * UNKNOWN → ALL avortait ces requêtes en vol. React Query ne réessaie pas une
+ * requête annulée (`retry: false` sur ERR_CANCELED), la donnée restait donc
+ * `undefined` — et les écrans, qui repliaient `undefined` sur `[]`,
+ * affichaient des zéros définitifs jusqu'à une bascule manuelle.
+ *
+ * La correction n'est pas un délai : c'est un ORDRE GARANTI. Aucune requête
+ * métier ne part tant que la portée n'est pas établie, ce qui rend
+ * l'annulation de démarrage structurellement impossible.
+ */
+export const BOOT = {
+  APP_BOOTING: "APP_BOOTING",
+  AUTH_HYDRATING: "AUTH_HYDRATING",
+  TOKEN_READY: "TOKEN_READY",
+  AUTH_LOADING: "AUTH_LOADING",
+  AUTH_READY: "AUTH_READY",
+  SCOPE_LOADING: "SCOPE_LOADING",
+  SCOPE_READY: "SCOPE_READY",
+  BUSINESS_DATA_ENABLED: "BUSINESS_DATA_ENABLED",
+};
+
+/**
+ * DÉDUPLICATION DES APPELS CONCURRENTS à `/auth/entity-context/`.
+ *
+ * React Query déduplique déjà les requêtes partageant une clé, mais le
+ * contexte est aussi lu hors React Query (rechargement de portée après un
+ * refresh de jeton). Cette promesse partagée garantit qu'un seul appel réseau
+ * est en vol à un instant donné, quel que soit le nombre d'appelants.
+ */
+let entityContextInflight = null;
+
+export function fetchEntityContext() {
+  if (entityContextInflight) return entityContextInflight;
+  entityContextInflight = api
+    .get("/auth/entity-context/")
+    .then((r) => r.data)
+    .finally(() => {
+      entityContextInflight = null;
+    });
+  return entityContextInflight;
+}
+
+/** Tests uniquement — remet à zéro la déduplication. */
+export function resetEntityContextDedup() {
+  entityContextInflight = null;
+}
 
 /**
  * Portée comparable à celle renvoyée par le serveur dans
@@ -58,11 +111,16 @@ export function AcademyProvider({ children }) {
   // Interroger le contexte d'académie sans être connecté déclencherait un
   // 401 sur chaque page publique — et donc une redirection vers /login.
   const isAuthenticated = useAuthStore((s) => Boolean(s.accessToken));
+  /* L'hydratation de zustand-persist est asynchrone : pendant le premier
+     tick, `accessToken` est null alors qu'un jeton existe en localStorage.
+     Interroger le contexte à ce moment produirait un 401 puis une portée
+     UNKNOWN durablement fausse. On attend donc l'hydratation. */
+  const hasHydrated = useAuthStore((s) => s._hasHydrated);
 
-  const { data, isLoading, isError } = useQuery({
+  const { data, isLoading, isError, isSuccess } = useQuery({
     queryKey: ENTITY_CONTEXT_KEY,
-    queryFn: () => api.get("/auth/entity-context/").then((r) => r.data),
-    enabled: isAuthenticated,
+    queryFn: fetchEntityContext,
+    enabled: hasHydrated && isAuthenticated,
     staleTime: 5 * 60 * 1000,
     retry: 1,
   });
@@ -72,13 +130,47 @@ export function AcademyProvider({ children }) {
   const isAllAcademies = Boolean(context.all_entities_mode);
   const academyScope = scopeOf(activeAcademy, { allMode: isAllAcademies });
 
-  /* Le client HTTP doit connaître la portée avant toute requête. On la
-     synchronise dès que le serveur la communique — y compris au premier
-     chargement, où elle vaut encore UNKNOWN. */
-  useEffect(() => {
-    if (isLoading) return;
+  /**
+   * Portée RÉELLEMENT appliquée au client HTTP.
+   *
+   * `scopeReady` ne passe à `true` qu'APRÈS `setAcademyScope()`. Comme les
+   * écrans métier sont montés sous un garde qui exige `scopeReady`, l'ordre
+   * « portée appliquée → écrans montés → requêtes émises » est garanti par
+   * la construction, sans aucun délai arbitraire.
+   */
+  /* La synchronisation se fait PENDANT LE RENDU, pas dans un effet.
+     Un effet s'exécute après le commit : il y aurait donc un rendu
+     intermédiaire où le contexte est connu mais la portée pas encore
+     appliquée — exactement la fenêtre dans laquelle les écrans partaient
+     avec UNKNOWN. Ici, le corps du composant parent s'exécute forcément
+     avant celui de ses enfants : quand un écran métier se rend pour la
+     première fois, la portée est déjà posée. `setAcademyScope` est
+     idempotent (il renvoie false si la valeur ne change pas), ce qui rend
+     l'opération sûre malgré le double rendu de StrictMode. */
+  const scopeResolved = hasHydrated && isAuthenticated && isSuccess;
+  if (scopeResolved) {
     setAcademyScope(academyScope);
-  }, [academyScope, isLoading]);
+  }
+  const scopeReady = scopeResolved && getAcademyScope() === academyScope;
+
+  /* Déconnexion : la portée redevient indéterminée. Traité en effet car
+     c'est une remise à zéro, pas une préparation au rendu des enfants. */
+  useEffect(() => {
+    if (hasHydrated && !isAuthenticated) {
+      setAcademyScope(SCOPE_UNKNOWN);
+    }
+  }, [hasHydrated, isAuthenticated]);
+
+  /** Phase de démarrage courante — exposée pour le diagnostic et les tests. */
+  const bootPhase = !hasHydrated
+    ? BOOT.AUTH_HYDRATING
+    : !isAuthenticated
+      ? BOOT.APP_BOOTING
+      : isLoading
+        ? BOOT.SCOPE_LOADING
+        : scopeReady
+          ? BOOT.BUSINESS_DATA_ENABLED
+          : BOOT.AUTH_READY;
 
   const mutation = useMutation({
     mutationFn: (entityId) =>
@@ -145,6 +237,14 @@ export function AcademyProvider({ children }) {
       /* ── Compléments utiles à l'interface ─────────────────────────── */
       isLoadingAcademy: isLoading,
       hasAcademyError: isError,
+
+      /* ── Cycle de démarrage (P1) ──────────────────────────────────────
+         `businessDataEnabled` est la seule condition qu'un écran métier doit
+         tester avant de déclencher une requête. */
+      bootPhase,
+      authReady: hasHydrated && isAuthenticated,
+      scopeReady,
+      businessDataEnabled: hasHydrated && isAuthenticated && scopeReady,
       canSwitchAcademy: Boolean(context.can_switch),
       features: context.features || {},
       hasFeature: (flag) => Boolean((context.features || {})[flag]),
@@ -168,6 +268,10 @@ export function AcademyProvider({ children }) {
       mutation.isPending,
       mutation.mutateAsync,
       mutation.error,
+      bootPhase,
+      hasHydrated,
+      isAuthenticated,
+      scopeReady,
     ],
   );
 
@@ -202,6 +306,10 @@ const FALLBACK = {
   features: {},
   hasFeature: () => false,
   academyKey: `academy:${SCOPE_UNKNOWN}`,
+  bootPhase: BOOT.APP_BOOTING,
+  authReady: false,
+  scopeReady: false,
+  businessDataEnabled: false,
 };
 
 export { SCOPE_ALL };

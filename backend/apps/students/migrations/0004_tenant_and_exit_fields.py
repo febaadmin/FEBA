@@ -4,6 +4,7 @@ students/migrations/0004_tenant_and_exit_fields.py — VERSION IDEMPOTENTE (v29.
 Réécriture idempotente (atomic=False + IF NOT EXISTS) pour éviter les
 DuplicateColumn / DuplicateTable sur un relancement après interruption.
 """
+from apps.core.migration_utils import portable_schema_change
 from django.db import migrations, models
 import django.db.models.deletion
 
@@ -59,10 +60,8 @@ class Migration(migrations.Migration):
 
     operations = [
         # ── 1. Retirer l'unicité globale du matricule ───────────────────────
-        migrations.SeparateDatabaseAndState(
-            database_operations=[
-                migrations.RunSQL(
-                    # DROP CONSTRAINT IF EXISTS est idempotent
+        portable_schema_change(
+            # DROP CONSTRAINT IF EXISTS est idempotent
                     sql="""
                         DO $$
                         BEGIN
@@ -77,8 +76,6 @@ class Migration(migrations.Migration):
                         END $$;
                     """,
                     reverse_sql=migrations.RunSQL.noop,
-                ),
-            ],
             state_operations=[
                 migrations.AlterField(
                     model_name='student',
@@ -89,10 +86,8 @@ class Migration(migrations.Migration):
         ),
 
         # ── 2. Colonnes nouvelles (IF NOT EXISTS) ───────────────────────────
-        migrations.SeparateDatabaseAndState(
-            database_operations=[
-                migrations.RunSQL(
-                    sql="""
+        portable_schema_change(
+            sql="""
                         ALTER TABLE students_student
                             ADD COLUMN IF NOT EXISTS school_id INTEGER
                                 REFERENCES schools_school(id)
@@ -111,8 +106,6 @@ class Migration(migrations.Migration):
                             DROP COLUMN IF EXISTS exit_date,
                             DROP COLUMN IF EXISTS exit_notes;
                     """,
-                ),
-            ],
             state_operations=[
                 migrations.AddField(
                     model_name='student',
@@ -148,10 +141,8 @@ class Migration(migrations.Migration):
         migrations.RunPython(backfill_student_school, noop_reverse),
 
         # ── 4. Contrainte unique (school, matricule) ─────────────────────────
-        migrations.SeparateDatabaseAndState(
-            database_operations=[
-                migrations.RunSQL(
-                    sql="""
+        portable_schema_change(
+            sql="""
                         DO $$
                         BEGIN
                             IF NOT EXISTS (
@@ -168,8 +159,6 @@ class Migration(migrations.Migration):
                         ALTER TABLE students_student
                             DROP CONSTRAINT IF EXISTS unique_matricule_per_school;
                     """,
-                ),
-            ],
             state_operations=[
                 migrations.AddConstraint(
                     model_name='student',

@@ -13,6 +13,7 @@ Exigences couvertes :
   9. l'endpoint de santé reflète l'état réel.
 """
 import pathlib
+from unittest import mock
 
 from django.test import TestCase, override_settings
 from rest_framework import status
@@ -268,3 +269,89 @@ class JitsiUnconfiguredTests(TestCase):
         report = jitsi_health()
         self.assertEqual(report["status"], "unavailable")
         self.assertIn("PUBLIQUE", report["detail"])
+
+
+class JitsiHealthInternalUrlTests(TestCase):
+    """
+    Régression P7 (juillet 2026).
+
+    BUG RÉSOLU : `jitsi_health()` testait la joignabilité de Jitsi via
+    JITSI_DOMAIN (« localhost:8443 », l'adresse du NAVIGATEUR). Depuis
+    l'intérieur du conteneur backend, « localhost » ne désigne jamais
+    Jitsi — le contrôle échouait donc TOUJOURS, même Jitsi parfaitement
+    opérationnel. `JITSI_INTERNAL_URL` (http://jitsi-web:80 sur le réseau
+    Docker partagé) corrige ça.
+
+    Aucune vraie requête réseau ici — on vérifie quelle URL le service
+    tente d'atteindre, pas la disponibilité réelle d'un Jitsi (impossible
+    sans Docker). C'est le contrat testable sans infrastructure lourde ;
+    la joignabilité réelle se vérifie avec `make jitsi-health` sur une
+    installation Docker complète.
+    """
+
+    def _configured_settings(self, **extra):
+        base = dict(
+            JITSI_DOMAIN="localhost:8443", JITSI_APP_ID="feba_test",
+            JITSI_APP_SECRET="s" * 32,
+        )
+        base.update(extra)
+        return base
+
+    def test_url_interne_est_utilisee_quand_definie(self):
+        from apps.virtualclass import services
+
+        captured = {}
+
+        def fake_urlopen(request, timeout=5):
+            captured["url"] = request.full_url
+            class _Resp:
+                status = 200
+                def __enter__(self_): return self_
+                def __exit__(self_, *a): return False
+            return _Resp()
+
+        with override_settings(**self._configured_settings(JITSI_INTERNAL_URL="http://jitsi-web:80")):
+            with mock.patch("urllib.request.urlopen", side_effect=fake_urlopen):
+                report = services.jitsi_health()
+
+        self.assertEqual(captured["url"], "http://jitsi-web:80/")
+        self.assertNotIn("localhost", captured["url"])
+        self.assertEqual(report["probed_url"], "http://jitsi-web:80/")
+        self.assertTrue(report["reachable"])
+        self.assertEqual(report["status"], "operational")
+
+    def test_repli_sur_jitsi_domain_si_url_interne_absente(self):
+        """
+        Comportement historique préservé quand JITSI_INTERNAL_URL n'est
+        pas défini (ex. production, un seul domaine public partagé).
+        """
+        from apps.virtualclass import services
+
+        captured = {}
+
+        def fake_urlopen(request, timeout=5):
+            captured["url"] = request.full_url
+            class _Resp:
+                status = 200
+                def __enter__(self_): return self_
+                def __exit__(self_, *a): return False
+            return _Resp()
+
+        with override_settings(**self._configured_settings(JITSI_INTERNAL_URL="")):
+            with mock.patch("urllib.request.urlopen", side_effect=fake_urlopen):
+                services.jitsi_health()
+
+        self.assertEqual(captured["url"], "http://localhost:8443/")
+
+    def test_instance_interne_injoignable_est_signalee_degradee(self):
+        from apps.virtualclass import services
+
+        def fake_urlopen(request, timeout=5):
+            raise OSError("Connection refused")
+
+        with override_settings(**self._configured_settings(JITSI_INTERNAL_URL="http://jitsi-web:80")):
+            with mock.patch("urllib.request.urlopen", side_effect=fake_urlopen):
+                report = services.jitsi_health()
+
+        self.assertEqual(report["status"], "degraded")
+        self.assertIn("jitsi-web", report["detail"])

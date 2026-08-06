@@ -193,6 +193,7 @@ def jitsi_health():
         "configured": False,
         "reachable": False,
         "token_signing": False,
+        "probed_url": "",
         "detail": "",
     }
 
@@ -214,10 +215,25 @@ def jitsi_health():
         return result
 
     # Joignabilité HTTP de l'instance.
-    domain = result["domain"]
-    is_local = domain.startswith("localhost") or domain.startswith("127.")
-    scheme = "http" if is_local else "https"
-    url = f"{scheme}://{domain}/"
+    #
+    # P7 — On sonde JITSI_INTERNAL_URL (http://jitsi-web:80 en dev), PAS
+    # `domain` (JITSI_DOMAIN, ex. localhost:8443) : cette dernière est
+    # l'adresse du NAVIGATEUR. Depuis l'intérieur de CE conteneur,
+    # « localhost » ne désigne jamais Jitsi — avant ce correctif, cette
+    # vérification échouait systématiquement même quand Jitsi tournait
+    # parfaitement, un faux « dégradé » permanent.
+    internal_url = (getattr(settings, "JITSI_INTERNAL_URL", "") or "").strip()
+    if internal_url:
+        url = internal_url.rstrip("/") + "/"
+    else:
+        # Repli : pas d'URL interne distincte configurée (cas légitime en
+        # production, où backend et Jitsi partagent la même adresse
+        # publique). On reste alors sur l'ancien comportement.
+        domain = result["domain"]
+        is_local = domain.startswith("localhost") or domain.startswith("127.")
+        scheme = "http" if is_local else "https"
+        url = f"{scheme}://{domain}/"
+    result["probed_url"] = url
     try:
         request = urllib.request.Request(url, method="GET")
         with urllib.request.urlopen(request, timeout=5) as response:

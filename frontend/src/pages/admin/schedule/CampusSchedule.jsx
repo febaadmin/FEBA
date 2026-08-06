@@ -28,7 +28,7 @@ export default function CampusSchedule() {
   const [view, setView] = useState("grid"); // "grid" | "list"
   const { register, handleSubmit, reset, control } = useForm();
 
-  const { data, isLoading } = useQuery({ queryKey: ["schedule", classFilter], queryFn: () => scheduleAPI.list(classFilter ? { cls: classFilter } : {}) });
+  const { data, isLoading } = useQuery({ queryKey: ["schedule", classFilter], queryFn: () => scheduleAPI.list(classFilter ? { cls: classFilter } : {}), retry: false });
   const { data: classData } = useQuery({ queryKey: ["classes"], queryFn: () => classesAPI.list() });
   const { data: subjData } = useQuery({ queryKey: ["subjects"], queryFn: () => subjectsAPI.list() });
   const { data: yearsData } = useQuery({ queryKey: ["years"], queryFn: schoolsAPI.years });
@@ -47,9 +47,24 @@ export default function CampusSchedule() {
   const teacherOptions = teachers.map(tc => ({ value: tc.id, label: `${tc.user_first_name || ""} ${tc.user_last_name || ""}`.trim() }));
   const roomOptions = rooms.map(r => ({ value: r.name, label: `${r.name} (${r.room_type_label || r.room_type})` }));
 
-  const createMut = useMutation({ mutationFn: scheduleAPI.create, onSuccess: () => { qc.invalidateQueries({ queryKey: ["schedule"] }); toast.success(t("Créneau créé!")); closeModal(); }, onError: (e) => toast.error(t("Erreur serveur")) });
-  const updateMut = useMutation({ mutationFn: ({ id, data }) => scheduleAPI.update(id, data), onSuccess: () => { qc.invalidateQueries({ queryKey: ["schedule"] }); toast.success(t("Modifié!")); closeModal(); } });
-  const deleteMut = useMutation({ mutationFn: scheduleAPI.delete, onSuccess: () => { qc.invalidateQueries({ queryKey: ["schedule"] }); toast.success(t("Supprimé.")); setDeleteItem(null); } });
+  // P2 — Ces mutations n'affichaient AUCUN message d'erreur : une
+  // modification ou une suppression refusée par le serveur (conflit
+  // d'horaire, permission, etc.) échouait EN SILENCE. C'était exactement
+  // le manque signalé côté FEBA, alors qu'OnlineSchedule (FEBA FHA)
+  // affichait déjà le détail réel renvoyé par le serveur — l'écart de
+  // qualité était ici, pas seulement dans la mise en page.
+  const failure = (e) => {
+    const detail = e?.response?.data;
+    const message =
+      typeof detail === "string"
+        ? detail
+        : detail?.detail || Object.values(detail || {}).flat().join(" ") || t("Erreur serveur");
+    toast.error(message);
+  };
+
+  const createMut = useMutation({ mutationFn: scheduleAPI.create, onSuccess: () => { qc.invalidateQueries({ queryKey: ["schedule"] }); toast.success(t("Créneau créé!")); closeModal(); }, onError: failure });
+  const updateMut = useMutation({ mutationFn: ({ id, data }) => scheduleAPI.update(id, data), onSuccess: () => { qc.invalidateQueries({ queryKey: ["schedule"] }); toast.success(t("Modifié!")); closeModal(); }, onError: failure });
+  const deleteMut = useMutation({ mutationFn: scheduleAPI.delete, onSuccess: () => { qc.invalidateQueries({ queryKey: ["schedule"] }); toast.success(t("Supprimé.")); setDeleteItem(null); }, onError: failure });
 
   const closeModal = () => { setModalOpen(false); setEditItem(null); reset(); };
   const openCreate = () => { reset({ day_of_week: 0, school_year: currentYear?.id || "" }); setModalOpen(true); };

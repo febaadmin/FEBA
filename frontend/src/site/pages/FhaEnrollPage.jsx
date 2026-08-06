@@ -23,6 +23,7 @@ import { useMutation } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { Check, ChevronLeft, ChevronRight, Send, AlertCircle } from "lucide-react";
 import Seo from "../components/Seo";
+import { PLAN_OPTIONS, planLabel } from "../fhaPlans";
 import { Section } from "../components/SiteSection";
 import { siteAPI } from "../siteApi";
 import { useSiteLang } from "../useSiteLang";
@@ -60,20 +61,95 @@ const DAYS = [
   [7, "Dimanche", "Sunday"],
 ];
 
-const STEP_TITLES = [
-  ["L'enfant", "The child"],
-  ["Origines et langues", "Origins and languages"],
-  ["Niveau de français", "French level"],
-  ["Expérience antérieure", "Previous experience"],
-  ["Objectifs des parents", "Parents' goals"],
-  ["Parent / responsable 1", "Parent / guardian 1"],
-  ["Parent / responsable 2", "Parent / guardian 2"],
-  ["Contact d'urgence", "Emergency contact"],
-  ["Disponibilités", "Availability"],
-  ["Équipement", "Equipment"],
-  ["Besoins particuliers", "Special needs"],
-  ["Consentements", "Consents"],
+/**
+ * P3 — TITRE ET INTRODUCTION DE CHAQUE ÉTAPE.
+ *
+ * Les libellés n'existaient que dans la barre de progression, en petits
+ * caractères et loin des champs : arrivé sur une étape, on découvrait une
+ * série de champs sans savoir ce qu'ils décrivaient ensemble. Chaque étape
+ * porte désormais un vrai titre sémantique (`<h2>`) posé DIRECTEMENT
+ * au-dessus de ses champs, avec une phrase qui explique la nature des
+ * données demandées.
+ *
+ * Format : [titre FR, titre EN, intro FR, intro EN].
+ */
+const STEP_META = [
+  [
+    "Informations sur l'enfant",
+    "Child information",
+    "Commençons par identifier votre enfant : son état civil et sa scolarité actuelle.",
+    "Let's start with your child: identity details and current schooling.",
+  ],
+  [
+    "Origines familiales et langues parlées",
+    "Family background and languages spoken",
+    "Ces informations nous aident à rattacher l'enfant à son héritage et à situer son environnement linguistique.",
+    "This helps us connect your child to their heritage and understand their language environment.",
+  ],
+  [
+    "Niveau actuel de français",
+    "Current level of French",
+    "Évaluez le niveau de votre enfant dans chaque compétence. Une estimation approximative suffit : le test de placement affinera le résultat.",
+    "Rate your child's level in each skill. A rough estimate is enough — the placement test will refine it.",
+  ],
+  [
+    "Expérience d'apprentissage du français",
+    "Previous French learning experience",
+    "Décrivez le parcours déjà suivi : cours, durée, supports utilisés.",
+    "Describe any learning so far: classes, duration, materials used.",
+  ],
+  [
+    "Objectifs des parents pour l'enfant",
+    "Your goals for your child",
+    "Dites-nous ce que vous attendez de cette année : c'est ce qui guidera le travail de l'enseignant.",
+    "Tell us what you expect from this year — it will guide the teacher's work.",
+  ],
+  [
+    "Coordonnées du parent ou du tuteur principal",
+    "Main parent or guardian contact details",
+    "Ce contact recevra les bulletins, les convocations et les informations de facturation.",
+    "This contact will receive report cards, invitations and billing information.",
+  ],
+  [
+    "Second parent ou responsable",
+    "Second parent or guardian",
+    "Facultatif : un second contact permet de joindre la famille si le premier est indisponible.",
+    "Optional: a second contact lets us reach the family if the first is unavailable.",
+  ],
+  [
+    "Contact d'urgence",
+    "Emergency contact",
+    "Personne à joindre en cas d'urgence pendant un cours, si les parents sont injoignables.",
+    "Person to reach in an emergency during class if parents are unavailable.",
+  ],
+  [
+    "Disponibilités et fuseau horaire",
+    "Availability and time zone",
+    "Vos créneaux et votre fuseau horaire nous permettent de composer un emploi du temps réellement tenable.",
+    "Your time slots and time zone let us build a schedule that actually works for you.",
+  ],
+  [
+    "Équipement et connexion",
+    "Equipment and connection",
+    "Les cours ont lieu en visioconférence : vérifions ensemble que le matériel suit.",
+    "Classes are held by video call: let's check your setup can keep up.",
+  ],
+  [
+    "Besoins pédagogiques particuliers",
+    "Specific learning needs",
+    "Signalez tout aménagement utile. Ces informations restent confidentielles et ne servent qu'à adapter l'accompagnement.",
+    "Tell us about any useful accommodation. This stays confidential and is only used to adapt our support.",
+  ],
+  [
+    "Choix de la formule, documents et consentements",
+    "Plan choice, documents and consents",
+    "Dernière étape avant le récapitulatif : votre formule annuelle, vos autorisations et votre accord sur le règlement.",
+    "Last step before the summary: your annual plan, authorisations and agreement to the rules.",
+  ],
 ];
+
+/** Compatibilité : la barre de progression n'affiche que le titre. */
+const STEP_TITLES = STEP_META.map(([fr, en]) => [fr, en]);
 
 const EMPTY = {
   child_last_name: "", child_first_name: "", child_birth_date: "",
@@ -104,6 +180,7 @@ const EMPTY = {
   has_microphone: false, has_headset: false, has_internet: false,
   can_print: false, equipment_notes: "",
   special_needs: "",
+  desired_plan: "UNDECIDED",
   consent_rules: false, consent_zoom: false, consent_privacy: false,
   consent_data_processing: false, consent_photo_video: false,
   consent_communications: false, consent_payment_policy: false,
@@ -410,6 +487,33 @@ export default function FhaEnrollPage() {
             onChange={(e) => set("website", e.target.value)}
             className="absolute opacity-0 pointer-events-none h-0 w-0"
           />
+
+          {/* P3 — Titre sémantique de l'étape, juste au-dessus des champs.
+              Rendu une seule fois et piloté par `step` : les douze étapes
+              héritent du même traitement, impossible d'en oublier une. */}
+          {!isReview && (
+            <header className="mb-6">
+              <p className="text-xs font-semibold uppercase tracking-wide text-feba-gold">
+                {t("Étape", "Step")} {step + 1} / {STEP_META.length}
+              </p>
+              <h2
+                id="fha-step-title"
+                tabIndex={-1}
+                className="text-feba-navy text-xl sm:text-2xl font-bold mt-1"
+              >
+                {STEP_META[step][lang === "fr" ? 0 : 1]}
+              </h2>
+              <p className="text-slate-600 text-sm mt-2">
+                {STEP_META[step][lang === "fr" ? 2 : 3]}
+              </p>
+              <p className="text-slate-500 text-xs mt-2">
+                {t(
+                  "Les champs suivis d'un astérisque (*) sont obligatoires.",
+                  "Fields marked with an asterisk (*) are required.",
+                )}
+              </p>
+            </header>
+          )}
 
           {/* ── Étape 1 : l'enfant ─────────────────────────────────── */}
           {step === 0 && (
@@ -774,9 +878,54 @@ export default function FhaEnrollPage() {
             </div>
           )}
 
-          {/* ── Étape 12 : consentements ───────────────────────────── */}
+          {/* ── Étape 12 : formule souhaitée + consentements ────────── */}
           {step === 11 && (
             <div>
+              {/* P4 — Choix de la formule annuelle.
+                  Déclaratif : il oriente l'entretien d'admission et le devis,
+                  il n'engage aucun paiement à ce stade. « Je ne sais pas
+                  encore » est une réponse pleinement valable. */}
+              <fieldset className="mb-8">
+                <legend className="text-feba-navy font-semibold mb-1">
+                  {t("Formule souhaitée", "Preferred plan")}
+                </legend>
+                <p className="text-slate-600 text-sm mb-4">
+                  {t(
+                    "Indiquez la formule qui vous intéresse. Ce choix n'est pas définitif et ne déclenche aucun paiement.",
+                    "Tell us which plan interests you. This is not final and does not trigger any payment.",
+                  )}
+                </p>
+                <div className="space-y-2">
+                  {PLAN_OPTIONS.map((option) => (
+                    <label
+                      key={option.code}
+                      className={`flex items-start gap-3 rounded-xl border p-3 cursor-pointer transition-colors ${
+                        form.desired_plan === option.code
+                          ? "border-feba-gold bg-feba-gold/10"
+                          : "border-slate-200 hover:border-slate-300"
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="desired_plan"
+                        value={option.code}
+                        checked={form.desired_plan === option.code}
+                        onChange={() => set("desired_plan", option.code)}
+                        className="mt-1 w-4 h-4 accent-feba-navy"
+                      />
+                      <span className="text-sm text-slate-800">
+                        {option.label[lang === "fr" ? "fr" : "en"]}
+                      </span>
+                    </label>
+                  ))}
+                </div>
+                <p className="text-slate-500 text-xs mt-3">
+                  <Link to="/feba-fha" className="underline hover:text-feba-navy">
+                    {t("Voir le détail des formules", "See full plan details")}
+                  </Link>
+                </p>
+              </fieldset>
+
               {errors.consents && (
                 <div className="rounded-xl bg-red-50 border border-red-200 p-4 mb-5 text-sm text-red-700">
                   {errors.consents}
@@ -831,13 +980,39 @@ export default function FhaEnrollPage() {
                 {[
                   [t("Enfant", "Child"), `${form.child_first_name} ${form.child_last_name}`],
                   [t("Âge", "Age"), age === null ? "—" : `${age}`],
+                  [t("Ville", "City"), form.child_city || "—"],
                   [t("Pays", "Country"), form.child_country || "—"],
+                  [t("Langue principale", "Main language"), form.home_main_language || "—"],
+                  [t("Autres langues", "Other languages"), form.other_languages || "—"],
+                  [
+                    t("Niveau de français", "French level"),
+                    form.french_levels.length
+                      ? form.french_levels
+                          .map((code) => {
+                            const row = FRENCH_LEVELS.find((l) => l[0] === code);
+                            return row ? t(row[1], row[2]) : code;
+                          })
+                          .join(", ")
+                      : "—",
+                  ],
+                  [
+                    t("Objectifs", "Goals"),
+                    form.parent_goals.length
+                      ? form.parent_goals
+                          .map((code) => {
+                            const row = PARENT_GOALS.find((g) => g[0] === code);
+                            return row ? t(row[1], row[2]) : code;
+                          })
+                          .join(", ")
+                      : "—",
+                  ],
                   [
                     t("Parent", "Parent"),
                     `${form.parent1_first_name} ${form.parent1_last_name}`,
                   ],
                   [t("E-mail", "E-mail"), form.parent1_email],
                   [t("Téléphone", "Phone"), form.parent1_phone],
+                  [t("WhatsApp", "WhatsApp"), form.parent1_whatsapp || "—"],
                   [t("Fuseau horaire", "Time zone"), form.family_timezone || "—"],
                   [
                     t("Jours disponibles", "Available days"),
@@ -846,6 +1021,13 @@ export default function FhaEnrollPage() {
                           .map((d) => t(DAYS[d - 1][1], DAYS[d - 1][2]))
                           .join(", ")
                       : "—",
+                  ],
+                  // P4 — la formule choisie doit être relue avant l'envoi :
+                  // c'est l'information qui engage le budget de la famille.
+                  [t("Formule souhaitée", "Preferred plan"), planLabel(form.desired_plan, lang)],
+                  [
+                    t("Besoins particuliers", "Specific needs"),
+                    form.special_needs || t("Aucun signalé", "None reported"),
                   ],
                 ].map(([label, value]) => (
                   <div

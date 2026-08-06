@@ -1,19 +1,46 @@
 import { useQuery } from "@tanstack/react-query";
 import { Users, Shield, GraduationCap, UserCheck, Users2, Activity } from "lucide-react";
 import { authAPI } from "../../api";
+import { isCanceledError } from "../../api/academyScope";
+import { useAcademy } from "../../context/AcademyContext";
 import StatCard from "../../components/ui/StatCard";
 import PageHeader from "../../components/ui/PageHeader";
 import { motion } from "framer-motion";
 import { t } from "../../i18n";
 
 export default function SuperAdminDashboard() {
-  const { data, isLoading } = useQuery({
-    queryKey: ["all-users"],
-    queryFn: () => authAPI.listUsers(),
-  });
-  const users = data?.data?.results || data?.data || [];
+  /* La clé inclut la portée : deux académies ne peuvent plus partager la
+     même entrée de cache, et une bascule ne réaffiche jamais les chiffres
+     de l'académie quittée. */
+  const { academyKey, businessDataEnabled } = useAcademy();
 
-  const countByRole = (role) => users.filter(u => u.role === role).length;
+  const { data, isPending, isError, error, isFetching } = useQuery({
+    queryKey: ["all-users", academyKey],
+    queryFn: () => authAPI.listUsers(),
+    // Ceinture et bretelles : même si un garde amont disparaissait, la
+    // requête ne peut pas partir avec une portée indéterminée.
+    enabled: businessDataEnabled,
+  });
+
+  /**
+   * P1 — NE JAMAIS FABRIQUER DE ZÉRO.
+   *
+   * `data?.data?.results || []` traitait indifféremment « aucun utilisateur »
+   * et « données pas encore là ». Une requête annulée rendait donc un
+   * tableau de bord entièrement à zéro, chiffres parfaitement crédibles et
+   * pourtant faux. On distingue désormais explicitement les trois états :
+   * en attente, en erreur, et chargé.
+   */
+  const loaded = Boolean(data);
+  const users = loaded ? data?.data?.results || data?.data || [] : null;
+
+  // Une annulation n'est pas une erreur à afficher : la requête sera relancée
+  // par le remontage. On reste en état d'attente plutôt que d'alarmer.
+  const canceled = isCanceledError(error);
+  const showSkeleton = isPending || !loaded || (canceled && isFetching);
+  const showError = isError && !canceled && !loaded;
+
+  const countByRole = (role) => (users || []).filter(u => u.role === role).length;
 
   return (
     <div className="space-y-6">
@@ -22,7 +49,11 @@ export default function SuperAdminDashboard() {
         subtitle={t("Contrôle total du système FEBA")}
       />
 
-      {isLoading ? (
+      {showError ? (
+        <div role="alert" className="card text-sm text-red-600">
+          {t("Les statistiques n'ont pas pu être chargées. Rechargez la page.")}
+        </div>
+      ) : showSkeleton ? (
         <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
           {[...Array(6)].map((_, i) => <div key={i} className="skeleton h-28 rounded-2xl" />)}
         </div>
@@ -39,7 +70,7 @@ export default function SuperAdminDashboard() {
 
       <div className="card">
         <h3 className="font-semibold text-slate-800 mb-4">{t("Répartition des rôles")}</h3>
-        {isLoading ? <div className="skeleton h-40" /> : (
+        {showSkeleton || showError ? <div className="skeleton h-40" /> : (
           <div className="space-y-3">
             {[
               { role: "superadmin", label: t("Super Admin"), color: "from-purple-500 to-pink-500" },

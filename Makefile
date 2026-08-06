@@ -17,18 +17,31 @@
 #   make diagnose                        → diagnostic en cas de problème
 #   make prod                              → démarre l'environnement de production
 
-.PHONY: install bootstrap dev migrate superuser seed seed-reset seed-check init-academies \
-        test-sqlite test-postgres test-frontend test-e2e \
+.PHONY: install bootstrap dev migrate migrations-plan superuser seed seed-reset seed-check init-academies \
+        test-sqlite test-postgres test-frontend test-e2e test-install \
         payments-setup payments-check payments-test payments-webhook-check \
         documents-check documents-install documents-ready documents-calibrate documents-compare \
         branding-check \
         jitsi-up jitsi-down jitsi-logs jitsi-health health logs logs-all ps down reset \
-        test shell diagnose prod prod-down prod-logs help
+        test shell diagnose doctor install-check repair prod prod-down prod-logs help
+
+# P6 — Point de passage UNIQUE vers Django : toujours à travers le
+# conteneur backend-dev, jamais un `python` local. Sur macOS sans Python
+# installé, `cd backend && python manage.py ...` échouait avec
+# « python: command not found » ; ces cibles ne dépendent plus que de
+# Docker, déjà requis par tout le reste du projet.
+COMPOSE := docker compose
+MANAGE  := $(COMPOSE) exec -T backend-dev python manage.py
 
 help:
 	@echo "Commandes disponibles :"
 	@echo "  make dev         - Démarre l'environnement de développement (build + up -d)"
+	@echo "  make install     - Installation complète depuis un poste vierge"
+	@echo "  make doctor      - Vérifie prérequis et .env.dev AVANT de démarrer quoi que ce soit"
+	@echo "  make install-check - Vérifie qu'une installation a RÉELLEMENT réussi"
+	@echo "  make repair      - Répare une installation démarrée mais en échec"
 	@echo "  make migrate     - Applique les migrations Django"
+	@echo "  make migrations-plan - Migrations en attente (doit afficher : aucune)"
 	@echo "  make superuser   - Crée un compte superadmin"
 	@echo "  make seed        - Charge les données de démonstration"
 	@echo "  make logs        - Logs du backend en temps réel"
@@ -64,29 +77,43 @@ dev:
 	@echo "Une fois prêt : http://localhost:5173 (frontend) — http://localhost:8000/api/ (API)"
 
 migrate:
-	docker compose exec backend-dev python manage.py migrate
+	$(MANAGE) migrate --noinput
+
+# P5 — Ce que « make install » doit afficher après coup :
+# « No planned migration operations. » Sinon, une migration a été
+# oubliée ou deux processus de migration ont divergé.
+migrations-plan:
+	$(MANAGE) migrate --plan
 
 superuser:
-	docker compose exec backend-dev python manage.py createsuperuser
+	$(COMPOSE) exec backend-dev python manage.py createsuperuser
 
 seed:
-	docker compose exec backend-dev python manage.py seed_demo_data
+	$(MANAGE) seed_demo_data
 
 # Réinitialise puis regénère les données de démonstration.
 # Refusé si l'environnement est marqué production (garde-fou dans la commande).
 seed-reset:
-	docker compose exec backend-dev python manage.py seed_demo_data --reset
+	$(MANAGE) seed_demo_data --reset
 
 # Contrôle d'intégrité : aucune relation inter-académie, aucun objet orphelin.
 seed-check:
-	docker compose exec -T backend-dev python manage.py seed_check
+	$(MANAGE) seed_check
 
 # ── Pile Jitsi auto-hébergée (visioconférence JWT) ──────────────────────
 # Installation complète en une commande : prérequis, secrets générés,
 # services, Jitsi auto-hébergé, migrations, académies, health checks.
+# P9 — Installation en étapes contrôlées : doctor (prérequis + .env.dev)
+# puis le pipeline complet de scripts/bootstrap.sh (secrets, services,
+# migrations via le service dédié, académies, documents, Jitsi), puis
+# une vérification complète pour confirmer que ça a RÉELLEMENT marché.
 install: bootstrap
 bootstrap:
+	@bash scripts/doctor.sh || true
 	@bash scripts/bootstrap.sh
+	@echo ""
+	@bash scripts/install_check.sh || \
+		echo "⚠ Certains contrôles post-installation ont échoué — voir ci-dessus, ou « make repair »."
 
 # Démarre l'instance Jitsi AUTO-HÉBERGÉE. Les secrets manquants sont
 # générés automatiquement : plus aucune étape manuelle, et surtout aucun
@@ -110,7 +137,7 @@ health: jitsi-health
 	@echo "✅ Vérifications de santé terminées"
 
 init-academies:
-	docker compose exec -T backend-dev python manage.py init_academies
+	$(MANAGE) init_academies
 
 logs:
 	docker compose logs -f backend-dev
@@ -148,23 +175,41 @@ test-e2e:
 	node e2e/espaces-anglais.mjs
 	node e2e/site-public-anglais.mjs
 
+# P10 — Installation propre depuis zéro, sur CETTE machine (Linux x86_64,
+# ARM64, ou macOS Apple Silicon avec Docker Desktop : le même script vaut
+# pour les trois, voir l'en-tête du script). Détruit et recrée
+# l'environnement Docker local.
+test-install:
+	bash tests/installation/test_clean_docker_install.sh --in-place
+
 # ── Paiement par carte ────────────────────────────────────────────────
 # Aucune de ces cibles n'invente de clé : les identifiants viennent du
 # tableau de bord du prestataire. Sans compte marchand valide, aucun
 # encaissement réel n'est possible.
 
+# payments-setup EST DIFFÉRENT des autres cibles ci-dessous : c'est un
+# outil interactif qui ÉCRIT sur le poste hôte (le fichier .env.dev n'est
+# PAS monté dans le conteneur backend-dev, volontairement — un secret de
+# paiement n'a rien à faire dans une image Docker). Il a donc besoin d'un
+# Python local. S'il est absent, le message ci-dessous le dit clairement
+# plutôt que de laisser échouer avec « command not found ».
 payments-setup:
-	cd backend && python manage.py payments_setup --env-file ../.env
+	@command -v python3 >/dev/null 2>&1 || { \
+		echo "✗ python3 est requis pour cette commande (elle écrit directement sur votre poste, hors Docker)."; \
+		echo "  Installez Python 3, ou éditez .env.dev à la main (voir .env.dev.example)."; \
+		exit 1; \
+	}
+	cd backend && python3 manage.py payments_setup --env-file ../.env.dev
 
 payments-check:
-	cd backend && python manage.py payments_check
+	$(MANAGE) payments_check
 
 payments-test:
 	cd backend && DJANGO_SETTINGS_MODULE=feba_project.settings.test_sqlite \
-		python -m pytest tests/test_card_payments.py tests/test_multi_currency.py -q
+		python -m pytest tests/test_card_payments.py tests/test_multi_currency.py tests/test_payments_summary_consolidation.py -q
 
 payments-webhook-check:
-	cd backend && python manage.py payments_webhook_check
+	$(MANAGE) payments_webhook_check
 
 # ── Documents officiels ───────────────────────────────────────────────
 # Les fonds (Diplôme FEBA(2).png, Certificat FEBA(2).png) ne sont pas
@@ -173,7 +218,7 @@ payments-webhook-check:
 # empreinte avant de copier quoi que ce soit.
 
 documents-check:
-	cd backend && python manage.py document_templates_check
+	$(MANAGE) document_templates_check
 
 # P7 — Le diplôme doit être utilisable DÈS L'INSTALLATION.
 #
@@ -186,33 +231,42 @@ documents-check:
 # le fichier a été supprimé ou altéré. La régénération est déterministe —
 # elle rend exactement la même empreinte.
 documents-install:
-	cd backend && python manage.py document_neutralize --template diploma_feba
-	cd backend && python manage.py document_neutralize --template certificate_feba
-	cd backend && python manage.py document_templates_check
-	cd backend && python manage.py documents_ready
+	$(MANAGE) document_neutralize --template diploma_feba
+	$(MANAGE) document_neutralize --template certificate_feba
+	$(MANAGE) document_templates_check
+	$(MANAGE) documents_ready
 
 # Réponse en une commande : les documents officiels sortent-ils, ici,
 # maintenant ? Sort en erreur sinon — c'est ce qui en fait une étape
 # d'installation, et non un diagnostic qu'on pense à lancer trop tard.
 documents-ready:
-	cd backend && python manage.py documents_ready
+	$(MANAGE) documents_ready
 
 branding-check:
-	cd backend && python manage.py branding_check
+	$(MANAGE) branding_check
 
 documents-calibrate:
-	cd backend && python manage.py document_calibrate --template diploma_feba
-	cd backend && python manage.py document_calibrate --template certificate_feba
+	$(MANAGE) document_calibrate --template diploma_feba
+	$(MANAGE) document_calibrate --template certificate_feba
 
 documents-compare:
-	cd backend && python manage.py document_compare --template diploma_feba
-	cd backend && python manage.py document_compare --template certificate_feba
+	$(MANAGE) document_compare --template diploma_feba
+	$(MANAGE) document_compare --template certificate_feba
 
 shell:
 	docker compose exec backend-dev python manage.py shell
 
 diagnose:
 	bash scripts/diagnose.sh
+
+doctor:
+	bash scripts/doctor.sh
+
+install-check:
+	bash scripts/install_check.sh
+
+repair:
+	bash scripts/repair.sh
 
 prod:
 	docker compose -f docker-compose.prod.yml up --build -d

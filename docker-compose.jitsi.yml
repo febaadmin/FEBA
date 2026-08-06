@@ -47,7 +47,12 @@ services:
       - ENABLE_IPV6=${ENABLE_IPV6:-0}
     volumes:
       - jitsi-web-config:/config
-    networks: [jitsi]
+    # P7 — « jitsi » reste le réseau interne à la pile (prosody, jicofo,
+    # jvb) ; « feba_jitsi_shared » est ce qui permet à backend-dev de
+    # joindre CE service par son nom (http://jitsi-web:80) au lieu de
+    # « localhost », qui depuis l'intérieur d'un conteneur backend
+    # désigne le conteneur backend lui-même, jamais Jitsi.
+    networks: [jitsi, feba_jitsi_shared]
     depends_on: [prosody]
     healthcheck:
       # Le health check porte sur une VRAIE réponse HTTP, pas sur la
@@ -117,6 +122,12 @@ services:
 
 networks:
   jitsi:
+  # P7 — Créé par docker-compose.yml (backend-dev). Déclaré « external »
+  # ici : cette pile ne le possède pas, elle le REJOINT. scripts/jitsi_up.sh
+  # le crée lui-même si Jitsi démarre avant le reste (ordre inversé).
+  feba_jitsi_shared:
+    external: true
+    name: feba_jitsi_shared
 
 volumes:
   jitsi-web-config:

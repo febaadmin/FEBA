@@ -1,6 +1,7 @@
 """
 accounts/migrations/0003_customuser_school.py — VERSION IDEMPOTENTE (v29.1)
 """
+from apps.core.migration_utils import portable_schema_change
 from django.db import migrations, models
 import django.db.models.deletion
 
@@ -33,10 +34,8 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.SeparateDatabaseAndState(
-            database_operations=[
-                migrations.RunSQL(
-                    sql="""
+        portable_schema_change(
+            sql="""
                         ALTER TABLE accounts_customuser
                             ADD COLUMN IF NOT EXISTS school_id INTEGER
                                 REFERENCES schools_school(id)
@@ -49,8 +48,6 @@ class Migration(migrations.Migration):
                         ALTER TABLE accounts_customuser
                             DROP COLUMN IF EXISTS school_id;
                     """,
-                ),
-            ],
             state_operations=[
                 migrations.AddField(
                     model_name='customuser',

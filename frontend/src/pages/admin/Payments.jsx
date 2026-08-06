@@ -169,11 +169,54 @@ export default function AdminPayments() {
         </select>
       </div>
 
+      {/*
+        P1 (juillet 2026) : ces montants viennent tels quels de
+        `summary.consolidated_total.formatted` / `summary.by_type.*.formatted`
+        — déjà convertis et formatés côté serveur. Le frontend n'additionne
+        et ne convertit plus jamais de devises lui-même : c'était exactement
+        la cause du bug (2 850 000 FCFA + 601,50 $ affiché « 2 850 601,5 »).
+      */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <StatCard title={t("Total encaissé")}  value={money.format(summary.total || 0)}  icon={DollarSign} color="success" />
-        <StatCard title={t("Inscriptions")}    value={money.format(summary.by_type?.inscription || 0)} icon={TrendingUp} color="primary" />
-        <StatCard title={t("Mensualités")}     value={money.format(summary.by_type?.mensualite  || 0)} icon={TrendingUp} color="secondary" />
+        <StatCard title={t("Total encaissé")}  value={summary.consolidated_total?.formatted ?? money.format(0)}  icon={DollarSign} color="success" />
+        <StatCard title={t("Inscriptions")}    value={summary.by_type?.inscription?.formatted ?? money.format(0)} icon={TrendingUp} color="primary" />
+        <StatCard title={t("Mensualités")}     value={summary.by_type?.mensualite?.formatted  ?? money.format(0)} icon={TrendingUp} color="secondary" />
       </div>
+
+      {/* Détail par devise + taux utilisé — affiché uniquement quand le total
+          ci-dessus consolide plusieurs devises (« Toutes les Académies »
+          avec FEBA en FCFA et FEBA FHA en dollars, par exemple). */}
+      {summary.is_consolidated && (summary.totals_by_currency?.length > 0 || summary.conversion_errors?.length > 0) && (
+        <div className="card p-4 text-sm space-y-2 bg-slate-50/60 border border-slate-100">
+          <div className="font-semibold text-slate-600">{t("Détail par devise")}</div>
+          <div className="flex flex-wrap gap-x-6 gap-y-1 text-slate-700">
+            {summary.totals_by_currency.map(row => (
+              <span key={row.currency}>
+                {row.currency === "USD"
+                  ? t("Équivalent FEBA FHA :")
+                  : t("FEBA :")} <span className="font-semibold">{row.formatted}</span>
+              </span>
+            ))}
+          </div>
+          {summary.conversions?.length > 0 && (
+            <div className="text-slate-500 text-xs">
+              {summary.conversions.map((c, i) => (
+                <div key={i}>
+                  {t("Taux utilisé :")} {c.conversion.label}
+                  {c.conversion.is_fallback && (
+                    <span className="ml-1 text-warning">({t("taux par défaut, à confirmer")})</span>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+          {summary.conversion_errors?.length > 0 && (
+            <div className="text-danger text-xs">
+              {t("Certains montants n'ont pas pu être convertis et sont exclus du total : ")}
+              {summary.conversion_errors.join(" ")}
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="card overflow-x-auto">
         <DataTable

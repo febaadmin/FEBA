@@ -1,5 +1,6 @@
 import { useAuthStore } from "../store/authStore";
 import { authAPI } from "../api";
+import { SCOPE_UNKNOWN, abortInflightRequests, setAcademyScope } from "../api/academyScope";
 import { useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { getLang, setLang, translate } from "../i18n";
@@ -13,6 +14,10 @@ export function useAuth() {
   const login = async (email, password) => {
     // Clear all cached data from any previous user session
     queryClient.clear();
+    /* La portée du précédent utilisateur ne doit pas fuiter sur la nouvelle
+       session : on repart d'une portée indéterminée, que le contexte
+       serveur réétablira avant toute requête métier. */
+    setAcademyScope(SCOPE_UNKNOWN);
     const { data } = await authAPI.login({ email, password });
     setAuth(null, data.access, data.refresh);
     const me = await authAPI.me();
@@ -45,6 +50,11 @@ export function useAuth() {
     } catch { /* déconnexion best-effort : le token local est purgé quoi qu'il arrive */ }
     // Clear ALL cached queries so next user sees fresh data
     queryClient.clear();
+    /* Nettoyage complet : requêtes en vol avortées et portée remise à zéro,
+       pour qu'aucune réponse de la session précédente n'arrive après la
+       déconnexion et ne repeuple le cache. */
+    abortInflightRequests();
+    setAcademyScope(SCOPE_UNKNOWN);
     clearAuth();
     navigate("/login");
     toast.success(translate("Déconnexion réussie."));

@@ -2,6 +2,7 @@
 parents/migrations/0003_remove_single_parent_constraint.py — VERSION IDEMPOTENTE (v29.1)
 """
 import django.utils.timezone
+from apps.core.migration_utils import portable_schema_change
 from django.db import migrations, models
 
 
@@ -14,10 +15,8 @@ class Migration(migrations.Migration):
 
     operations = [
         # ── Suppression de la contrainte (idempotent) ────────────────────────
-        migrations.SeparateDatabaseAndState(
-            database_operations=[
-                migrations.RunSQL(
-                    sql="""
+        portable_schema_change(
+            sql="""
                         DO $$
                         BEGIN
                             IF EXISTS (
@@ -30,8 +29,6 @@ class Migration(migrations.Migration):
                         END $$;
                     """,
                     reverse_sql=migrations.RunSQL.noop,
-                ),
-            ],
             state_operations=[
                 migrations.RemoveConstraint(
                     model_name='parentstudent',
@@ -41,10 +38,8 @@ class Migration(migrations.Migration):
         ),
 
         # ── Nouveaux champs (IF NOT EXISTS) ──────────────────────────────────
-        migrations.SeparateDatabaseAndState(
-            database_operations=[
-                migrations.RunSQL(
-                    sql="""
+        portable_schema_change(
+            sql="""
                         ALTER TABLE parents_parentstudent
                             ADD COLUMN IF NOT EXISTS is_legal_guardian
                                 BOOLEAN NOT NULL DEFAULT TRUE,
@@ -69,8 +64,6 @@ class Migration(migrations.Migration):
                             DROP COLUMN IF EXISTS can_pickup,
                             DROP COLUMN IF EXISTS created_at;
                     """,
-                ),
-            ],
             state_operations=[
                 migrations.AddField(
                     model_name='parentstudent',

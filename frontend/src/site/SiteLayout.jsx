@@ -134,15 +134,26 @@ export default function SiteLayout() {
               </Link>
             </div>
 
-            {/* Bouton menu mobile / tablette */}
-            <button
-              className="min-[1200px]:hidden p-2 rounded-lg text-white hover:bg-white/10"
-              onClick={() => setMenuOpen((v) => !v)}
-              aria-expanded={menuOpen}
-              aria-controls="site-mobile-menu"
-              aria-label={menuOpen ? L(UI.closeMenu) : L(UI.openMenu)}>
-              {menuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-            </button>
+            {/* P9 — Sélecteur FR/EN VISIBLE SUR PETIT ÉCRAN.
+                Il n'existait qu'au-delà de 1200px et dans le menu déroulant :
+                sur mobile, changer de langue imposait d'ouvrir le hamburger,
+                donc de deviner qu'il s'y trouvait. Il est désormais dans la
+                barre elle-même — disposition « Logo | FEBA | EN/FR | Menu ».
+                C'est le MÊME composant que sur desktop : une seule source de
+                vérité pour la langue, aucun risque de désynchronisation. */}
+            <div className="flex items-center gap-1.5 min-[1200px]:hidden shrink-0">
+              <SiteLangSwitcher tone="dark" />
+
+              {/* Bouton menu mobile / tablette */}
+              <button
+                className="p-2 rounded-lg text-white hover:bg-white/10"
+                onClick={() => setMenuOpen((v) => !v)}
+                aria-expanded={menuOpen}
+                aria-controls="site-mobile-menu"
+                aria-label={menuOpen ? L(UI.closeMenu) : L(UI.openMenu)}>
+                {menuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+              </button>
+            </div>
           </div>
         </div>
 
@@ -159,12 +170,11 @@ export default function SiteLayout() {
                 {l.label}
               </NavLink>
             ))}
-            {/* Le sélecteur doit rester atteignable sur mobile : la
-                majorité des familles consulte le site depuis un téléphone. */}
-            <div className="pt-3 pb-1">
-              <SiteLangSwitcher tone="dark" />
-            </div>
-            <div className="flex flex-col gap-2 pt-1">
+            {/* Le sélecteur n'est plus dupliqué ici : il est désormais
+                toujours visible dans la barre d'en-tête, y compris menu
+                fermé. En laisser un second afficherait deux sélecteurs
+                simultanés dès l'ouverture du menu. */}
+            <div className="flex flex-col gap-2 pt-3">
               {authButton}
               <Link to="/admissions"
                 className="px-4 py-2.5 rounded-lg bg-feba-gold text-feba-navy text-sm font-bold text-center hover:bg-feba-gold2">

@@ -1,169 +1,123 @@
-# CORRECTIONS — FEBA V4 → V8 (26/07/2026)
-## V9-bis
+# CORRECTIONS — cycle d'audit et de correction V6
 
-### Le nom d'un élève tient sur son diplôme, quel qu'il soit
+Source : `feba_multi_academies_v9_application_CORRIGE.zip`
+(SHA-256 `8ee116a9066314b57fbe964b351c0410fd52da0da2058bb35596f0daee59bff4`).
+Voir `SOURCE_ARCHIVE_REPORT.md` pour la traçabilité complète.
 
-Le repli sur deux lignes avait été tenté trois fois et retiré : le bloc
-remontait sur la phrase gravée dans le fond. La cause n'était pas
-l'algorithme mais la MESURE — la hauteur d'une ligne était déduite de la
-fonte (ascendante nominale 0,896 em), ou d'une constante `corps × 0,75`.
-Les lettres d'un nom montent en réalité à 0,766 em au plus.
-
-`backend/apps/documents/textfit.py` lit les tables du fichier TrueType :
-chasse dans `hmtx`, boîte englobante du dessin dans `glyf`. Le module ne
-dessine rien et ne dépend ni de Django ni d'une base : il s'éprouve
-isolément, ce qu'une mesure enfouie dans un moteur de rendu ne permet
-pas. Ses largeurs sont confrontées à celles de ReportLab, qui dessinera.
-
-Le corps ne dépend plus des lettres du nom : sans hauteur de référence,
-« Élise Kponou » sortait à 31 pt et « Jean Dossou » à 34 pt sur le même
-certificat, l'accent montant plus haut que toute lettre du second.
-
-### Un administrateur n'est pas un élève
-
-`frontend/src/router/index.jsx` — `RoleRedirect` attendait la
-réhydratation du magasin d'authentification mais pas le chargement de
-l'utilisateur. Dans cette fenêtre, `role` vaut `undefined`, aucun test ne
-passe, et le repli final envoyait vers `/student/home`.
-
-Le repli n'est plus « élève » mais « on ne sait pas encore » : on attend
-le rôle au lieu de l'inventer.
-
-### Une panne de cache n'est pas un défaut de l'application
-
-`backend/apps/core/ratelimit.py` — le limiteur de débit comptait dans
-Redis ; Redis absent, la connexion répondait 500. Refuser était juste,
-le message non : il envoyait chercher un bug applicatif au lieu d'un
-service à redémarrer.
-
-La réponse est maintenant 503, avec un message localisé, un
-`Retry-After`, la dépendance nommée (`cache`) et un incident ouvert.
-Aucun jeton n'est délivré : on reste fermé, parce que ce limiteur est ce
-qui sépare une base de comptes d'une attaque par force brute.
-
-Seul l'appel au compteur est entouré. La vue s'exécute sans filet — un
-défaut dedans doit continuer de sortir en 500.
-
-### Le chemin du serveur ne sort plus
-
-`backend/apps/documents/templates_registry.py` — un identifiant de
-gabarit inconnu affichait l'arborescence du serveur au navigateur. La
-liste des gabarits disponibles reste : elle est déjà publiée par l'API et
-aide à corriger.
+Chaque ligne indique son niveau de preuve :
+**EXÉCUTION** · **TEST AUTOMATISÉ** · **ANALYSE STATIQUE** · **VALIDATION DOCKER LOCALE REQUISE**.
 
 ---
 
-## V8 (26/07/2026)
+## P1 — Tableau de bord Super Admin à zéro après actualisation — CORRIGÉ
 
-P1 création du profil Enseignant réparée (matricule `count()+1` → `max+1`,
-création atomique, erreurs 400 exploitables) ; P2 audit de tous les profils +
-faille de cloisonnement multi-établissement corrigée ; P3 remontée **réelle**
-des erreurs techniques aux super administrateurs (incidents, sanitisation,
-dédoublonnage, notifications, interface dédiée) ; P4 poids d'évaluation unique
-(12 + 5 = **8,50**) ; P5 bulletins **sur 10** pour les niveaux 1 à 11 (collège
-sur 20) ; P6 reçu « Le Secrétariat » + cachet dédié ; P7 cachet « LA
-DIRECTION » repositionné. Défauts supplémentaires corrigés sur les documents
-réels (chevauchement d'en-tête, pondérée incohérente, texte tronqué) et sur les
-incidents (date de résolution).
+**TEST AUTOMATISÉ.** Détail complet dans `ACADEMY_SCOPE_RACE_REPORT.md`.
 
-Backend **405** (SQLite) / **406** (PostgreSQL 16) ; frontend **70** ; ESLint
-**0 erreur** ; build **OK**. Détails : `FINAL_REPORT.md`,
-`PROFILE_CREATION_REPORT.md`, `TECHNICAL_INCIDENTS_REPORT.md`,
-`GRADE_WEIGHTING_REPORT.md`, `GRADING_SCALE_REPORT.md`,
-`STAMP_INTEGRATION_REPORT.md`, `PDF_LAYOUT_REPORT.md`.
+Cause racine : les écrans métier se montaient avant que la portée d'académie
+soit connue, émettaient leurs requêtes sous `X-Academy-Scope: UNKNOWN`, et ces
+requêtes étaient avortées par la résolution du contexte. Non réessayées
+(`retry: false` sur `ERR_CANCELED`), elles laissaient `data` à `undefined`,
+que le tableau de bord repliait sur `[]` — d'où six zéros définitifs.
 
+Fichiers corrigés :
 
-## V7 (25/07/2026)
-P1 nom officiel « Faith & Excellence Bilingual Academy » (& partout, source centralisée) ;
-P2 « GROUPE ÉDUCATIF FEBA » sur bulletins/reçus ; P3 cachet officiel apposé (bulletins & reçus) ;
-P4 note 10 conservée exactement (champs texte décimaux, plus d'altération molette/flèche) ;
-P5 nouvelle façade ; P6 vidéo galerie (visionneuse à contrôles) ; P7 recadrage Admissions
-(corps entiers). Backend 311 tests, frontend 70, eslint 0, build OK. Voir FINAL_REPORT.md.
+- `frontend/src/context/AcademyContext.jsx` — machine d'états de démarrage,
+  attente de l'hydratation, portée synchronisée pendant le rendu,
+  déduplication de `entity-context`.
+- `frontend/src/components/AcademyScopedOutlet.jsx` — garde `scopeReady` :
+  aucun écran métier monté sous portée indéterminée.
+- `frontend/src/pages/superadmin/Dashboard.jsx` — trois états distincts
+  (attente / erreur / chargé), clé de requête incluant la portée, une requête
+  annulée ne vide plus l'écran.
+- `frontend/src/api/academyScope.js` — génération de portée,
+  `isCanceledError()`.
+- `frontend/src/hooks/useAuth.js` — purge complète du cache, annulation des
+  requêtes en vol et remise à zéro de la portée au login et au logout.
 
+Preuve de reproduction : 4 tests échouent contre le code d'origine, 10 passent
+contre le code corrigé.
 
-## V6 / V6.1 — Carrousel, galerie, doublons, cadrages, menu, saisie groupée
+## P2 — Commande de nettoyage des données antérieures — LIVRÉ
 
-Synthèse (détails : `FINAL_REPORT.md`, `CHANGELOG_FIXES.md`,
-`VISUAL_FIXES_REPORT.md`, `BULK_GRADES_REPORT.md`,
-`MEDIA_DUPLICATES_REPORT.md`, `MEDIA_CROP_AUDIT.md`) :
+**TEST AUTOMATISÉ.** Détail dans `PREVIOUS_USAGE_CLEANUP.md`.
 
-- **P1** carrousel réel à 5 slides + repli packagé (jamais d'image statique) ;
-  **P2** galerie pleine + repli ; **P3** dédoublonnage (hero-campus ~8× → 2) ;
-  **P4/P5** recadrages individuels + zones crème ; **P6** menu desktop une
-  ligne + hamburger ; **P7** saisie groupée de notes atomique (16+6 tests,
-  permissions backend, erreurs indexées), saisie simple préservée.
-- **V6.1** (captures annotées) : médias fournis intégrés (`campus-logo`,
-  `campus-fresque`, `apropos-equipe-pedagogique`, `petite-enfance-creche`) ;
-  image de bureau **bannie** (`apropos-direction*`, `galerie-mosaique-3`)
-  supprimée du site ET du paquet ; « Notre campus » et « Une équipe engagée »
-  dédoublonnées ; 5 vignettes recadrées ; voile gris du carrousel → dégradé
-  marine DA FEBA.
-- Backend 300 tests (+1 skip), frontend 56 tests, eslint 0 erreur, build OK ;
-  vérifié navigateur 375→1920 (captures + DOM).
+`backend/apps/core/management/commands/clean_previous_usage_data.py` — 26
+tests. La commande réelle n'a jamais été exécutée sur des données de
+production.
 
-## V5 — Corrections visuelles du site vitrine
+Trouvaille notable : `Student.user` étant en `SET_NULL`, supprimer les comptes
+laissait les profils élèves orphelins. Révélé par un test, pas par relecture.
 
-Audit visuel complet des 44 emplacements médias du site public, puis :
-**système de point focal** (backend administrable `focal_x`/`focal_y` +
-registre central frontend appliqué automatiquement, variante mobile),
-**dégradés FEBA centralisés** et composant `MediaFrame`, **zones crème
-vides transformées en compositions** (carte CM1·CM2 conforme à la maquette,
-bilinguisme, admissions, FEBA Online en vert), recadrages corrigés (portrait
-équipe tête coupée, cartes niveaux, ronde, hero slide 4), hero mobile sans
-chevauchement de flèches. Preuves : `MEDIA_CROP_AUDIT.md`,
-`VISUAL_FIXES_REPORT.md`, captures avant/après et 9 breakpoints dans la
-livraison. Tests : 284 backend / 41 frontend / build ✓ / ERP non régressé.
+## P3 — Titres de chaque étape de la fiche de renseignements — CORRIGÉ
 
-## V4 — priorités P1–P4 + audit
+**ANALYSE STATIQUE + build.** Détail dans `FHA_ENROLLMENT_FORM_REPORT.md`.
 
-Cette itération livre les **quatre demandes prioritaires** puis une passe
-d'audit :
+Les libellés n'existaient que dans la barre de progression, en petits
+caractères, loin des champs. Les 12 étapes portent désormais un `<h2>`
+sémantique posé directement au-dessus des champs, avec une phrase
+d'introduction, la mention des champs obligatoires, et une version FR et EN.
 
-1. **P1 — Types de notes renommés** : « Interrogation / Devoir de classe »
-   et « Examen / Évaluation » dans toutes les interfaces (création,
-   modification, tableaux, filtres, exports) ; valeurs internes stables →
-   anciennes notes intactes.
-2. **P2 — Réinitialisation de mot de passe par administrateur** :
-   endpoint sécurisé (admin → enseignant/parent/élève de son
-   établissement ; superadmin → + admins ; jamais un superadmin),
-   hachage Django, révocation des sessions, journal d'audit, modal dans
-   les écrans utilisateurs et **parcours complet de changement obligatoire**
-   à la connexion suivante.
-3. **P3 — Barème officiel des appréciations** : source unique
-   `get_appreciation()` (9 niveaux EXCELLENT → TRÈS FAIBLE, décimales,
-   normalisation des barèmes ≠ 20, rejet des valeurs invalides),
-   migration des appréciations stockées, plus aucune ancienne échelle.
-4. **P4 — Site vitrine public** : `/` est désormais un site public premium
-   aux couleurs FEBA (13 pages, carrousel administrable, galerie +
-   visionneuse + vidéo à la demande, formulaires contact/préinscription
-   sécurisés, SEO complet, 57 médias réels optimisés WebP ≈9 Mo) avec CMS
-   administrable (écran ERP « Site vitrine » + admin Django) — la
-   connexion ERP reste accessible via le menu (« Connexion »), les cinq
-   espaces privés sont inchangés.
+Fichier : `frontend/src/site/pages/FhaEnrollPage.jsx` (`STEP_META`).
 
-**Preuves et détails** : [`CHANGELOG_FIXES.md`](./CHANGELOG_FIXES.md) ·
-[`TEST_REPORT.md`](./TEST_REPORT.md) (280 tests backend ✅, 35 frontend ✅,
-E2E navigateur desktop + mobile, build de production) ·
-[`AUDIT_REPORT.md`](./AUDIT_REPORT.md) (tableau récapitulatif) ·
-[`MEDIA_INVENTORY.md`](./MEDIA_INVENTORY.md) ·
-[`KNOWN_LIMITATIONS.md`](./KNOWN_LIMITATIONS.md) ·
-[`SECURITY_NOTES.md`](./SECURITY_NOTES.md).
+## P4 — Page FEBA FHA : formules et flyer — LIVRÉ
 
-## Démarrage rapide (démo locale sans Docker)
+**ANALYSE STATIQUE + build + vérification d'empreinte.**
+Détail dans `FHA_PUBLIC_PAGE_REPORT.md`.
 
-```bash
-cd backend
-DJANGO_SETTINGS_MODULE=feba_project.settings.dev_sqlite python manage.py bootstrap_demo
-DJANGO_SETTINGS_MODULE=feba_project.settings.dev_sqlite python manage.py runserver 8000
+- Formules Standard 699 $, Premium 999 $, Excellence 1 299 $ avec organisation
+  et contenu détaillés, en FR et EN — source unique
+  `frontend/src/site/fhaPlans.js`.
+- Flyer installé en `frontend/public/images/feba-fha/feba-fha-flyer.jpeg`,
+  **identique bit à bit** à l'original Drive
+  (SHA-256 `4dedb347991c2e2972904a3a60651c06be118f48d5b41656898da7d9eec45ceb`),
+  affiché sur la page avec « Voir en grand » et « Télécharger le flyer ».
+- Champ « Formule souhaitée » (`STANDARD` / `PREMIUM` / `EXCELLENCE` /
+  `UNDECIDED`) : modèle + migration `0011`, serializer de soumission,
+  serializer de liste FHA Admissions avec libellé lisible, sélecteur dans le
+  formulaire, restitution dans le récapitulatif.
+- Récapitulatif enrichi : ville, langues, niveau de français, objectifs,
+  WhatsApp, formule, besoins particuliers.
+- Section « Tarifs » mise en cohérence : elle annonçait encore que le tarif
+  n'était pas publié, ce qui aurait contredit les formules affichées plus haut.
 
-cd frontend
-npm install
-BACKEND_ORIGIN=http://localhost:8000 npm run dev   # http://localhost:5173
-```
+## P5 — Total multidevise des paiements — DÉJÀ IMPLÉMENTÉ, VÉRIFIÉ
 
-Comptes de démo : `superadmin@feba.bj / SuperAdmin@2024` ·
-`admin@feba.bj / Admin@2024` · `prof.math@feba.bj / Teacher@2024` ·
-`parent1@feba.bj / Parent@2024` · `eleve1@feba.bj / Student@2024`.
+**EXÉCUTION.** `test_multi_currency.py` (23 tests) et
+`test_payments_summary_consolidation.py` (12 tests) passent sur l'archive
+source. La conversion est faite côté backend en `Decimal`. Aucune correction
+nécessaire ; aucune modification apportée. Voir `MULTI_CURRENCY_REPORT.md`
+(présent dans l'archive d'origine).
 
-Historique des itérations précédentes : `docs/historique/` (…_V3.md) et
-`docs/RAPPORT_V*.md`.
+## P6 — Parité emploi du temps FEBA / FEBA FHA — DÉJÀ IMPLÉMENTÉ, VÉRIFIÉ
+
+**EXÉCUTION.** `test_schedule_separation.py` (25 tests) et
+`test_online_schedule_conflicts.py` (7 tests) passent. Aucune modification
+apportée. Voir `SCHEDULE_PARITY_REPORT.md` (présent dans l'archive d'origine).
+
+## P7 — Téléchargement des documents FHA — DÉJÀ IMPLÉMENTÉ, VÉRIFIÉ
+
+**EXÉCUTION.** `test_fha_sheet_download_per_row.py` (4 tests) passe : le
+téléchargement suit bien l'identifiant de la ligne. Aucune modification
+apportée. Voir `FHA_ADMISSIONS_DOWNLOAD_REPORT.md`.
+
+## P8 — Envoi du rapport mensuel — DÉJÀ IMPLÉMENTÉ, VÉRIFIÉ
+
+**EXÉCUTION.** `test_monthly_reports.py` (65 tests) passe. Aucune modification
+apportée. Voir `MONTHLY_REPORTS_FIX.md`.
+
+## P9 — Bouton EN/FR visible sur mobile — CORRIGÉ
+
+**TEST AUTOMATISÉ.** Détail dans `RESPONSIVE_I18N_REPORT.md`.
+
+Le sélecteur n'était rendu que dans le bloc `min-[1200px]` et dans le menu
+déroulant : sous 1200 px, changer de langue imposait d'ouvrir le hamburger.
+Il est désormais dans la barre elle-même — disposition
+`Logo | FEBA | EN/FR | Menu` — en réutilisant le **même** composant
+`SiteLangSwitcher`. Le doublon du menu déroulant a été retiré.
+
+Fichier : `frontend/src/site/SiteLayout.jsx`.
+Preuve : 6 tests échouent contre le code d'origine, passent contre le corrigé.
+
+## P10 — Audit global — PARTIEL
+
+Voir `KNOWN_LIMITATIONS.md`, section « Portée réelle de cet audit ».

@@ -72,23 +72,13 @@ class DiplomaShippedReadyTests(SimpleTestCase):
 
     def test_5_le_fond_neutralise_est_versionne(self):
         """Le fichier doit être suivi par git, pas seulement présent."""
-        import shutil
         import subprocess
-        from pathlib import Path
 
-        repo = Path(__file__).resolve().parents[2]
-
-        if shutil.which("git") is None or not (repo / ".git").exists():
-            self.skipTest(
-                "Contrôle Git indisponible dans cette image Docker sans dépôt .git."
-            )
-
+        repo = os.path.dirname(os.path.dirname(os.path.dirname(
+            os.path.abspath(__file__))))
         result = subprocess.run(
-            ["git", "check-ignore", str(self.template.derived_path)],
-            cwd=repo,
-            capture_output=True,
-            text=True,
-            check=False,
+            ["git", "check-ignore", self.template.derived_path],
+            cwd=repo, capture_output=True, text=True,
         )
         # `git check-ignore` sort 0 quand le chemin EST ignoré.
         self.assertNotEqual(

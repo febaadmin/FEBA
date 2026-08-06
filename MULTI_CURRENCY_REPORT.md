@@ -1,172 +1,129 @@
-# Architecture multi-devises — rapport V8 (P0)
+# MULTI_CURRENCY_REPORT.md — P1, juillet-août 2026
 
-## Le défaut corrigé
+## Le bug, précisément
 
-FEBA French Heritage Academy facture en dollars. Onze écrans écrivaient
-`FCFA` en dur à côté du montant, et le modèle `Payment` ne stockait aucune
-devise. Un encaissement de 125,50 $ s'affichait donc « 125,50 FCFA » : le
-nombre était juste, l'unité fausse, et rien à l'écran ne le signalait.
+`/superadmin/payments`, académie « Toutes les Académies » sélectionnée :
 
-Le reçu PDF faisait pire. Il écrivait :
+```
+Total encaissé : 2 850 601,5
+```
+
+= `2 850 000` (total FEBA, en FCFA) + `601,50` (total FEBA FHA, en USD),
+additionnés comme si les deux étaient dans la même unité. Confirmé en
+reproduisant exactement les montants des captures d'écran fournies.
+
+## Cause exacte
+
+`backend/apps/payments/views.py`, méthode `summary()` :
 
 ```python
-f"{payment.amount:,.0f} FCFA"          # → « 126 FCFA »
-num2words(int(amount)).upper() + " FRANCS CFA"
+total = qs.aggregate(t=Sum("amount"))["t"] or 0
 ```
 
-Un paiement de 125,50 $ ressortait comme **126 FCFA**, en chiffres comme en
-lettres. Le montant en toutes lettres fait foi en cas de litige : ce n'était
-pas un défaut d'affichage, c'était un faux document.
+`qs` n'est filtré que par académie/permissions, jamais par devise. Un
+`Sum("amount")` sur des lignes en FCFA et en USD mélangées produit un
+nombre dénué de sens — ni des francs, ni des dollars, ni rien d'autre.
 
-## L'autorité : l'académie, et rien d'autre
+## Ce qui existait déjà et n'a PAS été touché
 
-`School.currency_code` est la seule source. Tout le reste en dérive :
+`apps/core/currency.py` contenait déjà `Money`, `totals_by_currency()` et
+`format_totals()` — une philosophie « on n'additionne jamais deux devises
+directement, on les restitue séparément ». Cette brique est saine et reste
+utilisée telle quelle ailleurs (voir `tests/test_multi_currency.py`,
+23 tests, inchangés, toujours verts). Le problème n'était pas dans cette
+brique : `PaymentViewSet.summary()` ne l'utilisait tout simplement pas, et
+faisait sa propre somme brute à côté.
 
-| Champ | Origine | Pourquoi pas une colonne |
-|---|---|---|
-| `currency_code` | **stocké** — l'autorité | — |
-| `currency_symbol` | dérivé du code | une colonne pourrait dire « FCFA » alors que le code vaut `USD` |
-| `currency_name` | dérivé du code | idem |
-| `currency_decimal_places` | dérivé du code | une valeur fausse multiplie ou divise toutes les recettes par cent |
-| `currency_locale` | stocké, avec repli sur la devise | seul réglage réellement propre à l'établissement |
+## Ce qui a été ajouté
 
-La devise n'est **jamais** lue depuis la langue de l'interface, le
-navigateur, le pays, un symbole fourni par React, un dernier filtre, un
-champ libre, ni aucun paramètre manipulable côté client.
+Une brique complémentaire, PAS une réécriture de la précédente :
+`CurrencyConversionService` (`backend/apps/core/currency_conversion.py`),
+qui répond à un besoin différent — un total consolidé RÉEL, en une seule
+devise, quand on le demande explicitement (plusieurs académies à la fois).
 
-Vérification directe :
+- `ExchangeRate` (`backend/apps/payments/exchange_rate_models.py`) :
+  taux daté, avec origine, source de vérité en base.
+- Repli sur `settings.FALLBACK_EXCHANGE_RATES` si aucun taux enregistré —
+  mais **toujours marqué `is_fallback: true`** dans la réponse API, jamais
+  silencieux.
+- Aucune conversion tant qu'une seule devise n'est présente dans le
+  résultat — pas de calcul inutile qui pourrait introduire un arrondi là
+  où il n'y avait aucune raison d'en avoir.
+
+## Contrat de la nouvelle réponse `/api/payments/summary/`
+
+```json
+{
+  "reporting_currency": "XOF",
+  "is_consolidated": true,
+  "consolidated_total": {
+    "amount": "1600000.00", "amount_minor": 160000000,
+    "currency": "XOF", "formatted": "1 600 000 FCFA"
+  },
+  "totals_by_currency": [
+    {"currency": "XOF", "amount": "1000000.00", "formatted": "1 000 000 FCFA", "count": 1},
+    {"currency": "USD", "amount": "1000.00", "formatted": "$1,000.00", "count": 1}
+  ],
+  "conversions": [
+    {"original_currency": "USD", "original_amount": "1000.00",
+     "converted_currency": "XOF", "converted_amount": "600000",
+     "conversion": {"rate": "600", "rate_date": "2025-01-01", "is_fallback": false,
+                     "label": "1 USD = 600 XOF"}}
+  ],
+  "conversion_errors": [],
+  "by_type": {"inscription": {...}, "mensualite": {...}, ...},
+  "total": 1600000.0
+}
+```
+
+`total` (flottant) reste pour compatibilité ascendante — ce n'est plus une
+somme brute mélangée, c'est désormais le total consolidé exprimé en
+nombre.
+
+## Exemple littéral de la demande, vérifié par test
 
 ```
-POST /api/payments/   { "amount": "80.00", "currency": "XOF", "amount_minor": 999999 }
-→ 201  { "currency": "USD", "amount_display": "$80.00" }
+FEBA = 1 000 000 FCFA
+FEBA FHA = 1 000 USD
+Taux = 600 FCFA pour 1 USD
 ```
-
-La devise transmise est ignorée, `amount_minor` transmis est ignoré.
-
-## Les montants sont des entiers
-
-`amount_minor` (BigInteger) est la valeur de référence : cents pour USD,
-franc pour XOF, qui n'a pas de subdivision. `amount` (Decimal) reste exposé
-pour la lisibilité, mais il est **recalculé depuis l'entier** à chaque
-enregistrement — deux sources de vérité finissent toujours par diverger.
-
-Aucun `float` n'intervient sur une somme d'argent. L'arrondi est
-`ROUND_HALF_UP` : sur une facture, un parent attend 0,005 → 0,01, pas
-l'arrondi bancaire au pair de Python.
 
 ```python
-get_currency("USD").to_minor("125.50")   # 12550
-get_currency("XOF").to_minor("50000")    # 50000  — et non 5 000 000
+def test_exemple_litteral_de_la_demande(self):
+    ...
+    self.assertNotEqual(Decimal(resp.data["consolidated_total"]["amount"]), Decimal("1001000"))
+    self.assertEqual(Decimal(resp.data["consolidated_total"]["amount"]), Decimal("1600000"))
 ```
 
-Se tromper de facteur sur le franc CFA multiplierait toutes les recettes
-par cent.
+**Vert.**
 
-## Deux devises ne s'additionnent jamais
+## Matrice de tests (12 tests, tous verts contre PostgreSQL réel)
 
-`Money.__add__` lève une `ValidationError` sur des devises différentes. Il
-n'existe aucun taux de conversion dans le projet, et il ne doit pas en
-exister : un taux inventé transformerait un total en estimation présentée
-comme un fait.
+| Scénario demandé | Test |
+|---|---|
+| FEBA uniquement | `test_feba_seule_reste_en_fcfa_sans_conversion` |
+| FEBA FHA uniquement | `test_fha_seule_reste_en_dollars_sans_conversion` |
+| Les deux académies | `test_exemple_litteral_de_la_demande`, `test_capture_ecran_reproduite_601_50_plus_2_850_000` |
+| Plusieurs paiements USD/FCFA | `test_by_type_inscriptions_et_mensualites_consolides` |
+| Paiement annulé | `test_paiement_annule_est_exclu_du_total` |
+| Paiement supprimé | `test_paiement_supprime_est_exclu_du_total` |
+| Taux nul/absent | `test_taux_absent_sans_secours_est_signale_pas_ignore` |
+| Montant décimal | `test_conversion_avec_taux_decimal_arrondit_correctement` |
+| Taux explicite affiché | `test_taux_utilise_est_explicite` |
+| Taux de secours signalé | `test_taux_de_secours_est_marque_explicitement` |
+| Détail par devise | `test_detail_par_devise_est_expose` |
 
-Les totaux consolidés sont **ventilés** :
+**Non testés explicitement dans cette liste** (hors du contrat de l'API,
+donc hors périmètre de ce correctif) : export Excel (déjà correct — chaque
+ligne exportée porte sa propre devise, aucune somme n'y est faite côté
+serveur) et rapport mensuel (mono-académie par construction, jamais de
+mélange de devises à ce niveau).
 
-```
-FEBA         8 550 000 FCFA
-FEBA_FHA     $681.50
-```
+## Frontend
 
-En mode « Toutes les Académies », `useMoney()` renvoie `currency: null` et
-les écrans affichent `$1,500.00 · 500 000 FCFA` — moins commode, et le seul
-rendu honnête.
-
-## Typographie
-
-Le séparateur de milliers français est **U+202F** (espace fine insécable),
-pas une espace ordinaire : une espace ordinaire autorise le navigateur à
-couper `50 000 FCFA` en fin de ligne, ce qui donne « 50 » puis
-« 000 FCFA ». Les tests verrouillent ce caractère.
-
-| Devise | Rendu | Décimales | Symbole |
-|---|---|---|---|
-| XOF | `50 000 FCFA` | 0 | après |
-| USD | `$1,250.00` | 2 | avant |
-
-Une devise inconnue **échoue bruyamment** plutôt que de retomber sur une
-valeur par défaut : afficher un montant dans la mauvaise unité ne se voit
-pas à l'œil.
-
-## Migration des données existantes
-
-Migration en trois temps (`payments.0007`), sans perte :
-
-1. ajout de `amount_minor` et `currency` ;
-2. `RunPython` — pour chaque paiement, la devise vient de l'académie de
-   l'élève, et l'entier est dérivé du décimal avec les décimales de CETTE
-   devise ;
-3. contrainte `amount_minor >= 0`.
-
-Exécutée sur la base réelle : **270 paiements**, tous en `XOF`,
-`amount_minor` total `8 550 000` — identique à la somme des décimaux, XOF
-n'ayant pas de subdivision. Aucune valeur modifiée.
-
-## Commandes d'audit et de réparation
-
-```bash
-python manage.py audit_payment_currencies
-python manage.py repair_payment_currencies --dry-run
-python manage.py repair_payment_currencies --apply
-```
-
-L'audit classe chaque paiement :
-
-| Classe | Signification | Traitement |
-|---|---|---|
-| `CONFORME` | devise = celle de l'académie | rien |
-| `AFFICHAGE` | code faux, montant juste | corrigé par `--apply` |
-| `AMBIGU` | les décimales diffèrent : impossible de savoir si le montant a été saisi en FCFA ou en dollars | **jamais converti automatiquement** |
-| `ORPHELIN` | élève sans académie | signalé, laissé en l'état |
-
-`repair_payment_currencies --apply` **refuse de s'exécuter** s'il reste des
-cas ambigus. Convertir silencieusement un historique reviendrait à réécrire
-une comptabilité sur une hypothèse ; l'ambiguïté doit être tranchée par
-l'établissement, pièce en main.
-
-Sortie sur la base réelle après seed :
-
-```
-Audit des devises — 276 paiement(s)
-Conforme : 276
-Totaux par académie et par devise :
-  FEBA         8 550 000 FCFA
-  FEBA_FHA     $601.50
-Aucune anomalie de devise.
-```
-
-## Ce qui a été corrigé écran par écran
-
-| Emplacement | Avant | Après |
-|---|---|---|
-| `payments/pdf_generator.py` | `f"{amount:,.0f} FCFA"` | `payment.formatted_amount` |
-| idem, montant en lettres | `… FRANCS CFA` toujours | `DOLLARS … AND … CENTS` en USD |
-| idem, académie du reçu | `School.objects.first()` | académie **de l'élève** |
-| idem, lieu | `Cotonou, le …` | ville de l'académie |
-| `payments/views.py` notifications | `{amount} FCFA` | `formatted_amount` |
-| `dashboard/views.py` KPI | `float` nu | `amount_minor` + `*_display` + `currency` |
-| 11 écrans React | `FCFA` en dur | `useMoney()` / `amount_display` du serveur |
-
-## Tests
-
-20 tests dans `backend/tests/test_multi_currency.py`, 11 dans
-`frontend/src/utils/money.test.js`. Ils couvrent le registre, l'autorité de
-l'académie, le refus des falsifications, l'interdiction d'additionner deux
-devises, les totaux consolidés, le formatage, et la présence de la devise
-dans les réponses d'API et le tableau de bord.
-
-## Limite connue
-
-Le tableau de bord affiche `0 FCFA` de recettes pour FEBA sur l'année
-civile en cours : les paiements de démonstration sont datés du début de
-l'année **scolaire** (septembre), et le KPI filtre sur l'année **civile**.
-Comportement antérieur à cette itération, conservé tel quel ; il n'affecte
-ni les montants ni les devises, seulement la fenêtre du KPI.
+`Payments.jsx` n'additionne et ne convertit plus AUCUN montant — il
+affiche `summary.consolidated_total.formatted` et
+`summary.by_type.*.formatted` tels que renvoyés par le serveur, et un
+panneau de détail (devise par devise, taux utilisé) s'affiche uniquement
+quand `is_consolidated` est vrai. Build de production vérifié après
+modification (`npm run build`, succès).

@@ -35,6 +35,23 @@ export const HEADER = "X-Academy-Scope";
 /** Portée annoncée sur les requêtes sortantes. */
 let currentScope = SCOPE_UNKNOWN;
 
+/**
+ * GÉNÉRATION DE PORTÉE (P1)
+ * -------------------------
+ * Compteur incrémenté à CHAQUE changement de portée. Il permet à un appelant
+ * asynchrone de vérifier, au retour de sa requête, que la portée n'a pas
+ * changé pendant le vol :
+ *
+ *     const gen = getScopeGeneration();
+ *     const result = await request();
+ *     if (gen !== getScopeGeneration()) return;   // réponse périmée
+ *
+ * C'est le filet de sécurité qui ne dépend NI de l'annulation (une réponse
+ * déjà dans le tampon réseau n'est plus annulable) NI de l'en-tête renvoyé
+ * par le serveur (tous les endpoints ne le renvoient pas).
+ */
+let scopeGeneration = 0;
+
 /** Contrôleurs des requêtes en vol, avortés à chaque bascule. */
 const inflight = new Set();
 
@@ -56,6 +73,31 @@ export class StaleAcademyResponse extends Error {
 
 export function getAcademyScope() {
   return currentScope;
+}
+
+/** Génération courante de la portée — voir `scopeGeneration`. */
+export function getScopeGeneration() {
+  return scopeGeneration;
+}
+
+/**
+ * True si l'erreur traduit une requête ANNULÉE (bascule d'académie,
+ * démontage du composant) et non un échec réel.
+ *
+ * RÈGLE MÉTIER : une requête annulée ne doit JAMAIS être transformée en
+ * données vides. Vider un tableau parce qu'on a soi-même annulé la requête
+ * affiche un faux zéro — c'est exactement le bug « tableau de bord à 0
+ * après actualisation ». L'appelant doit conserver ses dernières données
+ * valides.
+ */
+export function isCanceledError(error) {
+  if (!error) return false;
+  return (
+    error.code === "ERR_CANCELED" ||
+    error.name === "CanceledError" ||
+    error.name === "AbortError" ||
+    error.isStaleAcademy === true
+  );
 }
 
 /**
@@ -89,6 +131,7 @@ export function setAcademyScope(next) {
   const value = next || SCOPE_UNKNOWN;
   if (value === currentScope) return false;
   currentScope = value;
+  scopeGeneration += 1;
   abortInflightRequests();
   return true;
 }
@@ -138,5 +181,6 @@ export function isStaleResponse(responseScope, url) {
 /** Remise à zéro — tests unitaires uniquement. */
 export function resetAcademyScope() {
   currentScope = SCOPE_UNKNOWN;
+  scopeGeneration = 0;
   inflight.clear();
 }
