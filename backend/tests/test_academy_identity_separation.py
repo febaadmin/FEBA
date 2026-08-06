@@ -492,8 +492,9 @@ class LimitationDocumenteeTests(SimpleTestCase):
     PHRASE = ("Aucun cachet officiel FEBA FHA n'a été fourni ; aucun cachet "
               "d'une autre académie n'est réutilisé.")
 
-    RACINE = os.path.dirname(os.path.dirname(os.path.dirname(
-        os.path.abspath(__file__))))
+    # Le fichier de test se trouve dans backend/tests/.
+    # Un seul parent suffit pour retrouver la racine backend montée sur /app.
+    RACINE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
     def _limitations(self):
         chemin = os.path.join(self.RACINE, "KNOWN_LIMITATIONS.md")
