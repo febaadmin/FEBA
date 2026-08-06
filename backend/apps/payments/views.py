@@ -22,7 +22,7 @@ from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
-from django.db.models import Sum
+from django.db.models import Sum, Count
 from django.utils import timezone
 from apps.accounts.permissions import IsAdminOrAbove
 from apps.core.tenancy import get_request_school, IsSameTenant
@@ -247,13 +247,121 @@ class PaymentViewSet(BulkDeleteMixin, viewsets.ModelViewSet):
 
     @action(detail=False, methods=["get"])
     def summary(self, request):
+        """
+        PRIORITÉ ABSOLUE N°1 (P1 — juillet 2026) : ce total consolidait
+        littéralement `Sum("amount")` sur des paiements en francs CFA
+        (FEBA) ET en dollars (FEBA FHA) dès que « Toutes les Académies »
+        était sélectionné — une addition mathématiquement absurde
+        (2 850 000 FCFA + 601,50 $ = « 2 850 601,5 »).
+
+        Corrigé en trois temps :
+          1. on regroupe PAR DEVISE avant toute somme (`values("currency")
+             .annotate(Sum(...))`) — on ne mélange jamais deux devises
+             dans un seul `Sum` ;
+          2. chaque sous-total est converti EXPLICITEMENT vers la devise
+             de restitution via `CurrencyConversionService` (taux, date
+             et origine du taux exposés dans la réponse) ;
+          3. si un seul type de devise est présent (cas normal : une
+             académie précise sélectionnée), AUCUNE conversion n'a lieu —
+             le total reste dans sa devise native, inchangé par rapport
+             au comportement déjà correct de cet écran.
+        """
+        from apps.core.currency import DEFAULT_CURRENCY, Money
+        from apps.core.currency_conversion import CurrencyConversionService, MissingExchangeRateError
+        from django.conf import settings as django_settings
+
         qs = self.get_queryset().filter(is_confirmed=True)
-        total = qs.aggregate(t=Sum("amount"))["t"] or 0
+        reporting_currency = getattr(django_settings, "REPORTING_CURRENCY", "XOF")
+        service = CurrencyConversionService()
+
+        def grouped_totals(queryset):
+            """`[{currency, total_minor, count}]` — jamais un `Sum` mélangé."""
+            return list(
+                queryset.exclude(currency__isnull=True)
+                .values("currency")
+                .annotate(total_minor=Sum("amount_minor"), count=Count("id"))
+                .order_by("currency")
+            )
+
+        def consolidate(rows, target_currency):
+            """
+            Convertit chaque ligne `{currency, total_minor}` vers
+            `target_currency` et additionne. Renvoie le total consolidé,
+            le détail par devise, les conversions effectuées (pour
+            affichage du taux) et les erreurs de conversion éventuelles
+            (taux manquant) — jamais masquées.
+            """
+            consolidated = Money(0, target_currency)
+            by_currency = []
+            conversions = []
+            errors = []
+            for row in rows:
+                code = (row["currency"] or DEFAULT_CURRENCY).upper()
+                subtotal = Money(row["total_minor"] or 0, code)
+                by_currency.append({
+                    "currency": code,
+                    "amount": str(subtotal.amount),
+                    "amount_minor": subtotal.amount_minor,
+                    "formatted": subtotal.formatted(),
+                    "count": row["count"],
+                })
+                try:
+                    result = service.convert(subtotal, target_currency)
+                except MissingExchangeRateError as exc:
+                    errors.append(exc.args[0])
+                    continue
+                consolidated = consolidated + result.converted
+                if result.rate_info is not None:
+                    conversions.append(result.as_dict())
+            return consolidated, by_currency, conversions, errors
+
+        rows = grouped_totals(qs)
+        currencies_present = {(r["currency"] or DEFAULT_CURRENCY).upper() for r in rows}
+
+        # Une seule devise en jeu (cas courant : une académie précise, ou
+        # aucun paiement) : on restitue CETTE devise, sans conversion —
+        # convertir un montant XOF en XOF ne serait qu'un calcul inutile
+        # qui pourrait, par un bug futur, introduire une erreur d'arrondi
+        # là où il n'y en avait aucune raison d'être.
+        target_currency = (
+            next(iter(currencies_present)) if len(currencies_present) == 1 else reporting_currency
+        )
+
+        consolidated_total, totals_by_currency, conversions, conversion_errors = consolidate(rows, target_currency)
+
         by_type = {}
         for pt, _ in Payment.PAYMENT_TYPES:
-            s = qs.filter(payment_type=pt).aggregate(t=Sum("amount"))["t"] or 0
-            by_type[pt] = float(s)
-        return Response({"total": float(total), "by_type": by_type, "count": qs.count()})
+            pt_rows = grouped_totals(qs.filter(payment_type=pt))
+            pt_total, pt_by_currency, pt_conversions, pt_errors = consolidate(pt_rows, target_currency)
+            by_type[pt] = {
+                "amount": str(pt_total.amount),
+                "amount_minor": pt_total.amount_minor,
+                "formatted": pt_total.formatted(),
+                "by_currency": pt_by_currency,
+                "conversions": pt_conversions,
+                "conversion_errors": pt_errors,
+            }
+
+        return Response({
+            "reporting_currency": target_currency,
+            "is_consolidated": len(currencies_present) > 1,
+            "consolidated_total": {
+                "amount": str(consolidated_total.amount),
+                "amount_minor": consolidated_total.amount_minor,
+                "currency": target_currency,
+                "formatted": consolidated_total.formatted(),
+            },
+            "totals_by_currency": totals_by_currency,
+            "conversions": conversions,
+            "conversion_errors": conversion_errors,
+            "by_type": by_type,
+            "count": qs.count(),
+            # Rétro-compatibilité : `total` existait déjà comme flottant.
+            # Il reste un flottant, mais n'est plus une somme brute
+            # mélangeant les devises — c'est désormais le total consolidé
+            # ci-dessus, exprimé en nombre pour les appelants existants.
+            "total": float(consolidated_total.amount),
+        })
 
     @action(detail=False, methods=["get"])
     def pending(self, request):

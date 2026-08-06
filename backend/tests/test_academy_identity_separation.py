@@ -38,7 +38,6 @@ import datetime
 import hashlib
 import io
 import os
-from pathlib import Path
 
 import fitz
 from django.test import SimpleTestCase, TestCase
@@ -493,7 +492,8 @@ class LimitationDocumenteeTests(SimpleTestCase):
     PHRASE = ("Aucun cachet officiel FEBA FHA n'a été fourni ; aucun cachet "
               "d'une autre académie n'est réutilisé.")
 
-    RACINE = str(Path(__file__).resolve().parents[1])
+    RACINE = os.path.dirname(os.path.dirname(os.path.dirname(
+        os.path.abspath(__file__))))
 
     def _limitations(self):
         chemin = os.path.join(self.RACINE, "KNOWN_LIMITATIONS.md")

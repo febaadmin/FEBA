@@ -210,3 +210,6 @@ from apps.payments.fee_models import FeeSchedule  # noqa: E402,F401
 from apps.payments.transaction_models import (  # noqa: E402,F401  (import tardif volontaire)
     PaymentTransaction, WebhookEvent,
 )
+
+# ── Taux de change (P1 — totaux consolidés multi-académies) ────────────
+from apps.payments.exchange_rate_models import ExchangeRate  # noqa: E402,F401

@@ -27,6 +27,8 @@ class Command(BaseCommand):
         self.stdout.write(f"Configuration    : {'oui' if report['configured'] else 'NON'}")
         self.stdout.write(f"Signature jeton  : {'oui' if report['token_signing'] else 'NON'}")
         self.stdout.write(f"Instance joignable : {'oui' if report['reachable'] else 'NON'}")
+        if report.get("probed_url"):
+            self.stdout.write(f"URL testée (interne) : {report['probed_url']}")
         if report["detail"]:
             self.stdout.write(f"Détail           : {report['detail']}")
 

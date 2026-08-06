@@ -20,6 +20,12 @@ command -v docker >/dev/null 2>&1 || { echo "${RED}Docker est requis.${OFF}"; ex
 docker info >/dev/null 2>&1 || { echo "${RED}Le démon Docker ne répond pas.${OFF}"; exit 1; }
 command -v openssl >/dev/null 2>&1 || { echo "${RED}openssl est requis.${OFF}"; exit 1; }
 
+# P7 — Réseau partagé avec backend-dev (docker-compose.yml). Normalement
+# créé par ce dernier ; on le crée nous-mêmes s'il n'existe pas encore,
+# pour que « make jitsi-up » marche aussi AVANT « make install ».
+docker network inspect feba_jitsi_shared >/dev/null 2>&1 || \
+  docker network create feba_jitsi_shared >/dev/null
+
 # ── Secrets : générés s'ils manquent, JAMAIS régénérés s'ils existent ──
 # Régénérer invaliderait les jetons en circulation et couperait les cours
 # en cours de séance.

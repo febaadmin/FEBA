@@ -94,27 +94,28 @@ if result.returncode != 0:
 print("    Configuration Django OK.")
 
 # ── 3. Migrations ─────────────────────────────────────────────────────────────
-banner("[3/4] Application des migrations (manage.py migrate)")
+# P5 — Ce conteneur ne migre PLUS lui-même. `docker-compose.yml` place ce
+# travail dans un service dédié (`migrate`), dont `depends_on:
+# service_completed_successfully` garantit qu'il a fini AVANT que ce
+# conteneur ne démarre. Migrer ici aussi créerait exactement le problème
+# résolu : deux migrations concurrentes sur la même base neuve
+# (`relation "..." already exists`). On se contente de vérifier que le
+# service `migrate` a bien fait son travail — un filet, pas un doublon.
+banner("[3/4] Vérification des migrations (déjà appliquées par le service « migrate »)")
 result = subprocess.run(
-    [sys.executable, "manage.py", "migrate", "--no-input"],
+    [sys.executable, "manage.py", "migrate", "--check", "--no-input"],
     capture_output=False,
 )
 if result.returncode != 0:
-    banner("ERREUR FATALE — 'manage.py migrate' a échoué")
+    banner("ERREUR FATALE — Des migrations ne sont pas appliquées")
     print(f"Code de sortie : {result.returncode}")
     print(
-        "\nCauses fréquentes : conflit entre migrations, contrainte "
-        "violée par des données existantes, base de données dans un "
-        "état incohérent suite à un arrêt précédent en plein milieu "
-        "d'une migration."
-    )
-    print(
-        "Si le problème persiste après une nouvelle tentative, "
-        "réinitialiser la base en dev (perte des données dev) :\n"
-        "    docker compose down -v && docker compose up --build -d"
+        "\nLe service « migrate » de docker-compose.yml aurait dû les "
+        "appliquer avant le démarrage de ce conteneur. Vérifiez :\n"
+        "    docker compose logs migrate"
     )
     sys.exit(result.returncode)
-print("    Migrations OK.")
+print("    Migrations à jour.")
 
 # ── 4. Démarrer le serveur ────────────────────────────────────────────────────
 banner("[4/4] Démarrage du serveur Django sur 0.0.0.0:8000")

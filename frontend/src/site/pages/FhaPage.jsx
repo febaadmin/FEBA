@@ -21,9 +21,10 @@ import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import {
   Globe2, Laptop, Users2, BookHeart, GraduationCap, CalendarDays,
-  ClipboardCheck, MessageCircle, ShieldCheck, Sparkles, AlertCircle,
+  ClipboardCheck, MessageCircle, ShieldCheck, Sparkles, AlertCircle, Check,
 } from "lucide-react";
 import Seo from "../components/Seo";
+import { FHA_PLANS, FHA_FLYER_PATH } from "../fhaPlans";
 import SiteImage from "../components/SiteImage";
 import { Section, SectionHeading } from "../components/SiteSection";
 import { siteAPI } from "../siteApi";
@@ -416,6 +417,116 @@ export default function FhaPage() {
         </div>
       </Section>
 
+      {/* ── P4 : formules annuelles et flyer ─────────────────────────── */}
+      <Section id="formules">
+        <SectionHeading
+          overline={FHA_SHORT}
+          title={lang === "fr" ? "Nos formules annuelles" : "Our annual plans"}
+          subtitle={
+            lang === "fr"
+              ? "Trois rythmes, un même programme d'héritage francophone. Tous les tarifs sont annuels et en dollars américains."
+              : "Three rhythms, one same French heritage programme. All prices are annual and in US dollars."
+          }
+        />
+
+        <div className="grid lg:grid-cols-3 gap-6">
+          {FHA_PLANS.map((plan, index) => (
+            <div
+              key={plan.code}
+              className={`rounded-2xl border p-6 flex flex-col ${
+                index === 1
+                  ? "border-feba-gold bg-white shadow-lg ring-2 ring-feba-gold/30"
+                  : "border-slate-200 bg-white"
+              }`}
+            >
+              <h3 className="text-feba-navy text-xl font-bold">
+                {plan.name[lang === "fr" ? "fr" : "en"]}
+              </h3>
+              <p className="text-feba-gold text-2xl font-extrabold mt-1">
+                {plan.price[lang === "fr" ? "fr" : "en"]}
+              </p>
+
+              <ul className="mt-4 space-y-1.5 text-sm text-slate-700 border-b border-slate-100 pb-4">
+                {plan.rhythm[lang === "fr" ? "fr" : "en"].map((line) => (
+                  <li key={line} className="flex gap-2">
+                    <CalendarDays className="w-4 h-4 text-feba-navy/50 shrink-0 mt-0.5" aria-hidden="true" />
+                    <span>{line}</span>
+                  </li>
+                ))}
+              </ul>
+
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 mt-4 mb-2">
+                {lang === "fr" ? "Inclus" : "Included"}
+              </p>
+              <ul className="space-y-1.5 text-sm text-slate-700 flex-1">
+                {plan.includes[lang === "fr" ? "fr" : "en"].map((line) => (
+                  <li key={line} className="flex gap-2">
+                    <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" aria-hidden="true" />
+                    <span>{line}</span>
+                  </li>
+                ))}
+              </ul>
+
+              <Link
+                to="/feba-fha/enroll"
+                className="mt-6 px-4 py-2.5 rounded-lg bg-feba-navy text-white text-sm font-bold text-center hover:bg-feba-navy/90 transition-colors"
+              >
+                {lang === "fr" ? "Choisir cette formule" : "Choose this plan"}
+              </Link>
+            </div>
+          ))}
+        </div>
+
+        {/* Flyer officiel — consultable en grand et téléchargeable tel quel
+            (le fichier servi est l'original, non recompressé). */}
+        <div className="mt-10 grid md:grid-cols-[minmax(0,320px)_1fr] gap-6 items-start rounded-2xl bg-white border border-slate-200 p-6">
+          <a
+            href={FHA_FLYER_PATH}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="block rounded-xl overflow-hidden border border-slate-200 hover:border-feba-gold transition-colors"
+          >
+            <img
+              src={FHA_FLYER_PATH}
+              alt={
+                lang === "fr"
+                  ? "Flyer FEBA French Heritage Academy — formules et informations pratiques"
+                  : "FEBA French Heritage Academy flyer — plans and practical information"
+              }
+              className="w-full h-auto"
+              loading="lazy"
+            />
+          </a>
+          <div>
+            <h3 className="text-feba-navy text-lg font-bold">
+              {lang === "fr" ? "Le flyer officiel" : "The official flyer"}
+            </h3>
+            <p className="text-slate-600 text-sm mt-2">
+              {lang === "fr"
+                ? "Retrouvez l'essentiel du programme sur une page : formules, rythme et contacts. Idéal à partager avec votre entourage."
+                : "The essentials of the programme on a single page: plans, rhythm and contacts. Easy to share with family and friends."}
+            </p>
+            <div className="flex flex-wrap gap-3 mt-5">
+              <a
+                href={FHA_FLYER_PATH}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-4 py-2.5 rounded-lg border border-feba-navy text-feba-navy text-sm font-bold hover:bg-feba-navy hover:text-white transition-colors"
+              >
+                {lang === "fr" ? "Voir en grand" : "View full size"}
+              </a>
+              <a
+                href={FHA_FLYER_PATH}
+                download="feba-fha-flyer.jpeg"
+                className="px-4 py-2.5 rounded-lg bg-feba-gold text-feba-navy text-sm font-bold hover:bg-feba-gold2 transition-colors"
+              >
+                {lang === "fr" ? "Télécharger le flyer" : "Download the flyer"}
+              </a>
+            </div>
+          </div>
+        </div>
+      </Section>
+
       {/* ── 8. Organisation de l'année ───────────────────────────────── */}
       <Section tone="white" id="annee">
         <SectionHeading overline={FHA_SHORT} title={L(T.yearTitle)} />
@@ -653,7 +764,26 @@ export default function FhaPage() {
                   : ""}
               </p>
             ) : (
-              <PendingNotice>{L(T.feesPending)}</PendingNotice>
+              /* Les trois formules annuelles sont désormais publiées plus
+                 haut : afficher ici « tarif non communiqué » les
+                 contredirait frontalement. On renvoie donc vers elles, tout
+                 en gardant la réserve sur les modalités de paiement, qui
+                 relèvent bien de la direction. */
+              <div className="text-sm leading-relaxed space-y-2">
+                <p>
+                  {lang === "fr"
+                    ? "Trois formules annuelles : Standard 699 $, Premium 999 $, Excellence 1 299 $."
+                    : "Three annual plans: Standard $699, Premium $999, Excellence $1,299."}
+                </p>
+                <a href="#formules" className="text-feba-navy font-semibold underline">
+                  {lang === "fr" ? "Voir le détail des formules" : "See full plan details"}
+                </a>
+                <p className="text-slate-500">
+                  {lang === "fr"
+                    ? "Les modalités de paiement (une, deux ou trois fois) sont précisées lors de l'entretien d'admission."
+                    : "Payment terms (one, two or three instalments) are confirmed during the admission interview."}
+                </p>
+              </div>
             )}
           </div>
         </div>

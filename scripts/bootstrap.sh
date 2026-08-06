@@ -7,7 +7,7 @@
 #
 # Aucune valeur secrète n'est écrite dans Git : tous les secrets sont
 # générés cryptographiquement (openssl rand) et déposés dans .env.jitsi
-# et .env, qui sont ignorés par .gitignore.
+# et .env.dev, qui sont ignorés par .gitignore.
 #
 # Idempotent : relancer la commande ne régénère PAS les secrets déjà
 # présents (cela invaliderait les jetons en circulation et couperait les
@@ -77,9 +77,16 @@ grep -qE '^JITSI_HTTPS_PORT=' "$JITSI_ENV" 2>/dev/null || \
 chmod 600 "$JITSI_ENV"
 ok "Secrets Jitsi prêts (.env.jitsi, permissions 600)"
 
-# ── 3. Fichier .env applicatif ────────────────────────────────────────
+# ── 3. Fichier .env.dev applicatif ────────────────────────────────────
+# P11 — UNE SEULE convention : `.env.dev` est le fichier que
+# docker-compose.yml charge réellement (`env_file: .env.dev` sur
+# backend-dev, celery-dev, celery-beat-dev et désormais `migrate`).
+# Cette étape écrivait auparavant dans `.env`, un fichier qu'aucun
+# service ne lit : sur une installation vraiment neuve (aucun `.env.dev`
+# préexistant), les conteneurs échouaient à démarrer, `env_file`
+# introuvable.
 say "3/12 · Configuration de l'application"
-APP_ENV="$ROOT/.env"
+APP_ENV="$ROOT/.env.dev"
 if [ ! -f "$APP_ENV" ]; then
   if [ -f "$ROOT/.env.dev.example" ]; then
     cp "$ROOT/.env.dev.example" "$APP_ENV"
@@ -92,13 +99,18 @@ gen SECRET_KEY "$APP_ENV" 32
 # Le backend doit connaître EXACTEMENT les mêmes identifiants que Prosody.
 APP_ID="$(grep -E '^JITSI_APP_ID=' "$JITSI_ENV" | head -1 | cut -d= -f2-)"
 APP_SECRET="$(grep -E '^JITSI_APP_SECRET=' "$JITSI_ENV" | head -1 | cut -d= -f2-)"
-python3 - "$APP_ENV" "localhost:${JITSI_HTTP_PORT}" "$APP_ID" "$APP_SECRET" <<'PYEOF'
+# P7 — JITSI_DOMAIN reste l'adresse PUBLIQUE (celle du navigateur, et
+# celle signée dans les jetons JWT). JITSI_INTERNAL_URL est l'adresse
+# que CE conteneur backend utilise pour tester Jitsi lui-même — le nom
+# du service Docker sur le réseau partagé, jamais « localhost ».
+python3 - "$APP_ENV" "localhost:${JITSI_HTTP_PORT}" "$APP_ID" "$APP_SECRET" "http://jitsi-web:80" <<'PYEOF'
 import sys, pathlib
-path, domain, app_id, app_secret = sys.argv[1:5]
+path, domain, app_id, app_secret, internal_url = sys.argv[1:6]
 wanted = {
     "JITSI_DOMAIN": domain,
     "JITSI_APP_ID": app_id,
     "JITSI_APP_SECRET": app_secret,
+    "JITSI_INTERNAL_URL": internal_url,
 }
 p = pathlib.Path(path)
 lines = p.read_text().splitlines() if p.exists() else []
@@ -133,8 +145,14 @@ for i in $(seq 1 60); do
 done
 
 say "6/12 · Démarrage du backend"
+# P5 — `backend-dev` dépend de `migrate: service_completed_successfully`
+# dans docker-compose.yml : cette commande construit et exécute d'abord
+# le service `migrate` (et ATTEND qu'il finisse), puis démarre
+# `backend-dev`. Aucune migration explicite n'est nécessaire ici — en
+# lancer une deuxième plus loin recréerait exactement la collision
+# résolue par ce service dédié.
 docker compose up -d backend-dev
-ok "Backend démarré"
+ok "Backend démarré (migrations appliquées par le service « migrate »)"
 
 # ── 7. Jitsi auto-hébergé ─────────────────────────────────────────────
 say "7/12 · Démarrage de l'instance Jitsi AUTO-HÉBERGÉE"
@@ -152,9 +170,16 @@ done
 [ "$JITSI_READY" -eq 1 ] || warn "Jitsi n'a pas répondu à temps — vérifiez « make jitsi-logs »."
 
 # ── 9-11. Base de données et données initiales ────────────────────────
-say "9/12 · Migrations"
-docker compose exec -T backend-dev python manage.py migrate --noinput
-ok "Migrations appliquées"
+# P5 — Les migrations ont déjà été appliquées par le service dédié
+# `migrate` (dépendance de `backend-dev` ci-dessus, étape 6). On se
+# contente ici de le VÉRIFIER — jamais de relancer `migrate` une seconde
+# fois, ce qui recréerait la collision d'origine.
+say "9/12 · Vérification des migrations"
+if docker compose exec -T backend-dev python manage.py migrate --check --noinput >/dev/null 2>&1; then
+  ok "Migrations à jour (appliquées par le service « migrate »)"
+else
+  fail "Des migrations ne sont pas appliquées — voir « docker compose logs migrate »."
+fi
 
 say "10/12 · Fichiers statiques"
 docker compose exec -T backend-dev python manage.py collectstatic --noinput >/dev/null 2>&1 || \

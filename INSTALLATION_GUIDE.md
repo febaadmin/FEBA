@@ -1,93 +1,130 @@
-# INSTALL_V6.md — Guide d'installation (V6, 20/07/2026)
+# Guide d'installation — FEBA multi-académies
 
-> **V7** : après `seed_website`/`seed_demo_data`, le nom officiel est « Faith & Excellence Bilingual Academy », les bulletins/reçus portent « GROUPE ÉDUCATIF FEBA » + le cachet (`static_files/cachet_feba.png`), la vidéo galerie est dans `public/site/video/`. Rien de plus à installer (ffmpeg/PDF déjà gérés côté génération).
+> Remplace l'ancien `INSTALLATION_GUIDE.md` (V6, 20/07/2026), qui référençait
+> `make dev`, un fichier `.env` que rien ne charge réellement, et des
+> effectifs de tests obsolètes. Voir `CORRECTIONS.md` (P11, P12) pour le
+> détail de ce qui a changé et pourquoi.
 
 ## 1. Prérequis
 
-- Docker 24+ et Docker Compose 2+ (voie recommandée), ou Python 3.12+ / Node 20+
-  pour un lancement hors Docker.
+- Docker 24+ et le plugin Docker Compose v2 (`docker compose version` doit
+  répondre — pas `docker-compose` en v1, séparé par un tiret).
+- `openssl` (génération des secrets — présent par défaut sur macOS et Linux).
 - Git.
 
-## 2. Installation avec Docker (recommandé)
+Aucune installation locale de Python ou Node n'est nécessaire : toutes les
+commandes officielles passent par Docker. `make doctor` vérifie ces
+prérequis avant de démarrer quoi que ce soit.
+
+## 2. Installation
+
+Chaque commande ci-dessous est **une ligne**, à coller telle quelle. Pas de
+bloc contenant des commentaires `#` mêlés aux commandes : sur macOS, le
+shell par défaut est zsh, qui — contrairement à bash — ne traite pas `#`
+comme un commentaire en session interactive et échoue avec
+`zsh: command not found: #` si un commentaire est collé avec la commande.
 
 ```bash
-unzip feba_v1_v6_complet.zip && cd feba_v1
-cp .env.example .env          # puis renseigner les secrets (voir §5)
-make dev                      # PostgreSQL → Redis → backend (migrate auto) → Celery → frontend
-make seed                     # données de démonstration
+unzip feba_multi_academies_v9_application.zip
+cd feba_multi_academies_v9_application
+make install
 ```
 
-Accès :
+`make install` exécute, dans l'ordre, et s'arrête à la première étape en
+échec (voir `scripts/bootstrap.sh`) :
+
+1. Vérification des prérequis (`make doctor`)
+2. Préparation de `.env.dev` (généré depuis `.env.dev.example` si absent,
+   secrets générés par `openssl rand`)
+3. Démarrage de PostgreSQL, Redis, Mailpit
+4. Application des migrations par un service dédié (`migrate`), avant tout
+   autre service — aucune migration concurrente possible
+5. Démarrage du backend, puis de Celery (worker + beat)
+6. Initialisation des académies FEBA et FEBA FHA
+7. Préparation des gabarits documentaires (diplômes, certificats)
+8. Démarrage du frontend
+9. Vérification complète (`make install-check`)
+
+À la fin, l'application est accessible sur :
 
 | Service | URL |
 |---|---|
-| Site vitrine + application | http://localhost:5173 |
+| Application (frontend) | http://localhost:5173 |
 | API | http://localhost:8000/api/ |
 | Admin Django | http://localhost:8000/django-admin/ |
+| Mailpit (courrier de développement) | http://localhost:8025 |
 
-Suivre le démarrage : `make logs`.
+## 3. Salles virtuelles (Jitsi)
 
-## 3. Contenu du site vitrine (carrousel + galerie)
-
-Le contenu public est seedé par une commande dédiée :
-
-```bash
-docker compose exec backend python manage.py seed_website
-```
-
-Elle installe/actualise : paramètres du site, **5 slides de carrousel**,
-**6 albums de galerie** (Vie de classe, Activités et épanouissement, Notre
-campus, Petite enfance, FEBA Online, Moments FEBA), la vidéo de présentation,
-et les **points focaux** de chaque média.
-
-> **V6 — élagage anti-doublon** : la commande supprime désormais les médias
-> d'album qui ne font plus partie de la liste voulue
-> (`exclude(image_path__in=…).delete()`). Un re-seed ne laisse donc plus de
-> doublon ni d'orphelin. Elle est **idempotente** : on peut la relancer.
-
-Même si la base est vide, le front **ne reste jamais vide** : `HeroCarousel` et
-la galerie basculent sur les médias packagés (`src/site/siteDefaults.js`).
-
-## 4. Lancement hors Docker (développement)
+Optionnel — nécessaire uniquement pour les cours en ligne (FEBA FHA) :
 
 ```bash
-# Backend (SQLite de développement)
-cd backend
-python -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
-DJANGO_SETTINGS_MODULE=feba_project.settings.dev_sqlite python manage.py migrate
-DJANGO_SETTINGS_MODULE=feba_project.settings.dev_sqlite python manage.py seed_website
-DJANGO_SETTINGS_MODULE=feba_project.settings.dev_sqlite python manage.py runserver 8000
-
-# Frontend (autre terminal)
-cd frontend && npm ci
-BACKEND_ORIGIN=http://localhost:8000 npm run dev
+make jitsi-up
 ```
 
-> ⚠️ `dev_sqlite` **désactive les migrations** (`_DisableMigrations`). Après un
-> changement de schéma, recréer la base : supprimer le fichier SQLite puis
-> `migrate --run-syncdb` et re-seeder.
-
-## 5. Variables d'environnement
-
-Partir de `.env.example` (fourni, **sans aucun secret réel**). Renseigner au
-minimum `SECRET_KEY`, les accès PostgreSQL/Redis, `ALLOWED_HOSTS`,
-`JITSI_DOMAIN`. Ne jamais committer le `.env` réel.
-
-## 6. Vérification de l'installation
+Démarre une instance Jitsi auto-hébergée (jamais un service public :
+politique de protection des mineurs) et la relie au backend via un réseau
+Docker partagé. Vérifier ensuite :
 
 ```bash
-# Tests backend (SQLite, sans migrations)
-cd backend && DJANGO_SETTINGS_MODULE=feba_project.settings.test_sqlite \
-  .venv-test/bin/python -m pytest --no-migrations -q
-# attendu : 300 passed, 1 skipped
-
-# Tests + qualité + build frontend
-cd frontend && npx vitest run     # attendu : 56 passed
-npx eslint src                    # attendu : 0 erreur
-npx vite build                    # attendu : ✓ built
+make jitsi-health
 ```
 
-Puis, dans le navigateur (http://localhost:5173) :
-carrousel d'accueil à **5 slides** (flèches + points), page **Galerie**
-remplie, menu desktop **sur une seule ligne**, hamburger propre sur mobile.
+Doit afficher `État : OPÉRATIONNEL`, `Instance joignable : oui`.
+
+## 4. Données de démonstration
+
+```bash
+make seed
+make seed-check
+```
+
+`seed-check` échoue si une donnée d'une académie est visible depuis
+l'autre — les 20 contrôles d'isolation multi-académies attendus.
+
+## 5. Vérification manuelle
+
+Suivre le démarrage :
+
+```bash
+make logs        # tous les services
+make ps          # état de santé de chaque conteneur
+```
+
+Si un service reste `unhealthy` ou qu'un contrôle échoue :
+
+```bash
+make diagnose     # diagnostic détaillé du service en cause
+make repair       # remédiation ciblée (migrations, redémarrage, documents)
+```
+
+## 6. Réinstallation propre
+
+```bash
+docker compose down -v --remove-orphans
+make install
+```
+
+Doit réussir une seconde fois sans erreur ni doublon — `make install` est
+idempotent (voir `TEST_REPORT.md`, section idempotence).
+
+## 7. Variables d'environnement
+
+Un seul fichier fait autorité pour le développement : **`.env.dev`**,
+chargé par `docker-compose.yml`. Ne créez pas de `.env` isolé en pensant
+qu'il sera pris en compte — `make doctor` le signale explicitement s'il en
+trouve un. Partir de `.env.dev.example` (déjà fait automatiquement par
+`make install` si `.env.dev` n'existe pas encore).
+
+Les secrets Jitsi vivent séparément dans `.env.jitsi` (généré par
+`make install` ou `make jitsi-up`), jamais dans `.env.dev`.
+
+## 8. Tests
+
+```bash
+make payments-test                          # tests de paiement (SQLite, rapide)
+docker compose exec -T backend-dev python manage.py test tests   # suite complète (Postgres)
+cd frontend && npm run lint && npm run build
+```
+
+Voir `TEST_REPORT.md` pour les résultats réels de la dernière exécution.

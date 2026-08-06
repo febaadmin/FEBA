@@ -55,6 +55,32 @@ services:
       retries: 6
     restart: unless-stopped
 
+  # ── P5 — Propriétaire UNIQUE des migrations ─────────────────────────
+  #
+  # PROBLÈME RÉSOLU : `backend-dev` migrait automatiquement au démarrage
+  # (`entrypoint.dev.py`) PENDANT que `scripts/bootstrap.sh` lançait sa
+  # propre commande `manage.py migrate` en parallèle — deux processus
+  # de migration concurrents sur une base neuve, d'où
+  # `relation "schedule_onlinesessionschedule" already exists`.
+  #
+  # Ce service one-shot est désormais le SEUL à migrer. `backend-dev`,
+  # `celery-dev` et `celery-beat-dev` attendent tous
+  # `service_completed_successfully` avant de démarrer — jamais une
+  # deuxième migration en parallèle de la leur.
+  migrate:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    container_name: feba_migrate_dev
+    env_file: .env.dev
+    volumes:
+      - ./backend:/app
+    depends_on:
+      postgres-dev:
+        condition: service_healthy
+    command: python manage.py migrate --noinput
+    restart: "no"
+
   backend-dev:
     build:
       context: ./backend
@@ -63,10 +89,18 @@ services:
     env_file: .env.dev
     volumes:
       - ./backend:/app
-      - ./backend/KNOWN_LIMITATIONS.md:/app/KNOWN_LIMITATIONS.md:ro
       - media_dev:/app/media
     ports:
       - "8000:8000"
+    # P7 — Réseau partagé avec Jitsi (docker-compose.jitsi.yml, stack
+    # indépendante). Sans ce réseau commun, « jitsi-web » n'a AUCUN moyen
+    # d'être joint par son nom depuis ce conteneur — ce n'était pas
+    # seulement une histoire de mauvaise URL, le réseau lui-même manquait.
+    # `default` reste attaché explicitement : Compose ne l'ajoute plus
+    # automatiquement dès qu'un service déclare une liste `networks`.
+    networks:
+      - default
+      - feba_jitsi_shared
     depends_on:
       postgres-dev:
         condition: service_healthy
@@ -74,6 +108,8 @@ services:
         condition: service_healthy
       mailpit:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
     command: python /app/entrypoint.dev.py
     healthcheck:
       # N'utilise PAS curl (absent de l'image python:3.12-slim, pour
@@ -101,16 +137,26 @@ services:
         # que Celery ne se lance en parallèle d'un backend en échec et ne
         # masque l'erreur réelle derrière un deuxième crash redondant.
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
     command: celery -A feba_project worker --loglevel=info
     healthcheck:
-      # `celery inspect ping` interroge le worker LUI-MÊME. Vérifier que
-      # le processus tourne ne dit rien : un worker peut être vivant et
-      # ne plus consommer la file.
-      test: ["CMD-SHELL", "celery -A feba_project inspect ping --timeout=5 | grep -q pong"]
+      # P8 — CORRIGÉ : l'ancienne commande ciblait un destinataire précis
+      # avec `-d celery@$$HOSTNAME`. En forme exec (`CMD`), Docker
+      # n'exécute PAS de shell : `$HOSTNAME` n'est donc JAMAIS développé,
+      # et Celery cherchait un worker nommé littéralement
+      # « celery@$HOSTNAME » — qui n'existe jamais. Le contrôle échouait
+      # donc TOUJOURS, quel que soit l'état réel du worker.
+      #
+      # Sans `-d`, `inspect ping` interroge TOUS les workers disponibles
+      # et réussit dès qu'un seul répond — exactement la commande de
+      # référence de la demande d'origine, et suffisant ici puisqu'un
+      # seul worker tourne dans ce conteneur.
+      test: ["CMD", "celery", "-A", "feba_project", "inspect", "ping"]
       interval: 30s
       timeout: 10s
-      retries: 5
-      start_period: 20s
+      retries: 3
+      start_period: 30s
     restart: unless-stopped
 
   celery-beat-dev:
@@ -124,6 +170,8 @@ services:
     depends_on:
       backend-dev:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
     command: celery -A feba_project beat --loglevel=info --schedule=/tmp/celerybeat-schedule
     healthcheck:
       # Beat n'expose pas d'API. On vérifie que son fichier d'état a été
@@ -161,3 +209,13 @@ services:
 volumes:
   postgres_dev_data:
   media_dev:
+
+# P7 — Réseau partagé backend ↔ Jitsi. Créé ICI (pas « external » de ce
+# côté) : docker-compose.yml est le premier des deux stacks démarré dans
+# le pipeline normal (voir scripts/bootstrap.sh). docker-compose.jitsi.yml
+# le référence en `external: true` et le crée lui-même si besoin (voir
+# scripts/jitsi_up.sh) — utile si Jitsi est démarré avant le reste.
+networks:
+  default:
+  feba_jitsi_shared:
+    name: feba_jitsi_shared

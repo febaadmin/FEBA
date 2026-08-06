@@ -25,6 +25,7 @@ Cette approche est la pratique recommandée (Django docs § "Non-atomic
 migrations") pour toute migration qui modifie le schéma de façon
 incompatible avec un rollback propre.
 """
+from apps.core.migration_utils import portable_schema_change
 from django.db import migrations, models
 from django.utils.text import slugify
 
@@ -72,10 +73,8 @@ class Migration(migrations.Migration):
         #  - database_operations : SQL brut avec IF NOT EXISTS (PostgreSQL)
         #  - state_operations   : description Django des champs (pour que
         #    les migrations suivantes connaissent le schéma attendu)
-        migrations.SeparateDatabaseAndState(
-            database_operations=[
-                migrations.RunSQL(
-                    sql="""
+        portable_schema_change(
+            sql="""
                         ALTER TABLE schools_school
                             ADD COLUMN IF NOT EXISTS slug
                                 VARCHAR(80) NOT NULL DEFAULT '',
@@ -99,8 +98,6 @@ class Migration(migrations.Migration):
                             DROP COLUMN IF EXISTS trial_ends_at,
                             DROP COLUMN IF EXISTS subscription_notes;
                     """,
-                ),
-            ],
             state_operations=[
                 migrations.AddField(
                     model_name='school',
@@ -172,10 +169,8 @@ class Migration(migrations.Migration):
         #
         # Ces noms correspondent exactement à ceux que Django génère
         # automatiquement (confirmé par l'erreur réelle observée en prod).
-        migrations.SeparateDatabaseAndState(
-            database_operations=[
-                migrations.RunSQL(
-                    sql="""
+        portable_schema_change(
+            sql="""
                         CREATE UNIQUE INDEX IF NOT EXISTS schools_school_slug_key
                             ON schools_school (slug);
                         CREATE INDEX IF NOT EXISTS schools_school_slug_b6a402eb_like
@@ -185,8 +180,6 @@ class Migration(migrations.Migration):
                         DROP INDEX IF EXISTS schools_school_slug_key;
                         DROP INDEX IF EXISTS schools_school_slug_b6a402eb_like;
                     """,
-                ),
-            ],
             state_operations=[
                 migrations.AlterField(
                     model_name='school',

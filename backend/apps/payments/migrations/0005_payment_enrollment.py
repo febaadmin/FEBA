@@ -1,6 +1,7 @@
 """
 payments/migrations/0005_payment_enrollment.py — VERSION IDEMPOTENTE (v29.1)
 """
+from apps.core.migration_utils import portable_schema_change
 from django.db import migrations, models
 import django.db.models.deletion
 
@@ -43,10 +44,8 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.SeparateDatabaseAndState(
-            database_operations=[
-                migrations.RunSQL(
-                    sql="""
+        portable_schema_change(
+            sql="""
                         ALTER TABLE payments_payment
                             ADD COLUMN IF NOT EXISTS enrollment_id INTEGER
                                 REFERENCES students_studentenrollment(id)
@@ -59,8 +58,6 @@ class Migration(migrations.Migration):
                         ALTER TABLE payments_payment
                             DROP COLUMN IF EXISTS enrollment_id;
                     """,
-                ),
-            ],
             state_operations=[
                 migrations.AddField(
                     model_name='payment',

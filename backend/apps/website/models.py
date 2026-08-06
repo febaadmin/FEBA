@@ -717,6 +717,26 @@ class FHAEnrollmentApplication(models.Model):
         help_text="CONFIDENTIEL — adaptations pédagogiques, difficultés, besoins de soutien.",
     )
 
+    # ── Étape 12 : formule annuelle souhaitée ───────────────────────────
+    # Renseignée par la famille au moment de la fiche. Ce n'est PAS une
+    # facturation : c'est l'intention déclarée, qui oriente l'entretien
+    # d'admission et le devis. `UNDECIDED` est une réponse légitime — forcer
+    # un choix à ce stade fausserait la statistique.
+    PLAN_STANDARD = 'STANDARD'
+    PLAN_PREMIUM = 'PREMIUM'
+    PLAN_EXCELLENCE = 'EXCELLENCE'
+    PLAN_UNDECIDED = 'UNDECIDED'
+    PLAN_CHOICES = [
+        (PLAN_STANDARD, 'Standard — 699 $/an'),
+        (PLAN_PREMIUM, 'Premium — 999 $/an'),
+        (PLAN_EXCELLENCE, 'Excellence — 1 299 $/an'),
+        (PLAN_UNDECIDED, 'Non décidé'),
+    ]
+    desired_plan = models.CharField(
+        max_length=12, choices=PLAN_CHOICES, default=PLAN_UNDECIDED,
+        help_text="Formule annuelle souhaitée, déclarée par la famille.",
+    )
+
     # ── Étape 12 : consentements (datés et versionnés) ──────────────────
     consent_rules = models.BooleanField(default=False)
     consent_zoom = models.BooleanField(default=False)

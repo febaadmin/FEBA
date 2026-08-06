@@ -20,7 +20,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm, Controller } from "react-hook-form";
 import toast from "react-hot-toast";
-import { Bell, BellOff, Globe2, Pencil, Plus, Trash2, Video } from "lucide-react";
+import { Bell, BellOff, CalendarDays, Globe2, Pencil, Plus, Trash2, Video } from "lucide-react";
 import {
   onlineSessionsAPI, classesAPI, schoolsAPI, subjectsAPI, teachersAPI, virtualAPI,
 } from "../../../api";
@@ -44,6 +44,9 @@ const TIMEZONES = [
   "America/Toronto", "America/Vancouver", "Europe/Paris", "Africa/Porto-Novo", "UTC",
 ];
 
+/* Même palette que CampusSchedule — parité visuelle, pas seulement fonctionnelle. */
+const COLORS = ["bg-primary-50 border-primary/20 text-primary","bg-emerald-50 border-emerald-200 text-emerald-700","bg-amber-50 border-amber-200 text-amber-700","bg-rose-50 border-rose-200 text-rose-700","bg-sky-50 border-sky-200 text-sky-700","bg-violet-50 border-violet-200 text-violet-700"];
+
 function unwrap(response) {
   return response?.data?.results || response?.data || [];
 }
@@ -55,6 +58,10 @@ export default function OnlineSchedule() {
   const [editItem, setEditItem] = useState(null);
   const [deleteItem, setDeleteItem] = useState(null);
   const [groupFilter, setGroupFilter] = useState("");
+  // P2 — Parité avec CampusSchedule : même bascule Grille/Liste, même
+  // valeur par défaut. FEBA FHA n'avait qu'un tableau — une capacité en
+  // moins par rapport à FEBA, ce que la demande interdit explicitement.
+  const [view, setView] = useState("grid"); // "grid" | "list"
   const { register, handleSubmit, reset, control, watch } = useForm();
 
   const { data, isLoading, error } = useQuery({
@@ -158,6 +165,17 @@ export default function OnlineSchedule() {
 
   const remindersOn = watch("reminders_enabled");
 
+  // ── Vue grille : mêmes principes que CampusSchedule ──────────────────
+  // Axes en UTC (jour, heure) : c'est la référence sans ambiguïté d'une
+  // séance. L'heure locale reste visible dans chaque case, pas dans l'axe
+  // — un axe en heure locale déplacerait les séances de colonne selon le
+  // fuseau choisi, ce qui rendrait la grille instable à l'affichage.
+  const gridTimeSlots = [...new Set(
+    sessions.map((s) => `${s.start_time_utc?.slice(0, 5)}-${s.end_time_utc}`),
+  )].sort();
+  const groupColorMap = {};
+  sessions.forEach((s, i) => { if (s.group_name) groupColorMap[s.group_name] = i % COLORS.length; });
+
   // Le serveur refuse cet endpoint aux académies présentielles (403). Le
   // dire clairement vaut mieux qu'un tableau vide qui laisse croire à une
   // absence de données.
@@ -180,15 +198,28 @@ export default function OnlineSchedule() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-slate-500">{t("{n} séance(s) en direct", { n: sessions.length })}</p>
-        {isAllAcademies ? (
-          <span className="text-xs text-slate-500 max-w-xs">
-            {t("Sélectionnez FEBA FHA pour planifier une séance.")}
-          </span>
-        ) : (
-          <button onClick={openCreate} className="btn-primary flex items-center gap-2">
-            <Plus className="w-4 h-4" />{t("Nouvelle séance")} — {activeAcademy?.short_name || "FEBA FHA"}
-          </button>
-        )}
+        <div className="flex gap-2">
+          {/* P2 — Parité avec CampusSchedule : même bascule, même styles. */}
+          <div className="flex rounded-xl border border-slate-200 overflow-hidden">
+            <button onClick={() => setView("grid")}
+              className={clsx("px-3 py-1.5 text-xs font-medium", view === "grid" ? "bg-primary text-white" : "bg-white text-slate-600")}>
+              {t("Grille")}
+            </button>
+            <button onClick={() => setView("list")}
+              className={clsx("px-3 py-1.5 text-xs font-medium border-l", view === "list" ? "bg-primary text-white" : "bg-white text-slate-600")}>
+              {t("Liste")}
+            </button>
+          </div>
+          {isAllAcademies ? (
+            <span className="text-xs text-slate-500 self-center max-w-xs">
+              {t("Sélectionnez FEBA FHA pour planifier une séance.")}
+            </span>
+          ) : (
+            <button onClick={openCreate} className="btn-primary flex items-center gap-2">
+              <Plus className="w-4 h-4" />{t("Nouvelle séance")} — {activeAcademy?.short_name || "FEBA FHA"}
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Filtre par groupe en ligne */}
@@ -206,7 +237,69 @@ export default function OnlineSchedule() {
         ))}
       </div>
 
-      {isLoading ? (
+      {view === "grid" ? (
+        /* VUE GRILLE — mêmes principes visuels que CampusSchedule : jours en
+           colonnes, créneaux horaires en lignes. FEBA FHA planifie aussi le
+           week-end (voir DAYS ci-dessus), donc la grille compte 7 colonnes
+           au lieu des 6 de FEBA — la seule différence structurelle, dictée
+           par le métier, pas par un oubli d'implémentation. */
+        isLoading ? <div className="skeleton h-64 rounded-2xl" /> : (
+          <div className="card overflow-x-auto">
+            <div className="min-w-[900px]">
+              <div className="grid gap-0" style={{ gridTemplateColumns: `90px repeat(${DAYS.length}, 1fr)` }}>
+                <div className="bg-slate-50 border border-slate-200 p-2 text-xs font-bold text-slate-500 text-center">
+                  {t("Horaire (UTC)")}
+                </div>
+                {DAYS.map((day) => (
+                  <div key={day} className="bg-primary-50 border border-slate-200 p-2 text-xs font-bold text-primary text-center">
+                    {t(day)}
+                  </div>
+                ))}
+                {gridTimeSlots.map((slot) => {
+                  const [start] = slot.split("-");
+                  return [
+                    <div key={`label-${slot}`} className="bg-slate-50 border border-slate-100 p-2 text-xs text-slate-500 text-center font-mono">
+                      {start}
+                    </div>,
+                    ...DAYS.map((_, di) => {
+                      const items = sessions.filter(
+                        (s) => s.day_of_week === di && s.start_time_utc?.slice(0, 5) === start,
+                      );
+                      return (
+                        <div key={`${slot}-${di}`} className="border border-slate-100 p-1 min-h-[64px]">
+                          {items.map((item) => {
+                            const ci = groupColorMap[item.group_name] ?? 0;
+                            return (
+                              <div key={item.id} onClick={() => openEdit(item)}
+                                className={clsx("rounded-lg px-2 py-1.5 text-xs cursor-pointer hover:opacity-80 mb-1 border", COLORS[ci % COLORS.length], !item.is_active && "opacity-40")}>
+                                {isAllAcademies && (
+                                  <p className="truncate font-semibold opacity-90">
+                                    [{item.academy_code}]
+                                  </p>
+                                )}
+                                <p className="font-bold truncate">{item.group_name}</p>
+                                <p className="opacity-75 truncate">{item.subject_name}</p>
+                                <p className="opacity-60 truncate">🌐 {item.local_start_label} ({item.display_timezone})</p>
+                                {item.teacher_name && <p className="opacity-60 truncate">👤 {item.teacher_name}</p>}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      );
+                    }),
+                  ];
+                })}
+              </div>
+              {gridTimeSlots.length === 0 && (
+                <div className="text-center py-12 text-slate-400">
+                  <CalendarDays className="w-12 h-12 mx-auto mb-3 opacity-30" />
+                  <p>{t("Aucune séance en direct planifiée.")}</p>
+                </div>
+              )}
+            </div>
+          </div>
+        )
+      ) : isLoading ? (
         <div className="skeleton h-64 rounded-2xl" />
       ) : sessions.length === 0 ? (
         <div className="card text-center py-12 text-slate-400">

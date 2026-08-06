@@ -175,10 +175,26 @@ REDIS_URL = config('REDIS_URL', default='redis://localhost:6379/0')
 # publique.
 #
 # Les trois valeurs sont générées automatiquement par `make install`
-# (voir scripts/bootstrap.sh) et écrites dans .env.jitsi + .env, hors Git.
+# (voir scripts/bootstrap.sh) et écrites dans .env.jitsi + .env.dev, hors Git.
 JITSI_DOMAIN = config('JITSI_DOMAIN', default='')
 JITSI_APP_ID = config('JITSI_APP_ID', default='')
 JITSI_APP_SECRET = config('JITSI_APP_SECRET', default='')
+
+# P7 — URL INTERNE, pour les appels du BACKEND vers Jitsi (healthcheck).
+#
+# PROBLÈME RÉSOLU : le backend testait la joignabilité de Jitsi via
+# JITSI_DOMAIN (ex. « localhost:8443 ») — la bonne adresse pour un
+# NAVIGATEUR, mais depuis l'INTÉRIEUR du conteneur backend, « localhost »
+# désigne ce conteneur lui-même, jamais Jitsi. Résultat : « make
+# jitsi-health » échouait toujours, même Jitsi parfaitement opérationnel.
+#
+# JITSI_INTERNAL_URL cible le service Docker directement (voir
+# docker-compose.yml / docker-compose.jitsi.yml, réseau
+# « feba_jitsi_shared ») : http://jitsi-web:80 en développement. Si non
+# défini, on retombe sur JITSI_DOMAIN — utile en production, où le
+# backend et Jitsi peuvent légitimement partager la même URL publique
+# (deux domaines distincts sur le même serveur, pas deux conteneurs).
+JITSI_INTERNAL_URL = config('JITSI_INTERNAL_URL', default='')
 
 # Domaines publics explicitement interdits : ils ne doivent jamais être
 # atteints, même par une variable d'environnement mal renseignée.
@@ -355,3 +371,29 @@ STRIPE_CANCEL_URL = config(
 STRIPE_WEBHOOK_URL = config(
     'STRIPE_WEBHOOK_URL', default=f'{PUBLIC_BASE_URL}/api/payments/webhook/stripe/',
 )
+
+# ── Conversion de devises — totaux consolidés multi-académies (P1) ──────
+#
+# PROBLÈME RÉSOLU : /superadmin/payments en mode « Toutes les Académies »
+# additionnait directement des FCFA (FEBA) et des USD (FEBA FHA). Voir
+# apps/core/currency_conversion.py pour le service qui remplace cette
+# addition par une conversion explicite et tracée.
+#
+# `REPORTING_CURRENCY` est la devise dans laquelle un total qui mélange
+# plusieurs académies est consolidé. XOF par défaut : c'est la devise de
+# l'académie historique (FEBA) et celle du contexte béninois dans lequel
+# la plateforme opère.
+REPORTING_CURRENCY = config('REPORTING_CURRENCY', default='XOF')
+
+# Taux de secours utilisé UNIQUEMENT quand aucun `ExchangeRate` daté n'est
+# enregistré en base (Paiements ▸ Taux de change). Sert à ce qu'une
+# installation neuve affiche un total consolidé dès le premier jour au
+# lieu d'une erreur — mais toute réponse API utilisant ce taux le signale
+# explicitement (`is_fallback: true`) : ce n'est pas un taux officiel.
+#
+# Clé : (devise_source, devise_cible) -> combien d'unités cible pour 1
+# unité source. Le taux inverse se déduit automatiquement, inutile de
+# répéter (XOF, USD).
+FALLBACK_EXCHANGE_RATES = {
+    ('USD', 'XOF'): config('FALLBACK_RATE_USD_XOF', default='600', cast=str),
+}

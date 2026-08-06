@@ -185,6 +185,7 @@ class FHAEnrollmentCreateSerializer(HoneypotMixin, serializers.ModelSerializer):
             # étape 11
             'special_needs',
             # étape 12
+            'desired_plan',
             'consent_rules', 'consent_zoom', 'consent_privacy',
             'consent_data_processing', 'consent_photo_video',
             'consent_communications', 'consent_payment_policy',
@@ -492,6 +493,9 @@ class FHAApplicationListSerializer(serializers.ModelSerializer):
     has_sheet = serializers.BooleanField(read_only=True)
     sheet_generated_at = serializers.DateTimeField(read_only=True)
     confirmation_email = serializers.SerializerMethodField()
+    desired_plan_display = serializers.CharField(
+        source='get_desired_plan_display', read_only=True,
+    )
 
     class Meta:
         model = FHAEnrollmentApplication
@@ -502,6 +506,9 @@ class FHAApplicationListSerializer(serializers.ModelSerializer):
             'child_country', 'suggested_group', 'recommended_group',
             'parent1_first_name', 'parent1_last_name', 'parent1_email',
             'parent1_phone', 'parent1_whatsapp', 'family_timezone',
+            # Formule souhaitée : visible dès la liste FHA Admissions, sans
+            # avoir à ouvrir chaque dossier, et donc exportable telle quelle.
+            'desired_plan', 'desired_plan_display',
             'has_sheet', 'sheet_generated_at', 'confirmation_email',
             'created_at',
         ]

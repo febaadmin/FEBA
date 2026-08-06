@@ -185,24 +185,52 @@ class OnlineSessionScheduleSerializer(AcademyMetadataMixin, serializers.ModelSer
         except Exception as exc:
             raise serializers.ValidationError(getattr(exc, "messages", [str(exc)]))
 
-        # Chevauchement pour un même enseignant : une personne ne peut pas
-        # animer deux groupes en même temps, même en ligne.
-        teacher = field("teacher")
         start = field("start_time_utc")
         day = field("day_of_week")
-        if teacher and start is not None and day is not None:
-            end = candidate.end_time_utc
+        if start is None or day is None:
+            return attrs
+        end = candidate.end_time_utc
+
+        def overlapping(**filters):
+            """
+            Même logique que `ClassScheduleSerializer` : toute séance ACTIVE
+            du même jour dont la fenêtre UTC chevauche celle-ci — comparaison
+            faite entièrement en UTC, jamais dans un fuseau d'affichage.
+            """
             clash = OnlineSessionSchedule.objects.filter(
-                teacher=teacher, day_of_week=day, is_active=True,
+                day_of_week=day, is_active=True, **filters,
             )
             if self.instance:
                 clash = clash.exclude(pk=self.instance.pk)
-            for other in clash:
-                if other.start_time_utc < end and other.end_time_utc > start:
-                    raise serializers.ValidationError(
-                        "Conflit d'horaire : cet enseignant anime déjà une "
-                        "séance sur ce créneau (heures comparées en UTC)."
-                    )
+            return [o for o in clash if o.start_time_utc < end and o.end_time_utc > start]
+
+        # P2 — PARITÉ AVEC FEBA (ClassScheduleSerializer ci-dessus) :
+        # un groupe ne peut pas avoir deux séances en même temps (équivalent
+        # du conflit de CLASSE côté présentiel), et une salle virtuelle ne
+        # peut pas être réservée deux fois en même temps (équivalent du
+        # conflit de SALLE). Seul le conflit d'ENSEIGNANT existait ici avant
+        # ce correctif — exactement le CRUD « partiel » signalé.
+        group = field("group")
+        if group and overlapping(group=group):
+            raise serializers.ValidationError(
+                "Conflit d'horaire : ce groupe a déjà une séance sur ce créneau."
+            )
+
+        # Chevauchement pour un même enseignant : une personne ne peut pas
+        # animer deux groupes en même temps, même en ligne.
+        teacher = field("teacher")
+        if teacher and overlapping(teacher=teacher):
+            raise serializers.ValidationError(
+                "Conflit d'horaire : cet enseignant anime déjà une "
+                "séance sur ce créneau (heures comparées en UTC)."
+            )
+
+        virtual_room = field("virtual_room")
+        if virtual_room and overlapping(virtual_room=virtual_room):
+            raise serializers.ValidationError(
+                "Conflit d'horaire : cette salle virtuelle est déjà "
+                "réservée sur ce créneau."
+            )
 
         return attrs
 
