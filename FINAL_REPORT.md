@@ -54,7 +54,7 @@ servi de base.
 
 | | |
 |---|---|
-| Tests | **191 réussis** (21 fichiers + 1 ajouté) |
+| Tests | **185 réussis** (179 dans la source + 6 ajoutés) |
 | ESLint | **0 erreur**, 81 avertissements (82 dans la source ; 1 corrigé, 0 ajouté) |
 | Build de production | **PASS** |
 

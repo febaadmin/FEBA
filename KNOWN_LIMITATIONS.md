@@ -69,9 +69,9 @@ qui fonctionne.
 
 | Vérification | Résultat |
 |---|---|
-| Suite backend PostgreSQL 16 | 1 158 passés, 0 échec |
-| Suite backend SQLite | 1 158 passés, 1 ignoré, 0 échec |
-| Suite frontend (Vitest) | 191 passés |
+| Suite backend PostgreSQL 16 | 1 164 passés, 0 échec |
+| Suite backend SQLite | 1 163 passés, 1 ignoré, 0 échec |
+| Suite frontend (Vitest) | 185 passés (179 dans la source + 6 ajoutés) |
 | ESLint | 0 erreur, 81 avertissements préexistants |
 | Build frontend de production | PASS |
 | Parcours navigateur 1 à 5 (Chromium réel) | PASS |

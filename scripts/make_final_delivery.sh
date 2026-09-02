@@ -88,8 +88,14 @@ ARCHIVE="$SORTIE/${NOM}.zip"
 rm -f "$ARCHIVE"
 (cd "$STAGE" && zip -qr "$ARCHIVE" feba_v6_version_finale_corrigee)
 
+# Empreinte déposée À CÔTÉ de l'archive : un fichier ne peut pas contenir
+# sa propre empreinte (l'y écrire la changerait). SHA256SUMS.txt, à
+# l'intérieur, couvre les fichiers du projet.
+sha256sum "$ARCHIVE" | sed "s#$SORTIE/##" > "$ARCHIVE.sha256"
+
 echo ""
 echo "Archive : $ARCHIVE"
 echo "Taille  : $(du -h "$ARCHIVE" | cut -f1) ($(stat -c%s "$ARCHIVE") octets)"
 echo "SHA-256 : $(sha256sum "$ARCHIVE" | cut -d' ' -f1)"
 echo "Fichiers: $(unzip -l "$ARCHIVE" | tail -1 | awk '{print $2}')"
+echo "Empreinte déposée dans : $ARCHIVE.sha256"

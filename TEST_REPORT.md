@@ -53,7 +53,7 @@ DJANGO_SETTINGS_MODULE=feba_project.settings.test_sqlite pytest tests -q
 
 | | Avant | Après |
 |---|---|---|
-| Réussis | 1 151 | **1 158** |
+| Réussis | 1 151 | **1 163** |
 | Échecs | **2** | **0** |
 | Ignorés | 1 | 1 |
 
@@ -83,7 +83,7 @@ rétabli.
 ## 3. Frontend
 
 ```
-npm test        → 22 fichiers, 191 tests, 191 réussis
+npm test        → 21 fichiers, 185 tests, 185 réussis
 npm run lint    → 0 erreur, 81 avertissements (préexistants)
 npm run build   → PASS (13,7 s)
 ```
