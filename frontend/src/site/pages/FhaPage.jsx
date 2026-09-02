@@ -16,7 +16,6 @@
  * renseignés par l'administration. Sinon le bloc indique explicitement que
  * l'information sera communiquée après validation.
  */
-import { useEffect } from "react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -25,6 +24,7 @@ import {
 } from "lucide-react";
 import Seo from "../components/Seo";
 import { FHA_PLANS, FHA_FLYER_PATH } from "../fhaPlans";
+import FhaFlyerDownload from "../components/FhaFlyerDownload";
 import SiteImage from "../components/SiteImage";
 import { Section, SectionHeading } from "../components/SiteSection";
 import { siteAPI } from "../siteApi";
@@ -515,13 +515,12 @@ export default function FhaPage() {
               >
                 {lang === "fr" ? "Voir en grand" : "View full size"}
               </a>
-              <a
-                href={FHA_FLYER_PATH}
-                download="feba-fha-flyer.jpeg"
+              <FhaFlyerDownload
+                lang={lang}
                 className="px-4 py-2.5 rounded-lg bg-feba-gold text-feba-navy text-sm font-bold hover:bg-feba-gold2 transition-colors"
               >
                 {lang === "fr" ? "Télécharger le flyer" : "Download the flyer"}
-              </a>
+              </FhaFlyerDownload>
             </div>
           </div>
         </div>
@@ -775,9 +774,13 @@ export default function FhaPage() {
                     ? "Trois formules annuelles : Standard 699 $, Premium 999 $, Excellence 1 299 $."
                     : "Three annual plans: Standard $699, Premium $999, Excellence $1,299."}
                 </p>
-                <a href="#formules" className="text-feba-navy font-semibold underline">
-                  {lang === "fr" ? "Voir le détail des formules" : "See full plan details"}
-                </a>
+                {/* Même libellé, même promesse que sur le formulaire : ce
+                    lien DONNE le détail des formules (section 6 du flyer
+                    officiel) au lieu de renvoyer l'utilisateur ailleurs. */}
+                <FhaFlyerDownload
+                  lang={lang}
+                  className="text-feba-navy font-semibold underline"
+                />
                 <p className="text-slate-500">
                   {lang === "fr"
                     ? "Les modalités de paiement (une, deux ou trois fois) sont précisées lors de l'entretien d'admission."

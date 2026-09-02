@@ -34,6 +34,8 @@ import os
 from dataclasses import dataclass, replace
 from typing import Optional
 
+from .institution import official_phone, strip_retired_phones
+
 logger = logging.getLogger("apps")
 
 #: Racine des ressources graphiques livrées avec le projet.
@@ -251,6 +253,14 @@ class AcademyBranding:
     postal_address: str
     city: str
     country: str
+    #: Numéro INSTITUTIONNEL du groupe, identique pour toutes les académies.
+    #:
+    #: Ce champ ne recopie plus `School.phone`. Un reçu est sorti avec
+    #: « Tél: 0196697363 » — une valeur saisie en base, propre à une entité,
+    #: qu'aucun test ne pouvait déclarer fausse. Le numéro imprimé sur une
+    #: pièce officielle est celui par lequel une famille rappelle le groupe :
+    #: il n'a pas à dépendre de l'entité émettrice ni de qui a rempli
+    #: l'écran « Paramètres ». Il vient de `institution.official_phone()`.
     phone: str
     whatsapp: str
     email: str
@@ -288,7 +298,11 @@ class AcademyBranding:
         — et, pour l'académie en ligne, faisait apparaître deux fois une
         ville qui n'est pas la sienne.
         """
-        place = self.postal_address or ""
+        # `School.address` est un champ libre : il contient parfois un
+        # numéro de téléphone, saisi à la main, hors service depuis. Le
+        # laisser passer imprimerait deux numéros contradictoires sur la
+        # même ligne — l'ancien dans l'adresse, l'officiel après « Tél: ».
+        place = strip_retired_phones(self.postal_address or "")
         lowered = place.lower()
         for part in (self.city, self.country):
             if part and part.lower() not in lowered:
@@ -430,7 +444,10 @@ def get_branding(academy) -> AcademyBranding:
         postal_address=academy.address or "",
         city=academy.city or "",
         country=academy.country or "",
-        phone=academy.phone or "",
+        # `academy.phone` n'est PAS lu ici. Voir `institution.py` : la
+        # colonne reste une donnée de gestion administrable, elle n'est
+        # plus l'autorité sur ce qui s'imprime.
+        phone=official_phone(),
         whatsapp=academy.whatsapp or "",
         email=academy.email or "",
         website=str(brand.get("website") or ""),
@@ -439,7 +456,7 @@ def get_branding(academy) -> AcademyBranding:
         locale=academy.effective_currency_locale,
         language=academy.default_language,
         timezone=academy.timezone or "",
-        footer_text=str(brand.get("footer_text") or ""),
+        footer_text=strip_retired_phones(brand.get("footer_text") or ""),
         document_prefix=str(
             brand.get("document_prefix") or academy.matricule_prefix or academy.code or ""
         ).upper(),

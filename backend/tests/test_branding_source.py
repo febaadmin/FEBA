@@ -25,6 +25,7 @@ from apps.schools.branding import (
     ACADEMY_DEFAULTS, BrandingUnavailable, branding_for, get_branding,
     resolve_academy,
 )
+from apps.schools.institution import official_phone
 from apps.schools.models import School
 
 BACKEND_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -309,11 +310,21 @@ class AddressLineTests(TestCase):
         )
         return get_branding(academy)
 
+    #: Le numéro institutionnel est désormais TOUJOURS présent sur la ligne
+    #: d'identité, quelle que soit l'académie (voir
+    #: apps/schools/institution.py). Ces tests portent sur la COMPOSITION de
+    #: l'adresse — ville non répétée, point final retiré, aucun séparateur
+    #: orphelin — pas sur le numéro : ils l'isolent donc pour continuer à
+    #: vérifier exactement ce qu'ils vérifiaient avant.
+    def _lieu(self, line):
+        """Partie « adresse » de la ligne, sans le bloc téléphone/e-mail."""
+        return line.split(" | Tél:")[0]
+
     def test_la_ville_deja_dans_l_adresse_n_est_pas_repetee(self):
         line = self._branding(
             address="Akpakpa, Cotonou, Bénin", city="Cotonou", country="Bénin",
         ).address_line
-        self.assertEqual(line, "Akpakpa, Cotonou, Bénin")
+        self.assertEqual(self._lieu(line), "Akpakpa, Cotonou, Bénin")
         self.assertEqual(line.lower().count("cotonou"), 1)
         self.assertEqual(line.lower().count("bénin"), 1)
 
@@ -321,7 +332,7 @@ class AddressLineTests(TestCase):
         line = self._branding(
             address="12 rue des Cocotiers", city="Cotonou", country="Bénin",
         ).address_line
-        self.assertEqual(line, "12 rue des Cocotiers, Cotonou, Bénin")
+        self.assertEqual(self._lieu(line), "12 rue des Cocotiers, Cotonou, Bénin")
 
     def test_le_point_final_d_une_adresse_libre_est_retire(self):
         line = self._branding(
@@ -329,10 +340,19 @@ class AddressLineTests(TestCase):
             city="Cotonou", country="Bénin", phone="+229 97 00 00 00",
         ).address_line
         self.assertNotIn("Bénin. |", line)
-        self.assertIn("| Tél: +229 97 00 00 00", line)
+        # Le numéro imprimé est celui du GROUPE, pas celui saisi sur
+        # l'entité : c'est la règle posée par le correctif P1.
+        self.assertIn(f"| Tél: {official_phone()}", line)
+        self.assertNotIn("+229 97 00 00 00", line)
         self.assertEqual(line.lower().count("cotonou"), 1)
 
     def test_une_academie_sans_adresse_n_imprime_pas_de_separateur_vide(self):
         line = self._branding(address="", city="", country="",
                               email="contact@exemple.test").address_line
-        self.assertEqual(line, "contact@exemple.test")
+        self.assertEqual(line, f"Tél: {official_phone()} | contact@exemple.test")
+        # Le vrai objet du test : aucun séparateur orphelin, ni en tête, ni
+        # doublé, ni en fin de ligne.
+        self.assertFalse(line.startswith("|"))
+        self.assertFalse(line.endswith("|"))
+        self.assertNotIn("|  |", line)
+        self.assertNotIn(" |  ", line)

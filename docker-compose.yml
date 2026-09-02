@@ -90,6 +90,13 @@ services:
     volumes:
       - ./backend:/app
       - media_dev:/app/media
+      # Document de la RACINE dont un test vérifie le contenu
+      # (test_academy_identity_separation.py). Seul `./backend` est monté
+      # sur /app : sans cette ligne, la racine du dépôt n'existe pas dans
+      # le conteneur et le test échoue — ce qu'une livraison précédente
+      # avait contourné en DUPLIQUANT le fichier dans backend/, où les
+      # deux copies ont aussitôt divergé.
+      - ./KNOWN_LIMITATIONS.md:/KNOWN_LIMITATIONS.md:ro
     ports:
       - "8000:8000"
     # P7 — Réseau partagé avec Jitsi (docker-compose.jitsi.yml, stack

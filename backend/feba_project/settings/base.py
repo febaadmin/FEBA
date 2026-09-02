@@ -162,6 +162,19 @@ SIMPLE_JWT = {
     'AUTH_TOKEN_CLASSES': ('rest_framework_simplejwt.tokens.AccessToken',),
 }
 
+# ── Identité institutionnelle du groupe FEBA ──────────────────────────
+#
+# Numéro imprimé sur TOUS les documents officiels (reçus, bulletins,
+# certificats, diplômes, fiches). Voir apps/schools/institution.py : ce
+# n'est pas une valeur d'affichage mais la coordonnée par laquelle une
+# famille rappelle le groupe. Elle ne dépend ni de l'entité émettrice, ni
+# du profil qui déclenche la génération.
+#
+# Vide = valeur de référence du module (0160011717). La variable existe
+# pour permettre une ROTATION de ligne téléphonique sans modification de
+# code ; un numéro retiré du service y est refusé à l'exécution.
+FEBA_OFFICIAL_PHONE = config('FEBA_OFFICIAL_PHONE', default='')
+
 # Redis
 REDIS_URL = config('REDIS_URL', default='redis://localhost:6379/0')
 

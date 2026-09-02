@@ -1,149 +1,148 @@
-# Rapport de clôture — V9
-
-Ce rapport distingue **où** chaque chose a été vérifiée. C'est la seule
-distinction qui compte : cinq défauts de cette itération n'apparaissaient
-pas dans le dépôt source, seulement depuis l'archive extraite.
+# Rapport final — livraison FEBA
 
 ---
 
-## Ce qui est testé, et où
+## 1. Source utilisée
 
-| Vérification | Dépôt source | Archive extraite | SQLite | PostgreSQL | Navigateur | Vu à l'œil |
-|---|:-:|:-:|:-:|:-:|:-:|:-:|
-| Suites backend | ✅ 806 | ✅ 806 | ✅ 805+1 | ✅ 806 | — | — |
-| Suites frontend | ✅ 123 | ✅ 123 | — | — | — | — |
-| ESLint / build | ✅ 0 erreur | ✅ 0 erreur | — | — | — | — |
-| Installation propre | — | ✅ venv neuf, base vide | — | ✅ 0→69 tables | — | — |
-| Diplôme produisible | ✅ | ✅ sans commande | — | ✅ | ✅ | ✅ capture |
-| Certificat produisible | ✅ | ✅ | — | ✅ | ✅ | ✅ capture |
-| Neutralisation du placeholder | ✅ | ✅ 4220→0 px | — | — | — | ✅ PDF |
-| Identité par académie | ✅ | ✅ 7 documents | — | ✅ | ✅ | ✅ PDF |
-| Inscription FEBA FHA | ✅ 43 tests | ✅ bout en bout | ✅ | ✅ SQL direct | ✅ | ✅ capture |
-| Fiche PDF + téléchargement | ✅ | ✅ | — | ✅ | ✅ | ✅ PDF |
-| Contacts + WhatsApp | ✅ 16 tests | ✅ 2 académies | ✅ | ✅ SQL direct | ✅ | ✅ capture |
-| Messages longs non coupés | ✅ 14 tests | ✅ | — | ✅ 6300/6300 car. | ✅ 1011/1011 | ✅ capture |
-| Isolation + anti-IDOR | ✅ | ✅ | ✅ | ✅ | — | ✅ preuve |
-| Stockage privé | ✅ | ✅ | — | ✅ | — | — |
-| Contrôle des secrets | ✅ garde-fou | ✅ ZIP analysé | — | — | — | — |
+| | |
+|---|---|
+| Origine | `https://drive.google.com/file/d/1_XB0DUpHUOFcqO-gGCzZfLzRgLRUp2zS/view` |
+| Fichier | `feba.zip` — 34 457 093 octets |
+| **SHA-256** | `e06cdab5bad530087cf1a1c2c6917faff957d84b7ff48bca9e992dbb04d53c74` |
+| `unzip -t` | PASS — 1 076 entrées, aucune erreur |
+| Racine | `feba_v6_version_finale_corrigee/` |
+
+L'archive a été téléchargée, vérifiée (`file`, `sha256sum`, `unzip -t`) et
+extraite dans un dossier **neuf et vide**. Aucune copie antérieure n'a
+servi de base.
 
 ---
 
-## E-mails : ce qui s'est réellement passé
+## 2. Correctifs
 
-Le brief demande de distinguer cinq états. Voici lequel s'applique.
-
-| État | S'applique ? | Détail |
-|---|:-:|---|
-| Capturé par un backend local | **OUI** | `django.core.mail.backends.console.EmailBackend` |
-| Mis en file | non | Aucune file n'a été employée |
-| Simulé | non | Les messages sont réellement composés et remis au backend |
-| Accepté par un fournisseur externe | **NON** | Aucun fournisseur configuré |
-| Réellement distribué | **NON** | Impossible à affirmer sans fournisseur |
-
-Le journal `EmailDelivery` porte `status = sent` et
-`backend = console.EmailBackend`. Le drapeau `used_real_provider` vaut
-**faux**, et l'interface affiche « Sans fournisseur » — jamais « Envoyé ».
-`manage.py email_check` sort en erreur dans cet état, exprès.
-
-Un fichier HTML a bien été produit pour chaque message. **Cela ne vaut pas
-envoi**, et rien dans cette livraison ne le présente comme tel.
+| Priorité | Problème | Cause racine | Correction | Test | Résultat |
+|---|---|---|---|---|---|
+| **P1** | Documents portant `0196697363` | `get_branding()` lisait `School.phone`, colonne administrable par entité. Le numéro n'était dans aucun fichier source : il venait de la base, saisi via l'écran « Paramètres ». Aucun `grep` ne pouvait le voir. | Source institutionnelle unique `apps/schools/institution.py` (`OFFICIAL_PHONE`, rotation par `FEBA_OFFICIAL_PHONE`, refus des numéros retirés). `get_branding()` la lit ; les champs libres sont nettoyés ; migration `schools.0015` répare la base. | `test_institutional_phone.py` (20) — documents réellement produits, inspectés visuellement | ✅ **Corrigé** |
+| **P1b** | Bulletins **sans aucun** numéro | Le bulletin recomposait son en-tête à partir de la seule adresse, au lieu d'utiliser la ligne d'identité commune | `_add_header()` utilise `brand.address_line` | idem | ✅ **Corrigé** |
+| **P2** | « Voir le détail des formules » menait à `/feba-fha` | `<Link to="/feba-fha">` : navigation au lieu de remise du document. Le parent perdait en outre toute sa saisie (étape 12/12 du formulaire) | Composant `FhaFlyerDownload` → téléchargement du flyer officiel en PDF, plus deux règles Nginx (`Content-Disposition: attachment`, `try_files $uri =404`) | `fhaFlyerDownload.test.jsx` (6) + parcours navigateur réel | ✅ **Corrigé** |
+| **P4/P5** | Instances publiques proposées par défaut | Les trois `.env.*.example` — **dont celui de production** — proposaient `JITSI_DOMAIN=meet.jit.si`, que le backend refuse déjà | Modèles pointant `meet.globalfeba.com` ; modèle de développement **vide** (aucun repli) ; guides corrigés | `test_jitsi_production_domain.py` (21) | ✅ **Corrigé** |
+| **P6** | `make jitsi-health` limité au conteneur local | La cible passait obligatoirement par `docker compose exec` | `JITSI_TARGET=` pour viser la production, repli sur Python local ; contrôles DNS, TLS, HTTP, page Jitsi ; cibles `jitsi-restart`, `jitsi-config-check`, `jitsi-prod-*` | 6 mauvaises configurations injectées, **6 détectées** | ✅ **Corrigé** |
+| **P7** | Aucune configuration de production Jitsi | Seule une pile de développement existait | `docker-compose.jitsi.prod.yml` : Let's Encrypt, ports 80/443, `JVB_ADVERTISE_IPS` obligatoire, `JWT_ALLOW_EMPTY=0`, `restart: always`, rotation des journaux | test de la surcouche livrée | ✅ **Corrigé** |
+| **P15** | `CSRF_TRUSTED_ORIGINS` **absent** | Jamais défini. Invisible car l'API utilise JWT sans cookie — seul `/django-admin/`, exposé par Nginx, devenait inaccessible | Réglage lu depuis l'environnement, dérivé d'`ALLOWED_HOSTS` à défaut ; `SameSite=Lax` | `test_production_settings.py` (10) | ✅ **Corrigé** |
+| **Audit** | Un fichier statique absent répondait `200` + HTML | `try_files … /index.html` du SPA capture aussi les fichiers. **Constaté sur le site en ligne** | `location` exacte avec `try_files $uri =404` pour le flyer | vérifié par HTTP réel | ✅ **Corrigé (flyer)** |
+| **Base** | 2 tests en échec **dans l'archive source** | Contenu attendu disparu de `KNOWN_LIMITATIONS.md`, et fichier introuvable depuis le conteneur (`./backend:/app`) — contourné par une **duplication** ayant divergé | Document rétabli ; recherche du fichier en remontant l'arborescence ; montage dans `docker-compose.yml` ; duplication supprimée | tests d'origine, inchangés | ✅ **Corrigé** |
 
 ---
 
-## Les cinq défauts trouvés en validant l'archive
+## 3. Résultats
 
-Aucun n'était visible depuis le dépôt source.
+### Tests backend
 
-**1. La livraison partait avec les rapports de l'itération précédente.**
-La liste était figée sur V8. L'archive V9 ne contenait aucun des douze
-rapports écrits pour elle. Corrigé par une liste vérifiée : un rapport
-annoncé mais absent interrompt la construction.
-
-**2. La règle d'académie ne tenait que dans la vue HTTP.** Produire un
-diplôme au fond FEBA pour un élève de l'académie en ligne était refusé par
-l'API et **accepté par le service**. Une commande, un script d'import ou un
-test produisait donc un document au nom d'une académie et à l'effigie
-d'une autre. Une règle posée à la porte d'entrée HTTP n'est pas une règle.
-
-**3. L'adresse imprimée se répétait.** `Akpakpa, Cotonou, Bénin, Cotonou,
-Bénin` en tête de chaque reçu — et, pour l'académie en ligne, une ville qui
-n'est pas la sienne affichée deux fois sur ses propres documents.
-
-**4. Deux caractères disparaissaient de chaque message long.** DRF retire
-les blancs de fin par défaut. Un message de 7 014 caractères arrivait à
-7 012. Deux caractères — mais c'est la même mécanique qui modifie ce que le
-visiteur a écrit, pendant que l'application affirme ne rien tronquer.
-
-**5. Un fichier d'environnement réel partait dans chaque archive.**
-`.env.dev` contenait une `SECRET_KEY` et un `JITSI_APP_SECRET`. Des secrets
-faibles restent des secrets : livrés, ils deviennent les secrets par défaut
-de toute installation qui recopie le fichier sans le lire.
-
-Chacun a reçu un test de non-régression. L'archive a été régénérée et
-réinstallée depuis zéro après chaque correction — **quatre tours de
-boucle**.
-
----
-
-## Non validé faute d'identifiants externes
-
-| Sujet | Ce qui manque | Ce qui a été fait malgré tout |
+| Base | Avant | Après |
 |---|---|---|
-| Envoi d'e-mail réel | Un fournisseur SMTP et ses identifiants | Composition, formats, langues, pièces jointes, journal, états d'échec, relance — et un refus explicite de présenter un envoi comme réel |
-| Paiement par carte | Des clés Stripe valides | 54 tests couvrant tentative, webhook, idempotence, ordre, remboursement, reçu, permissions ; signature vérifiée par la bibliothèque officielle, sans réseau |
+| PostgreSQL 16.13 | 1 111 réussis · **2 échecs** | **1 164 réussis · 0 échec** |
+| SQLite | 1 151 réussis · **2 échecs** · 1 ignoré | **1 163 réussis · 0 échec · 1 ignoré** |
+
+> Deux exécutions intermédiaires ont montré 2 échecs dans
+> `test_fha_sheet_download_per_row.py`. Cause identifiée : les deux suites
+> avaient été lancées **en parallèle** sur le même dossier
+> `backend/private_media/`, où elles écrasaient mutuellement leurs
+> fichiers. Erreur de méthode de ma part, pas un défaut du produit —
+> vérifié en rejouant depuis un état vierge, puis séquentiellement.
+
+### Frontend
+
+| | |
+|---|---|
+| Tests | **191 réussis** (21 fichiers + 1 ajouté) |
+| ESLint | **0 erreur**, 81 avertissements (82 dans la source ; 1 corrigé, 0 ajouté) |
+| Build de production | **PASS** |
+
+### Parcours en navigateur réel
+
+Chromium, build de production servi par Nginx, backend Django, PostgreSQL.
+
+| Parcours | Résultat |
+|---|---|
+| 1 — visiteur → formulaire FHA → flyer téléchargé | **PASS** (identique octet pour octet, mobile compris) |
+| 2 — admin → paiement → reçu PDF → `0160011717` | **PASS** |
+| 3 — salle virtuelle → jamais `meet.jit.si` | **PASS** (503 explicite) |
+| 4 — admin FHA → salles de la bonne académie | **PASS** |
+| 5 — cloisonnement, y compris IDOR | **PASS** (404 sur accès croisé) |
 
 ---
 
-## Limitations réelles restantes
+## 4. Jitsi
 
-**Aucune signature officielle n'est fournie.** Les zones
-`director_signature` restent vides. Le moteur ne dessine, ne reconstitue et
-n'approche jamais une signature : une signature inventée sur un diplôme
-n'est pas une approximation graphique, c'est un faux.
+| | |
+|---|---|
+| Domaine configuré | `meet.globalfeba.com` |
+| `meet.jit.si` en production | **NON** — refusé par le code, absent des modèles |
+| Healthcheck | 7 contrôles : configuration, domaine non public, signature, DNS, TLS, HTTP, page Jitsi |
+| JWT | HS256, 15 min, salle nommée, expiration vérifiée |
+| **État réel** | **DÉGRADÉ — `meet.globalfeba.com` ne résout pas** |
 
-**L'académie en ligne n'a pas de fond de diplôme ni de certificat.** Les
-deux gabarits sont réservés à FEBA et l'interface le dit, avec sa raison.
-Le jour où le fond est fourni, il fera l'objet d'un gabarit distinct.
+`getent hosts globalfeba.com` → `62.238.38.111` ✅
+`getent hosts meet.globalfeba.com` → **aucun enregistrement** ❌
 
-**Ni téléphone ni e-mail ne sont renseignés pour les deux académies.** Les
-documents ne les affichent donc pas. C'est une donnée que l'établissement
-doit saisir, pas un défaut de code — et les inventer serait pire.
-
-**Les fonds installés ne sont pas les PNG d'origine** : variantes
-transcodées, acceptées nommément et tracées. Géométrie exacte, calibrage
-valide.
-
-**Les libellés d'état des dossiers FHA restent en français** sur une
-session anglaise. Défaut d'affichage seulement : l'état stocké et transmis
-est le code interne.
-
-**L'interface charge une police depuis `fonts.googleapis.com`.** Injoignable
-derrière le proxy de ce conteneur, elle retombe sur la police système sans
-rien casser. À signaler pour un déploiement hors ligne, et parce que chaque
-visiteur est alors vu par un tiers.
-
-**Redis doit tourner.** `django-ratelimit` et l'authentification passent par
-le cache ; sans lui, le formulaire public et la connexion renvoient 500.
-Documenté dans `INSTALLATION_GUIDE.md` et démarré par `make dev`.
+Actions restantes, avec leurs commandes de vérification :
+[`MANUAL_PRODUCTION_ACTIONS.md`](MANUAL_PRODUCTION_ACTIONS.md).
+**Aucune n'a été effectuée, aucune n'est présentée comme faite.**
 
 ---
 
-## Détail par priorité
+## 5. Documents
 
-| | Sujet | État |
-|---|---|---|
-| P0 | Source unique d'identité par académie | Corrigé et vérifié |
-| P1 | Inscription FEBA FHA de bout en bout | Corrigé et vérifié |
-| P2 | Audit de la chaîne des champs | Corrigé et vérifié |
-| P3 | Fiche PDF + téléchargement sécurisé | Corrigé et vérifié |
-| P4 | Vue détail complète + export | Corrigé et vérifié |
-| P5 | Formulaires de contact | Corrigé et vérifié |
-| P6 | Messages longs jamais tronqués | Corrigé et vérifié |
-| P7 | Diplôme disponible dès l'installation | Corrigé et vérifié |
-| P8 | Documents filtrés par académie | Corrigé et vérifié |
-| P9 | Tests automatisés | 806 backend, 123 frontend |
-| P10 | Vérification navigateur | 34 vérifications, depuis l'archive |
-| P11 | Audit global | 5 défauts trouvés et corrigés |
+| | |
+|---|---|
+| Ancien numéro détecté | **NON** — y compris espacé, pointé, tireté, préfixé |
+| Numéro officiel | **0160011717** |
+| Vérifiés | reçu FEBA, reçu FHA, bulletin FEBA, bulletin FHA, fiche de préinscription, 4 certificats/diplômes |
 
-« Corrigé et vérifié » signifie : exécuté sur cette instance, depuis
-l'archive extraite, avec la sortie reproduite dans `TEST_REPORT.md`.
+Produits avec les deux académies portant **délibérément** l'ancien numéro
+en base — l'état exact de la production — puis rendus en image et
+**inspectés visuellement**.
+
+## 6. Flyer
+
+| | |
+|---|---|
+| Fichier | `frontend/public/images/feba-fha/feba-fha-flyer.pdf` (856 088 octets) |
+| Source | le JPEG officiel fourni, sans retouche du contenu |
+| Lien | `/images/feba-fha/feba-fha-flyer.pdf` |
+| HTTP | `200` · `application/pdf` · `attachment; filename="FEBA-French-Heritage-Academy-flyer.pdf"` |
+| Fichier retiré | `404` (et non un `200` HTML) |
+| Téléchargement réel | **PASS** — desktop et mobile, identique octet pour octet |
+
+---
+
+## 7. Une divergence assumée entre l'archive et le dépôt
+
+`.github/workflows/deploy.yml` **n'a pas été repris de l'archive**.
+
+Le dépôt en contient une version plus avancée : sauvegarde Restic
+pré-déploiement avec vérification qu'un nouveau snapshot a bien été créé,
+attente de l'état sain du backend, et retour arrière. La version de
+l'archive ne les a pas.
+
+Appliquer l'archive aurait supprimé la sauvegarde automatique avant chaque
+déploiement de production. Ce n'est demandé nulle part, et la conséquence —
+un déploiement raté sans point de retour — est irréversible. La version du
+dépôt a donc été conservée, et le fait est signalé ici plutôt que passé
+sous silence. Tout le reste vient de l'archive.
+
+---
+
+## 8. Ce qui n'a pas été fait
+
+- **Docker Compose n'a jamais démarré** — aucun démon disponible. Fichiers
+  validés syntaxiquement, configurations Nginx validées par `nginx -t` sur
+  un binaire réel.
+- **Aucun appel Jitsi réel** — l'infrastructure n'existe pas encore.
+- **Aucun e-mail réellement envoyé** — backend en mémoire pendant les tests.
+- **Les 13 tests e2e existants** n'ont pas été joués (ils supposent Docker).
+  Les cinq parcours demandés ont été écrits et exécutés séparément.
+- **Aucune action DNS, Hetzner ou de secret de production.**
+
+Détail : [`KNOWN_LIMITATIONS.md`](KNOWN_LIMITATIONS.md) ·
+[`SECURITY_AUDIT.md`](SECURITY_AUDIT.md) §6.

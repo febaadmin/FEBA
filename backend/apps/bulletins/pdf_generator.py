@@ -330,9 +330,13 @@ def _build_annual_subject_data(student, school_year):
 def _add_header(story, student, period, school_year, palette, title):
     brand = palette.brand
     name = brand.display_name
-    subtitle = ", ".join(
-        x for x in (brand.postal_address, brand.city, brand.country) if x
-    ) or "—"
+    # P1 — Le bulletin recomposait son en-tête à partir de l'adresse seule.
+    # Il sortait donc SANS numéro de téléphone : la pièce qu'un parent a le
+    # plus souvent en main pour appeler l'établissement (une note contestée,
+    # une appréciation à discuter) était la seule à ne pas porter le
+    # numéro. `address_line` est la ligne d'identité commune à tous les
+    # documents — même adresse, même numéro institutionnel, même e-mail.
+    subtitle = brand.address_line or "—"
     logo_path = brand.document_logo
     if logo_path and os.path.exists(logo_path):
         try:
