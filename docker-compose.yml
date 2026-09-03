@@ -90,6 +90,29 @@ services:
     volumes:
       - ./backend:/app
       - media_dev:/app/media
+      # ── La racine du dépôt, en LECTURE SEULE ──────────────────────────
+      #
+      # Une partie des tests ne vérifie pas du code applicatif mais des
+      # FICHIERS DE LIVRAISON : .env.dev.example doit pointer Mailpit, le
+      # Makefile doit exposer ses cibles, docker-compose.jitsi.prod.yml
+      # doit imposer l'authentification. Ces fichiers vivent au-dessus de
+      # backend/, et `./backend:/app` ne les fait pas entrer ici.
+      #
+      # La livraison précédente montait UN fichier nommément
+      # (KNOWN_LIMITATIONS.md). Ça marchait pour lui seul : le Makefile,
+      # les .env.*.example, les scripts et la surcouche Jitsi restaient
+      # invisibles, et les tests correspondants échouaient — ou, pire, se
+      # déclaraient « skipped », ce qui se lit comme un succès.
+      #
+      # Le dépôt entier est donc monté, une fois, en lecture seule : le
+      # conteneur ne peut rien y écrire, et la liste n'aura plus à être
+      # tenue à jour à chaque nouveau test de configuration.
+      - .:/repo:ro
+    environment:
+      # Lu par backend/tests/repo_root.py. Le module sait aussi retrouver
+      # la racine tout seul (remontée de l'arborescence, puis /repo) :
+      # cette variable rend l'intention explicite plutôt que devinée.
+      FEBA_REPO_ROOT: /repo
     ports:
       - "8000:8000"
     # P7 — Réseau partagé avec Jitsi (docker-compose.jitsi.yml, stack

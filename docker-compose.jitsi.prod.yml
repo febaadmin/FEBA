@@ -1,0 +1,105 @@
+# ══════════════════════════════════════════════════════════════════════
+# FEBA — Surcouche PRODUCTION de la pile Jitsi (meet.globalfeba.com)
+#
+# S'UTILISE AVEC docker-compose.jitsi.yml, JAMAIS SEULE :
+#
+#   docker compose -f docker-compose.jitsi.yml \
+#                  -f docker-compose.jitsi.prod.yml \
+#                  --env-file .env.jitsi up -d
+#
+# (ou simplement « make jitsi-prod-up ».)
+#
+# POURQUOI UNE SURCOUCHE ET NON UN SECOND FICHIER COMPLET
+# -------------------------------------------------------
+# La pile de développement est déjà correcte : mêmes images, même
+# authentification JWT, mêmes secrets partagés avec le backend. Ce qui
+# change en production tient à quatre choses, et à quatre seulement :
+#
+#   1. le domaine public servi (meet.globalfeba.com) ;
+#   2. TLS réel, par Let's Encrypt, au lieu du certificat auto-signé ;
+#   3. les ports 80/443 de l'hôte au lieu de 8443/8444 ;
+#   4. l'IP publique annoncée par le pont vidéo (JVB), sans laquelle
+#      l'audio et la vidéo ne s'établissent pas derrière le NAT Hetzner.
+#
+# Dupliquer le fichier entier ferait diverger les deux configurations à la
+# première correction apportée d'un seul côté.
+#
+# CE QUI RESTE À FAIRE HORS DU DÉPÔT — voir MANUAL_PRODUCTION_ACTIONS.md :
+#   * l'enregistrement DNS A « meet » chez Hostinger ;
+#   * l'ouverture UDP/10000 et TCP/80,443 dans le pare-feu Hetzner.
+# Ces deux actions ne peuvent pas être faites depuis ce dépôt.
+# ══════════════════════════════════════════════════════════════════════
+
+services:
+  jitsi-web:
+    ports:
+      # Let's Encrypt valide le domaine par HTTP-01 : le port 80 doit être
+      # joignable depuis l'extérieur, sinon la délivrance échoue et le
+      # conteneur redémarre en boucle sans jamais servir en HTTPS.
+      - "80:80"
+      - "443:443"
+    environment:
+      # Domaine public réellement servi. `PUBLIC_URL` est aussi ce que
+      # Jitsi met dans les liens d'invitation qu'il génère.
+      - PUBLIC_URL=${JITSI_PUBLIC_URL:?JITSI_PUBLIC_URL est requis en production (https://meet.globalfeba.com)}
+      # ── TLS ─────────────────────────────────────────────────────────
+      - ENABLE_LETSENCRYPT=1
+      - LETSENCRYPT_DOMAIN=${JITSI_DOMAIN:?JITSI_DOMAIN est requis (meet.globalfeba.com)}
+      - LETSENCRYPT_EMAIL=${LETSENCRYPT_EMAIL:?LETSENCRYPT_EMAIL est requis pour les avis d'expiration}
+      # Le certificat est renouvelé automatiquement par le conteneur ;
+      # l'adresse ci-dessus reçoit les avertissements d'expiration, seul
+      # filet en cas d'échec silencieux du renouvellement.
+      - ENABLE_HTTP_REDIRECT=1
+      - DISABLE_HTTPS=0
+      # ── Authentification ────────────────────────────────────────────
+      # Répété ici volontairement : c'est la garantie qui compte le plus,
+      # et une surcouche qui l'oublierait ouvrirait l'instance à tous.
+      - ENABLE_AUTH=1
+      - ENABLE_GUESTS=0
+      - AUTH_TYPE=jwt
+    restart: always
+    logging: &prod_logging
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+  prosody:
+    environment:
+      - PUBLIC_URL=${JITSI_PUBLIC_URL}
+      - ENABLE_AUTH=1
+      - ENABLE_GUESTS=0
+      - AUTH_TYPE=jwt
+      # Un jeton vide ne doit JAMAIS ouvrir une salle. C'est la ligne qui
+      # sépare « instance protégée » de « instance publique sur votre
+      # propre domaine » : sans elle, n'importe qui connaissant l'URL
+      # entre dans un cours.
+      - JWT_ALLOW_EMPTY=0
+      # Fenêtre de tolérance d'horloge. Les jetons FEBA vivent 15 minutes
+      # (voir apps/virtualclass/services.py) : au-delà de quelques
+      # secondes de dérive, des jetons valides seraient refusés.
+      - JWT_ACCEPTED_ISSUERS=${JITSI_APP_ID}
+      - JWT_ACCEPTED_AUDIENCES=jitsi
+    restart: always
+    logging: *prod_logging
+
+  jicofo:
+    restart: always
+    logging: *prod_logging
+
+  jvb:
+    ports:
+      - "${JVB_PORT:-10000}:10000/udp"
+    environment:
+      # SANS CETTE VALEUR, LE SON ET L'IMAGE NE PASSENT PAS.
+      #
+      # Le pont vidéo annonce aux navigateurs l'adresse à laquelle leur
+      # envoyer les flux. Dans un conteneur, l'adresse qu'il découvre est
+      # celle du réseau Docker (172.x), inatteignable depuis Internet.
+      # Les participants se connectent, se voient dans la liste, et
+      # n'entendent rien : la panne la plus déroutante de Jitsi, et elle
+      # tient à cette seule variable.
+      - JVB_ADVERTISE_IPS=${JVB_ADVERTISE_IPS:?IP publique du serveur Jitsi requise (voir MANUAL_PRODUCTION_ACTIONS.md)}
+      - JVB_PORT=${JVB_PORT:-10000}
+    restart: always
+    logging: *prod_logging

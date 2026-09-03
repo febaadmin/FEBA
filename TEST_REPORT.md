@@ -1,137 +1,304 @@
-# TEST_REPORT — résultats réellement obtenus
+# Rapport de tests — livraison FEBA **V9**
 
-Tous les chiffres ci-dessous proviennent d'exécutions réelles dans
-l'environnement de préparation de cette livraison. Aucun résultat n'est
-estimé ou reproduit de mémoire.
+> **V9** repart de V8. Cette section résume les mesures V9 ; le détail
+> historique des correctifs V8 suit, inchangé.
+>
+> | Contrôle | V8 (constaté par la QA) | **V9** |
+> |---|---|---|
+> | Commande de QA, disposition conteneur | 5 failed · 84 passed · 1 skipped | **88 passed · 0 skipped** |
+> | `test_env_dev_email_config.py` | **4 skipped** | **4 passed** |
+> | Suite complète — disposition conteneur | 5 failed · 1 156 passed · 5 skipped | **1 196 passed · 0 skipped** |
+> | Suite complète — PostgreSQL 16 (hôte) | 1 164 passed | **1 196 passed · 0 skipped** |
+> | Suite complète — SQLite (hôte) | 1 163 passed · 1 skipped | **1 195 passed · 1 skipped** |
+> | `manage.py check` | no issues | **no issues** |
+> | `makemigrations --check --dry-run` | No changes detected | **No changes detected** |
+> | Frontend — tests / lint / build | 185 · 0 erreur · PASS | **185 · 0 erreur · PASS** |
+> | `docker compose config` (5 assemblages) | non mesuré | **5/5 OK** |
+> | `nginx -t` (dont vhost Jitsi activé) | 2 configurations | **3/3 OK** |
+> | Sûreté du dépôt | non outillé | **PASS** (`scripts/repo_safety_check.sh`) |
+> | `docker compose up` + healthchecks | PASS (QA externe) | **NON EXÉCUTÉ** — démon Docker indisponible |
+>
+> L'unique `skipped` restant est celui d'un test de concurrence
+> multi-threads que SQLite ne peut pas exécuter (verrou de table) : il
+> **est** exécuté sur PostgreSQL. Ce n'est pas un défaut d'arborescence.
+>
+> Les cinq parcours navigateur ont été exécutés en V8 et **n'ont pas été
+> rejoués** en V9 : aucun code de parcours utilisateur n'a changé.
 
-Environnement : Python 3.11.15, Django 5.0.4, Node 22.22.2, npm 10.9.7.
-Réglages backend : `feba_project.settings.test_sqlite` (SQLite en mémoire —
-ni PostgreSQL, ni Redis, ni WeasyPrint requis).
+---
 
-## 1. Backend
+# Rapport de tests — livraison FEBA (V8, historique)
+
+Environnement : Python 3.11.15 · Django 5.0.4 · PostgreSQL 16.13 ·
+Node 22.22 · Chromium (Playwright) · Nginx 1.24.
+
+Tout ce qui figure ici a été **exécuté**. Ce qui ne l'a pas été est listé
+en section 7 et dans [`KNOWN_LIMITATIONS.md`](KNOWN_LIMITATIONS.md).
+
+---
+
+## 1. Archive source
+
+| | |
+|---|---|
+| Origine | `https://drive.google.com/file/d/1_XB0DUpHUOFcqO-gGCzZfLzRgLRUp2zS/view` |
+| Fichier | `feba.zip` |
+| Taille | 34 457 093 octets — identique aux métadonnées Drive |
+| Type (`file`) | `Zip archive data, at least v1.0 to extract` |
+| **SHA-256** | `e06cdab5bad530087cf1a1c2c6917faff957d84b7ff48bca9e992dbb04d53c74` |
+| `unzip -t` | **PASS** — 1 076 entrées, « No errors detected » |
+| Racine | `feba_v6_version_finale_corrigee/` |
+
+Le premier téléchargement a renvoyé une page HTML d'avertissement antivirus
+(2 424 octets) : Drive interpose cet écran au-delà d'un certain volume. Les
+octets réels ont été obtenus via `drive.usercontent.google.com` avec le
+jeton de confirmation. **`file` et `sha256sum` ont été exécutés sur le
+fichier obtenu, pas supposés.**
+
+---
+
+## 2. Suites backend
+
+Exécutées sur les **deux** bases, conformément à la consigne.
+
+### PostgreSQL 16.13 — la référence
 
 ```
-python manage.py check
-→ System check identified no issues (0 silenced).
-
-python manage.py makemigrations --check --dry-run
-→ No changes detected
-
-python -m pytest -q
-→ 1112 passed, 1 skipped, 530 subtests passed in 112.93s
+DJANGO_SETTINGS_MODULE=feba_project.settings.test_postgres pytest tests -q
 ```
 
-**Référence avant modifications : 1 086 passants, 1 ignoré.**
-**Après : 1 112 passants, 1 ignoré.** Soit +26, exactement le nombre de tests
-ajoutés. Aucune régression.
-
-Le test ignoré est un test de concurrence multi-threads que SQLite en mémoire
-ne peut pas exécuter (verrou de table) ; il tourne sur PostgreSQL.
-
-### Tests ajoutés — `tests/test_clean_previous_usage_data.py` (26)
-
-Les 20 scénarios exigés, plus 6 : refus si aucun mode, refus si les deux
-modes, académie inconnue refusée, complétude du rapport JSON, absence de fuite
-du mot de passe de la base, absence de cascade sur les modèles structurels.
-
-### Suites vérifiées pour les priorités 5 à 8
-
-| Suite | Résultat | Priorité |
+| | Avant | Après |
 |---|---|---|
-| `test_multi_currency.py` | 23 passants | P5 |
-| `test_payments_summary_consolidation.py` | 12 passants | P5 |
-| `test_schedule_separation.py` | 25 passants | P6 |
-| `test_online_schedule_conflicts.py` | 7 passants | P6 |
-| `test_fha_sheet_download_per_row.py` | 4 passants | P7 |
-| `test_monthly_reports.py` | 65 passants | P8 |
+| Réussis | 1 111 | **1 164** |
+| Échecs | **2** | **0** |
+| Ignorés | 0 | 0 |
+| Sous-tests | 530 | 571 |
 
-Ces fonctionnalités étaient **déjà implémentées et couvertes** dans l'archive
-source. Elles ont été vérifiées par exécution, non réimplémentées.
-
-## 2. Frontend
+### SQLite en mémoire
 
 ```
-npm run lint   → 0 erreur, 82 avertissements
-npm test       → 179 tests passants (20 fichiers)
-npm run build  → built in 8.21s
+DJANGO_SETTINGS_MODULE=feba_project.settings.test_sqlite pytest tests -q
 ```
 
-**Référence avant modifications : 163 passants.**
-**Après : 179 passants.** Soit +16, exactement le nombre ajouté.
+| | Avant | Après |
+|---|---|---|
+| Réussis | 1 151 | **1 163** |
+| Échecs | **2** | **0** |
+| Ignorés | 1 | 1 |
 
-Les 82 avertissements de lint sont **préexistants** ; le code ajouté n'en
-introduit aucun. Un avertissement initialement produit par la nouvelle
-version d'`AcademyContext.jsx` (`setState` dans un effet) a été supprimé en
-dérivant la portée pendant le rendu — ce qui renforce par ailleurs la
-garantie d'ordre.
+Les **2 échecs constatés dès l'archive source** portaient sur
+`KNOWN_LIMITATIONS.md`, dont le contenu attendu avait disparu lors d'un
+cycle antérieur (voir §4.4). Ils ne sont pas contournés : le document a été
+rétabli.
+
+> **Pourquoi les deux bases.** SQLite n'applique pas les longueurs de
+> colonnes. Un premier jet d'un test de cette livraison passait une période
+> de bulletin de 12 caractères dans une colonne `varchar(7)` : ignoré par
+> SQLite, refusé par PostgreSQL (`StringDataRightTruncation`). Sans
+> exécution PostgreSQL, l'erreur serait partie en production.
 
 ### Tests ajoutés
 
-**`src/context/academyBoot.test.jsx` — 10 tests (P1)**
+| Fichier | Tests | Objet |
+|---|---|---|
+| `test_institutional_phone.py` | 20 | P1 — numéro sur les documents réellement produits |
+| `test_jitsi_production_domain.py` | 21 | P13 — domaine, jetons, rapport de santé, configuration livrée |
+| `test_production_settings.py` | 10 | P15 — réglages de `globalfeba.com` |
 
-Ordre de démarrage ; portée appliquée avant toute requête métier ; chiffres
-réels en portées `ALL`, `FEBA` et `FEBA_FHA` ; requête annulée sans affichage
-de zéro ; dix actualisations consécutives ; attente explicite tant que la
-portée n'est pas prête ; déduplication des appels concurrents ; relance après
-résolution.
+**Chacun a été vérifié contre le code d'origine** (§4).
 
-**`src/site/mobileLangSwitcher.test.jsx` — 6 tests (P9)**
+---
 
-Présence menu fermé ; deux langues étiquetées ; `aria-pressed` correct ;
-changement effectif au clic ; pas de doublon menu ouvert ; sélecteur et bouton
-menu dans le même conteneur.
-
-## 3. Preuve de reproduction des bugs
-
-Une correction non prouvée n'est qu'une modification. Les nouveaux tests ont
-été exécutés **contre le code d'origine** pour vérifier qu'ils échouent bien.
-
-**P1 — tableau de bord à zéro** : garde de portée et gestion des trois états
-temporairement retirés → 4 tests sur 10 échouent :
+## 3. Frontend
 
 ```
-× n'appelle pas /auth/users/ tant que /auth/entity-context/ n'a pas répondu
-× applique la portée AVANT d'autoriser la requête métier
-× reste en attente — sans afficher 0 — quand la requête est annulée
-× affiche une attente explicite tant que la portée n'est pas prête
+npm test        → 21 fichiers, 185 tests, 185 réussis
+npm run lint    → 0 erreur, 81 avertissements (préexistants)
+npm run build   → PASS (13,7 s)
 ```
 
-**P9 — bouton EN/FR** : sélecteur mobile temporairement retiré →
-**6 tests sur 6 échouent**.
+L'archive source comptait 82 avertissements ; un seul a été corrigé, dans
+un fichier déjà modifié pour le flyer (`useEffect` importé sans usage).
+Aucun avertissement n'a été introduit.
 
-Dans les deux cas, le code corrigé a été restauré et l'intégralité des tests
-repasse.
+Test ajouté : `src/site/fhaFlyerDownload.test.jsx` — 6 tests.
 
-## 4. Correspondance avec les tests ciblés demandés
+---
 
-| Test demandé | Couverture |
+## 4. Preuve que les correctifs corrigent quelque chose
+
+Un test qui passe ne prouve rien s'il passait déjà. Chaque correctif a été
+**retiré temporairement** pour vérifier que les tests échouent.
+
+### 4.1 P1 — numéro institutionnel
+
+Correctif retiré (`phone=academy.phone` rétabli, nettoyage de l'adresse
+supprimé) :
+
+```
+9 failed, 13 passed
+  ↳ test_recu_de_paiement_feba              ÉCHEC
+  ↳ test_recu_de_paiement_feba_fha          ÉCHEC
+  ↳ test_bulletin_feba / _feba_fha          ÉCHEC
+  ↳ test_fiche_de_preinscription_feba       ÉCHEC
+  ↳ test_le_numero_en_base_ne_decide_plus…  ÉCHEC (FEBA et FEBA FHA)
+```
+
+Correctif rétabli : **20 passed**.
+
+### 4.2 P4 — instance publique dans les modèles de configuration
+
+`JITSI_DOMAIN=meet.jit.si` remis dans `.env.prod.example` :
+
+```
+2 failed
+  ↳ test_aucun_exemple_ne_propose_une_instance_publique      ÉCHEC
+  ↳ test_le_modele_de_production_vise_l_instance_du_groupe   ÉCHEC
+```
+
+### 4.3 P15 — `CSRF_TRUSTED_ORIGINS`
+
+Bloc retiré de `settings/prod.py` : **5 échecs**.
+
+### 4.4 Les 2 échecs de l'archive source
+
+Reproduits, diagnostiqués (contenu attendu absent de
+`KNOWN_LIMITATIONS.md`), corrigés en rétablissant le document — pas en
+affaiblissant l'assertion.
+
+Au passage, un défaut de fond a été traité : le test cherchait le fichier à
+la racine du dépôt, or seul `./backend` est monté dans le conteneur
+(`./backend:/app`). Un cycle antérieur avait contourné le problème en
+**dupliquant** `KNOWN_LIMITATIONS.md` dans `backend/` — deux copies d'un
+document dont l'intérêt est d'être unique, et qui avaient déjà divergé. Le
+test remonte désormais l'arborescence, et `docker-compose.yml` monte le
+fichier de la racine dans le conteneur.
+
+---
+
+## 5. Documents réellement produits
+
+Générés dans une base PostgreSQL dont les deux académies portaient
+**délibérément** l'ancien numéro dans `School.phone` **et** recopié dans
+`School.address` — l'état exact de la base de production.
+
+| Document | En-tête produit |
 |---|---|
-| academy scope refresh | `academyBoot.test.jsx` (3 portées + 10 actualisations) |
-| auth hydration | `academyBoot.test.jsx` (attente de `_hasHydrated`) |
-| entity-context deduplication | `academyBoot.test.jsx` (2 tests) |
-| stale response protection | `academyScope.test.js` (existant) + génération de portée |
-| canceled request retention | `academyBoot.test.jsx` |
-| cleanup command dry-run | `test_clean_previous_usage_data.py` n°1 |
-| cleanup rollback | n°16 |
-| cleanup idempotence | n°17 |
-| cleanup per academy | n°18 |
-| multi-tenant isolation | n°15 + suites d'isolation existantes |
-| multi-currency payments | `test_multi_currency.py` |
-| schedule parity | `test_schedule_separation.py` |
-| FHA document downloads | `test_fha_sheet_download_per_row.py` |
-| monthly report sending | `test_monthly_reports.py` |
-| FHA form headings | build + couverture i18n |
-| FHA formula selection | migration vérifiée + suite backend |
-| flyer download | empreinte SHA-256 vérifiée dans `dist` |
-| mobile language switcher | `mobileLangSwitcher.test.jsx` |
+| Reçu FEBA | `Akpakpa, Cotonou, Bénin \| Tél: 0160011717` |
+| Reçu FEBA FHA | `Programme 100 % en ligne — … \| Tél: 0160011717` |
+| Bulletin FEBA | `Akpakpa, Cotonou, Bénin \| Tél: 0160011717` |
+| Bulletin FEBA FHA | `Programme 100 % en ligne — … \| Tél: 0160011717` |
+| Fiche de préinscription FEBA | `… \| Tél: 0160011717` |
+| Certificats et diplômes (×4) | aucun numéro — vérifié |
 
-## 5. Non exécuté
+Les PDF ont été rendus en image et **inspectés visuellement**, pas
+seulement analysés textuellement. Le bulletin ne portait auparavant
+**aucun** numéro : il recomposait son en-tête à partir de la seule adresse.
 
-**VALIDATION DOCKER LOCALE REQUISE.** Aucun démon Docker n'était disponible.
-Non exécutés : `docker compose down -v`, `make install`, `make seed`,
-`make seed-check`, `make documents-ready`, `make branding-check`,
-`make jitsi-health`, `make celery-health`, `make install-check`, ainsi que les
-tests e2e (13 fichiers) qui exigent un navigateur et la pile complète.
+`0196697363` est absent de tous, y compris sous ses écritures espacée,
+pointée, tiretée et préfixée de l'indicatif.
 
-La commande réelle de nettoyage (`--execute`) **n'a jamais été exécutée sur
-des données de production**.
+---
+
+## 6. Parcours en navigateur réel
+
+Chromium, contre le **build de production** servi par Nginx avec la
+configuration de production, backend Django et PostgreSQL.
+
+### Parcours 1 — flyer FEBA FHA : **PASS**
+
+| Contrôle | Résultat |
+|---|---|
+| Le lien ne renvoie plus vers `/feba-fha` | `href=/images/feba-fha/feba-fha-flyer.pdf` |
+| Attribut `download` | `FEBA-French-Heritage-Academy-flyer.pdf` |
+| N'ouvre pas d'onglet (saisie préservée) | `target` absent |
+| Un vrai clic déclenche un téléchargement | oui |
+| Le fichier reçu est un PDF | `%PDF-` |
+| **Identique au flyer officiel, octet pour octet** | SHA-256 `c1024474…` |
+| L'utilisateur reste sur le formulaire | URL inchangée |
+| Erreurs JavaScript | aucune |
+| Téléchargement sur mobile (390 px) | PASS |
+
+Le lien se trouve à l'**étape 12/12** du formulaire : le parcours a été
+joué en reprenant un brouillon, comme un parent qui revient finir son
+inscription — le cas où perdre la saisie fait le plus de dégâts.
+
+### Parcours 2 — reçu de paiement : **PASS**
+
+Connexion administrateur → liste des paiements → génération du reçu →
+téléchargement authentifié → analyse du PDF : `0160011717` présent,
+`0196697363` absent.
+
+### Parcours 3 & 4 — salles virtuelles FEBA FHA : **PASS**
+
+| Contrôle | Résultat |
+|---|---|
+| Salles FHA listées | 3 |
+| Référence à `meet.jit.si` ou `8x8.vc` | **aucune** |
+| « Rejoindre » sans instance configurée | **HTTP 503** — jamais une URL publique |
+| Rapport de santé pendant la panne | répond, état `unavailable` |
+| Écran « Salles virtuelles » | bandeau de diagnostic affiché, aucune instance publique |
+
+### Parcours 5 — cloisonnement inter-académies : **PASS**
+
+| Contrôle | Résultat |
+|---|---|
+| Élèves visibles | FEBA 30 · FHA 3 |
+| Élève visible des deux | **aucun** |
+| **IDOR** : admin FEBA demandant un élève FHA par son id | **HTTP 404** |
+| Salle partagée entre académies | **aucune** |
+
+---
+
+## 7. Infrastructure
+
+| Contrôle | Commande | Résultat |
+|---|---|---|
+| Nginx SPA | `nginx -t` | PASS |
+| Nginx production | `nginx -t` | PASS |
+| Compose (4 fichiers) | analyse YAML | PASS |
+| Cohérence Jitsi | `make jitsi-config-check` | PASS (4 notes) |
+| Détection de mauvaise configuration | 6 erreurs injectées | **6 détectées**, sortie 1 |
+| Migrations sur base vierge | `manage.py migrate` | PASS (dont `schools.0015`) |
+| Données de démonstration | `seed_demo_data` | PASS, deux académies cohérentes |
+
+### Flyer servi par Nginx
+
+| Cas | Attendu | Obtenu |
+|---|---|---|
+| Fichier présent | `200 · application/pdf · attachment` | ✅ |
+| Intégrité | identique au dépôt | ✅ SHA-256 |
+| **Fichier retiré** | `404` | ✅ (et non un `200` HTML) |
+| Route du SPA | `200 · text/html` | ✅ |
+
+Le dernier cas est un défaut **constaté sur le site en ligne** :
+`https://globalfeba.com/images/feba-fha/definitely-not-here.pdf` répond
+aujourd'hui `200` avec la page de l'application.
+
+### Visioconférence de production
+
+```
+$ make jitsi-health JITSI_TARGET=meet.globalfeba.com
+État : DÉGRADÉ
+  OK    configuration        Domaine « meet.globalfeba.com », identifiants JWT présents.
+  OK    domaine_non_public   n'est pas une instance publique interdite.
+  OK    signature_jeton      Un jeton de test a été signé.
+ ÉCHEC  dns                  « meet.globalfeba.com » ne résout pas […]
+```
+
+**Diagnostic exact et attendu** : l'enregistrement DNS n'existe pas encore
+(`getent hosts meet.globalfeba.com` → aucun résultat, alors que
+`globalfeba.com` → `62.238.38.111`). Voir
+[`MANUAL_PRODUCTION_ACTIONS.md`](MANUAL_PRODUCTION_ACTIONS.md).
+
+---
+
+## 8. Ce qui n'a pas été exécuté
+
+- **Docker Compose** — aucun démon disponible. Les fichiers ont été
+  validés syntaxiquement ; la pile n'a jamais démarré en conteneurs.
+- **Un appel Jitsi réel** — l'infrastructure n'existe pas encore.
+- **Un envoi d'e-mail réel** — backend en mémoire pendant les tests.
+- **Les 13 tests e2e existants** — ils supposent la pile Docker.
+
+Détail et conséquences dans [`KNOWN_LIMITATIONS.md`](KNOWN_LIMITATIONS.md).

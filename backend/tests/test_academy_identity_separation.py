@@ -49,6 +49,7 @@ from apps.schools.branding import (
     get_branding_by_code,
 )
 from apps.schools.models import School
+from tests.repo_root import read_repo_file
 
 #: Champs d'identité qui désignent une image.
 CHAMPS_IMAGE = ("document_logo", "stamp", "director_signature",
@@ -492,15 +493,18 @@ class LimitationDocumenteeTests(SimpleTestCase):
     PHRASE = ("Aucun cachet officiel FEBA FHA n'a été fourni ; aucun cachet "
               "d'une autre académie n'est réutilisé.")
 
-    # Le fichier de test se trouve dans backend/tests/.
-    # Un seul parent suffit pour retrouver la racine backend montée sur /app.
-    RACINE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-
     def _limitations(self):
-        chemin = os.path.join(self.RACINE, "KNOWN_LIMITATIONS.md")
-        self.assertTrue(os.path.exists(chemin), chemin)
-        with open(chemin, encoding="utf-8") as fichier:
-            return fichier.read()
+        """
+        Contenu de KNOWN_LIMITATIONS.md, où que la racine se trouve.
+
+        La livraison précédente remontait l'arborescence ici même, et
+        docker-compose.yml montait ce fichier NOMMÉMENT dans le conteneur.
+        Ça marchait — pour lui seul. Le Makefile, les .env.*.example, les
+        scripts et la surcouche Jitsi restaient invisibles, et leurs tests
+        échouaient ou s'ignoraient. La résolution est désormais commune
+        (`tests/repo_root.py`) et le montage porte le dépôt entier.
+        """
+        return read_repo_file("KNOWN_LIMITATIONS.md")
 
     def test_l_absence_de_cachet_est_documentee_dans_les_termes_convenus(self):
         texte = self._limitations().replace("**", "")

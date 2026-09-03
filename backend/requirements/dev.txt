@@ -11,3 +11,6 @@ numpy==2.4.6
 
 pytest==9.1.1
 pytest-django==4.12.0
+
+# Lecture des fichiers YAML/Compose par les tests de configuration V9.
+PyYAML>=6.0,<7

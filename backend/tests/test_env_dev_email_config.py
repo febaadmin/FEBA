@@ -23,40 +23,31 @@ Ce test ne vérifie pas du code applicatif : il verrouille un fichier de
 configuration contre une régression silencieuse (quelqu'un qui reviendrait
 au backend console sans s'en rendre compte).
 """
-from pathlib import Path
-
 from django.test import SimpleTestCase
 
-
-def _repo_root():
-    # backend/tests/ -> backend/ -> racine du dépôt
-    return Path(__file__).resolve().parent.parent.parent
-
-
-def _read_env_dev_example():
-    path = _repo_root() / ".env.dev.example"
-    return path.read_text(encoding="utf-8")
-
-
-def _parse_env(content):
-    values = {}
-    for line in content.splitlines():
-        line = line.strip()
-        if not line or line.startswith("#") or "=" not in line:
-            continue
-        key, _, value = line.partition("=")
-        values[key.strip()] = value.strip()
-    return values
+from tests.repo_root import parse_env_file, read_repo_file
 
 
 class EnvDevExampleMailpitDefaultTests(SimpleTestCase):
-    """.env.dev.example doit pointer vers Mailpit par défaut."""
+    """
+    .env.dev.example doit pointer vers Mailpit par défaut.
+
+    CES TESTS NE S'IGNORENT PLUS.
+
+    Ils appelaient `skipTest` quand `.env.dev.example` n'était pas
+    visible — ce qui était TOUJOURS le cas dans le conteneur, où seul
+    `./backend` est monté. `pytest` y affichait « 4 skipped » : vert dans
+    un tableau de résultats, alors qu'aucune des trois valeurs n'avait
+    été vérifiée. Un retour au backend console serait passé inaperçu,
+    c'est-à-dire exactement le défaut que ce fichier surveille.
+
+    La racine est désormais résolue par `tests/repo_root.py`, qui la
+    trouve dans le conteneur comme hors conteneur, et qui ÉCHOUE bruyamment
+    si elle est vraiment introuvable.
+    """
 
     def setUp(self):
-        path = _repo_root() / ".env.dev.example"
-        if not path.exists():
-            self.skipTest(f"{path} introuvable (arborescence inattendue)")
-        self.values = _parse_env(_read_env_dev_example())
+        self.values = parse_env_file(".env.dev.example")
 
     def test_email_backend_est_smtp_pas_console(self):
         self.assertEqual(
@@ -75,6 +66,6 @@ class EnvDevExampleMailpitDefaultTests(SimpleTestCase):
 
     def test_docker_compose_expose_bien_un_service_mailpit(self):
         """Vérifie que la cible existe réellement — pas un nom en l'air."""
-        compose = (_repo_root() / "docker-compose.yml").read_text(encoding="utf-8")
+        compose = read_repo_file("docker-compose.yml")
         self.assertIn("mailpit:", compose)
         self.assertIn('"1025:1025"', compose)
