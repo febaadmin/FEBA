@@ -49,6 +49,7 @@ from apps.schools.branding import (
     get_branding_by_code,
 )
 from apps.schools.models import School
+from tests.repo_root import read_repo_file
 
 #: Champs d'identité qui désignent une image.
 CHAMPS_IMAGE = ("document_logo", "stamp", "director_signature",
@@ -492,41 +493,18 @@ class LimitationDocumenteeTests(SimpleTestCase):
     PHRASE = ("Aucun cachet officiel FEBA FHA n'a été fourni ; aucun cachet "
               "d'une autre académie n'est réutilisé.")
 
-    @staticmethod
-    def _chemin_limitations():
-        """
-        Retrouve KNOWN_LIMITATIONS.md, quel que soit l'endroit d'exécution.
-
-        Le fichier vit à la racine du dépôt. Mais les tests tournent aussi
-        DANS le conteneur backend, où seul `./backend` est monté (sur
-        /app) : la racine du dépôt n'y existe pas. Une livraison
-        précédente avait résolu le problème en dupliquant le fichier dans
-        `backend/` — deux copies d'un document dont tout l'intérêt est
-        d'être la référence unique, et qui ont aussitôt divergé.
-
-        On remonte donc l'arborescence jusqu'à le trouver.
-        docker-compose.yml monte le fichier de la racine dans le
-        conteneur, ce qui rend cette recherche fructueuse des deux côtés.
-        """
-        dossier = os.path.dirname(os.path.abspath(__file__))
-        while True:
-            candidat = os.path.join(dossier, "KNOWN_LIMITATIONS.md")
-            if os.path.exists(candidat):
-                return candidat
-            parent = os.path.dirname(dossier)
-            if parent == dossier:
-                return None
-            dossier = parent
-
     def _limitations(self):
-        chemin = self._chemin_limitations()
-        self.assertIsNotNone(
-            chemin,
-            "KNOWN_LIMITATIONS.md est introuvable en remontant depuis "
-            f"{os.path.dirname(os.path.abspath(__file__))}. Dans le "
-            "conteneur backend, il est monté par docker-compose.yml.")
-        with open(chemin, encoding="utf-8") as fichier:
-            return fichier.read()
+        """
+        Contenu de KNOWN_LIMITATIONS.md, où que la racine se trouve.
+
+        La livraison précédente remontait l'arborescence ici même, et
+        docker-compose.yml montait ce fichier NOMMÉMENT dans le conteneur.
+        Ça marchait — pour lui seul. Le Makefile, les .env.*.example, les
+        scripts et la surcouche Jitsi restaient invisibles, et leurs tests
+        échouaient ou s'ignoraient. La résolution est désormais commune
+        (`tests/repo_root.py`) et le montage porte le dépôt entier.
+        """
+        return read_repo_file("KNOWN_LIMITATIONS.md")
 
     def test_l_absence_de_cachet_est_documentee_dans_les_termes_convenus(self):
         texte = self._limitations().replace("**", "")

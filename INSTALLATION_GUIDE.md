@@ -135,6 +135,51 @@ cd frontend && npm run lint && npm run build
 pas les longueurs de colonnes ni certaines contraintes : un défaut réel y
 passe inaperçu.
 
+#### Les tests qui lisent des fichiers hors de `backend/`
+
+Une partie de la suite vérifie des **fichiers de livraison** —
+`.env.*.example`, `Makefile`, `docker-compose*.yml`, `scripts/`. Ils
+vivent à la racine, un niveau au-dessus de `backend/`.
+
+Dans le conteneur, `./backend` est monté sur `/app` : la racine n'y
+existerait pas. `docker-compose.yml` la monte donc **en lecture seule**
+sur `/repo`, et `backend/tests/repo_root.py` la retrouve par trois
+chemins indépendants (variable `FEBA_REPO_ROOT`, remontée
+d'arborescence, montage `/repo`).
+
+Conséquence pratique : **si vous modifiez `docker-compose.yml`,
+recréez le conteneur**, sinon l'ancien montage persiste.
+
+```bash
+docker compose up -d --force-recreate backend-dev
+```
+
+Ces tests **ne s'ignorent jamais**. Un « skipped » sur un fichier de
+configuration se lit comme un succès alors que rien n'a été vérifié :
+c'est ainsi qu'un `.env.dev.example` revenu au backend console était
+passé inaperçu. Si la racine est introuvable, ils échouent avec un
+message qui dit quoi faire.
+
+### Environnements couverts
+
+| | Où | Ce qui résout la racine du dépôt |
+|---|---|---|
+| **A. Développement local** | Docker Compose | montage `.:/repo:ro` + `FEBA_REPO_ROOT` |
+| **B. Tests** | checkout Git, hors conteneur | remontée d'arborescence |
+| **C. CI GitHub** | `.github/workflows/ci.yml` | remontée d'arborescence (checkout complet) |
+| **D. Production FEBA** | `docker-compose.prod.yml` | sans objet — aucun test n'y tourne |
+| **E. Jitsi production** | `JITSI_PRODUCTION_GUIDE.md` | sans objet |
+
+### Intégration continue (C)
+
+`.github/workflows/ci.yml` valide chaque Pull Request : suites backend
+sur PostgreSQL **et** SQLite, tests et build frontend, validité des
+fichiers Compose, cohérence Jitsi, syntaxe Nginx, sûreté du dépôt.
+
+Elle **ne requiert aucun secret de production** : une Pull Request venue
+d'un fork est validée comme les autres. Le déploiement reste
+exclusivement l'affaire de `deploy.yml`, inchangé.
+
 ---
 
 ## 6. Problèmes fréquents

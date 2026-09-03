@@ -31,38 +31,57 @@ c1024474ea4b603296b283066694229a04ae43f3852da392499bff36203d5402  frontend/publi
 a67f86f5cba8dc866fb80c0519e84c9b2d5251ec1fb6eed3f0f955bdbec8ec65  frontend/src/site/components/FhaFlyerDownload.jsx
 0fb6ee4f33deb852fc8036096bfba1fdaf6c379dce28e36add900b3e668f8c7c  scripts/build_fha_flyer_pdf.py
 
+# ── V9 — visibilité de la racine du dépôt depuis les tests ───────
+577bb0dec97d592a44c858a8dbd0b8eb86e55f48f19b88c73219b0a0650bb3f8  backend/tests/repo_root.py
+d5979b65e310819f2a6fad5a4f552e2cade2b6cd290963ad268582fd17bba9d5  backend/tests/test_repo_root_visibility.py
+b0f9eb025f4b788858795a50be5eb23d343302eae245c69a74897b0e50290771  backend/tests/test_migration_0015_data_safety.py
+de686f2a9013c033030a53acbb081f8f035ea41d842eb032a6cfe6b946e9fcbd  docker-compose.yml
+
+# ── V9 — Jitsi : seconde topologie et vhost ──────────────────────
+7f6a0abd35a6f0138f1a16f177587f93dc2d2e74749e9123e98eb3b730f7fd05  docker-compose.jitsi.behind-proxy.yml
+b053b665a0076d2a8205d8da70d6802b7aa717ebfb89703b576ecdd260ba2a85  nginx/sites-available/meet.globalfeba.com.conf
+0315462f019fb308d22f19b1386c3a79f80ea7608e67305ed09c907db5a32b16  nginx/nginx.prod.conf
+0813fb5cceaafec490fbf5ed6a3651a74da85455e210de73ae4df22797daef5d  docker-compose.prod.yml
+67892bcdb302d51f01dffa4e4a5f260c89137acdec0e39c5230fa462356f41df  frontend/nginx.prod.conf
+
+# ── V9 — intégration continue et sûreté du dépôt ─────────────────
+9b8109d82596c7a004ee3b6d355ab3c887b9de6aadeb864b2744d3f72ba384f8  .github/workflows/ci.yml
+89a9aa679354593cc1069faca04591169055171090a80459e4d3430c051b2b4e  .github/workflows/deploy.yml
+79aac79391f6b871d90e1598737cd025e02863e4b08a9b1848128a81e0a6bd00  scripts/repo_safety_check.sh
+095a0b791f735c113398ee001e8e44f98345037a16f28481cb654391ebd4c563  scripts/compose_config_check.sh
+
 # ── Infrastructure ───────────────────────────────────────────────
-701ad56469eec3a5eaafb7a11efdbf528a1dfbd371850d93c3426abaa6fc0ce9  docker-compose.yml
-e296bc7e8596e6b2df9bfae96af311289d2c58a59bf440bf10642372fd9ba1b3  docker-compose.prod.yml
+de686f2a9013c033030a53acbb081f8f035ea41d842eb032a6cfe6b946e9fcbd  docker-compose.yml
+0813fb5cceaafec490fbf5ed6a3651a74da85455e210de73ae4df22797daef5d  docker-compose.prod.yml
 3790568ebc311c2c1f67768a17b4b43e08bfb2242b9e769ef63fd7a7f379833a  docker-compose.jitsi.yml
 059729ead11a31fdb325adc65744ed7e0560f1d309924ebd66248314ec013acb  docker-compose.jitsi.prod.yml
-7ded20fa64eb335b0ce38067669c4322ab80dceda23369fd335803a0d7214092  nginx/nginx.prod.conf
-80f6f3a616f5dd6932acf7e674c5aa78d0c0e879eeb958b6f45746e23f170fb3  frontend/nginx.prod.conf
-fcc0e0c7fb8d5e5497f65dd5f1b6103307e630fa9cf41281de37d1615c8c608b  Makefile
-95a1838ae634d12b9a0a0f6dd7e0691d42af6d2b1087aadb1ee16ca500f46c1f  scripts/jitsi_config_check.sh
-e76219352f4cb7c9954ad445fb6accf0bb8da2dca84f276df08a824b7d61e64e  scripts/make_final_delivery.sh
+0315462f019fb308d22f19b1386c3a79f80ea7608e67305ed09c907db5a32b16  nginx/nginx.prod.conf
+67892bcdb302d51f01dffa4e4a5f260c89137acdec0e39c5230fa462356f41df  frontend/nginx.prod.conf
+48b54a18ca2b6d3a02932a339e2d901a17a15bbc4a7d58c4644348dc8fb3a545  Makefile
+945b8f97dbee9d5b369d4d6bc06f25c1aab13fd8d5cd6eff044a4d9dea0f3927  scripts/jitsi_config_check.sh
+a6ab4e06b8d5fb1bdbf1f6e02f831a89aa835eed9bfc08e1b88ab2d9846c26fb  scripts/make_final_delivery.sh
 
 # ── Tests de non-régression ──────────────────────────────────────
 ea15b61354c18c5331bf2e4047ff43679f4c41edf31f90c03c40ee098c19cf8d  backend/tests/test_institutional_phone.py
-46dbdc056cf1ef660ebdbaface7c9218afe4b9fe88368ad4393a557b7bdcbb87  backend/tests/test_jitsi_production_domain.py
-b58e6e0dd896ca355d8592a2595d50b6fe4f89e020b36665a4f710826ad62bd2  backend/tests/test_production_settings.py
+7eac5506cf2e8be410eafc807ee2973eb23e7391a90f61be0c8505448e4a24aa  backend/tests/test_jitsi_production_domain.py
+ebb3950c09ab5101d7d2f0c75e0e616d36887bac45cfb8310e16129f7367cba3  backend/tests/test_production_settings.py
 ca66aba269be053f12885af5aaebf8cff20b7d17f1f8fedde85b4006a1d9bc97  frontend/src/site/fhaFlyerDownload.test.jsx
 
 # ── Modèles de configuration ─────────────────────────────────────
 d130bd4f2116c9afb50726e7d484c23d3034bc98a1ee96500610667a16f97f0d  .env.example
 9e55cfc40621eed64a2c377ed5f9f4f67b63d4040ae57c2f6fdf7e07f48d138d  .env.dev.example
 c665ce09c79e6c5a42558e3f835f3e8006b145a1010574725b8ca1af53ed0331  .env.prod.example
-604315070037e4c8faa9b66ed88d6b7f93e1fe757bea8047073795d88e9fd997  .env.jitsi.example
+725def3c0e3f1c4ca7541c9c36ba01493deac5d07f5ea1106a4b4114f6e5b468  .env.jitsi.example
 
 # ── Documentation ────────────────────────────────────────────────
-7f622ffb223a2b3ce836fe5ed6c821566590515b3f71bfeabce5659b4fc1fecf  INSTALLATION_GUIDE.md
-998db62eaf12495f46063800473c2cb1b510ec2e24da14615debdc454e5718a2  DEPLOYMENT_PRODUCTION.md
-5cb096efbf7c09baf87c8cac02dbc17bf6b906b18221d4cce188b362fab77779  JITSI_PRODUCTION_GUIDE.md
+4a6253128179892ab77eae49b6aa1abb5c924f1d584b12b7d85c4f54b1ee215e  INSTALLATION_GUIDE.md
+82760f89eb522f5b2908645945c4113d3fbf9084a0eba871788915c22f39abfd  DEPLOYMENT_PRODUCTION.md
+941a364dfd358c322515b47ce9fd40f056added2a7c55efc5527a58ac1d41637  JITSI_PRODUCTION_GUIDE.md
 91acbc9104ec090759b4faec5d980aa53f39afa184f1b34979496432fb259427  MANUAL_PRODUCTION_ACTIONS.md
-dcbae2557956612972b11a4b2f406eccd6a18ef0857768851657b84e89e25ddb  TEST_REPORT.md
+07d1f30b96da9498990b4b734563ad3cc480feadd27040f92524d7bc39d7130e  TEST_REPORT.md
 705332b791d9524bd19847a7c69cf23a83ab1c94473b75a8631d4dc99b8e56d9  SECURITY_AUDIT.md
-21783a68888bcb5dcf81142f95a449f1190e23d0423761a9020b77b12fd36c4d  KNOWN_LIMITATIONS.md
-078bfadf7e3cb746a3ebb95c3471a8723fa6c8c256479deb196c3d78f9598b80  FINAL_REPORT.md
+4f1f6aa8dce04c376f323d1e8efc78edbd543d7af5dd5b7bc704d1811c291b94  KNOWN_LIMITATIONS.md
+6ece3c02b65aa84ca5bc100359c704478bec22d60f770d56fa6c7964baac7a16  FINAL_REPORT.md
 
 # ══════════════════════════════════════════════════════════════════════
 # ARCHIVE SOURCE — telle que téléchargée depuis Google Drive

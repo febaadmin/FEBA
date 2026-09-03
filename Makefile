@@ -24,6 +24,7 @@
         branding-check \
         jitsi-up jitsi-down jitsi-restart jitsi-logs jitsi-health jitsi-config-check \
         jitsi-prod-up jitsi-prod-down jitsi-prod-logs \
+        jitsi-proxy-up jitsi-proxy-down jitsi-proxy-logs \
         health logs logs-all ps down reset \
         test shell diagnose doctor install-check repair prod prod-down prod-logs help
 
@@ -163,6 +164,29 @@ jitsi-health:
 # deux fichiers sont passés ensemble, sinon la configuration diverge à la
 # première correction faite d'un seul côté.
 JITSI_PROD_COMPOSE = -f docker-compose.jitsi.yml -f docker-compose.jitsi.prod.yml --env-file .env.jitsi
+
+# ── Topologie « MÊME SERVEUR que FEBA » ──────────────────────────────
+# Jitsi n'écoute que sur la boucle locale ; c'est le nginx de FEBA qui
+# termine TLS et sert meet.globalfeba.com. À utiliser dès lors que le
+# serveur héberge DÉJÀ globalfeba.com : la surcouche `prod` ci-dessous
+# publierait 80 et 443, que nginx-prod occupe déjà.
+JITSI_PROXY_COMPOSE = -f docker-compose.jitsi.yml -f docker-compose.jitsi.behind-proxy.yml --env-file .env.jitsi
+
+jitsi-proxy-up:
+	@bash scripts/jitsi_config_check.sh || echo "⚠ Configuration incohérente — voir ci-dessus."
+	docker compose $(JITSI_PROXY_COMPOSE) up -d
+	@echo ""
+	@echo "Jitsi écoute sur 127.0.0.1:$${JITSI_PROXY_PORT:-8443} — inaccessible de l'extérieur."
+	@echo "Activez ensuite le vhost côté FEBA :"
+	@echo "  cp nginx/sites-available/meet.globalfeba.com.conf nginx/sites-enabled/"
+	@echo "  docker compose -f docker-compose.prod.yml exec nginx-prod nginx -t   # AVANT de recharger"
+	@echo "  docker compose -f docker-compose.prod.yml exec nginx-prod nginx -s reload"
+
+jitsi-proxy-down:
+	docker compose $(JITSI_PROXY_COMPOSE) down
+
+jitsi-proxy-logs:
+	docker compose $(JITSI_PROXY_COMPOSE) logs -f
 
 jitsi-prod-up:
 	@bash scripts/jitsi_config_check.sh || echo "⚠ Configuration incohérente — voir ci-dessus."

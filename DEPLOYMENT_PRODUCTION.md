@@ -23,9 +23,21 @@
   └────────────┘
 ```
 
-Les deux serveurs sont **séparés**. Le pont vidéo sature réseau et CPU
-pendant les cours : une classe en direct ne doit pas pouvoir ralentir la
-facturation ou la génération des bulletins.
+Le schéma ci-dessus décrit la **topologie A** (serveurs séparés), la plus
+confortable : le pont vidéo sature réseau et CPU pendant les cours, et une
+classe en direct ne doit pas pouvoir ralentir la facturation ou les
+bulletins.
+
+> **Si Jitsi doit tourner sur CE MÊME serveur**, n'utilisez pas
+> `docker-compose.jitsi.prod.yml` : il publie 80 et 443, que `nginx-prod`
+> occupe déjà. Le démarrage échouerait — ou pire, prendrait les ports
+> avant nginx et empêcherait le site principal de redémarrer.
+>
+> Utilisez la **topologie B** : `make jitsi-proxy-up`, puis activez
+> `nginx/sites-available/meet.globalfeba.com.conf`. Voir
+> [`JITSI_PRODUCTION_GUIDE.md`](JITSI_PRODUCTION_GUIDE.md) § 2 bis.
+>
+> `make jitsi-config-check` signale ce conflit avant toute tentative.
 
 ---
 
@@ -148,6 +160,25 @@ docker compose -f docker-compose.prod.yml exec backend-prod python manage.py col
 **Sauvegarder la base avant toute migration.**
 
 ---
+
+## 6 bis. Vhosts additionnels (`sites-enabled/`)
+
+`nginx.prod.conf` charge `/etc/nginx/sites-enabled/*.conf`. Le répertoire
+est **livré vide**, et le comportement par défaut est donc strictement
+celui de la V8 : un motif qui ne correspond à aucun fichier n'est pas une
+erreur pour nginx.
+
+Il sert à activer `meet.globalfeba.com` en topologie B, sans modifier le
+fichier principal. Le vhost prêt à l'emploi est dans
+`nginx/sites-available/`, **non activé** : il référence un certificat qui
+n'existe pas encore, et nginx refuse de démarrer sur un certificat
+manquant — ce nginx servant aussi `globalfeba.com`.
+
+```bash
+cp nginx/sites-available/meet.globalfeba.com.conf nginx/sites-enabled/
+docker compose -f docker-compose.prod.yml exec nginx-prod nginx -t   # OBLIGATOIRE
+docker compose -f docker-compose.prod.yml exec nginx-prod nginx -s reload
+```
 
 ## 7. Sécurité — à relire avant la mise en service
 

@@ -25,6 +25,8 @@ from unittest import mock
 
 from django.test import SimpleTestCase
 
+from tests.repo_root import read_repo_file
+
 ENVIRONNEMENT_MINIMAL = {
     "SECRET_KEY": "x" * 64,
     "ALLOWED_HOSTS": "globalfeba.com,www.globalfeba.com",
@@ -107,17 +109,16 @@ class ReglagesDeProductionTests(SimpleTestCase):
         self.assertNotIn("*", prod.ALLOWED_HOSTS)
         self.assertIn("globalfeba.com", prod.ALLOWED_HOSTS)
 
-    @unittest.skipUnless(
-        os.path.exists(os.path.join(
-            os.path.dirname(os.path.dirname(os.path.dirname(
-                os.path.abspath(__file__)))), ".env.prod.example")),
-        "modèle .env.prod.example absent")
     def test_le_modele_de_production_documente_les_variables_requises(self):
-        chemin = os.path.join(
-            os.path.dirname(os.path.dirname(os.path.dirname(
-                os.path.abspath(__file__)))), ".env.prod.example")
-        with open(chemin, encoding="utf-8") as fichier:
-            contenu = fichier.read()
+        # CE TEST NE S'IGNORE PLUS.
+        #
+        # Il était gardé par un `skipUnless` sur l'existence du fichier,
+        # donc systématiquement ignoré dans le conteneur, où la racine du
+        # dépôt n'est pas montée. Le modèle que suit un exploitant pour
+        # écrire son .env.prod n'était vérifié nulle part, et l'omission
+        # de CSRF_TRUSTED_ORIGINS — corrigée en V8 — aurait pu y revenir
+        # sans que rien ne l'annonce.
+        contenu = read_repo_file(".env.prod.example")
         for variable in ("ALLOWED_HOSTS", "CORS_ALLOWED_ORIGINS",
                          "CSRF_TRUSTED_ORIGINS", "JITSI_DOMAIN",
                          "JITSI_APP_SECRET", "DATABASE_URL", "REDIS_URL"):

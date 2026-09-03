@@ -25,8 +25,7 @@ from apps.virtualclass.services import (
     jitsi_domain, jitsi_health, jitsi_probe_url,
 )
 
-RACINE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-PROJET = os.path.dirname(RACINE)
+from tests.repo_root import read_repo_file, repo_file, repo_root
 
 #: Domaine de production de l'instance du groupe.
 DOMAINE_PRODUCTION = "meet.globalfeba.com"
@@ -76,9 +75,11 @@ class ConfigurationLivreeTests(SimpleTestCase):
     def test_aucun_exemple_ne_propose_une_instance_publique(self):
         coupables = []
         for nom in self.FICHIERS_ENV:
-            chemin = os.path.join(PROJET, nom)
-            if not os.path.exists(chemin):
-                continue
+            chemin = repo_file(nom)
+            self.assertTrue(
+                chemin.exists(),
+                f"{nom} manque de la livraison : il est référencé par "
+                "l'installation et par la documentation.")
             for cle, valeur in self._affectations(chemin).items():
                 if not any(mot in cle for mot in ("DOMAIN", "URL")):
                     continue
@@ -91,13 +92,13 @@ class ConfigurationLivreeTests(SimpleTestCase):
             f"publique : {coupables}")
 
     def test_le_modele_de_production_vise_l_instance_du_groupe(self):
-        chemin = os.path.join(PROJET, ".env.prod.example")
+        chemin = repo_file(".env.prod.example")
         self.assertTrue(os.path.exists(chemin), chemin)
         valeurs = self._affectations(chemin)
         self.assertEqual(valeurs.get("JITSI_DOMAIN"), DOMAINE_PRODUCTION)
 
     def test_la_surcouche_de_production_existe_et_impose_l_authentification(self):
-        chemin = os.path.join(PROJET, "docker-compose.jitsi.prod.yml")
+        chemin = repo_file("docker-compose.jitsi.prod.yml")
         self.assertTrue(os.path.exists(chemin),
                         "La surcouche de production Jitsi est absente.")
         with open(chemin, encoding="utf-8") as fichier:
@@ -116,20 +117,168 @@ class ConfigurationLivreeTests(SimpleTestCase):
 
     def test_les_scripts_de_controle_sont_livres_et_executables(self):
         for nom in ("scripts/jitsi_up.sh", "scripts/jitsi_config_check.sh"):
-            chemin = os.path.join(PROJET, nom)
+            chemin = repo_file(nom)
             with self.subTest(script=nom):
                 self.assertTrue(os.path.exists(chemin), chemin)
                 self.assertTrue(os.access(chemin, os.X_OK),
                                 f"{nom} n'est pas exécutable")
 
     def test_le_makefile_expose_les_cibles_d_exploitation(self):
-        with open(os.path.join(PROJET, "Makefile"), encoding="utf-8") as f:
+        with open(repo_file("Makefile"), encoding="utf-8") as f:
             makefile = f.read()
         for cible in ("jitsi-up", "jitsi-down", "jitsi-restart",
                       "jitsi-logs", "jitsi-health", "jitsi-config-check",
                       "jitsi-prod-up"):
             with self.subTest(cible=cible):
                 self.assertRegex(makefile, rf"(?m)^{re.escape(cible)}:")
+
+
+class TopologieDeDeploiementTests(SimpleTestCase):
+    """
+    Les deux topologies possibles, et le conflit de ports entre elles.
+
+    LE DÉFAUT CORRIGÉ
+    -----------------
+    `docker-compose.jitsi.prod.yml` publie les ports 80 et 443 de l'hôte.
+    `docker-compose.prod.yml` (nginx-prod) publie EXACTEMENT LES MÊMES.
+    La surcouche supposait un serveur dédié — sans jamais le vérifier —
+    alors que globalfeba.com tourne déjà quelque part. Sur ce serveur, la
+    pile Jitsi était INDÉPLOYABLE : soit « port is already allocated »,
+    soit le site principal qui ne redémarre plus.
+
+    La correction n'est pas de renoncer à l'une des deux : c'est de
+    livrer les DEUX topologies, chacune cohérente, et de refuser qu'elles
+    se confondent.
+    """
+
+    def _compose(self, nom):
+        import yaml
+        return yaml.safe_load(read_repo_file(nom))
+
+    @staticmethod
+    def _ports_hote(service):
+        """Ports de l'HÔTE publiés par un service (côté gauche du mapping)."""
+        ports = []
+        for entree in service.get("ports") or []:
+            morceaux = str(entree).split(":")
+            if len(morceaux) >= 2:
+                ports.append(morceaux[-2])
+        return ports
+
+    def test_la_surcouche_dediee_publie_bien_80_et_443(self):
+        # Elle reste légitime — sur un serveur dédié. On verrouille son
+        # intention pour que le test suivant ait un sens.
+        web = self._compose("docker-compose.jitsi.prod.yml")["services"]["jitsi-web"]
+        self.assertEqual(sorted(self._ports_hote(web)), ["443", "80"])
+
+    def test_la_topologie_derriere_le_proxy_ne_prend_aucun_port_public(self):
+        """
+        C'est ce fichier qui rend Jitsi déployable sur le serveur FEBA.
+        S'il publiait 80 ou 443, il ne servirait à rien.
+        """
+        compose = self._compose("docker-compose.jitsi.behind-proxy.yml")
+        web = compose["services"]["jitsi-web"]
+        entrees = [str(p) for p in (web.get("ports") or [])]
+        self.assertTrue(entrees, "jitsi-web ne publie aucun port")
+        for entree in entrees:
+            with self.subTest(port=entree):
+                self.assertTrue(
+                    entree.startswith("127.0.0.1:"),
+                    f"« {entree} » n'est pas restreint à la boucle locale : "
+                    "une instance en clair serait exposée sur Internet.")
+                self.assertNotIn(
+                    self._ports_hote(web)[0], ("80", "443"),
+                    "Le port entrerait en conflit avec nginx-prod.")
+
+    def test_le_conflit_avec_nginx_prod_est_reel_et_documente(self):
+        """
+        Le conflit n'est pas hypothétique : on le mesure sur les fichiers
+        livrés. S'il disparaissait un jour (nginx-prod déplacé, par
+        exemple), ce test le signalerait — et la documentation des deux
+        topologies devrait être revue.
+        """
+        nginx = self._compose("docker-compose.prod.yml")["services"]["nginx-prod"]
+        jitsi = self._compose("docker-compose.jitsi.prod.yml")["services"]["jitsi-web"]
+        communs = set(self._ports_hote(nginx)) & set(self._ports_hote(jitsi))
+        self.assertEqual(
+            communs, {"80", "443"},
+            "Le conflit de ports supposé par la documentation n'est plus "
+            f"celui-ci (communs : {communs}). Revoir "
+            "JITSI_PRODUCTION_GUIDE.md § topologies.")
+
+    def test_la_topologie_derriere_le_proxy_impose_la_meme_authentification(self):
+        # Une seconde topologie qui oublierait l'authentification serait
+        # pire qu'une instance publique : elle porterait le nom du groupe.
+        contenu = read_repo_file("docker-compose.jitsi.behind-proxy.yml")
+        for attendu in ("ENABLE_AUTH=1", "ENABLE_GUESTS=0",
+                        "AUTH_TYPE=jwt", "JWT_ALLOW_EMPTY=0"):
+            with self.subTest(directive=attendu):
+                self.assertIn(attendu, contenu)
+        self.assertIn("JVB_ADVERTISE_IPS", contenu)
+
+    def test_derriere_le_proxy_jitsi_ne_demande_pas_de_certificat(self):
+        # Deux clients ACME sur le même port 80 se disputeraient la
+        # validation HTTP-01. C'est nginx qui termine TLS ici.
+        contenu = read_repo_file("docker-compose.jitsi.behind-proxy.yml")
+        self.assertIn("ENABLE_LETSENCRYPT=0", contenu)
+        self.assertIn("DISABLE_HTTPS=1", contenu)
+
+    def test_le_vhost_est_livre_mais_pas_active(self):
+        """
+        Activé d'avance, il ferait tomber le site principal : il référence
+        un certificat qui n'existe pas encore, et nginx refuse de démarrer
+        sur un certificat manquant.
+        """
+        self.assertTrue(
+            repo_file("nginx", "sites-available",
+                      "meet.globalfeba.com.conf").exists())
+        actifs = list(repo_file("nginx", "sites-enabled").glob("*.conf"))
+        self.assertEqual(
+            actifs, [],
+            f"Un vhost est activé dans la livraison : {actifs}. nginx "
+            "refuserait de démarrer sans son certificat — et il sert aussi "
+            "globalfeba.com.")
+
+    def test_le_vhost_relaie_la_signalisation_temps_reel(self):
+        """
+        Sans mise à niveau WebSocket, la salle s'affiche et reste vide :
+        les participants se connectent sans jamais se voir. C'est la
+        panne la plus déroutante d'un Jitsi derrière un proxy.
+        """
+        vhost = read_repo_file("nginx", "sites-available",
+                               "meet.globalfeba.com.conf")
+        for emplacement in ("/xmpp-websocket", "colibri-ws", "/http-bind"):
+            with self.subTest(emplacement=emplacement):
+                self.assertIn(emplacement, vhost)
+        self.assertIn("proxy_set_header Upgrade $http_upgrade;", vhost)
+        self.assertIn('proxy_set_header Connection "upgrade";', vhost)
+        # Sans X-Forwarded-Proto, Jitsi compose des URL http:// depuis une
+        # page https:// : le navigateur les bloque, la salle reste noire.
+        self.assertIn("proxy_set_header X-Forwarded-Proto $scheme;", vhost)
+
+    def test_le_vhost_autorise_l_encadrement_par_le_site_feba(self):
+        """
+        L'application affiche la salle DANS UNE IFRAME. Un
+        « X-Frame-Options: DENY » recopié du vhost principal rendrait la
+        visioconférence inutilisable depuis l'écran Salles virtuelles.
+        """
+        vhost = read_repo_file("nginx", "sites-available",
+                               "meet.globalfeba.com.conf")
+        # On inspecte les DIRECTIVES, pas la prose : le fichier explique
+        # justement pourquoi cet en-tête est absent, et cette explication
+        # doit pouvoir rester.
+        directives = [
+            ligne.strip() for ligne in vhost.splitlines()
+            if ligne.strip() and not ligne.strip().startswith("#")
+        ]
+        encadrement = [d for d in directives if "X-Frame-Options" in d]
+        self.assertEqual(
+            encadrement, [],
+            "Le vhost pose X-Frame-Options : la salle ne s'afficherait "
+            f"plus dans l'iframe de l'application. {encadrement}")
+        csp = [d for d in directives if "frame-ancestors" in d]
+        self.assertTrue(csp, "Aucune politique d'encadrement définie.")
+        self.assertIn("https://globalfeba.com", csp[0])
 
 
 class DomaineDeProductionTests(SimpleTestCase):

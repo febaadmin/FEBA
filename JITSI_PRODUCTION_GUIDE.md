@@ -76,19 +76,102 @@ Contrôles appliqués avant émission (`apps/virtualclass/services.py`,
 
 ---
 
+## 2 bis. DEUX TOPOLOGIES — choisir avant tout le reste
+
+C'est la décision qui conditionne tout le déploiement, et se tromper ne
+se voit qu'au moment où le site principal tombe.
+
+**Le conflit, mesuré sur les fichiers livrés :**
+
+| Service | Fichier | Ports de l'hôte |
+|---|---|---|
+| `nginx-prod` (site FEBA) | `docker-compose.prod.yml` | **80, 443** |
+| `jitsi-web` (serveur dédié) | `docker-compose.jitsi.prod.yml` | **80, 443** |
+
+Les deux revendiquent les mêmes ports. Sur le serveur qui sert déjà
+`globalfeba.com`, ils ne peuvent pas coexister : soit `jitsi-prod-up`
+échoue sur *« Bind for 0.0.0.0:443 failed: port is already allocated »*,
+soit — si Jitsi démarre en premier — **c'est le site principal qui ne
+redémarre plus**.
+
+### Topologie A — serveur DÉDIÉ à Jitsi
+
+Un second serveur (le CPX32 de `MANUAL_PRODUCTION_ACTIONS.md`), qui ne
+sert rien d'autre. Jitsi prend 80/443 et gère lui-même son certificat.
+
+```bash
+make jitsi-prod-up          # docker-compose.jitsi.prod.yml
+```
+
+*À retenir :* c'est le seul cas où la surcouche `prod` est utilisable.
+
+### Topologie B — MÊME serveur que `globalfeba.com`
+
+Jitsi n'écoute que sur la boucle locale ; le nginx de FEBA termine TLS et
+sert `meet.globalfeba.com`. Aucun port public n'est disputé.
+
+```bash
+make jitsi-proxy-up         # docker-compose.jitsi.behind-proxy.yml
+
+# puis, côté FEBA, activer le vhost livré :
+cp nginx/sites-available/meet.globalfeba.com.conf nginx/sites-enabled/
+docker compose -f docker-compose.prod.yml exec nginx-prod nginx -t     # AVANT de recharger
+docker compose -f docker-compose.prod.yml exec nginx-prod nginx -s reload
+```
+
+Le `nginx -t` n'est pas une formalité : ce nginx sert aussi le site
+principal, et un vhost dont le certificat manque l'empêche de démarrer.
+C'est précisément pour cela que le vhost est livré **dans
+`sites-available/` et non activé** — `sites-enabled/` est vide.
+
+### Ce qui ne change pas d'une topologie à l'autre
+
+`ENABLE_AUTH=1`, `ENABLE_GUESTS=0`, `AUTH_TYPE=jwt`, `JWT_ALLOW_EMPTY=0`
+et `JVB_ADVERTISE_IPS`. Une seconde topologie qui relâcherait
+l'authentification serait pire qu'une instance publique : elle porterait
+le nom de l'établissement.
+
+`UDP/10000` reste publié dans les deux cas — le média ne passe pas par le
+proxy HTTP, et aucun autre service FEBA n'utilise ce port.
+
+### Le piège du proxy : la salle qui reste vide
+
+En topologie B, trois emplacements doivent être relayés, faute de quoi
+tout le monde entre dans la salle **sans jamais se voir** :
+
+| Emplacement | Rôle |
+|---|---|
+| `/xmpp-websocket` | signalisation principale |
+| `/colibri-ws/…` | WebSocket du pont vidéo |
+| `/http-bind` | repli BOSH derrière un pare-feu restrictif |
+
+Les trois exigent `proxy_set_header Upgrade` / `Connection "upgrade"`, et
+`X-Forwarded-Proto` — sans lui Jitsi compose des URL `http://` depuis une
+page `https://`, que le navigateur bloque : la salle reste noire. Le
+vhost livré les pose déjà ; c'est ce que verrouille
+`test_le_vhost_relaie_la_signalisation_temps_reel`.
+
+Le vhost n'envoie **pas** `X-Frame-Options: DENY`, contrairement au site
+principal : l'application affiche la salle dans une iframe. L'encadrement
+est restreint par `frame-ancestors` au lieu d'être interdit.
+
+---
+
 ## 3. Prérequis
 
 | Élément | Valeur |
 |---|---|
-| Serveur | Hetzner **CPX32** — 4 vCPU, 8 Go, 160 Go SSD |
+| Serveur | Hetzner **CPX32** — 4 vCPU, 8 Go, 160 Go SSD (topologie A) ; ou le serveur FEBA existant (topologie B) |
 | Système | Ubuntu 24.04 LTS |
 | Domaine | `meet.globalfeba.com` → enregistrement `A` chez Hostinger |
 | Ports | `80/tcp`, `443/tcp`, **`10000/udp`** |
 | Logiciels | Docker + Docker Compose v2, `openssl` |
 
-**Serveur dédié.** Ne pas colocaliser avec l'application : le pont vidéo
-sature le réseau et le CPU pendant les cours, et une classe en direct ne
-doit pas pouvoir ralentir la facturation ou les bulletins.
+**Serveur dédié si possible.** Le pont vidéo sature réseau et CPU pendant
+les cours, et une classe en direct ne doit pas pouvoir ralentir la
+facturation ou les bulletins. La topologie B reste parfaitement
+fonctionnelle — c'est un compromis de coût assumé, pas un défaut de
+configuration — mais elle fait partager les ressources.
 
 ---
 
@@ -171,8 +254,11 @@ appel réel prouve que le média passe.
 
 | Commande | Effet |
 |---|---|
-| `make jitsi-prod-up` | démarre la pile de production |
-| `make jitsi-prod-down` | arrête la pile |
+| `make jitsi-prod-up` | démarre la pile — **serveur dédié** (topologie A) |
+| `make jitsi-prod-down` | arrête la pile dédiée |
+| `make jitsi-proxy-up` | démarre la pile — **même serveur** (topologie B) |
+| `make jitsi-proxy-down` | arrête la pile derrière proxy |
+| `make jitsi-proxy-logs` | journaux de la pile derrière proxy |
 | `make jitsi-restart` | redémarre **sans** régénérer les secrets |
 | `make jitsi-prod-logs` | journaux en continu |
 | `make jitsi-health` | contrôle complet (local) |
@@ -207,6 +293,10 @@ appel réel prouve que le média passe.
 | **Tout le monde se voit, personne ne s'entend** | **`10000/udp` fermé, ou `JVB_ADVERTISE_IPS` absent** | action 03 ; vérifier la variable |
 | « Rejoindre » refusé sans message | `JITSI_APP_SECRET` différent entre les deux fichiers | `make jitsi-config-check` |
 | Le conteneur `jitsi-web` redémarre en boucle | échec Let's Encrypt (port 80 fermé) ou IPv6 sans pile | ouvrir `80/tcp` ; `ENABLE_IPV6=0` |
+| `port is already allocated` sur 80 ou 443 | topologie A lancée sur le serveur qui sert déjà globalfeba.com | passer en topologie B : `make jitsi-proxy-up` |
+| **Le site principal ne redémarre plus** | Jitsi a pris 80/443 avant nginx-prod | `make jitsi-prod-down`, redémarrer nginx-prod, puis topologie B |
+| nginx refuse de démarrer après activation du vhost | certificat `meet.globalfeba.com` absent | émettre le certificat, ou retirer le fichier de `sites-enabled/` |
+| Tout le monde entre, personne ne se voit | WebSocket non relayé par le proxy (topologie B) | vérifier `/xmpp-websocket` et `/colibri-ws/` dans le vhost |
 | HTTP 503 sur `/api/virtual-rooms/<id>/join/` | **comportement voulu** : instance indisponible | `make jitsi-health` pour la cause exacte |
 
 Le 503 n'est pas une panne à contourner : c'est le refus explicite de

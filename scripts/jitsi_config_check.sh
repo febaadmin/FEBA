@@ -139,9 +139,50 @@ fi
 
 # ── 5. Fichiers de déploiement présents ──────────────────────────────
 printf '\n%sFichiers de déploiement%s\n' "$BOLD" "$OFF"
-for f in docker-compose.jitsi.yml docker-compose.jitsi.prod.yml; do
+for f in docker-compose.jitsi.yml docker-compose.jitsi.prod.yml \
+         docker-compose.jitsi.behind-proxy.yml \
+         nginx/sites-available/meet.globalfeba.com.conf; do
   [ -f "$f" ] && ok "$f présent" || bad "$f manquant"
 done
+
+# ── 6. CONFLIT DE PORTS AVEC LE SITE PRINCIPAL ───────────────────────
+#
+# La surcouche `prod` publie 80 et 443. `docker-compose.prod.yml`
+# (nginx-prod) publie exactement les mêmes. Sur le serveur qui sert déjà
+# globalfeba.com, les deux piles ne peuvent pas coexister : soit
+# « jitsi-prod-up » échoue sur « port is already allocated », soit c'est
+# le SITE PRINCIPAL qui ne redémarre plus.
+#
+# Ce contrôle ne devine pas la topologie : il dit ce qui est en jeu et
+# vérifie que l'alternative est disponible.
+printf '\n%sPorts et topologie%s\n' "$BOLD" "$OFF"
+
+prod_ports="$(sed -n 's/.*"\(80\|443\):\(80\|443\)".*/\1/p' docker-compose.jitsi.prod.yml 2>/dev/null | tr '\n' ' ')"
+feba_ports="$(sed -n 's/.*"\(80\|443\):\(80\|443\)".*/\1/p' docker-compose.prod.yml 2>/dev/null | tr '\n' ' ')"
+
+if [ -n "$prod_ports" ] && [ -n "$feba_ports" ]; then
+  warn "docker-compose.jitsi.prod.yml publie les ports [$prod_ports] — comme nginx-prod [$feba_ports]"
+  warn "  → surcouche « prod » : uniquement sur un serveur DÉDIÉ à Jitsi"
+  warn "  → même serveur que globalfeba.com : utilisez « make jitsi-proxy-up »"
+fi
+
+if grep -q '127\.0\.0\.1:' docker-compose.jitsi.behind-proxy.yml 2>/dev/null; then
+  ok "topologie « derrière le proxy » disponible (écoute sur la boucle locale)"
+else
+  bad "docker-compose.jitsi.behind-proxy.yml ne restreint pas l'écoute à 127.0.0.1"
+fi
+
+# Un vhost déjà activé sans certificat empêche nginx de démarrer — et ce
+# nginx sert aussi le site principal.
+if [ -f nginx/sites-enabled/meet.globalfeba.com.conf ]; then
+  if [ -d /etc/letsencrypt/live/meet.globalfeba.com ]; then
+    ok "vhost meet activé, certificat présent"
+  else
+    bad "vhost meet ACTIVÉ mais certificat absent : nginx refusera de démarrer, et il sert aussi globalfeba.com"
+  fi
+else
+  ok "vhost meet non activé (défaut sûr — voir nginx/sites-available/)"
+fi
 
 # ── Verdict ──────────────────────────────────────────────────────────
 printf '\n'

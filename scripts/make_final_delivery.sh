@@ -18,10 +18,14 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-NOM="${1:-feba_corrected_production_ready}"
+NOM="${1:-feba_v9_version_finale_corrigee}"
 SORTIE="${2:-$(dirname "$ROOT")}"
 STAGE="$(mktemp -d)"
-CIBLE="$STAGE/feba_v6_version_finale_corrigee"
+# Le dossier racine porte le MÊME nom que l'archive. En V8 il était
+# resté « feba_v6_… » dans une archive « …_production_ready.zip » : deux
+# noms pour une seule livraison, et une ambiguïté de plus au moment de
+# réintégrer le dépôt.
+CIBLE="$STAGE/$NOM"
 
 trap 'rm -rf "$STAGE"' EXIT
 
@@ -79,14 +83,33 @@ for requis in backend/manage.py frontend/package.json Makefile \
               INSTALLATION_GUIDE.md DEPLOYMENT_PRODUCTION.md \
               JITSI_PRODUCTION_GUIDE.md MANUAL_PRODUCTION_ACTIONS.md \
               TEST_REPORT.md SECURITY_AUDIT.md KNOWN_LIMITATIONS.md \
-              FINAL_REPORT.md .env.example .env.prod.example; do
+              FINAL_REPORT.md .env.example .env.prod.example \
+              .env.dev.example .env.jitsi.example \
+              backend/tests/repo_root.py \
+              docker-compose.jitsi.behind-proxy.yml \
+              nginx/sites-available/meet.globalfeba.com.conf \
+              nginx/sites-enabled/.gitkeep \
+              scripts/repo_safety_check.sh scripts/compose_config_check.sh \
+              .github/workflows/ci.yml .github/workflows/deploy.yml; do
   [ -e "$CIBLE/$requis" ] || { echo "  ÉCHEC : « $requis » manquant"; exit 1; }
 done
 echo "  OK    tous les fichiers attendus sont présents"
 
+# Les scripts doivent rester EXÉCUTABLES à travers l'archive : un test
+# vérifie leur bit +x, et « zip » le préserve sur Unix — mais seulement
+# si les fichiers l'ont au départ.
+for script in "$CIBLE"/scripts/*.sh; do
+  [ -f "$script" ] && chmod +x "$script"
+done
+non_exec="$(find "$CIBLE/scripts" -name '*.sh' ! -perm -u+x -print 2>/dev/null)"
+if [ -n "$non_exec" ]; then
+  echo "  ÉCHEC : scripts non exécutables :"; echo "$non_exec"; exit 1
+fi
+echo "  OK    tous les scripts .sh sont exécutables"
+
 ARCHIVE="$SORTIE/${NOM}.zip"
 rm -f "$ARCHIVE"
-(cd "$STAGE" && zip -qr "$ARCHIVE" feba_v6_version_finale_corrigee)
+(cd "$STAGE" && zip -qr "$ARCHIVE" "$NOM")
 
 # Empreinte déposée À CÔTÉ de l'archive : un fichier ne peut pas contenir
 # sa propre empreinte (l'y écrire la changerait). SHA256SUMS.txt, à

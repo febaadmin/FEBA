@@ -93,6 +93,10 @@ services:
       - "443:443"
     volumes:
       - ./nginx/nginx.prod.conf:/etc/nginx/nginx.conf:ro
+      # Vhosts additionnels, vides par défaut (voir nginx.prod.conf).
+      # Permet d'activer meet.globalfeba.com sans toucher au fichier
+      # principal quand Jitsi tourne sur ce même serveur.
+      - ./nginx/sites-enabled:/etc/nginx/sites-enabled:ro
       - static_prod:/var/www/static:ro
       - media_prod:/var/www/media:ro
       - /etc/letsencrypt:/etc/letsencrypt:ro

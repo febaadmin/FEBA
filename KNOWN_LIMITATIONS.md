@@ -63,20 +63,75 @@ Elle est maintenue dans ce document uniquement pour dire qu'elle n'a plus
 lieu d'être : la laisser inscrite ferait renoncer quelqu'un à un service
 qui fonctionne.
 
+## 3 bis. Ce que la V9 corrige, et ce qu'elle laisse ouvert
+
+### Corrigé : les fichiers de livraison étaient invisibles dans le conteneur
+
+`./backend` était monté sur `/app`, et la racine du dépôt n'existait pas
+dans le conteneur. Cinq fichiers de tests s'en accommodaient chacun à leur
+façon ; **deux le faisaient en se taisant**. `pytest` affichait alors
+« 4 skipped » — vert dans un tableau de résultats — alors qu'aucune des
+garanties n'avait été vérifiée.
+
+La racine est désormais montée en lecture seule (`.:/repo:ro`) et résolue
+par un module unique (`backend/tests/repo_root.py`). Aucun de ces tests ne
+s'ignore plus : si la racine est introuvable, ils échouent.
+
+### Corrigé : Jitsi de production était indéployable sur le serveur FEBA
+
+`docker-compose.jitsi.prod.yml` publiait 80 et 443, que `nginx-prod`
+occupe déjà. La documentation supposait un serveur dédié sans le dire.
+Une seconde topologie est livrée (`docker-compose.jitsi.behind-proxy.yml`
++ vhost Nginx), et `make jitsi-config-check` signale le conflit.
+
+### Corrigé : deux tests passaient sans rien vérifier
+
+- `test_5_le_fond_neutralise_est_versionne` interrogeait git sur un chemin
+  hors du dépôt vu du conteneur ; git répondait « code 128 » et
+  l'assertion « code ≠ 0 » s'en satisfaisait.
+- `test_le_modele_de_production_documente_les_variables_requises` était
+  gardé par un `skipUnless` toujours faux dans le conteneur.
+
+### Reste ouvert
+
+- **Aucun conteneur n'a démarré.** Le démon Docker n'était pas
+  disponible : `docker compose config` est validé pour les cinq
+  assemblages, mais `docker compose up`, les healthchecks et
+  `/api/health/` **n'ont pas été rejoués en V9**. Ils l'avaient été par la
+  QA externe sur V8, dont c'est le seul point resté vert.
+- **La topologie « derrière le proxy » n'a pas été éprouvée contre un
+  vrai Jitsi.** Le vhost a été servi par un vrai nginx et validé contre un
+  serveur de test qui rejoue les en-têtes reçus : la mise à niveau
+  WebSocket, `X-Forwarded-Proto` et l'encadrement sont vérifiés. Le
+  passage effectif de l'audio et de la vidéo ne l'est pas — il faut
+  l'infrastructure de la section 1.
+- **Le repli SPA reste global hors `/images/` et `/assets/`.** Ces deux
+  arbres répondent maintenant `404` sur un fichier absent ; ailleurs, une
+  URL inconnue renvoie toujours la page de l'application avec un code
+  `200`. C'est le comportement attendu d'un SPA pour ses routes, mais il
+  masquerait un futur fichier statique manquant servi depuis un autre
+  chemin.
+
 ## 4. Portée des vérifications de cette livraison
 
 ### Ce qui a été réellement exécuté
 
 | Vérification | Résultat |
 |---|---|
-| Suite backend PostgreSQL 16 | 1 164 passés, 0 échec |
-| Suite backend SQLite | 1 163 passés, 1 ignoré, 0 échec |
-| Suite frontend (Vitest) | 185 passés (179 dans la source + 6 ajoutés) |
+| Suite backend PostgreSQL 16 | **1 196 passés, 0 échec, 0 ignoré** |
+| Suite backend SQLite | **1 195 passés, 0 échec, 1 ignoré** (concurrence — rejoué sur PostgreSQL) |
+| Suite backend **en disposition conteneur** | **1 196 passés, 0 échec, 0 ignoré** |
+| Suite frontend (Vitest) | 185 passés |
 | ESLint | 0 erreur, 81 avertissements préexistants |
 | Build frontend de production | PASS |
-| Parcours navigateur 1 à 5 (Chromium réel) | PASS |
-| `nginx -t` sur les deux configurations | PASS |
-| Migrations + `seed_demo_data` sur PostgreSQL vierge | PASS |
+| `manage.py check` / `makemigrations --check` | PASS / No changes detected |
+| `docker compose config` (5 assemblages) | PASS |
+| `nginx -t` (principal, vhost Jitsi activé) | PASS |
+| Vhost Jitsi servi par un vrai nginx (WebSocket, BOSH, en-têtes) | PASS |
+| Sûreté du dépôt (`scripts/repo_safety_check.sh`) | PASS |
+
+Les parcours navigateur 1 à 5 avaient été exécutés en V8 ; ils n'ont pas
+été rejoués en V9, aucun code de parcours utilisateur n'ayant changé.
 
 ### Ce qui n'a PAS été exécuté
 
@@ -142,8 +197,9 @@ de la vérification de type MIME déjà en place.
 
 ## 8. Nommage de l'archive
 
-L'archive source s'appelle `feba.zip` et son dossier racine
-`feba_v6_version_finale_corrigee`, alors que le dépôt contient des rapports
-`KNOWN_LIMITATIONS_V4` à `V9`. Le versionnage interne du projet a dépassé
-« V6 ». Le nom du dossier source a été conservé sans modification pour
-éviter toute ambiguïté sur ce qui a été livré.
+**Réglé en V9.** L'archive s'appelle `feba_v9_version_finale_corrigee.zip`
+et son dossier racine porte désormais le **même nom**. En V8, l'archive
+`feba_corrected_production_ready.zip` contenait un dossier
+`feba_v6_version_finale_corrigee` : deux noms pour une seule livraison,
+alors que le dépôt portait déjà des rapports `KNOWN_LIMITATIONS_V4` à
+`V9`. C'était une ambiguïté de plus au moment de réintégrer le dépôt.

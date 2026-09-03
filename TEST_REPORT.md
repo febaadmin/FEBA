@@ -1,4 +1,33 @@
-# Rapport de tests — livraison FEBA
+# Rapport de tests — livraison FEBA **V9**
+
+> **V9** repart de V8. Cette section résume les mesures V9 ; le détail
+> historique des correctifs V8 suit, inchangé.
+>
+> | Contrôle | V8 (constaté par la QA) | **V9** |
+> |---|---|---|
+> | Commande de QA, disposition conteneur | 5 failed · 84 passed · 1 skipped | **88 passed · 0 skipped** |
+> | `test_env_dev_email_config.py` | **4 skipped** | **4 passed** |
+> | Suite complète — disposition conteneur | 5 failed · 1 156 passed · 5 skipped | **1 196 passed · 0 skipped** |
+> | Suite complète — PostgreSQL 16 (hôte) | 1 164 passed | **1 196 passed · 0 skipped** |
+> | Suite complète — SQLite (hôte) | 1 163 passed · 1 skipped | **1 195 passed · 1 skipped** |
+> | `manage.py check` | no issues | **no issues** |
+> | `makemigrations --check --dry-run` | No changes detected | **No changes detected** |
+> | Frontend — tests / lint / build | 185 · 0 erreur · PASS | **185 · 0 erreur · PASS** |
+> | `docker compose config` (5 assemblages) | non mesuré | **5/5 OK** |
+> | `nginx -t` (dont vhost Jitsi activé) | 2 configurations | **3/3 OK** |
+> | Sûreté du dépôt | non outillé | **PASS** (`scripts/repo_safety_check.sh`) |
+> | `docker compose up` + healthchecks | PASS (QA externe) | **NON EXÉCUTÉ** — démon Docker indisponible |
+>
+> L'unique `skipped` restant est celui d'un test de concurrence
+> multi-threads que SQLite ne peut pas exécuter (verrou de table) : il
+> **est** exécuté sur PostgreSQL. Ce n'est pas un défaut d'arborescence.
+>
+> Les cinq parcours navigateur ont été exécutés en V8 et **n'ont pas été
+> rejoués** en V9 : aucun code de parcours utilisateur n'a changé.
+
+---
+
+# Rapport de tests — livraison FEBA (V8, historique)
 
 Environnement : Python 3.11.15 · Django 5.0.4 · PostgreSQL 16.13 ·
 Node 22.22 · Chromium (Playwright) · Nginx 1.24.
