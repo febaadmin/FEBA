@@ -22,7 +22,10 @@
         payments-setup payments-check payments-test payments-webhook-check \
         documents-check documents-install documents-ready documents-calibrate documents-compare \
         branding-check \
-        jitsi-up jitsi-down jitsi-logs jitsi-health health logs logs-all ps down reset \
+        jitsi-up jitsi-down jitsi-restart jitsi-logs jitsi-health jitsi-config-check \
+        jitsi-prod-up jitsi-prod-down jitsi-prod-logs \
+        jitsi-proxy-up jitsi-proxy-down jitsi-proxy-logs \
+        health logs logs-all ps down reset \
         test shell diagnose doctor install-check repair prod prod-down prod-logs help
 
 # P6 — Point de passage UNIQUE vers Django : toujours à travers le
@@ -124,13 +127,83 @@ jitsi-up:
 jitsi-down:
 	docker compose -f docker-compose.jitsi.yml --env-file .env.jitsi down
 
+# Redémarre la pile sans régénérer les secrets : les jetons déjà émis
+# restent valides, les cours en séance ne sont pas invalidés.
+jitsi-restart:
+	docker compose -f docker-compose.jitsi.yml --env-file .env.jitsi restart
+	@echo "Instance redémarrée — vérifiez avec « make jitsi-health »."
+
 jitsi-logs:
 	docker compose -f docker-compose.jitsi.yml --env-file .env.jitsi logs -f
 
-# Vérifie l'instance : configuration, signature de jeton, joignabilité.
-# Code de sortie non nul si l'instance n'est pas opérationnelle.
+# Vérifie l'instance : configuration, signature de jeton, DNS, TLS, HTTP,
+# page Jitsi. Code de sortie non nul si l'instance n'est pas opérationnelle.
+#
+# JITSI_TARGET permet de contrôler une instance PRÉCISE, en particulier
+# celle de production, sans déployer de configuration :
+#     make jitsi-health JITSI_TARGET=meet.globalfeba.com
+#
+# Le contrôle passe par le conteneur backend quand il tourne, sinon par un
+# Python local : « make jitsi-health » ne doit pas être indisponible juste
+# parce que la pile de développement est arrêtée — c'est précisément quand
+# quelque chose ne va pas qu'on en a besoin.
+JITSI_TARGET ?=
+JITSI_HEALTH_ARGS = $(if $(JITSI_TARGET),--domain $(JITSI_TARGET),)
+
 jitsi-health:
-	docker compose exec -T backend-dev python manage.py jitsi_health
+	@if docker compose ps --status running backend-dev 2>/dev/null | grep -q backend-dev; then \
+		docker compose exec -T backend-dev python manage.py jitsi_health $(JITSI_HEALTH_ARGS); \
+	else \
+		echo "(conteneur backend-dev arrêté — contrôle depuis l'hôte)"; \
+		cd backend && python3 manage.py jitsi_health $(JITSI_HEALTH_ARGS); \
+	fi
+
+# ── Production : meet.globalfeba.com ─────────────────────────────────
+# La surcouche ajoute TLS Let's Encrypt, les ports 80/443 et l'IP publique
+# annoncée par le pont vidéo. Elle ne remplace pas la pile de base : les
+# deux fichiers sont passés ensemble, sinon la configuration diverge à la
+# première correction faite d'un seul côté.
+JITSI_PROD_COMPOSE = -f docker-compose.jitsi.yml -f docker-compose.jitsi.prod.yml --env-file .env.jitsi
+
+# ── Topologie « MÊME SERVEUR que FEBA » ──────────────────────────────
+# Jitsi n'écoute que sur la boucle locale ; c'est le nginx de FEBA qui
+# termine TLS et sert meet.globalfeba.com. À utiliser dès lors que le
+# serveur héberge DÉJÀ globalfeba.com : la surcouche `prod` ci-dessous
+# publierait 80 et 443, que nginx-prod occupe déjà.
+JITSI_PROXY_COMPOSE = -f docker-compose.jitsi.yml -f docker-compose.jitsi.behind-proxy.yml --env-file .env.jitsi
+
+jitsi-proxy-up:
+	@bash scripts/jitsi_config_check.sh || echo "⚠ Configuration incohérente — voir ci-dessus."
+	docker compose $(JITSI_PROXY_COMPOSE) up -d
+	@echo ""
+	@echo "Jitsi écoute sur 127.0.0.1:$${JITSI_PROXY_PORT:-8443} — inaccessible de l'extérieur."
+	@echo "Activez ensuite le vhost côté FEBA :"
+	@echo "  cp nginx/sites-available/meet.globalfeba.com.conf nginx/sites-enabled/"
+	@echo "  docker compose -f docker-compose.prod.yml exec nginx-prod nginx -t   # AVANT de recharger"
+	@echo "  docker compose -f docker-compose.prod.yml exec nginx-prod nginx -s reload"
+
+jitsi-proxy-down:
+	docker compose $(JITSI_PROXY_COMPOSE) down
+
+jitsi-proxy-logs:
+	docker compose $(JITSI_PROXY_COMPOSE) logs -f
+
+jitsi-prod-up:
+	@bash scripts/jitsi_config_check.sh || echo "⚠ Configuration incohérente — voir ci-dessus."
+	docker compose $(JITSI_PROD_COMPOSE) up -d
+	@echo "Instance démarrée. Vérifiez : make jitsi-health JITSI_TARGET=$${JITSI_DOMAIN:-meet.globalfeba.com}"
+
+jitsi-prod-down:
+	docker compose $(JITSI_PROD_COMPOSE) down
+
+jitsi-prod-logs:
+	docker compose $(JITSI_PROD_COMPOSE) logs -f
+
+# Contrôle de COHÉRENCE de la configuration, sans réseau : ce que les
+# fichiers déclarent, avant même de savoir si l'instance répond. Utilisable
+# en CI, où meet.globalfeba.com n'est de toute façon pas joignable.
+jitsi-config-check:
+	@bash scripts/jitsi_config_check.sh
 
 health: jitsi-health
 	@docker compose exec -T backend-dev python manage.py check --deploy 2>/dev/null || true

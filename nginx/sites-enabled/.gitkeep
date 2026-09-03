@@ -1,0 +1,8 @@
+# Les vhosts ACTIFS. Vide par défaut, et c'est voulu.
+#
+# nginx charge « sites-enabled/*.conf » : un fichier déposé ici est servi
+# au prochain rechargement. Y placer d'avance meet.globalfeba.com.conf
+# ferait échouer le démarrage de nginx tant que son certificat n'existe
+# pas — et ce nginx sert aussi globalfeba.com.
+#
+# Activation : voir l'en-tête de nginx/sites-available/meet.globalfeba.com.conf

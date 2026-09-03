@@ -1,149 +1,198 @@
-# Rapport de clôture — V9
+# Rapport de livraison — FEBA **V9**
 
-Ce rapport distingue **où** chaque chose a été vérifiée. C'est la seule
-distinction qui compte : cinq défauts de cette itération n'apparaissaient
-pas dans le dépôt source, seulement depuis l'archive extraite.
-
----
-
-## Ce qui est testé, et où
-
-| Vérification | Dépôt source | Archive extraite | SQLite | PostgreSQL | Navigateur | Vu à l'œil |
-|---|:-:|:-:|:-:|:-:|:-:|:-:|
-| Suites backend | ✅ 806 | ✅ 806 | ✅ 805+1 | ✅ 806 | — | — |
-| Suites frontend | ✅ 123 | ✅ 123 | — | — | — | — |
-| ESLint / build | ✅ 0 erreur | ✅ 0 erreur | — | — | — | — |
-| Installation propre | — | ✅ venv neuf, base vide | — | ✅ 0→69 tables | — | — |
-| Diplôme produisible | ✅ | ✅ sans commande | — | ✅ | ✅ | ✅ capture |
-| Certificat produisible | ✅ | ✅ | — | ✅ | ✅ | ✅ capture |
-| Neutralisation du placeholder | ✅ | ✅ 4220→0 px | — | — | — | ✅ PDF |
-| Identité par académie | ✅ | ✅ 7 documents | — | ✅ | ✅ | ✅ PDF |
-| Inscription FEBA FHA | ✅ 43 tests | ✅ bout en bout | ✅ | ✅ SQL direct | ✅ | ✅ capture |
-| Fiche PDF + téléchargement | ✅ | ✅ | — | ✅ | ✅ | ✅ PDF |
-| Contacts + WhatsApp | ✅ 16 tests | ✅ 2 académies | ✅ | ✅ SQL direct | ✅ | ✅ capture |
-| Messages longs non coupés | ✅ 14 tests | ✅ | — | ✅ 6300/6300 car. | ✅ 1011/1011 | ✅ capture |
-| Isolation + anti-IDOR | ✅ | ✅ | ✅ | ✅ | — | ✅ preuve |
-| Stockage privé | ✅ | ✅ | — | ✅ | — | — |
-| Contrôle des secrets | ✅ garde-fou | ✅ ZIP analysé | — | — | — | — |
+Base : **V8** (`feba_v6_version_finale_corrigee`), telle que livrée et
+auditée par la QA externe.
 
 ---
 
-## E-mails : ce qui s'est réellement passé
+## 1. Le blocker principal, reproduit puis corrigé
 
-Le brief demande de distinguer cinq états. Voici lequel s'applique.
+### Reproduction
 
-| État | S'applique ? | Détail |
-|---|:-:|---|
-| Capturé par un backend local | **OUI** | `django.core.mail.backends.console.EmailBackend` |
-| Mis en file | non | Aucune file n'a été employée |
-| Simulé | non | Les messages sont réellement composés et remis au backend |
-| Accepté par un fournisseur externe | **NON** | Aucun fournisseur configuré |
-| Réellement distribué | **NON** | Impossible à affirmer sans fournisseur |
+La disposition du conteneur a été reconstituée à l'identique — `backend/`
+seul, plus le montage nommé de `KNOWN_LIMITATIONS.md` — et la commande de
+la QA rejouée :
 
-Le journal `EmailDelivery` porte `status = sent` et
-`backend = console.EmailBackend`. Le drapeau `used_real_provider` vaut
-**faux**, et l'interface affiche « Sans fournisseur » — jamais « Envoyé ».
-`manage.py email_check` sort en erreur dans cet état, exprès.
+```
+5 failed, 84 passed, 1 skipped        ← identique au rapport de QA
+tests/test_env_dev_email_config.py :  4 skipped
+```
 
-Un fichier HTML a bien été produit pour chaque message. **Cela ne vaut pas
-envoi**, et rien dans cette livraison ne le présente comme tel.
+### Cause racine
 
----
+Cinq fichiers de tests répondaient chacun à leur façon à une seule
+question — « où est la racine du dépôt ? » :
 
-## Les cinq défauts trouvés en validant l'archive
-
-Aucun n'était visible depuis le dépôt source.
-
-**1. La livraison partait avec les rapports de l'itération précédente.**
-La liste était figée sur V8. L'archive V9 ne contenait aucun des douze
-rapports écrits pour elle. Corrigé par une liste vérifiée : un rapport
-annoncé mais absent interrompt la construction.
-
-**2. La règle d'académie ne tenait que dans la vue HTTP.** Produire un
-diplôme au fond FEBA pour un élève de l'académie en ligne était refusé par
-l'API et **accepté par le service**. Une commande, un script d'import ou un
-test produisait donc un document au nom d'une académie et à l'effigie
-d'une autre. Une règle posée à la porte d'entrée HTTP n'est pas une règle.
-
-**3. L'adresse imprimée se répétait.** `Akpakpa, Cotonou, Bénin, Cotonou,
-Bénin` en tête de chaque reçu — et, pour l'académie en ligne, une ville qui
-n'est pas la sienne affichée deux fois sur ses propres documents.
-
-**4. Deux caractères disparaissaient de chaque message long.** DRF retire
-les blancs de fin par défaut. Un message de 7 014 caractères arrivait à
-7 012. Deux caractères — mais c'est la même mécanique qui modifie ce que le
-visiteur a écrit, pendant que l'application affirme ne rien tronquer.
-
-**5. Un fichier d'environnement réel partait dans chaque archive.**
-`.env.dev` contenait une `SECRET_KEY` et un `JITSI_APP_SECRET`. Des secrets
-faibles restent des secrets : livrés, ils deviennent les secrets par défaut
-de toute installation qui recopie le fichier sans le lire.
-
-Chacun a reçu un test de non-régression. L'archive a été régénérée et
-réinstallée depuis zéro après chaque correction — **quatre tours de
-boucle**.
-
----
-
-## Non validé faute d'identifiants externes
-
-| Sujet | Ce qui manque | Ce qui a été fait malgré tout |
+| Fichier | Mécanisme | Comportement dans le conteneur |
 |---|---|---|
-| Envoi d'e-mail réel | Un fournisseur SMTP et ses identifiants | Composition, formats, langues, pièces jointes, journal, états d'échec, relance — et un refus explicite de présenter un envoi comme réel |
-| Paiement par carte | Des clés Stripe valides | 54 tests couvrant tentative, webhook, idempotence, ordre, remboursement, reçu, permissions ; signature vérifiée par la bibliothèque officielle, sans réseau |
+| `test_env_dev_email_config.py` | `parent.parent.parent` puis `skipTest` | **4 skipped silencieux** |
+| `test_jitsi_production_domain.py` | `dirname` × 3 | 4 échecs |
+| `test_production_settings.py` | `skipUnless(os.path.exists(...))` | **1 skipped silencieux** |
+| `test_diploma_ready_after_install.py` | `dirname` × 3 | **faux positif** (voir §3) |
+| `test_academy_identity_separation.py` | remontée + montage nommé | passait, seul |
 
----
+Deux d'entre eux répondaient **en se taisant**. C'est le pire des deux
+mondes : `pytest` affichait « skipped », qui se lit comme un succès, alors
+que ni Mailpit ni le modèle de production n'étaient vérifiés. Un
+`.env.dev.example` revenu au backend console serait passé inaperçu —
+c'est-à-dire exactement le défaut que ce fichier surveille.
 
-## Limitations réelles restantes
+### Correction
 
-**Aucune signature officielle n'est fournie.** Les zones
-`director_signature` restent vides. Le moteur ne dessine, ne reconstitue et
-n'approche jamais une signature : une signature inventée sur un diplôme
-n'est pas une approximation graphique, c'est un faux.
+Deux pièces qui ne valent qu'ensemble :
 
-**L'académie en ligne n'a pas de fond de diplôme ni de certificat.** Les
-deux gabarits sont réservés à FEBA et l'interface le dit, avec sa raison.
-Le jour où le fond est fourni, il fera l'objet d'un gabarit distinct.
+1. **`backend/tests/repo_root.py`** — résolution unique, trois chemins
+   indépendants : `FEBA_REPO_ROOT`, remontée d'arborescence (marqueurs
+   `backend/manage.py` + `frontend/package.json`), puis `/repo`. Si aucun
+   n'aboutit, elle **lève** avec un message qui nomme le geste. Aucun
+   chemin absolu propre à une machine.
+2. **`docker-compose.yml`** — le dépôt entier monté **en lecture seule**
+   sur `/repo`, plus `FEBA_REPO_ROOT=/repo`. Le montage fichier par
+   fichier disparaît : c'était le défaut, pas la solution.
 
-**Ni téléphone ni e-mail ne sont renseignés pour les deux académies.** Les
-documents ne les affichent donc pas. C'est une donnée que l'établissement
-doit saisir, pas un défaut de code — et les inventer serait pire.
+### Vérification
 
-**Les fonds installés ne sont pas les PNG d'origine** : variantes
-transcodées, acceptées nommément et tracées. Géométrie exacte, calibrage
-valide.
-
-**Les libellés d'état des dossiers FHA restent en français** sur une
-session anglaise. Défaut d'affichage seulement : l'état stocké et transmis
-est le code interne.
-
-**L'interface charge une police depuis `fonts.googleapis.com`.** Injoignable
-derrière le proxy de ce conteneur, elle retombe sur la police système sans
-rien casser. À signaler pour un déploiement hors ligne, et parce que chaque
-visiteur est alors vu par un tiers.
-
-**Redis doit tourner.** `django-ratelimit` et l'authentification passent par
-le cache ; sans lui, le formulaire public et la connexion renvoient 500.
-Documenté dans `INSTALLATION_GUIDE.md` et démarré par `make dev`.
-
----
-
-## Détail par priorité
-
-| | Sujet | État |
+| Disposition | Avant | Après |
 |---|---|---|
-| P0 | Source unique d'identité par académie | Corrigé et vérifié |
-| P1 | Inscription FEBA FHA de bout en bout | Corrigé et vérifié |
-| P2 | Audit de la chaîne des champs | Corrigé et vérifié |
-| P3 | Fiche PDF + téléchargement sécurisé | Corrigé et vérifié |
-| P4 | Vue détail complète + export | Corrigé et vérifié |
-| P5 | Formulaires de contact | Corrigé et vérifié |
-| P6 | Messages longs jamais tronqués | Corrigé et vérifié |
-| P7 | Diplôme disponible dès l'installation | Corrigé et vérifié |
-| P8 | Documents filtrés par académie | Corrigé et vérifié |
-| P9 | Tests automatisés | 806 backend, 123 frontend |
-| P10 | Vérification navigateur | 34 vérifications, depuis l'archive |
-| P11 | Audit global | 5 défauts trouvés et corrigés |
+| Commande de QA, conteneur | 5 failed, 84 passed, 1 skipped | **88 passed** |
+| `test_env_dev_email_config.py` | **4 skipped** | **4 passed** |
+| Suite complète, conteneur | 5 failed, 1 156 passed, 5 skipped | **1 196 passed, 0 skipped** |
 
-« Corrigé et vérifié » signifie : exécuté sur cette instance, depuis
-l'archive extraite, avec la sortie reproduite dans `TEST_REPORT.md`.
+Le montage a aussi été retiré volontairement : les tests concernés passent
+alors de « skipped » à **32 échecs bruyants**. Le silence a disparu.
+
+---
+
+## 2. Jitsi — conflit de ports (§9)
+
+**Mesuré sur les fichiers livrés, pas supposé :**
+
+| Service | Fichier | Ports de l'hôte |
+|---|---|---|
+| `nginx-prod` | `docker-compose.prod.yml` | 80, 443 |
+| `jitsi-web` | `docker-compose.jitsi.prod.yml` | **80, 443** |
+
+Sur le serveur qui sert déjà `globalfeba.com`, la pile Jitsi était
+**indéployable** : soit « port is already allocated », soit — si Jitsi
+démarrait en premier — le site principal qui ne redémarre plus. La V8
+documentait « serveur dédié » sans jamais vérifier cette hypothèse.
+
+**Corrigé en livrant la seconde topologie, pas en renonçant à la première :**
+
+- `docker-compose.jitsi.behind-proxy.yml` — Jitsi n'écoute que sur
+  `127.0.0.1`, TLS terminé par le nginx de FEBA, pas de client ACME
+  concurrent. `ENABLE_AUTH=1`, `ENABLE_GUESTS=0`, `AUTH_TYPE=jwt`,
+  `JWT_ALLOW_EMPTY=0` et `JVB_ADVERTISE_IPS` **conservés**.
+- `nginx/sites-available/meet.globalfeba.com.conf` — vhost complet
+  (WebSocket XMPP, `colibri-ws`, BOSH, `X-Forwarded-Proto`,
+  `frame-ancestors` au lieu de `X-Frame-Options: DENY`, l'application
+  affichant la salle en iframe). **Livré mais NON activé** : il référence
+  un certificat absent, et nginx refuserait de démarrer — ce nginx servant
+  aussi le site principal.
+- `make jitsi-proxy-up` / `-down` / `-logs`, et `make jitsi-config-check`
+  qui signale désormais le conflit.
+
+**Éprouvé, pas seulement écrit :** le vhost a été servi par un vrai nginx
+1.24 contre un serveur qui rejoue les en-têtes reçus. Deux défauts réels
+ont été trouvés et corrigés à ce moment — `http2 on;` (syntaxe nginx ≥ 1.25
+qui aurait empêché le démarrage) et des en-têtes manquants sur
+`colibri-ws`.
+
+---
+
+## 3. Deux tests qui passaient sans rien vérifier
+
+- **`test_5_le_fond_neutralise_est_versionne`** interrogeait `git
+  check-ignore` sur `/app/...` en travaillant depuis la racine du dépôt.
+  Git répondait « is outside repository » (code 128) et l'assertion
+  « code ≠ 0 » s'en satisfaisait. Le test interroge désormais le chemin
+  **relatif au dépôt**, et refuse un code autre que 0 ou 1.
+- **`test_le_modele_de_production_documente_les_variables_requises`**
+  était gardé par un `skipUnless` toujours faux dans le conteneur.
+
+---
+
+## 4. Migration `schools.0015` (§10)
+
+**Auditée, jugée sûre, non modifiée.** Réécrire une migration déjà
+appliquée la ferait diverger entre les bases qui l'ont passée et les
+autres.
+
+11 tests (`test_migration_0015_data_safety.py`) exécutent la vraie
+fonction sur une base peuplée :
+
+| Propriété | Résultat |
+|---|---|
+| Numéro hors service remplacé sur l'entité | ✅ |
+| Numéro recopié dans l'adresse retiré | ✅ |
+| Numéro d'entité **légitime** conservé | ✅ |
+| Colonne vide **laissée vide** (ne remplit pas) | ✅ |
+| **Coordonnées personnelles intactes** (parent, contact, préinscription) | ✅ |
+| Idempotente (3 exécutions) | ✅ |
+| Base vide traversée sans erreur | ✅ |
+| L'inverse ne restaure pas le numéro retiré | ✅ |
+
+Le contrôle qui compte : parents, visiteurs et candidats portent les mêmes
+noms de colonnes que l'entité. On leur a donné **délibérément** le numéro
+retiré ; la migration n'y touche pas.
+
+---
+
+## 5. Intégration continue (§17)
+
+**Constat : il n'existait AUCUN workflow de Pull Request.** Le dépôt ne
+contenait que `deploy.yml`, déclenché par un push sur `main` — une Pull
+Request n'était donc validée par rien, et les tests s'exécutaient pour la
+première fois *après* la fusion, au moment du déploiement.
+
+`.github/workflows/ci.yml` est ajouté : suites backend PostgreSQL **et**
+SQLite, `manage.py check`, `makemigrations --check`, tests/lint/build
+frontend, validité des cinq assemblages Compose, cohérence Jitsi, syntaxe
+Nginx (vhost Jitsi activé compris), sûreté du dépôt.
+
+Aucun secret de production n'est requis. **`deploy.yml` n'est pas
+modifié.**
+
+---
+
+## 6. Non-régression production (§19)
+
+| Fichier | Diff V8 → V9 | Pourquoi | Risque | Vérifié par |
+|---|---|---|---|---|
+| `.github/workflows/deploy.yml` | **inchangé** | — | — | — |
+| `backend/feba_project/settings/prod.py` | **inchangé** | — | — | — |
+| `docker-compose.jitsi.prod.yml` | **inchangé** | topologie A conservée | — | — |
+| `scripts/backup.sh`, `restore.sh` | **inchangé** | — | — | — |
+| `docker-compose.prod.yml` | **+4, −0** | monter `sites-enabled/` (vide) | nul — répertoire vide | `docker compose config` |
+| `nginx/nginx.prod.conf` | **+14, −0** | `include sites-enabled/*.conf` | nul — un motif sans correspondance n'est pas une erreur nginx | `nginx -t` vide **et** vhost activé |
+| `frontend/nginx.prod.conf` | **+11, −0** | `/images/` répond `404` sur fichier absent | faible — aucune route SPA sous `/images/` | 6 requêtes HTTP réelles |
+| `docker-compose.yml` (dev) | **+22, −9** | montage `/repo` en lecture seule | dev uniquement | suite complète en disposition conteneur |
+
+Aucun changement silencieux : les trois fichiers de production touchés le
+sont de façon **purement additive**, et leur comportement par défaut est
+strictement celui de la V8.
+
+---
+
+## 7. Ce qui n'a pas pu être exécuté
+
+- **`docker compose up` — NON EXÉCUTÉ.** Le démon Docker n'est pas
+  disponible dans cet environnement (`docker info` échoue). Le client
+  fonctionne : `docker compose config` est validé pour les cinq
+  assemblages. Healthchecks, démarrage des services et `/api/health/`
+  n'ont donc **pas** été rejoués — ils l'avaient été par la QA sur V8.
+- **Appel Jitsi réel — NON EXÉCUTÉ.** L'infrastructure n'existe pas :
+  `meet.globalfeba.com` ne résout toujours pas.
+- **Envoi d'e-mail réel — NON EXÉCUTÉ.** Backend en mémoire pendant les
+  tests ; la configuration Mailpit est vérifiée sur les fichiers.
+- **Parcours navigateur — non rejoués.** Ils avaient été exécutés en V8 ;
+  aucun code de parcours utilisateur n'a changé en V9.
+
+---
+
+## 8. Aucun résultat inventé
+
+Tous les chiffres de ce rapport et de `TEST_REPORT.md` proviennent de
+commandes réellement exécutées dans cet environnement, dont les sorties
+figurent dans la transcription. Ce qui n'a pas pu l'être est marqué
+**NON EXÉCUTÉ** avec sa raison, jamais remplacé par un PASS.

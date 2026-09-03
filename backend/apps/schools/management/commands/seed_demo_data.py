@@ -28,6 +28,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from apps.grades.grading import ASSESSMENT_WEIGHT
+from apps.schools.institution import official_phone
 
 FM = ["Koffi", "Emeka", "Jean", "Pierre", "Marc", "David", "Samuel", "Éric", "Paul", "Hervé",
       "Ayo", "Sègun", "Kwame", "Malik", "Idriss"]
@@ -99,7 +100,7 @@ class Command(BaseCommand):
                 "entity_type": "campus",
                 "address": "Rue des Cocotiers, Akpakpa",
                 "city": "Cotonou", "country": "Bénin",
-                "phone": "+229 97 00 00 00", "email": "contact@feba.bj",
+                "phone": official_phone(), "email": "contact@feba.bj",
                 "timezone": "Africa/Porto-Novo",
                 "currency_code": "XOF",
                 "default_language": "fr",
@@ -561,6 +562,7 @@ class Command(BaseCommand):
                 "entity_type": "online",
                 "address": "Programme 100 % en ligne — cours dispensés depuis FEBA, Cotonou.",
                 "city": "Cotonou", "country": "Bénin",
+                "phone": official_phone(),
                 "whatsapp": "+1 (215) 715-5406",
                 "timezone": "America/New_York",
                 "currency_code": "USD",

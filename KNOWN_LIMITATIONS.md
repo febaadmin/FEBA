@@ -1,116 +1,205 @@
 # KNOWN_LIMITATIONS — ce qui n'a pas été vérifié
 
-Ce document est délibérément explicite. Un rapport qui tait ses angles morts
-est plus dangereux qu'un rapport incomplet.
+Ce document est délibérément explicite. Un rapport qui tait ses angles
+morts est plus dangereux qu'un rapport incomplet.
 
-## 1. Portée réelle de cet audit
+---
 
-La mission demandait dix priorités. Voici ce qui a réellement été fait.
+## 1. Ce qui n'a pas pu être fait depuis le dépôt
 
-| Priorité | Statut | Preuve |
-|---|---|---|
-| P1 — dashboard à zéro | **Corrigé** | 10 tests, échec prouvé contre le code d'origine |
-| P2 — commande de nettoyage | **Livré** | 26 tests |
-| P3 — titres des étapes | **Corrigé** | build + couverture i18n |
-| P4 — formules et flyer | **Livré** | migration + empreinte SHA-256 vérifiée |
-| P5 — total multidevise | **Déjà implémenté** | 35 tests existants exécutés |
-| P6 — parité emploi du temps | **Déjà implémenté** | 32 tests existants exécutés |
-| P7 — téléchargement FHA | **Déjà implémenté** | 4 tests existants exécutés |
-| P8 — rapport mensuel | **Déjà implémenté** | 65 tests existants exécutés |
-| P9 — bouton EN/FR mobile | **Corrigé** | 6 tests, échec prouvé contre le code d'origine |
-| P10 — audit global | **Partiel** | voir ci-dessous |
+La visioconférence de production **n'est pas en service**, et rien dans
+cette livraison ne peut la mettre en service.
 
-### Sur P5 à P8
-
-Les symptômes décrits ne se reproduisent pas sur l'archive source : les
-fonctionnalités y sont implémentées et couvertes par des tests qui passent.
-Deux lectures possibles, et il faut le dire franchement :
-
-- soit ces défauts ont été corrigés lors d'un cycle antérieur et la demande
-  s'appuyait sur une version plus ancienne de l'application ;
-- soit ils persistent en conditions réelles selon un mécanisme que les tests
-  automatisés ne capturent pas (cache navigateur, proxy, données de
-  production particulières).
-
-Aucune modification n'a été apportée à ce périmètre : réécrire du code dont
-les tests passent introduirait un risque sans bénéfice démontrable. Si les
-symptômes persistent après déploiement, ils devront être rouverts avec une
-observation navigateur, et ce rapport en sera le point de départ.
-
-### Sur P10 — audit global
-
-L'audit exhaustif des 32 domaines listés (authentification, JWT, permissions
-objet, élèves, parents, enseignants, admissions, notes, bulletins, absences,
-devoirs, messagerie, notifications, documents, rapports, site public,
-responsive, Celery, Jitsi, Mailpit, Docker, performances…) **n'a pas été mené
-domaine par domaine**. Ce qui a été fait à ce titre :
-
-- l'intégralité des suites de tests a été exécutée (1 112 backend,
-  179 frontend), ce qui couvre transversalement une large part de ces
-  domaines ;
-- `manage.py check` ne signale aucun problème ;
-- `makemigrations --check` confirme l'absence de migration manquante ;
-- le lint frontend ne remonte aucune erreur ;
-- aucun secret ni fichier `.env` réel n'est présent dans l'archive livrée.
-
-En revanche, la recherche systématique de boutons morts, de CRUD incomplets,
-de props DOM invalides, de code mort, de dépendances inutilisées et d'URL
-codées en dur **n'a pas été conduite**. Les 82 avertissements de lint
-préexistants n'ont pas été traités.
-
-## 2. Validations Docker restant à faire
-
-Aucun démon Docker n'était disponible. Non exécutés :
+Vérifié au moment de la livraison :
 
 ```
-docker compose down -v --remove-orphans
-make install / seed / seed-check / documents-ready
-make branding-check / jitsi-health / celery-health / install-check
+getent hosts globalfeba.com        → 62.238.38.111        ✅
+getent hosts meet.globalfeba.com   → aucun enregistrement ❌
 ```
 
-Les 13 fichiers de tests e2e n'ont pas été exécutés non plus : ils exigent un
-navigateur et la pile complète.
+Le code, la configuration, la surcouche Docker de production, les scripts
+d'exploitation et les contrôles de santé sont livrés et testés. Ce qui
+manque relève de **Hetzner** (créer le serveur, ouvrir `10000/udp`) et de
+**Hostinger** (créer l'enregistrement `A meet`). Ces actions sont
+détaillées, avec leurs commandes de vérification, dans
+[`MANUAL_PRODUCTION_ACTIONS.md`](MANUAL_PRODUCTION_ACTIONS.md).
 
-### Conséquences par priorité
+**Aucune de ces actions n'a été effectuée, et aucune n'est présentée comme
+faite.** Tant qu'elles ne le sont pas, l'application affiche le bandeau
+« Visioconférence indisponible — instance FEBA non configurée ». C'est le
+comportement voulu : aucune session n'est basculée vers un service public.
 
-- **P1** : le scénario `Cmd+R` n'a pas été rejoué dans un navigateur réel. La
-  correction est prouvée au niveau composant, avec reproduction du bug
-  d'origine. Les statuts Nginx `499` devraient disparaître puisque les
-  requêtes annulées au démarrage ne sont plus émises — à confirmer par
-  observation.
-- **P3** : navigation précédent/suivant, reprise du brouillon, validation
-  clavier et rendu mobile/tablette/desktop non observés en navigateur.
-- **P4** : téléchargement effectif du flyer (en-têtes HTTP, type MIME servi
-  par Nginx) et affichage de la formule dans FHA Admissions non observés.
-- **P9** : les largeurs 320 / 375 / 390 / 430 / 768 / 1024 px n'ont pas été
-  observées en navigateur. jsdom n'applique pas les media queries Tailwind :
-  les tests vérifient la présence dans le DOM et l'absence de classes
-  desktop-only, pas le rendu pixel.
+## 2. Cachet officiel de FEBA French Heritage Academy
 
-## 3. Limites de la commande de nettoyage
+**Aucun cachet officiel FEBA FHA n'a été fourni ; aucun cachet d'une autre
+académie n'est réutilisé.**
 
-- **Jamais exécutée en mode réel sur des données de production.** Uniquement
-  sur des bases SQLite de test éphémères.
-- `messaging.Conversation` n'a aucun rattachement d'académie : en mode
-  `--academy` elle est ignorée, et l'omission est consignée dans les
-  anomalies du rapport plutôt que devinée. Elle est nettoyée en mode global.
-- La suppression des médias n'a pas été testée sur un volume réel de
-  fichiers.
-- Le verrou anti-concurrence repose sur `fcntl.flock`, donc sur un système de
-  fichiers POSIX local. Il ne protège pas contre deux exécutions depuis deux
-  conteneurs distincts sans volume partagé.
+Les documents de l'académie en ligne — reçus, certificats, fiches —
+sortent donc **sans cachet**. Ce n'est pas un oubli et ce n'est pas
+réparable en écrivant du code : le visuel n'existe pas dans les éléments
+transmis.
 
-## 4. Environnement de test
+Apposer `cachet_feba.png` à la place serait pire que l'absence : cette
+image porte en couronne « COMPLEXE SCOLAIRE FAITH & EXCELLENCE BILINGUAL
+ACADEMY ». Sur un certificat de l'académie en ligne, elle y estampille le
+nom d'une autre personne morale — sur la pièce qui fait foi. Un document
+sans cachet se voit et se corrige ; un document au cachet d'un autre
+établissement circule et fait autorité.
 
-Les tests backend tournent sous `settings.test_sqlite` (SQLite en mémoire).
-Certains comportements — contraintes de concurrence, verrous, types
-spécifiques à PostgreSQL — ne s'y observent pas. Un test de concurrence
-multi-threads est explicitement ignoré pour cette raison. La validation finale
-doit se faire sur PostgreSQL via `settings.test_postgres`.
+**Pour lever cette limitation :** déposer le cachet officiel FHA dans
+`backend/feba_project/static_files/` et renseigner son nom dans
+`ACADEMY_DEFAULTS["FEBA_FHA"]["stamp"]`
+(`backend/apps/schools/branding.py`). Rien d'autre n'est à modifier.
 
-## 5. Nommage de l'archive
+## 3. Nom d'établissement sur deux lignes — limitation levée
 
-L'archive source s'appelle `…v9…` alors que la mission parle de « V6 ». Le
-nom du dossier source a été conservé sans modification. Le dépôt contient des
-rapports `KNOWN_LIMITATIONS_V4` à `V9` : le versionnage interne du projet a
-dépassé V6. Signalé pour éviter toute ambiguïté sur ce qui a été livré.
+Cette limitation figurait dans les livraisons précédentes. Elle **est
+levée** : un nom d'établissement de **79 caractères est composé sur deux
+lignes** sans chevauchement ni troncature, l'interligne étant calculé à
+partir de la taille de police au lieu d'être laissé à sa valeur par défaut
+(`backend/apps/payments/pdf_generator.py`).
+
+Elle est maintenue dans ce document uniquement pour dire qu'elle n'a plus
+lieu d'être : la laisser inscrite ferait renoncer quelqu'un à un service
+qui fonctionne.
+
+## 3 bis. Ce que la V9 corrige, et ce qu'elle laisse ouvert
+
+### Corrigé : les fichiers de livraison étaient invisibles dans le conteneur
+
+`./backend` était monté sur `/app`, et la racine du dépôt n'existait pas
+dans le conteneur. Cinq fichiers de tests s'en accommodaient chacun à leur
+façon ; **deux le faisaient en se taisant**. `pytest` affichait alors
+« 4 skipped » — vert dans un tableau de résultats — alors qu'aucune des
+garanties n'avait été vérifiée.
+
+La racine est désormais montée en lecture seule (`.:/repo:ro`) et résolue
+par un module unique (`backend/tests/repo_root.py`). Aucun de ces tests ne
+s'ignore plus : si la racine est introuvable, ils échouent.
+
+### Corrigé : Jitsi de production était indéployable sur le serveur FEBA
+
+`docker-compose.jitsi.prod.yml` publiait 80 et 443, que `nginx-prod`
+occupe déjà. La documentation supposait un serveur dédié sans le dire.
+Une seconde topologie est livrée (`docker-compose.jitsi.behind-proxy.yml`
++ vhost Nginx), et `make jitsi-config-check` signale le conflit.
+
+### Corrigé : deux tests passaient sans rien vérifier
+
+- `test_5_le_fond_neutralise_est_versionne` interrogeait git sur un chemin
+  hors du dépôt vu du conteneur ; git répondait « code 128 » et
+  l'assertion « code ≠ 0 » s'en satisfaisait.
+- `test_le_modele_de_production_documente_les_variables_requises` était
+  gardé par un `skipUnless` toujours faux dans le conteneur.
+
+### Reste ouvert
+
+- **Aucun conteneur n'a démarré.** Le démon Docker n'était pas
+  disponible : `docker compose config` est validé pour les cinq
+  assemblages, mais `docker compose up`, les healthchecks et
+  `/api/health/` **n'ont pas été rejoués en V9**. Ils l'avaient été par la
+  QA externe sur V8, dont c'est le seul point resté vert.
+- **La topologie « derrière le proxy » n'a pas été éprouvée contre un
+  vrai Jitsi.** Le vhost a été servi par un vrai nginx et validé contre un
+  serveur de test qui rejoue les en-têtes reçus : la mise à niveau
+  WebSocket, `X-Forwarded-Proto` et l'encadrement sont vérifiés. Le
+  passage effectif de l'audio et de la vidéo ne l'est pas — il faut
+  l'infrastructure de la section 1.
+- **Le repli SPA reste global hors `/images/` et `/assets/`.** Ces deux
+  arbres répondent maintenant `404` sur un fichier absent ; ailleurs, une
+  URL inconnue renvoie toujours la page de l'application avec un code
+  `200`. C'est le comportement attendu d'un SPA pour ses routes, mais il
+  masquerait un futur fichier statique manquant servi depuis un autre
+  chemin.
+
+## 4. Portée des vérifications de cette livraison
+
+### Ce qui a été réellement exécuté
+
+| Vérification | Résultat |
+|---|---|
+| Suite backend PostgreSQL 16 | **1 196 passés, 0 échec, 0 ignoré** |
+| Suite backend SQLite | **1 195 passés, 0 échec, 1 ignoré** (concurrence — rejoué sur PostgreSQL) |
+| Suite backend **en disposition conteneur** | **1 196 passés, 0 échec, 0 ignoré** |
+| Suite frontend (Vitest) | 185 passés |
+| ESLint | 0 erreur, 81 avertissements préexistants |
+| Build frontend de production | PASS |
+| `manage.py check` / `makemigrations --check` | PASS / No changes detected |
+| `docker compose config` (5 assemblages) | PASS |
+| `nginx -t` (principal, vhost Jitsi activé) | PASS |
+| Vhost Jitsi servi par un vrai nginx (WebSocket, BOSH, en-têtes) | PASS |
+| Sûreté du dépôt (`scripts/repo_safety_check.sh`) | PASS |
+
+Les parcours navigateur 1 à 5 avaient été exécutés en V8 ; ils n'ont pas
+été rejoués en V9, aucun code de parcours utilisateur n'ayant changé.
+
+### Ce qui n'a PAS été exécuté
+
+- **Docker Compose.** Aucun démon Docker n'était disponible dans
+  l'environnement de travail. `make install`, `make jitsi-up`,
+  `make jitsi-prod-up`, `docker compose up` n'ont donc pas été lancés. Les
+  fichiers Compose ont été validés syntaxiquement (analyse YAML) et les
+  configurations Nginx par `nginx -t` sur un binaire réel, mais **la pile
+  n'a jamais démarré en conteneurs**.
+- **Un appel Jitsi réel.** Il faut l'infrastructure de la section 1. Le
+  jeton, les permissions, le refus des instances publiques et le rapport
+  de santé sont testés ; **le passage effectif de l'audio et de la vidéo ne
+  l'est pas** et ne peut l'être sans serveur.
+- **Un envoi d'e-mail réel.** Les tests utilisent le backend en mémoire.
+  Aucun message n'est parti vers une boîte réelle : la configuration SMTP
+  de production reste à valider sur le serveur.
+- **Les 13 fichiers de tests e2e existants** (`e2e/*.mjs`) : ils supposent
+  la pile Docker complète. Les cinq parcours de cette livraison ont été
+  écrits et exécutés séparément, contre le build de production servi par
+  Nginx et un backend Django réel sur PostgreSQL.
+
+## 5. Ce que le correctif du numéro institutionnel ne couvre pas
+
+Le numéro `0160011717` est imposé à **tous les documents générés**, via
+`apps/schools/institution.py`. Deux réserves :
+
+- **Les documents déjà émis ne sont pas modifiés.** Un reçu remis à une
+  famille avant cette livraison porte toujours l'ancien numéro. Les
+  régénérer est possible (bouton « générer le reçu ») mais n'a pas été
+  fait en masse : cela changerait la date de génération inscrite sur des
+  pièces déjà en circulation.
+- **Les fonds d'image des certificats et diplômes ne sont pas analysés.**
+  Ces documents sont composés sur un visuel fourni par l'établissement. Si
+  un numéro y est incrusté en pixels, aucun test textuel ne peut le voir —
+  c'est précisément ainsi que trois fuites d'identité ont échappé aux
+  contrôles lors de livraisons précédentes. Les gabarits actuels n'ont
+  **aucun champ téléphone**, et les tests vérifient l'absence de l'ancien
+  numéro dans leur texte ; l'inspection visuelle des fonds reste à faire.
+- **Le flyer FEBA FHA n'a pas été retouché.** Il porte le contact WhatsApp
+  `+1 (215) 715-5406` et `www.globalfeba.com` — les coordonnées voulues
+  pour la diaspora. Ce n'est pas un document généré par l'application mais
+  une pièce marketing fournie ; son contenu n'a pas été modifié.
+
+## 6. Avertissements de lint non traités
+
+81 avertissements ESLint préexistants subsistent (0 erreur). Ils n'ont pas
+été traités : ce sont des `no-unused-vars` et des règles React Hooks sur
+du code qui n'entre pas dans le périmètre de cette mission. Un seul a été
+corrigé, dans un fichier déjà modifié pour le flyer (`FhaPage.jsx`).
+
+## 7. Audit de sécurité — profondeur réelle
+
+L'audit a porté sur : cloisonnement inter-académies (vérifié en navigateur,
+y compris par manipulation directe d'identifiants), réglages de production
+(`CSRF_TRUSTED_ORIGINS` manquant — corrigé), contrôle d'accès aux salles
+virtuelles, absence de valeurs institutionnelles en dur, et secrets absents
+du dépôt.
+
+**N'ont pas été menés :** revue ligne à ligne des permissions objet de
+chaque endpoint, test d'intrusion, analyse des dépendances
+(`pip-audit` / `npm audit`), revue des téléversements de fichiers au-delà
+de la vérification de type MIME déjà en place.
+
+## 8. Nommage de l'archive
+
+**Réglé en V9.** L'archive s'appelle `feba_v9_version_finale_corrigee.zip`
+et son dossier racine porte désormais le **même nom**. En V8, l'archive
+`feba_corrected_production_ready.zip` contenait un dossier
+`feba_v6_version_finale_corrigee` : deux noms pour une seule livraison,
+alors que le dépôt portait déjà des rapports `KNOWN_LIMITATIONS_V4` à
+`V9`. C'était une ambiguïté de plus au moment de réintégrer le dépôt.

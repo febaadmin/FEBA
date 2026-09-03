@@ -69,7 +69,7 @@ local = [
 ("p", "Décompressez l'archive du projet puis placez-vous à sa racine :"),
 ("code", "unzip feba_v1.zip\ncd feba_v1"),
 ("p", "Le fichier <b>.env.dev</b> est fourni prêt à l'emploi pour le développement (base PostgreSQL, Redis, JWT, CORS, domaine Jitsi). Aucune modification n'est nécessaire pour un premier lancement. En cas de besoin :"),
-("code", "# .env.dev — principales variables\nDJANGO_ENV=dev\nDATABASE_URL=postgresql://feba_user:feba_dev_pass@postgres-dev:5432/feba_dev\nREDIS_URL=redis://redis-dev:6379/0\nCORS_ALLOWED_ORIGINS=http://localhost:5173\nJITSI_DOMAIN=meet.jit.si   # salles virtuelles (visioconférence)"),
+("code", "# .env.dev — principales variables\nDJANGO_ENV=dev\nDATABASE_URL=postgresql://feba_user:feba_dev_pass@postgres-dev:5432/feba_dev\nREDIS_URL=redis://redis-dev:6379/0\nCORS_ALLOWED_ORIGINS=http://localhost:5173\nJITSI_DOMAIN=            # renseigné par « make jitsi-up » (instance auto-hébergée)"),
 
 ("h1", "3. Démarrage de la pile complète"),
 ("code", "docker compose up --build -d"),
@@ -104,12 +104,12 @@ local = [
 ("p", "Connectez-vous sur http://localhost:5173 avec le compte superadmin, créez un établissement, une année scolaire, des niveaux, des classes, puis les comptes admin/enseignants/élèves/parents."),
 
 ("h1", "7. Salles virtuelles (visioconférence)"),
-("p", "Le module « Salles virtuelles » (menu latéral, tous les rôles) utilise Jitsi Meet. En local, il pointe par défaut sur l'instance publique gratuite <b>meet.jit.si</b> — une connexion Internet est donc requise pour rejoindre une réunion. Les enseignants/administrateurs créent les salles ; élèves et parents ne voient que les salles de leur classe ou les salles générales."),
+("p", "Le module « Salles virtuelles » (menu latéral, tous les rôles) utilise une instance <b>Jitsi Meet auto-hébergée par FEBA</b>. Il n'existe AUCUN repli vers une instance publique : les cours concernent des mineurs, et un flux transitant chez un tiers sans authentification n'est pas une option de secours. Tant que l'instance n'est pas démarrée (<b>make jitsi-up</b>), la page affiche un bandeau de diagnostic et aucune salle ne s'ouvre. Les enseignants/administrateurs créent les salles ; élèves et parents ne voient que les salles de leur classe ou les salles générales."),
 
 ("h2", "7.1 Instance Jitsi auto-hébergée en local (JWT)"),
-("p", "Pour tester la pile complète de production (authentification JWT, caméra, micro, partage d'écran, permissions) sans dépendre de meet.jit.si :"),
+("p", "Pour démarrer la pile locale (authentification JWT, caméra, micro, partage d'écran, permissions) :"),
 ("code", "cp .env.jitsi.example .env.jitsi\n# Renseigner JITSI_APP_SECRET, JICOFO_AUTH_PASSWORD, JVB_AUTH_PASSWORD (openssl rand -hex 32)\ndocker compose -f docker-compose.jitsi.yml --env-file .env.jitsi up -d\n# Interface Jitsi : http://localhost:8443"),
-("p", "Puis côté FEBA (.env.dev) : JITSI_DOMAIN=localhost:8443, JITSI_APP_ID et JITSI_APP_SECRET identiques à .env.jitsi, et redémarrer le backend. Dès lors, chaque « Rejoindre » émet un jeton signé : seuls les utilisateurs autorisés par FEBA ouvrent une salle, les enseignants/admins sont modérateurs. Sans ces variables, l'application reste en mode démo meet.jit.si (bandeau « 5 minutes », réservé aux essais)."),
+("p", "« make jitsi-up » renseigne lui-même .env.jitsi et .env.dev (JITSI_DOMAIN=localhost:8443, JITSI_APP_ID et JITSI_APP_SECRET identiques des deux côtés) ; il reste à redémarrer le backend. Dès lors, chaque « Rejoindre » émet un jeton signé de 15 minutes, nommant la salle : seuls les utilisateurs autorisés par FEBA ouvrent une salle, et les enseignants/admins y sont modérateurs. Sans ces variables, la visioconférence reste INDISPONIBLE et le bandeau de diagnostic explique laquelle manque — vérifiez avec « make jitsi-health »."),
 
 ("h1", "8. Lancer les tests"),
 ("code", "docker compose exec backend-dev python manage.py test tests -v 2"),
@@ -124,7 +124,7 @@ local = [
     ["Port 5432/6379/8000/5173 déjà utilisé", "Arrêter le service local en conflit ou modifier le mapping de ports dans docker-compose.yml"],
     ["Page blanche sur :5173", "docker compose logs frontend-dev — vérifier une erreur de build ; relancer avec --build"],
     ["Erreur 502/connexion refusée API", "Backend pas encore healthy : attendre la fin des migrations (logs backend-dev)"],
-    ["Visioconférence ne se charge pas", "Pas d'accès Internet vers meet.jit.si, ou JITSI_DOMAIN mal configuré"],
+    ["Visioconférence ne se charge pas", "Instance auto-hébergée non démarrée ou mal configurée — lancer « make jitsi-health » : le rapport nomme le contrôle en échec (configuration, DNS, TLS, HTTP)"],
     ["Réinitialiser complètement la base", "docker compose down -v && docker compose up --build -d (efface toutes les données)"],
 ], [7*cm, 9*cm]),
 
@@ -214,7 +214,7 @@ prod = [
 ("h1", "3. Configuration de l'environnement"),
 ("p", "Copier le modèle puis renseigner TOUTES les valeurs — ne jamais réutiliser les valeurs de développement :"),
 ("code", "cp .env.prod.example .env.prod\nnano .env.prod"),
-("code", "DJANGO_ENV=prod\nSECRET_KEY=<64+ caractères aléatoires — openssl rand -base64 64>\nALLOWED_HOSTS=erp.mon-ecole.bj\nCORS_ALLOWED_ORIGINS=https://erp.mon-ecole.bj\nDATABASE_URL=postgresql://feba:<MOT_DE_PASSE_FORT>@postgres:5432/feba\nREDIS_URL=redis://redis:6379/0\nJWT_ACCESS_TOKEN_LIFETIME_MINUTES=30\nEMAIL_BACKEND=django.core.mail.backends.smtp.EmailBackend\nEMAIL_HOST=smtp.votre-fournisseur.com\nJITSI_DOMAIN=meet.jit.si   # ou votre instance Jitsi auto-hébergée"),
+("code", "DJANGO_ENV=prod\nSECRET_KEY=<64+ caractères aléatoires — openssl rand -base64 64>\nALLOWED_HOSTS=globalfeba.com,www.globalfeba.com\nCORS_ALLOWED_ORIGINS=https://globalfeba.com\nCSRF_TRUSTED_ORIGINS=https://globalfeba.com,https://www.globalfeba.com\nDATABASE_URL=postgresql://feba:<MOT_DE_PASSE_FORT>@postgres:5432/feba\nREDIS_URL=redis://redis:6379/0\nJWT_ACCESS_TOKEN_LIFETIME_MINUTES=30\nEMAIL_BACKEND=django.core.mail.backends.smtp.EmailBackend\nEMAIL_HOST=smtp.votre-fournisseur.com\nJITSI_DOMAIN=meet.globalfeba.com   # instance auto-hébergée — JAMAIS une instance publique\nJITSI_APP_ID=<openssl rand -hex 8>\nJITSI_APP_SECRET=<openssl rand -hex 32>"),
 ("p", "<b>Sécurité impérative :</b> SECRET_KEY unique et long ; mot de passe PostgreSQL fort ; DEBUG reste à False (imposé par settings/prod.py) ; HTTPS obligatoire."),
 
 ("h1", "4. TLS / HTTPS (Let's Encrypt)"),
@@ -249,7 +249,7 @@ prod = [
 ("p", "Toujours effectuer une sauvegarde complète avant mise à jour. En cas de problème : redéployer la version précédente puis restaurer la base."),
 
 ("h1", "9. Visioconférence en production — Jitsi auto-hébergé (OBLIGATOIRE)"),
-("p", "<b>meet.jit.si est proscrit en production</b> (appels de démonstration limités à 5 minutes, flux transitant chez un tiers). La pile Jitsi fournie (docker-compose.jitsi.yml : jitsi-web, prosody, jicofo, jvb) est un service INDÉPENDANT de FEBA, protégé par JWT : seuls les jetons signés par le backend ouvrent une salle."),
+("p", "<b>meet.jit.si est proscrit en production</b>, et le backend le REFUSE (JITSI_FORBIDDEN_DOMAINS) : flux transitant chez un tiers, aucune authentification, cours de mineurs. Il n'existe aucun repli silencieux — une configuration incomplète produit une erreur d'infrastructure explicite. La pile fournie (docker-compose.jitsi.yml + docker-compose.jitsi.prod.yml : jitsi-web, prosody, jicofo, jvb) est un service INDÉPENDANT de FEBA, protégé par JWT : seuls les jetons signés par le backend ouvrent une salle. Voir JITSI_PRODUCTION_GUIDE.md pour le déploiement de meet.globalfeba.com."),
 ("code", "# 1. DNS : meet.mon-ecole.bj -> IP du serveur (ou d'un serveur dédié 4 Go RAM)\n# 2. Secrets partagés\ncp .env.jitsi.example .env.jitsi   # openssl rand -hex 32 pour chaque valeur\n# 3. Pare-feu : ouvrir TCP 443 + UDP 10000 ; JVB_ADVERTISE_IPS=<IP publique>\n#    JITSI_PUBLIC_URL=https://meet.mon-ecole.bj (TLS : Let's Encrypt sur le reverse proxy)\ndocker compose -f docker-compose.jitsi.yml --env-file .env.jitsi up -d\n# 4. Cote FEBA (.env.prod) :\nJITSI_DOMAIN=meet.mon-ecole.bj\nJITSI_APP_ID=feba\nJITSI_APP_SECRET=<identique a .env.jitsi>"),
 ("p", "Vérifications : rejoindre une salle depuis FEBA (jeton émis automatiquement), caméra/micro/partage d'écran fonctionnels, un utilisateur NON connecté à FEBA ne peut pas ouvrir la salle, enseignant = modérateur. Réseaux d'établissement restrictifs : ajouter un serveur TURN (coturn) et le déclarer dans la configuration Jitsi."),
 

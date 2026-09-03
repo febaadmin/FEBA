@@ -10,6 +10,7 @@ horaires, enseignants) : ces champs restent nuls et administrables.
 from django.core.management.base import BaseCommand
 
 from apps.schools.branding import ACADEMY_DEFAULTS
+from apps.schools.institution import is_retired_phone, official_phone
 from apps.schools.models import School
 
 
@@ -38,6 +39,46 @@ class Command(BaseCommand):
         )
         return True
 
+    def _align_management_phones(self):
+        """
+        Aligne la colonne de gestion sur le numéro institutionnel.
+
+        Deux cas, une seule raison. Les documents ne lisent plus cette
+        colonne (voir `apps/schools/institution.py`) : rien d'imprimé n'en
+        dépend, et le défaut d'origine est corrigé sans y toucher. Mais
+        l'écran « Paramètres » l'affiche toujours, et un administrateur
+        s'y fie.
+
+          * un numéro RETIRÉ y ferait croire que le groupe est encore
+            joignable par une ligne qui ne répond plus ;
+          * une colonne VIDE laisse penser qu'aucun numéro n'est publié,
+            alors que tous les documents en portent un.
+
+        Un numéro déjà renseigné et non retiré n'est JAMAIS écrasé : c'est
+        une donnée de gestion légitime (la ligne directe d'un campus), et
+        la faire disparaître serait une perte d'information.
+        """
+        changed = False
+        for academy in School.objects.all():
+            if is_retired_phone(academy.phone):
+                previous = academy.phone
+                academy.phone = official_phone()
+                academy.save(update_fields=["phone"])
+                changed = True
+                self.stdout.write(self.style.WARNING(
+                    f"  Numéro hors service remplacé sur {academy.name} : "
+                    f"{previous} → {academy.phone}"
+                ))
+            elif not (academy.phone or "").strip():
+                academy.phone = official_phone()
+                academy.save(update_fields=["phone"])
+                changed = True
+                self.stdout.write(
+                    f"  Numéro institutionnel renseigné sur {academy.name} : "
+                    f"{academy.phone}"
+                )
+        return changed
+
     def handle(self, *args, **options):
         created_any = False
 
@@ -51,6 +92,7 @@ class Command(BaseCommand):
                 "address": "Akpakpa, Cotonou, Bénin",
                 "city": "Cotonou",
                 "country": "Bénin",
+                "phone": official_phone(),
                 "timezone": "Africa/Porto-Novo",
                 "currency_code": "XOF",
                 "default_language": "fr",
@@ -74,6 +116,7 @@ class Command(BaseCommand):
                 "address": "Programme 100 % en ligne — cours dispensés depuis FEBA, Cotonou, Bénin.",
                 "city": "Cotonou",
                 "country": "Bénin",
+                "phone": official_phone(),
                 "whatsapp": "+1 (215) 715-5406",
                 "timezone": "America/New_York",
                 "currency_code": "USD",
@@ -104,6 +147,8 @@ class Command(BaseCommand):
             self.style.SUCCESS(f"{'Créée' if created else 'Présente'} : {fha.name} [{fha.code}]")
         )
         created_any |= self._apply_branding(fha)
+
+        created_any |= self._align_management_phones()
 
         if not created_any:
             self.stdout.write("Aucune modification — les deux académies existaient déjà.")

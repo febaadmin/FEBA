@@ -23,6 +23,7 @@ import { useMutation } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { Check, ChevronLeft, ChevronRight, Send, AlertCircle } from "lucide-react";
 import Seo from "../components/Seo";
+import FhaFlyerDownload from "../components/FhaFlyerDownload";
 import { PLAN_OPTIONS, planLabel } from "../fhaPlans";
 import { Section } from "../components/SiteSection";
 import { siteAPI } from "../siteApi";
@@ -920,9 +921,15 @@ export default function FhaEnrollPage() {
                   ))}
                 </div>
                 <p className="text-slate-500 text-xs mt-3">
-                  <Link to="/feba-fha" className="underline hover:text-feba-navy">
+                  {/* Téléchargement du flyer officiel — PAS une navigation.
+                      Un <Link> vers /feba-fha faisait perdre au parent toute
+                      la saisie en cours du formulaire. */}
+                  <FhaFlyerDownload
+                    lang={lang}
+                    className="underline hover:text-feba-navy"
+                  >
                     {t("Voir le détail des formules", "See full plan details")}
-                  </Link>
+                  </FhaFlyerDownload>
                 </p>
               </fieldset>
 
