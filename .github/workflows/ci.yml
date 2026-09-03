@@ -167,6 +167,11 @@ jobs:
           # Le vhost du site principal référence des certificats absents
           # de la CI : on contrôle la SYNTAXE, avec des chemins de test.
           work="$(mktemp -d)"
+
+          # Les upstreams Docker n'existent pas sur le runner GitHub.
+          # nginx -t exige seulement qu'ils soient résolvables.
+          echo "127.0.0.1 frontend-prod backend-prod" | sudo tee -a /etc/hosts >/dev/null
+
           openssl req -x509 -newkey rsa:2048 -nodes -days 1 \
             -keyout "$work/k.pem" -out "$work/c.pem" -subj "/CN=ci" 2>/dev/null
           mkdir -p "$work/sites-enabled" "$work/logs" "$work/run"
