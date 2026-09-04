@@ -227,3 +227,70 @@ class MemeReglePartoutTests(BaseRegles):
         ids = self.ids(self.fr_fha[:1])   # matière FR sur classe anglophone
         self.assertEqual(self.enregistrer(self.admin_fha, a, ids).status_code, 400)
         self.assertEqual(self._par_serializer(b, ids).status_code, 400)
+
+
+class RefusExpliqueDansLAcademieTests(TestCase):
+    """
+    §20 — un élève d'une autre classe reçoit 403, pas 404.
+
+    LE DÉFAUT CORRIGÉ
+    -----------------
+    `join` passait par `get_object()`, donc par le queryset FILTRÉ PAR
+    RÔLE : un élève ne voit que les salles de sa classe. Viser la salle
+    d'une autre classe donnait donc un 404 « ressource introuvable » sur
+    une salle qui existe bel et bien — et rendait INATTEIGNABLES les
+    messages de `assert_can_join` écrits exactement pour ce cas.
+
+    Deux frontières, deux réponses :
+      - une autre ACADÉMIE reste un 404 : son existence n'est pas révélée ;
+      - à l'intérieur de l'académie, le refus est une décision qu'on
+        explique — 403 avec le motif.
+    """
+
+    @classmethod
+    def setUpTestData(cls):
+        from apps.students.models import Student
+        from apps.virtualclass.models import VirtualRoom
+
+        cls.fha = academy("FEBA_FHA", "FEBA French Heritage Academy", "online")
+        cls.feba = academy("FEBA", "Faith & Excellence Bilingual Academy", "campus")
+        cls.an_fha = annee(cls.fha)
+        cls.an_feba = annee(cls.feba)
+
+        cls.ambassadeurs = classe(cls.an_fha, "French Ambassadors", Class.TRACK_ANGLOPHONE)
+        cls.explorateurs = classe(cls.an_fha, "French Explorers", Class.TRACK_BILINGUAL)
+
+        cls.prof = CustomUser.objects.create_user(
+            username="prof@fha.test", email="prof@fha.test", password="Pass1234!",
+            role="teacher", school=cls.fha, first_name="P", last_name="R")
+        cls.salle = VirtualRoom.objects.create(
+            name="Cours en direct — French Ambassadors", school=cls.fha,
+            school_year=cls.an_fha, class_obj=cls.ambassadeurs, created_by=cls.prof)
+        cls.salle_feba = VirtualRoom.objects.create(
+            name="Cours FEBA", school=cls.feba, school_year=cls.an_feba,
+            created_by=CustomUser.objects.create_user(
+                username="p@feba.test", email="p@feba.test", password="Pass1234!",
+                role="teacher", school=cls.feba, first_name="P", last_name="F"))
+
+        cls.eleve = CustomUser.objects.create_user(
+            username="eleve@fha.test", email="eleve@fha.test", password="Pass1234!",
+            role="student", school=cls.fha, first_name="E", last_name="L")
+        Student.objects.create(
+            school=cls.fha, first_name="Ama", last_name="Diallo",
+            current_class=cls.explorateurs, school_year=cls.an_fha, user=cls.eleve)
+
+    def api(self, u):
+        c = APIClient()
+        c.force_authenticate(u)
+        return c
+
+    def test_un_eleve_d_une_autre_classe_recoit_403_et_le_motif(self):
+        r = self.api(self.eleve).post(f"/api/virtual-rooms/{self.salle.id}/join/")
+        self.assertEqual(r.status_code, 403, r.content[:300])
+        # Le motif doit dire QUOI faire, pas « introuvable ».
+        self.assertIn("groupe", r.content.decode().lower())
+
+    def test_la_salle_d_une_autre_academie_reste_introuvable(self):
+        """La frontière d'académie ne révèle pas ce qu'elle protège."""
+        r = self.api(self.eleve).post(f"/api/virtual-rooms/{self.salle_feba.id}/join/")
+        self.assertEqual(r.status_code, 404, r.content[:300])

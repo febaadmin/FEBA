@@ -265,3 +265,77 @@ describe("JitsiMeeting — erreurs", () => {
     ajout.mockRestore();
   });
 });
+
+describe("JitsiMeeting — §12 : le cycle de vie, compté", () => {
+  /**
+   * Le cahier des charges demande ce scénario précis, et il est
+   * bloquant. Les tests plus haut vérifient l'ABSENCE de destruction
+   * (`disposed === false`) ; celui-ci COMPTE les appels, parce que
+   * « pas détruit à la fin » et « jamais détruit en route » ne sont pas
+   * la même affirmation : une conférence détruite puis recréée à
+   * l'identique passerait le premier test et pas celui-ci.
+   */
+  it("10 rerenders avec un onClose neuf : une seule API, zéro dispose", async () => {
+    const disposes = [];
+    const { rerender, unmount } = render(
+      <JitsiMeeting {...PROPS} onClose={() => {}} />,
+    );
+    await flush();
+
+    expect(instances).toHaveLength(1);
+    const api = instances[0];
+    const espion = vi.spyOn(api, "dispose").mockImplementation(() => {
+      disposes.push(Date.now());
+      api.disposed = true;
+    });
+
+    for (let i = 0; i < 10; i++) {
+      // Une NOUVELLE identité de fonction à chaque tour : c'est ce que
+      // faisait le parent, et c'est ce qui coupait la conférence.
+      rerender(<JitsiMeeting {...PROPS} onClose={() => {}} onJoined={() => {}} />);
+      await flush();
+    }
+
+    expect(instances).toHaveLength(1);
+    expect(disposes).toHaveLength(0);
+    expect(espion).toHaveBeenCalledTimes(0);
+
+    // Vrai démontage : dispose exactement une fois.
+    unmount();
+    expect(espion).toHaveBeenCalledTimes(1);
+  });
+
+  it("un vrai changement de salle recrée, et une seule fois", async () => {
+    const { rerender } = render(<JitsiMeeting {...PROPS} onClose={() => {}} />);
+    await flush();
+    const premiere = instances[0];
+    const espion = vi.spyOn(premiere, "dispose");
+
+    rerender(<JitsiMeeting {...PROPS} roomName="autre-salle" onClose={() => {}} />);
+    await flush();
+
+    expect(instances).toHaveLength(2);
+    expect(espion).toHaveBeenCalledTimes(1);
+    expect(instances[1].options.roomName).toBe("autre-salle");
+    expect(instances[1].disposed).toBe(false);
+  });
+
+  it("aucune accumulation d'écouteurs sur 10 rerenders", async () => {
+    // Des écouteurs empilés rappellent le même gestionnaire plusieurs
+    // fois : un seul « raccrocher » enverrait alors plusieurs départs.
+    const { rerender } = render(
+      <JitsiMeeting {...PROPS} onClose={() => {}} onJoined={() => {}} onError={() => {}} />,
+    );
+    await flush();
+    const depart = instances[0].listenerCount();
+    expect(depart).toBeGreaterThan(0);
+
+    for (let i = 0; i < 10; i++) {
+      rerender(
+        <JitsiMeeting {...PROPS} onClose={() => {}} onJoined={() => {}} onError={() => {}} />,
+      );
+      await flush();
+    }
+    expect(instances[0].listenerCount()).toBe(depart);
+  });
+});
