@@ -32,6 +32,27 @@ import { virtualAPI } from "../../api";
 import { useAuthStore } from "../../store/authStore";
 import { extractApiError } from "../../utils/errors";
 
+/**
+ * Pourquoi l'accès a été refusé, dans les mots du backend.
+ *
+ * `extractApiError` répond « Vous n'avez pas la permission d'effectuer
+ * cette action » à tout 403 — une généralisation utile ailleurs, où
+ * l'utilisateur peut revenir en arrière et essayer autre chose. Ici
+ * l'onglet est un cul-de-sac : il ne contient rien d'autre que la
+ * conférence. Un enseignant à qui l'on répond « pas la permission »
+ * n'apprend pas que la classe ne lui est pas affectée, et rien à l'écran
+ * ne le lui dira.
+ *
+ * Les messages de `assert_can_join` sont écrits pour être lus par
+ * l'utilisateur et ne divulguent aucun détail interne ; on les affiche
+ * tels quels, et on retombe sur le message générique sinon.
+ */
+function raisonDuRefus(e) {
+  const detail = e?.response?.data?.detail;
+  if (typeof detail === "string" && detail.trim()) return detail;
+  return extractApiError(e);
+}
+
 const PHASE = {
   JOINING: "joining",
   IN_CALL: "in_call",
@@ -81,7 +102,7 @@ export default function VirtualRoomSession() {
       })
       .catch((e) => {
         if (cancelled) return;
-        setError(extractApiError(e));
+        setError(raisonDuRefus(e));
         setPhase(PHASE.ERROR);
       });
 
