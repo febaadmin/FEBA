@@ -119,7 +119,11 @@ for requis in backend/manage.py frontend/package.json Makefile \
               jitsi/nginx-custom/feba-security-headers.conf \
               backend/tests/test_v12_jitsi_production_headers.py \
               JITSI_PRODUCTION_ACTIONS.md JITSI_REAL_WORLD_TEST_PLAN.md \
-              TURN_DECISION.md JITSI_PRODUCTION_FINAL_REPORT.md; do
+              TURN_DECISION.md JITSI_PRODUCTION_FINAL_REPORT.md \
+              scripts/deploy_production.sh scripts/production_health.sh \
+              backend/tests/test_v13_deploiement_production.py \
+              ROLLBACK_GUIDE.md PRODUCTION_CHECKLIST.md \
+              TURN_DEPLOYMENT_GUIDE.md; do
   [ -e "$CIBLE/$requis" ] || { echo "  ÉCHEC : « $requis » manquant"; exit 1; }
 done
 echo "  OK    tous les fichiers attendus sont présents"
