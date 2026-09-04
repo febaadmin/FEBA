@@ -53,10 +53,40 @@ def academy(code, name, **extra):
 
 
 def year(school, name, start, current=False):
+    """
+    Une année scolaire, active ou NON — et `current=False` veut vraiment
+    dire non active.
+
+    `SchoolYear.save()` active la première année d'une académie, ce qui est
+    exactement le comportement voulu à la création. Mais les tests de ce
+    fichier ont besoin de reproduire l'état de PRODUCTION de FEBA FHA :
+    une année posée par une migration de données, jamais activée par un
+    clic sur « Activer ». Sans le `update()` qui suit, la fixture
+    s'activerait toute seule et le test central passerait pour de
+    mauvaises raisons — il passerait même avec le défaut d'origine.
+
+    `update()` écrit directement en base, sans repasser par `save()` :
+    c'est précisément par là qu'une migration de données crée cet état.
+    """
     y = SchoolYear.objects.create(
         school=school, name=name, start_date=start,
         end_date=date(start.year + 1, 7, 31), is_current=current)
+    if not current:
+        SchoolYear.objects.filter(pk=y.pk).update(is_current=False)
+        y.refresh_from_db()
     return y
+
+
+def annee_brute(school, name, start, current=False):
+    """
+    Une année créée SANS le forçage de `year()`.
+
+    Les tests d'activation portent sur `SchoolYear.save()` lui-même : ils
+    doivent observer ce que le modèle fait, pas ce que la fixture impose.
+    """
+    return SchoolYear.objects.create(
+        school=school, name=name, start_date=start,
+        end_date=date(start.year + 1, 7, 31), is_current=current)
 
 
 def klass(school_year, name, track=Class.TRACK_BILINGUAL):
@@ -147,7 +177,9 @@ class ClassesVisiblesDansLesListesTests(BaseDeuxAcademies):
     def test_la_premiere_annee_d_une_academie_est_active(self):
         """L'invariant est réparé à la source, pas seulement contourné."""
         nouvelle = academy("FEBA_TEST", "Académie de test")
-        creee = year(nouvelle, "2027-2028", date(2027, 9, 1))
+        # `annee_brute` : ce test observe ce que fait le modèle, pas ce
+        # que la fixture impose (voir `year()`).
+        creee = annee_brute(nouvelle, "2027-2028", date(2027, 9, 1))
         creee.refresh_from_db()
         self.assertTrue(
             creee.is_current,
@@ -161,7 +193,7 @@ class ClassesVisiblesDansLesListesTests(BaseDeuxAcademies):
         établissement en service, sans que personne l'ait demandé.
         """
         avant = active_year(self.feba)
-        year(self.feba, "2027-2028", date(2027, 9, 1))
+        annee_brute(self.feba, "2027-2028", date(2027, 9, 1))
         self.assertEqual(active_year(self.feba), avant)
 
 
@@ -585,15 +617,15 @@ class ActivationAutomatiqueDeLAnneeTests(TestCase):
 
     def test_la_premiere_annee_creee_devient_active(self):
         # Le cas réel : personne ne clique jamais sur « Activer ».
-        a = year(self.school, "2025-2026", date(2025, 10, 1))
+        a = annee_brute(self.school, "2025-2026", date(2025, 10, 1))
         a.refresh_from_db()
         self.assertTrue(a.is_current)
         self.assertEqual(active_year(self.school), a)
         self.assertTrue(has_explicit_active_year(self.school))
 
     def test_une_seconde_annee_ne_vole_pas_l_annee_de_travail(self):
-        a = year(self.school, "2025-2026", date(2025, 10, 1))
-        b = year(self.school, "2026-2027", date(2026, 9, 1))
+        a = annee_brute(self.school, "2025-2026", date(2025, 10, 1))
+        b = annee_brute(self.school, "2026-2027", date(2026, 9, 1))
         a.refresh_from_db()
         b.refresh_from_db()
         self.assertTrue(a.is_current)
@@ -602,7 +634,7 @@ class ActivationAutomatiqueDeLAnneeTests(TestCase):
     def test_cloturer_une_annee_la_laisse_close(self):
         # LE DÉFAUT CORRIGÉ. `is_current=False` sur une année EXISTANTE
         # est une décision de l'administrateur, jamais un oubli à rattraper.
-        a = year(self.school, "2025-2026", date(2025, 10, 1))
+        a = annee_brute(self.school, "2025-2026", date(2025, 10, 1))
         a.refresh_from_db()
         self.assertTrue(a.is_current)
 
@@ -616,7 +648,7 @@ class ActivationAutomatiqueDeLAnneeTests(TestCase):
     def test_une_academie_sans_annee_active_garde_des_classes_visibles(self):
         # Le repli de lecture prend le relais : aucune année n'est
         # rouverte, mais les listes déroulantes ne tombent pas à zéro.
-        a = year(self.school, "2025-2026", date(2025, 10, 1))
+        a = annee_brute(self.school, "2025-2026", date(2025, 10, 1))
         a.is_current = False
         a.save()
 
@@ -624,3 +656,286 @@ class ActivationAutomatiqueDeLAnneeTests(TestCase):
         self.assertFalse(has_explicit_active_year(self.school))
         self.assertEqual(active_year(self.school), a)
         self.assertIn(c, Class.objects.filter(school_year=active_year(self.school)))
+
+
+class AffectationDesClassesAUnEnseignantTests(BaseDeuxAcademies):
+    """
+    « Classes assignées » : le menu, l'enregistrement, et la relecture.
+
+    LE DÉFAUT D'ORIGINE
+    -------------------
+    Le champ affichait « Aucun résultat » alors que l'académie avait trois
+    classes. Il est alimenté par `classesAPI.list()` — le MÊME appel que
+    la liste déroulante d'une salle virtuelle, et c'est pourquoi les deux
+    écrans tombaient ensemble : une seule cause, pas deux.
+
+    Un menu vide n'est que la moitié du problème. Ce qu'on affecte doit
+    aussi survivre à l'enregistrement et se retrouver à la réouverture de
+    la fiche — c'est ce que ces tests vérifient bout en bout.
+    """
+
+    def setUp(self):
+        from apps.teachers.models import Teacher
+        self.Teacher = Teacher
+        self.compte = user(self.fha, "teacher", "nouveau.prof@fha.test")
+
+    def _classes_du_menu(self):
+        """Ce que le formulaire propose réellement dans « Classes assignées »."""
+        return {c["id"] for c in self.classes_listees(self.admin_fha)}
+
+    def test_le_menu_propose_les_classes_de_l_academie(self):
+        propose = self._classes_du_menu()
+        for c in (self.fha_ambassadors, self.fha_explorers, self.fha_juniors):
+            self.assertIn(c.id, propose, "« Aucun résultat » alors que la classe existe")
+
+    def test_creer_puis_relire_conserve_les_classes(self):
+        api = self.api(self.admin_fha)
+        creation = api.post("/api/teachers/", {
+            "user_write": self.compte.id,
+            "employee_id": "FHA-P-001",
+            "class_ids": [self.fha_ambassadors.id, self.fha_juniors.id],
+        }, format="json")
+        self.assertEqual(creation.status_code, 201, creation.content[:400])
+
+        # RÉOUVERTURE DE LA FICHE : c'est là que l'affectation était perdue
+        # de vue. On relit par l'API, pas en base : c'est ce que fait
+        # l'écran.
+        relecture = api.get(f"/api/teachers/{creation.json()['id']}/")
+        self.assertEqual(relecture.status_code, 200)
+        affectees = {c["id"] for c in relecture.json()["classes_detail"]}
+        self.assertEqual(affectees, {self.fha_ambassadors.id, self.fha_juniors.id})
+
+    def test_modifier_l_affectation_la_remplace(self):
+        api = self.api(self.admin_fha)
+        prof = self.Teacher.objects.create(user=self.compte, employee_id="FHA-P-002")
+        prof.classes.set([self.fha_ambassadors])
+
+        modification = api.patch(f"/api/teachers/{prof.id}/",
+                                 {"class_ids": [self.fha_explorers.id]}, format="json")
+        self.assertEqual(modification.status_code, 200, modification.content[:400])
+
+        relecture = api.get(f"/api/teachers/{prof.id}/")
+        affectees = {c["id"] for c in relecture.json()["classes_detail"]}
+        self.assertEqual(affectees, {self.fha_explorers.id})
+
+    def test_retirer_toutes_les_classes_est_possible(self):
+        # Une liste vide est une intention, pas un oubli : elle doit être
+        # appliquée, pas ignorée.
+        api = self.api(self.admin_fha)
+        prof = self.Teacher.objects.create(user=self.compte, employee_id="FHA-P-003")
+        prof.classes.set([self.fha_ambassadors, self.fha_juniors])
+
+        api.patch(f"/api/teachers/{prof.id}/", {"class_ids": []}, format="json")
+        relecture = api.get(f"/api/teachers/{prof.id}/")
+        self.assertEqual(relecture.json()["classes_detail"], [])
+
+    def test_une_modification_sans_class_ids_ne_touche_pas_l_affectation(self):
+        # Modifier la biographie ne doit pas vider les classes.
+        api = self.api(self.admin_fha)
+        prof = self.Teacher.objects.create(user=self.compte, employee_id="FHA-P-004")
+        prof.classes.set([self.fha_ambassadors])
+
+        api.patch(f"/api/teachers/{prof.id}/", {"bio": "Titulaire"}, format="json")
+        relecture = api.get(f"/api/teachers/{prof.id}/")
+        affectees = {c["id"] for c in relecture.json()["classes_detail"]}
+        self.assertEqual(affectees, {self.fha_ambassadors.id})
+
+    def test_impossible_d_affecter_une_classe_d_une_autre_academie(self):
+        # Le menu ne les propose pas ; le backend doit refuser quand même,
+        # car l'identifiant peut être posté directement.
+        api = self.api(self.admin_fha)
+        classe_feba = Class.objects.filter(school_year__school=self.feba).first()
+        self.assertIsNotNone(classe_feba)
+
+        reponse = api.post("/api/teachers/", {
+            "user_write": self.compte.id,
+            "employee_id": "FHA-P-005",
+            "class_ids": [classe_feba.id],
+        }, format="json")
+        self.assertEqual(reponse.status_code, 400, reponse.content[:400])
+        self.assertFalse(self.Teacher.objects.filter(user=self.compte).exists(),
+                         "un enseignant a été créé malgré le refus")
+
+
+class AuditDeLaPorteeAcademiqueTests(BaseDeuxAcademies):
+    """
+    §6/§44 — l'audit, plutôt que quatre menus déroulants réparés un à un.
+
+    LA QUESTION POSÉE À TOUTE L'APPLICATION
+    ---------------------------------------
+    Le défaut n'était pas « le menu Classe est vide ». C'était : un écran
+    filtre sur `is_current=True` en supposant qu'une académie a toujours
+    une année active, et rend zéro résultat quand ce n'est pas le cas.
+    « Classes assignées » et le menu d'une salle virtuelle tombaient
+    ensemble parce qu'ils appellent le MÊME endpoint.
+
+    La bonne question n'est donc pas « ce menu est-il réparé » mais
+    « existe-t-il ENCORE un endpoint qui rende zéro là où il y a des
+    données ». Ce test la pose à toutes les listes d'un coup, sur une
+    académie sans année activée — l'état réel de FEBA FHA.
+
+    L'ABSTRACTION EST AILLEURS
+    --------------------------
+    `apps/core/tenancy.current_school_years()` renvoie un QUERYSET et les
+    appelants le gardent derrière `if annees.exists()`. Sans année
+    active, ils n'appliquent donc AUCUN filtre — ils montrent trop, jamais
+    rien. Un seul endroit contournait ce garde-fou en filtrant
+    directement un queryset (`apps/classes/views.py`) ; c'est le seul qui
+    tombait à zéro. Ce test empêche qu'un nouvel écran refasse le même
+    raccourci.
+    """
+
+    #: Listes que l'administration d'une académie doit voir peuplées.
+    LISTES = [
+        ("/api/classes/", "classes"),
+        ("/api/subjects/", "matières"),
+        ("/api/students/", "élèves"),
+        ("/api/teachers/", "enseignants"),
+        ("/api/schools/levels/", "niveaux"),
+        ("/api/schools/years/", "années scolaires"),
+    ]
+
+    @classmethod
+    def setUpTestData(cls):
+        super().setUpTestData()
+        from apps.students.models import Student
+        from apps.teachers.models import Teacher
+
+        # Des données réelles rattachées à l'année NON activée de FHA.
+        cls.matiere_fha = Subject.objects.create(
+            school=cls.fha, name="Français langue seconde", code="FLS", coefficient=3)
+        cls.fha_juniors.subjects.add(cls.matiere_fha)
+        cls.eleve_fha = Student.objects.create(
+            school=cls.fha, first_name="Awa", last_name="Koffi",
+            current_class=cls.fha_juniors, school_year=cls.fha_2026)
+        cls.prof_fha = Teacher.objects.create(
+            user=user(cls.fha, "teacher", "titulaire@fha.test"),
+            employee_id="FHA-T-100")
+        cls.prof_fha.classes.add(cls.fha_juniors)
+
+        # Les mêmes données du côté de FEBA : la comparaison de
+        # non-régression n'a de sens que si les deux académies sont
+        # comparables. Sans cela, « FEBA voit ses listes » échouerait sur
+        # une liste que la fixture n'a jamais peuplée.
+        cls.classe_feba = Class.objects.filter(school_year=cls.feba_2026).first()
+        cls.matiere_feba = Subject.objects.create(
+            school=cls.feba, name="Mathématiques", code="MATH", coefficient=4)
+        cls.classe_feba.subjects.add(cls.matiere_feba)
+        cls.eleve_feba = Student.objects.create(
+            school=cls.feba, first_name="Paul", last_name="Tokpanou",
+            current_class=cls.classe_feba, school_year=cls.feba_2026)
+        cls.prof_feba = Teacher.objects.create(
+            user=user(cls.feba, "teacher", "titulaire@feba.test"),
+            employee_id="FEBA-T-100")
+        cls.prof_feba.classes.add(cls.classe_feba)
+
+    def test_l_academie_testee_n_a_bien_aucune_annee_activee(self):
+        # Garde-fou : sans cela, tout ce qui suit passerait pour de
+        # mauvaises raisons — on testerait une académie ordinaire.
+        self.assertFalse(
+            has_explicit_active_year(self.fha),
+            "la fixture ne reproduit plus l'état de FEBA FHA")
+
+    def test_aucune_liste_ne_rend_zero_alors_que_des_donnees_existent(self):
+        api = self.api(self.admin_fha)
+        vides = []
+        for url, nom in self.LISTES:
+            reponse = api.get(url, {"page_size": 1000})
+            self.assertEqual(reponse.status_code, 200,
+                             f"{url} → {reponse.status_code} {reponse.content[:200]}")
+            data = reponse.json()
+            resultats = data.get("results", data)
+            if not resultats:
+                vides.append(f"{url} ({nom})")
+        self.assertEqual(
+            vides, [],
+            "listes vides alors que l'académie a ces données — le filtre "
+            "« année active » retombe à zéro :\n  " + "\n  ".join(vides))
+
+    def test_feba_voit_toujours_ses_listes(self):
+        """§37 : l'académie déjà validée n'est pas touchée par l'audit."""
+        api = self.api(self.admin_feba)
+        for url, nom in self.LISTES:
+            reponse = api.get(url, {"page_size": 1000})
+            self.assertEqual(reponse.status_code, 200, url)
+            data = reponse.json()
+            self.assertTrue(data.get("results", data), f"{url} vide pour FEBA ({nom})")
+
+    def test_chaque_liste_reste_cloisonnee_par_academie(self):
+        """
+        Montrer plus ne doit jamais vouloir dire montrer l'autre académie.
+
+        Le repli sur l'année la plus récente élargit ce qu'on voit DANS
+        son académie ; il ne doit pas ouvrir une brèche vers l'autre.
+        """
+        fha = {c["id"] for c in self.classes_listees(self.admin_fha)}
+        feba = {c["id"] for c in self.classes_listees(self.admin_feba)}
+        self.assertTrue(fha and feba)
+        self.assertEqual(fha & feba, set(), "des classes fuient d'une académie à l'autre")
+
+
+class SallesPhysiquesTests(BaseDeuxAcademies):
+    """
+    §5 — « Salles physiques de l'école (0) » dans Paramètres.
+
+    CE QUE LE DIAGNOSTIC A DONNÉ
+    ----------------------------
+    Ce compteur n'était PAS un bug de portée. `Room` est le modèle des
+    salles de cours physiques (bâtiment, capacité), sans aucun lien avec
+    l'année scolaire : `RoomViewSet` filtre sur `school`, un point c'est
+    tout. FEBA FHA affichait « 0 » parce qu'elle n'avait réellement aucune
+    salle enregistrée — FEBA en avait six.
+
+    La correction est donc dans les données de démonstration
+    (`seed_demo_data` crée trois salles FHA), pas dans le filtrage. Faire
+    apparaître un chiffre en modifiant la requête aurait affiché les
+    salles de FEBA dans les paramètres de FEBA FHA.
+
+    Ces tests fixent les deux affirmations : le cloisonnement est correct,
+    et une salle créée est bien comptée.
+    """
+
+    def setUp(self):
+        from apps.schools.models import Room
+        self.Room = Room
+        Room.objects.filter(school__in=[self.feba, self.fha]).delete()
+
+    def test_une_academie_sans_salle_en_voit_zero(self):
+        # Le « 0 » observé était exact. On ne le maquille pas.
+        reponse = self.api(self.admin_fha).get("/api/schools/rooms/", {"page_size": 100})
+        self.assertEqual(reponse.status_code, 200)
+        data = reponse.json()
+        self.assertEqual(data.get("results", data), [])
+
+    def test_les_salles_creees_apparaissent(self):
+        self.Room.objects.create(school=self.fha, name="Studio de diffusion 1", capacity=12)
+        self.Room.objects.create(school=self.fha, name="Bureau pédagogique FHA", capacity=6)
+
+        reponse = self.api(self.admin_fha).get("/api/schools/rooms/", {"page_size": 100})
+        data = reponse.json()
+        noms = {r["name"] for r in data.get("results", data)}
+        self.assertEqual(noms, {"Studio de diffusion 1", "Bureau pédagogique FHA"})
+
+    def test_les_salles_ne_traversent_pas_les_academies(self):
+        self.Room.objects.create(school=self.feba, name="Salle A", capacity=30)
+        self.Room.objects.create(school=self.fha, name="Studio de diffusion 1", capacity=12)
+
+        vues_fha = self.api(self.admin_fha).get("/api/schools/rooms/", {"page_size": 100}).json()
+        noms_fha = {r["name"] for r in vues_fha.get("results", vues_fha)}
+        self.assertEqual(noms_fha, {"Studio de diffusion 1"},
+                         "les salles de FEBA apparaissent dans les paramètres de FEBA FHA")
+
+    def test_le_compteur_ne_depend_pas_de_l_annee_scolaire(self):
+        """
+        Une salle physique n'appartient pas à une année.
+
+        C'est ce qui distingue ce compteur des menus de classes : lui n'a
+        jamais été concerné par le filtre « année active ». Le vérifier
+        empêche qu'on « répare » un jour ce qui n'est pas cassé.
+        """
+        self.Room.objects.create(school=self.fha, name="Studio de diffusion 1", capacity=12)
+        self.assertFalse(has_explicit_active_year(self.fha))
+
+        reponse = self.api(self.admin_fha).get("/api/schools/rooms/", {"page_size": 100})
+        data = reponse.json()
+        self.assertEqual(len(data.get("results", data)), 1)

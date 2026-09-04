@@ -29,6 +29,7 @@ import { useParams } from "react-router-dom";
 
 import JitsiMeeting from "../../components/JitsiMeeting";
 import { virtualAPI } from "../../api";
+import { useAcademy } from "../../context/AcademyContext";
 import { useAuthStore } from "../../store/authStore";
 import { extractApiError } from "../../utils/errors";
 
@@ -63,6 +64,19 @@ const PHASE = {
 export default function VirtualRoomSession() {
   const { id } = useParams();
   const user = useAuthStore((s) => s.user);
+  // LA PORTÉE D'ACADÉMIE DOIT ÊTRE POSÉE AVANT LA PREMIÈRE REQUÊTE.
+  //
+  // Les écrans métier sont montés sous `AcademyScopedOutlet`, qui ne les
+  // rend qu'une fois `scopeReady`. Cette route-ci vit à la RACINE du
+  // routeur — c'est tout son intérêt, elle n'a ni barre latérale ni
+  // en-tête — et échappait donc à ce garde.
+  //
+  // Conséquence observée en navigateur : `join()` partait sous la portée
+  // UNKNOWN, `setAcademyScope()` l'annulait à l'arrivée du contexte
+  // (`abortInflightRequests`), et l'onglet restait indéfiniment sur
+  // « Ouverture de la salle… ». Le garde n'est pas contourné ici : il est
+  // simplement appliqué à la main, faute de pouvoir hériter de l'Outlet.
+  const { scopeReady, hasAcademyError } = useAcademy();
 
   const [phase, setPhase] = useState(PHASE.JOINING);
   const [meeting, setMeeting] = useState(null);
@@ -74,20 +88,40 @@ export default function VirtualRoomSession() {
   // un rafraîchissement rapide de l'onglet peut relancer la séquence. Sans
   // cette garde, le backend enregistrait deux participations pour une
   // seule personne — le « participant en double » observé en réunion.
-  const joinRequested = useRef(false);
+  //
+  // ELLE RETIENT L'IDENTIFIANT, PAS UN BOOLÉEN. Un booléen bloquait aussi
+  // le changement de salle : l'onglet resté ouvert sur /virtual-room/3
+  // puis mené vers /virtual-room/8 n'adhérait jamais à la seconde.
+  const demandePour = useRef(null);
   // Le départ est signalé au plus une fois, quelle que soit la façon dont
   // l'onglet se termine (bouton raccrocher, fermeture, rechargement).
   const leaveSent = useRef(false);
 
   useEffect(() => {
-    if (joinRequested.current || !id) return;
-    joinRequested.current = true;
+    if (!scopeReady || !id || demandePour.current === id) return;
+    demandePour.current = id;
 
-    let cancelled = false;
+    // PAS DE DRAPEAU `cancelled` ICI, ET C'EST LE CŒUR DU CORRECTIF.
+    //
+    // Le nettoyage de l'effet posait `cancelled = true`, et la garde
+    // anti-double-adhésion empêchait la seconde exécution de relancer la
+    // requête. En développement, React StrictMode monte, démonte puis
+    // remonte : la SEULE requête en vol voyait donc son résultat jeté par
+    // un `cancelled` devenu vrai entre-temps, et l'onglet restait
+    // indéfiniment sur « Ouverture de la salle… » — y compris quand le
+    // backend avait répondu « visioconférence indisponible ». Un écran
+    // d'attente perpétuel est exactement ce que cette page devait
+    // supprimer.
+    //
+    // La comparaison porte sur la salle demandée : une réponse qui
+    // concerne une autre salle que celle affichée est ignorée, ce qui est
+    // la seule chose que le drapeau protégeait réellement.
+    const pourCetteSalle = () => demandePour.current === id;
+
     virtualAPI
       .join(id)
       .then(({ data }) => {
-        if (cancelled) return;
+        if (!pourCetteSalle()) return;
         if (!data?.join_domain) {
           setError(
             "La visioconférence n'est pas configurée pour cette académie. " +
@@ -101,15 +135,11 @@ export default function VirtualRoomSession() {
         setPhase(PHASE.IN_CALL);
       })
       .catch((e) => {
-        if (cancelled) return;
+        if (!pourCetteSalle()) return;
         setError(raisonDuRefus(e));
         setPhase(PHASE.ERROR);
       });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [id]);
+  }, [id, scopeReady]);
 
   /**
    * Signale le départ au backend, une seule fois.
@@ -175,6 +205,22 @@ export default function VirtualRoomSession() {
           >
             Fermer cet onglet
           </button>
+        </div>
+      </Plein>
+    );
+  }
+
+  if (hasAcademyError) {
+    return (
+      <Plein>
+        <div className="max-w-lg text-center">
+          <h1 className="text-lg font-semibold text-white mb-3">
+            Impossible de rejoindre la salle
+          </h1>
+          <p className="text-slate-300 text-sm leading-relaxed">
+            Votre portée d'académie n'a pas pu être déterminée. Rechargez
+            cet onglet ; si le problème persiste, contactez l'administration.
+          </p>
         </div>
       </Plein>
     );
