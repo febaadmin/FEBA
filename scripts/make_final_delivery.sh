@@ -90,7 +90,22 @@ for requis in backend/manage.py frontend/package.json Makefile \
               nginx/sites-available/meet.globalfeba.com.conf \
               nginx/sites-enabled/.gitkeep \
               scripts/repo_safety_check.sh scripts/compose_config_check.sh \
-              .github/workflows/ci.yml .github/workflows/deploy.yml; do
+              .github/workflows/ci.yml .github/workflows/deploy.yml \
+              backend/apps/schools/academic_year.py \
+              backend/apps/schools/migrations/0016_activate_orphan_school_years.py \
+              backend/apps/classes/migrations/0003_class_language_track.py \
+              backend/apps/virtualclass/migrations/0003_virtualroom_target_roles.py \
+              backend/tests/test_v10_academy_scope_and_rooms.py \
+              backend/tests/test_bulletin_language_track.py \
+              frontend/src/pages/shared/VirtualRoomSession.jsx \
+              frontend/src/pages/shared/VirtualRoomSession.test.jsx \
+              frontend/src/pages/shared/VirtualRooms.test.jsx \
+              frontend/src/components/JitsiMeeting.test.jsx \
+              V10_REPORT.md JITSI_AUDIT_REPORT.md \
+              CLASS_LANGUAGE_MODEL_REPORT.md MULTI_ACADEMY_AUDIT.md \
+              VIRTUAL_CLASS_REPORT.md TEST_REPORT_V10.md \
+              KNOWN_LIMITATIONS_V10.md MANUAL_PRODUCTION_ACTIONS_V10.md \
+              docs/v10-parcours/README.md docs/v10-parcours/parcours.mjs; do
   [ -e "$CIBLE/$requis" ] || { echo "  ÉCHEC : « $requis » manquant"; exit 1; }
 done
 echo "  OK    tous les fichiers attendus sont présents"
