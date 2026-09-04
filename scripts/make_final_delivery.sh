@@ -115,7 +115,11 @@ for requis in backend/manage.py frontend/package.json Makefile \
               frontend/src/utils/classLanguage.test.js \
               CLASS_TYPE_BUSINESS_RULES_REPORT.md \
               FEBA_FHA_CLASS_VALIDATION_REPORT.md \
-              DEPLOYMENT_CHECKLIST.md; do
+              DEPLOYMENT_CHECKLIST.md \
+              jitsi/nginx-custom/feba-security-headers.conf \
+              backend/tests/test_v12_jitsi_production_headers.py \
+              JITSI_PRODUCTION_ACTIONS.md JITSI_REAL_WORLD_TEST_PLAN.md \
+              TURN_DECISION.md JITSI_PRODUCTION_FINAL_REPORT.md; do
   [ -e "$CIBLE/$requis" ] || { echo "  ÉCHEC : « $requis » manquant"; exit 1; }
 done
 echo "  OK    tous les fichiers attendus sont présents"
