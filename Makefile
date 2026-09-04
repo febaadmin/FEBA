@@ -24,7 +24,6 @@
         branding-check \
         jitsi-up jitsi-down jitsi-restart jitsi-logs jitsi-health jitsi-config-check \
         jitsi-network jitsi-prod-restart \
-        deploy-check deploy-production deploy-rollback production-health \
         jitsi-prod-up jitsi-prod-down jitsi-prod-logs \
         jitsi-proxy-up jitsi-proxy-down jitsi-proxy-logs \
         health logs logs-all ps down reset \
@@ -201,28 +200,9 @@ jitsi-proxy-logs:
 # `scripts/jitsi_up.sh` le créait déjà pour le démarrage de développement.
 # Les démarrages de PRODUCTION ne passent pas par ce script : ils
 # tombaient sur l'erreur, sur le serveur, au pire moment.
-# ── Production : contrôle et déploiement ─────────────────────────────
-# `deploy-check` ne modifie RIEN : il dit si le serveur est en état de
-# recevoir le déploiement. `deploy-production` sauvegarde d'abord, et
-# vérifie ce qu'il a fait plutôt que de l'affirmer.
-deploy-check:
-	@bash scripts/deploy_production.sh --check
-
-deploy-production:
-	@bash scripts/deploy_production.sh
-
-deploy-rollback:
-	@bash scripts/deploy_production.sh --rollback
-
 jitsi-prod-restart: jitsi-network
 	docker compose $(JITSI_PROD_COMPOSE) restart
 	@echo "Pile redémarrée — vérifiez : make jitsi-health JITSI_TARGET=$${JITSI_DOMAIN:-meet.globalfeba.com}"
-
-# État de bout en bout : l'application ET la visioconférence. Les deux
-# répondent séparément, et une seule des deux en panne se diagnostique
-# différemment.
-production-health:
-	@bash scripts/production_health.sh
 
 jitsi-network:
 	@docker network inspect feba_jitsi_shared >/dev/null 2>&1 || \
