@@ -24,6 +24,11 @@ class ClassSerializer(AcademyMetadataMixin, serializers.ModelSerializer):
     expected_languages = serializers.SerializerMethodField()
     missing_languages  = serializers.SerializerMethodField()
     language_config_ok = serializers.SerializerMethodField()
+    # Ce que le frontend doit REFLÉTER plutôt que recalculer : parcours
+    # effectif, langues admises, et si l'académie autorise le monolingue.
+    effective_language_track = serializers.SerializerMethodField()
+    allowed_languages  = serializers.SerializerMethodField()
+    monolingual_allowed = serializers.SerializerMethodField()
 
     # IDs pour écriture — ListField simple, pas de queryset au niveau classe
     subject_ids = serializers.ListField(
@@ -43,6 +48,7 @@ class ClassSerializer(AcademyMetadataMixin, serializers.ModelSerializer):
             "has_bilingual", "fr_subject_count", "en_subject_count",
             "language_track", "language_track_display",
             "expected_languages", "missing_languages", "language_config_ok",
+            "effective_language_track", "allowed_languages", "monolingual_allowed",
             "created_at",
         ] + ACADEMY_FIELDS
 
@@ -66,6 +72,16 @@ class ClassSerializer(AcademyMetadataMixin, serializers.ModelSerializer):
 
     def get_has_bilingual(self, obj):
         return obj.has_bilingual_subjects()
+
+    def get_effective_language_track(self, obj):
+        return obj.effective_language_track
+
+    def get_allowed_languages(self, obj):
+        return list(obj.allowed_subject_languages())
+
+    def get_monolingual_allowed(self, obj):
+        from .subject_rules import academy_of, allows_monolingual
+        return allows_monolingual(academy_of(obj))
 
     def get_expected_languages(self, obj):
         return list(obj.expected_subject_languages())
@@ -91,21 +107,55 @@ class ClassSerializer(AcademyMetadataMixin, serializers.ModelSerializer):
         return rep
 
     def _set_subjects(self, instance, subject_ids):
-        """Applique la liste de sujets sur l'instance."""
+        """
+        Applique la liste de matières, sous la MÊME règle que l'écran
+        « Matières ».
+
+        Ce chemin-ci ne validait rien : il suffisait d'envoyer
+        `subject_ids` au formulaire de classe pour contourner entièrement
+        la règle métier — et pour rattacher une matière appartenant à une
+        autre académie. Deux chemins d'écriture, deux verdicts : c'est
+        exactement la contradiction qu'on supprime.
+        """
         if subject_ids is None:
             return
         from apps.subjects.models import Subject
-        subjects = Subject.objects.filter(id__in=subject_ids)
+        from .subject_rules import validate_subject_configuration
+
+        subjects = list(Subject.objects.filter(id__in=subject_ids))
+        erreurs = validate_subject_configuration(instance, subjects)
+        if erreurs:
+            raise serializers.ValidationError({"subject_ids": erreurs})
         instance.subjects.set(subjects)
 
     def create(self, validated_data):
+        """
+        Création et matières dans UNE transaction.
+
+        Sans elle, une liste de matières refusée laissait derrière elle
+        une classe déjà créée, vide, que l'utilisateur ne pouvait ni voir
+        ni corriger depuis le formulaire qui venait d'échouer.
+        """
+        from django.db import transaction
+
         subject_ids = validated_data.pop("subject_ids", None)
-        instance = super().create(validated_data)
-        self._set_subjects(instance, subject_ids)
+        with transaction.atomic():
+            instance = super().create(validated_data)
+            self._set_subjects(instance, subject_ids)
         return instance
 
     def update(self, instance, validated_data):
+        """
+        Modification et matières dans UNE transaction.
+
+        Le parcours linguistique peut changer DANS le même appel : les
+        matières sont donc validées contre le parcours demandé, pas
+        contre l'ancien.
+        """
+        from django.db import transaction
+
         subject_ids = validated_data.pop("subject_ids", None)
-        instance = super().update(instance, validated_data)
-        self._set_subjects(instance, subject_ids)
+        with transaction.atomic():
+            instance = super().update(instance, validated_data)
+            self._set_subjects(instance, subject_ids)
         return instance

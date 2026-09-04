@@ -11,6 +11,7 @@ import ConfirmDialog from "../../components/ui/ConfirmDialog";
 import SearchableSelect from "../../components/ui/SearchableSelect";
 import { extractApiError } from "../../utils/errors";
 import { t } from "../../i18n";
+import { acceptsLanguage, summarize, validateSelection } from "../../utils/classLanguage";
 import { useSchoolYearScope } from "../../hooks/useSchoolYearScope";
 
 export default function AdminClasses() {
@@ -147,16 +148,28 @@ export default function AdminClasses() {
     else createMut.mutate(d);
   };
 
+  /** Matières sélectionnées, avec leur langue — l'entrée du validateur. */
+  const selectionDetaillee = () => {
+    const parId = new Map();
+    for (const m of frSubjects) parId.set(m.id, { ...m, language: "fr" });
+    for (const m of enSubjects) parId.set(m.id, { ...m, language: "en" });
+    return selectedSubjects.map((id) => parId.get(id)).filter(Boolean);
+  };
+
   const onSaveSubjects = () => {
     if (!subjectModal) return;
-    const frSelected = selectedSubjects.filter(id => frSubjects.some(s => s.id === id));
-    const enSelected = selectedSubjects.filter(id => enSubjects.some(s => s.id === id));
-    if (frSelected.length === 0) {
-      toast.error(t("Sélectionnez au moins une matière française."));
-      return;
-    }
-    if (enSelected.length === 0) {
-      toast.error(t("Sélectionnez au moins une matière anglaise."));
+    // LA CONTRADICTION CORRIGÉE.
+    //
+    // Cette garde appliquait « une matière française ET une anglaise »,
+    // écrite en dur, pendant que le bandeau juste au-dessus annonçait
+    // « Configuration complète » d'après le parcours de la classe. Une
+    // classe francophone affichait donc une configuration valide qu'il
+    // était impossible d'enregistrer.
+    //
+    // Les deux passent désormais par `validateSelection`.
+    const erreurs = validateSelection(subjectModal, selectionDetaillee());
+    if (erreurs.length > 0) {
+      toast.error(erreurs.join(" "));
       return;
     }
     subjectsMut.mutate({ id: subjectModal.id, subject_ids: selectedSubjects });
@@ -353,55 +366,65 @@ export default function AdminClasses() {
             );
           })()}
 
-          {/* Vérif du parcours — uniquement sur les langues attendues */}
+          {/* Vérif du parcours — MÊME fonction que la garde de soumission.
+              C'est là que se jouait la contradiction : ce bandeau lisait
+              le parcours de la classe pendant que `onSaveSubjects`
+              appliquait la règle bilingue en dur. */}
           {subjectModal && (() => {
-            const track = subjectModal.language_track || "BILINGUAL";
-            const attend = { BILINGUAL: ["fr", "en"], FRANCOPHONE: ["fr"], ANGLOPHONE: ["en"] }[track] || ["fr", "en"];
             const frSel = selectedSubjects.filter(id => frSubjects.some(s => s.id === id));
             const enSel = selectedSubjects.filter(id => enSubjects.some(s => s.id === id));
             const compte = { fr: frSel.length, en: enSel.length };
-            // Une phrase entière par langue : découper « Aucune matière »
-            // + « française » + « sélectionnée. » en trois t() donnait un
-            // anglais bancal, l'ordre des mots n'étant pas le même.
-            const manque = {
-              fr: t("Aucune matière française sélectionnée."),
-              en: t("Aucune matière anglaise sélectionnée."),
-            };
-            const manquantes = attend.filter((lang) => compte[lang] === 0);
-
-            if (manquantes.length > 0) {
+            const erreurs = validateSelection(subjectModal, selectionDetaillee());
+            // Ce qui s'affiche EST ce qui bloquerait l'enregistrement :
+            // le bandeau ne peut plus annoncer « complète » sur une
+            // configuration que le bouton refusera.
+            if (erreurs.length > 0) {
               return (
-                <div className="flex items-center gap-2 bg-orange-50 border border-orange-200 text-orange-700 rounded-xl p-3 text-sm" data-testid="matieres-incompletes">
-                  <AlertCircle className="w-4 h-4 shrink-0" />
-                  {manquantes.map((lang) => manque[lang]).join(" ")}
+                <div className="flex items-start gap-2 bg-orange-50 border border-orange-200 text-orange-700 rounded-xl p-3 text-sm" data-testid="matieres-incompletes">
+                  <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                  <span>{erreurs.join(" ")}</span>
                 </div>
               );
             }
             return (
               <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-xl p-3 text-sm" data-testid="matieres-completes">
                 <CheckCircle className="w-4 h-4 shrink-0" />
-                {t("Configuration complète")} ✓ — {attend.map((lang) => t("{n} matière(s) {lang}", { n: compte[lang], lang: lang.toUpperCase() })).join(" · ")}
+                {summarize(subjectModal, compte)} ✓
               </div>
             );
           })()}
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-            {/* Matières françaises */}
-            <div>
-              <h4 className="flex items-center gap-2 font-semibold text-sm text-blue-700 mb-2">
-                🇫🇷 Matières Françaises
+            {/* Matières françaises — actives seulement si le parcours
+                de la classe les admet. Un parcours monolingue est strict :
+                proposer une case cochable que le serveur refusera ensuite
+                est précisément le piège qu'on supprime. */}
+            {(() => {
+              const admise = acceptsLanguage(subjectModal, "fr");
+              return (
+            <div data-testid="colonne-fr" data-admise={admise ? "oui" : "non"}>
+              <h4 className={`flex items-center gap-2 font-semibold text-sm mb-2 ${admise ? "text-blue-700" : "text-slate-400"}`}>
+                🇫🇷 {t("Matières Françaises")}
               </h4>
-              <div className="space-y-1.5 max-h-64 overflow-y-auto pr-1">
+              {!admise && (
+                <p className="text-xs text-slate-500 bg-slate-50 border border-slate-200 rounded-lg p-2 mb-2">
+                  {t("Cette classe n'enseigne pas le français : ces matières ne sont pas sélectionnables.")}
+                </p>
+              )}
+              <div className={`space-y-1.5 max-h-64 overflow-y-auto pr-1 ${admise ? "" : "opacity-50"}`}>
                 {frSubjects.map(s => (
-                  <label key={s.id} className={`flex items-center gap-2.5 p-2.5 rounded-lg cursor-pointer border transition ${
-                    selectedSubjects.includes(s.id)
-                      ? "bg-blue-50 border-blue-300 text-blue-800"
-                      : "border-slate-200 hover:bg-slate-50 text-slate-600"
+                  <label key={s.id} className={`flex items-center gap-2.5 p-2.5 rounded-lg border transition ${
+                    !admise
+                      ? "border-slate-200 text-slate-400 cursor-not-allowed"
+                      : selectedSubjects.includes(s.id)
+                        ? "bg-blue-50 border-blue-300 text-blue-800 cursor-pointer"
+                        : "border-slate-200 hover:bg-slate-50 text-slate-600 cursor-pointer"
                   }`}>
                     <input
                       type="checkbox"
                       checked={selectedSubjects.includes(s.id)}
                       onChange={() => toggleSubject(s.id)}
+                      disabled={!admise}
                       className="rounded"
                     />
                     <span className="text-sm font-medium">{s.name}</span>
@@ -413,23 +436,36 @@ export default function AdminClasses() {
                 )}
               </div>
             </div>
+              );
+            })()}
 
-            {/* Matières anglaises */}
-            <div>
-              <h4 className="flex items-center gap-2 font-semibold text-sm text-green-700 mb-2">
-                🇬🇧 Matières Anglaises
+            {/* Matières anglaises — même règle, symétrique. */}
+            {(() => {
+              const admise = acceptsLanguage(subjectModal, "en");
+              return (
+            <div data-testid="colonne-en" data-admise={admise ? "oui" : "non"}>
+              <h4 className={`flex items-center gap-2 font-semibold text-sm mb-2 ${admise ? "text-green-700" : "text-slate-400"}`}>
+                🇬🇧 {t("Matières Anglaises")}
               </h4>
-              <div className="space-y-1.5 max-h-64 overflow-y-auto pr-1">
+              {!admise && (
+                <p className="text-xs text-slate-500 bg-slate-50 border border-slate-200 rounded-lg p-2 mb-2">
+                  {t("Cette classe n'enseigne pas l'anglais : ces matières ne sont pas sélectionnables.")}
+                </p>
+              )}
+              <div className={`space-y-1.5 max-h-64 overflow-y-auto pr-1 ${admise ? "" : "opacity-50"}`}>
                 {enSubjects.map(s => (
-                  <label key={s.id} className={`flex items-center gap-2.5 p-2.5 rounded-lg cursor-pointer border transition ${
-                    selectedSubjects.includes(s.id)
-                      ? "bg-green-50 border-green-300 text-green-800"
-                      : "border-slate-200 hover:bg-slate-50 text-slate-600"
+                  <label key={s.id} className={`flex items-center gap-2.5 p-2.5 rounded-lg border transition ${
+                    !admise
+                      ? "border-slate-200 text-slate-400 cursor-not-allowed"
+                      : selectedSubjects.includes(s.id)
+                        ? "bg-green-50 border-green-300 text-green-800 cursor-pointer"
+                        : "border-slate-200 hover:bg-slate-50 text-slate-600 cursor-pointer"
                   }`}>
                     <input
                       type="checkbox"
                       checked={selectedSubjects.includes(s.id)}
                       onChange={() => toggleSubject(s.id)}
+                      disabled={!admise}
                       className="rounded"
                     />
                     <span className="text-sm font-medium">{s.name}</span>
@@ -441,6 +477,8 @@ export default function AdminClasses() {
                 )}
               </div>
             </div>
+              );
+            })()}
           </div>
 
           <div className="flex gap-3 justify-end pt-2 border-t border-slate-100">

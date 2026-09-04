@@ -1749,4 +1749,32 @@ export const EN = {
   "Réservée à (facultatif)": "Restricted to (optional)",
   "Aucune case cochée = ouverte à tous les profils autorisés.":
     "No box ticked = open to every role allowed to join.",
+
+  // ── V11 — Parcours linguistique : la règle, en toutes lettres ─────────
+  // Ces messages disent CE QUI EST ATTENDU par le parcours de la classe,
+  // jamais « français et anglais obligatoires » — cette phrase était
+  // fausse pour une classe monolingue et rendait l'enregistrement
+  // impossible. Chaque message est une phrase entière : recomposer
+  // l'anglais à partir de fragments traduits séparément en changerait
+  // l'ordre des mots.
+  "Matières Françaises": "French Subjects",
+  "Matières Anglaises": "English Subjects",
+  "Cette classe n'enseigne pas le français : ces matières ne sont pas sélectionnables.":
+    "This class does not teach French, so these subjects cannot be selected.",
+  "Cette classe n'enseigne pas l'anglais : ces matières ne sont pas sélectionnables.":
+    "This class does not teach English, so these subjects cannot be selected.",
+  "Cette classe n'enseigne pas les matières françaises : {noms}.":
+    "This class does not teach the following French subjects: {noms}.",
+  "Cette classe n'enseigne pas la matière française {noms}.":
+    "This class does not teach the French subject {noms}.",
+  "Cette classe n'enseigne pas les matières anglaises : {noms}.":
+    "This class does not teach the following English subjects: {noms}.",
+  "Cette classe n'enseigne pas la matière anglaise {noms}.":
+    "This class does not teach the English subject {noms}.",
+  "Configuration bilingue complète — {fr} FR / {en} EN":
+    "Bilingual setup complete — {fr} FR / {en} EN",
+  "Configuration complète — {n} matière(s) française(s)":
+    "Setup complete — {n} French subject(s)",
+  "Configuration complète — {n} matière(s) anglaise(s)":
+    "Setup complete — {n} English subject(s)",
 };

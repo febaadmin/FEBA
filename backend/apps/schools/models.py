@@ -148,6 +148,16 @@ class School(models.Model):
         "messaging",
         "schedules",
         "support_tickets",
+        # Autorise les classes monolingues (francophone / anglophone).
+        # Faith & Excellence Bilingual Academy est bilingue par
+        # construction : c'est son identité, pas un réglage. FEBA French
+        # Heritage Academy accueille au contraire des enfants de la
+        # diaspora dont certains ne suivent qu'une langue.
+        #
+        # Porté par l'académie et non par la classe : sans cela, un
+        # `language_track` posté ou une donnée corrompue suffirait à
+        # rendre monolingue une classe de FEBA.
+        "monolingual_classes",
     ]
 
     # Valeurs par défaut selon le type d'entité.
@@ -167,6 +177,7 @@ class School(models.Model):
             "messaging": True,
             "schedules": True,
             "support_tickets": False,
+            "monolingual_classes": False,
         },
         "online": {
             "virtual_classrooms": True,
@@ -181,6 +192,7 @@ class School(models.Model):
             "messaging": True,
             "schedules": True,
             "support_tickets": True,
+            "monolingual_classes": True,
         },
     }
 

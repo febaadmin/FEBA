@@ -5,6 +5,7 @@ from rest_framework.permissions import IsAuthenticated
 from apps.accounts.permissions import IsAdminOrReadOnly
 from apps.core.tenancy import get_request_school, IsSameTenant
 from apps.schools.academic_year import scope_to_active_year
+from .subject_rules import describe, validate_subject_configuration
 from .models import Class
 from .serializers import ClassSerializer
 
@@ -211,11 +212,28 @@ class ClassViewSet(viewsets.ModelViewSet):
             subject_ids = request.data.get("subject_ids", [])
             if not isinstance(subject_ids, list):
                 return Response({"error": "subject_ids doit être une liste."}, status=status.HTTP_400_BAD_REQUEST)
-            subjects = Subject.objects.filter(id__in=subject_ids)
+
+            # LA RÈGLE MÉTIER EST VÉRIFIÉE ICI, PAS SEULEMENT À L'ÉCRAN.
+            #
+            # Cet endpoint acceptait tout : n'importe quel identifiant
+            # posté était assigné, y compris une matière appartenant à
+            # l'AUTRE académie. La seule règle qui existait — « une
+            # matière française ET une anglaise » — vivait dans le
+            # composant React, là où elle ne protège rien, et elle était
+            # de surcroît fausse pour une classe monolingue.
+            subjects = list(Subject.objects.filter(id__in=subject_ids))
+            erreurs = validate_subject_configuration(cls, subjects)
+            if erreurs:
+                return Response(
+                    {"detail": " ".join(erreurs), "errors": erreurs},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
             cls.subjects.set(subjects)
             return Response({
                 "message": f"{cls.subjects.count()} matière(s) assignée(s) à {cls.name}.",
                 "has_bilingual": cls.has_bilingual_subjects(),
+                **describe(cls),
             })
 
         if request.method == "DELETE":
@@ -224,6 +242,16 @@ class ClassViewSet(viewsets.ModelViewSet):
                 return Response({"error": "subject_id requis."}, status=status.HTTP_400_BAD_REQUEST)
             try:
                 subj = cls.subjects.get(id=subject_id)
+                # Retirer la dernière matière d'une langue attendue laisse
+                # la classe dans un état que l'écran refuserait
+                # d'enregistrer. Le même verdict doit valoir ici.
+                restantes = [s for s in cls.subjects.all() if s.id != subj.id]
+                erreurs = validate_subject_configuration(cls, restantes)
+                if erreurs:
+                    return Response(
+                        {"detail": " ".join(erreurs), "errors": erreurs},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
                 cls.subjects.remove(subj)
                 return Response({"message": f"Matière retirée de {cls.name}."})
             except Subject.DoesNotExist:

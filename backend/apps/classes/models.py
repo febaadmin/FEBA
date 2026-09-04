@@ -76,10 +76,33 @@ class Class(models.Model):
         """Retourne les matières anglaises de cette classe."""
         return self.subjects.filter(language="en")
 
+    # ── Parcours linguistique ─────────────────────────────────────────
+    # Ces méthodes DÉLÈGUENT toutes à `apps/classes/subject_rules.py`.
+    # Elles ne réimplémentent rien : une seconde implémentation, même
+    # fidèle le jour où on l'écrit, finit par diverger — c'est exactement
+    # ainsi qu'un écran a pu afficher « Configuration complète » et
+    # refuser l'enregistrement dans le même souffle.
+
+    @property
+    def effective_language_track(self):
+        """
+        Parcours réellement appliqué — voir `subject_rules.effective_track`.
+
+        Diffère du champ stocké pour une académie qui n'autorise pas les
+        parcours monolingues : là, il vaut toujours BILINGUAL.
+        """
+        from .subject_rules import effective_track
+        return effective_track(self)
+
     def expected_subject_languages(self):
-        """Langues de matières attendues, d'après le parcours DÉCLARÉ."""
-        return self.TRACK_LANGUAGES.get(
-            self.language_track, self.TRACK_LANGUAGES[self.TRACK_BILINGUAL])
+        """Langues de matières attendues par le parcours effectif."""
+        from .subject_rules import required_languages
+        return required_languages(self)
+
+    def allowed_subject_languages(self):
+        """Langues de matières que cette classe a le droit de porter."""
+        from .subject_rules import allowed_languages
+        return allowed_languages(self)
 
     def missing_subject_languages(self):
         """
@@ -90,9 +113,8 @@ class Class(models.Model):
         classe anglophone, à laquelle on reprochait sans fin l'absence
         d'une langue qu'elle n'enseigne pas.
         """
-        present = set(self.subjects.values_list("language", flat=True))
-        return [lang for lang in self.expected_subject_languages()
-                if lang not in present]
+        from .subject_rules import missing_languages
+        return missing_languages(self)
 
     def is_language_configuration_complete(self):
         """Vrai si la classe a au moins une matière dans chaque langue attendue."""
