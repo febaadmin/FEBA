@@ -105,7 +105,17 @@ for requis in backend/manage.py frontend/package.json Makefile \
               CLASS_LANGUAGE_MODEL_REPORT.md MULTI_ACADEMY_AUDIT.md \
               VIRTUAL_CLASS_REPORT.md TEST_REPORT_V10.md \
               KNOWN_LIMITATIONS_V10.md MANUAL_PRODUCTION_ACTIONS_V10.md \
-              docs/v10-parcours/README.md docs/v10-parcours/parcours.mjs; do
+              docs/v10-parcours/README.md docs/v10-parcours/parcours.mjs \
+              backend/apps/classes/subject_rules.py \
+              backend/apps/classes/migrations/0004_audit_language_tracks.py \
+              backend/tests/test_v11_class_language_rules.py \
+              backend/tests/test_v11_jitsi_moderators_and_jwt.py \
+              backend/tests/test_v11_jitsi_health_checks.py \
+              frontend/src/utils/classLanguage.js \
+              frontend/src/utils/classLanguage.test.js \
+              CLASS_TYPE_BUSINESS_RULES_REPORT.md \
+              FEBA_FHA_CLASS_VALIDATION_REPORT.md \
+              DEPLOYMENT_CHECKLIST.md; do
   [ -e "$CIBLE/$requis" ] || { echo "  ÉCHEC : « $requis » manquant"; exit 1; }
 done
 echo "  OK    tous les fichiers attendus sont présents"
