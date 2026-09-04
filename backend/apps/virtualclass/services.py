@@ -154,9 +154,40 @@ def assert_can_join(user, room):
     if not room.is_active or room.status == "cancelled":
         raise JitsiAccessDenied("Cette salle n'est plus disponible.")
 
-    # 5. Appartenance au groupe / à la classe.
+    # 5. Ciblage par RÔLE.
+    #
+    # Une salle réservée à l'équipe pédagogique ne doit pas être ouverte à
+    # tous les élèves de l'académie parce qu'elle n'est rattachée à aucune
+    # classe. Liste vide = aucun filtre, comportement historique.
+    target_roles = list(getattr(room, "target_roles", None) or [])
+    if target_roles and not user.is_superadmin():
+        if user.role not in target_roles:
+            raise JitsiAccessDenied(
+                "Cette salle est réservée à d'autres profils "
+                f"({', '.join(sorted(target_roles))})."
+            )
+
+    # 6. Appartenance au groupe / à la classe.
     if room.class_obj_id is not None:
-        if user.role == "student":
+        # UN ENSEIGNANT N'EST PAS AUTOMATIQUEMENT CHEZ LUI.
+        #
+        # Le contrôle ne portait que sur les élèves et les parents : tout
+        # enseignant de l'académie pouvait donc entrer dans le cours d'une
+        # classe qui ne lui est pas confiée. Un enseignant reste
+        # modérateur, mais des classes qu'on lui a réellement affectées.
+        if user.role == "teacher":
+            teacher = getattr(user, "teacher_profile", None)
+            assigned = False
+            if teacher is not None:
+                assigned = teacher.classes.filter(pk=room.class_obj_id).exists()
+            # Le créateur de la salle y garde accès : il l'a ouverte pour
+            # une classe qu'il encadre ponctuellement (remplacement,
+            # soutien) sans en être titulaire.
+            if not assigned and room.created_by_id != user.id:
+                raise JitsiAccessDenied(
+                    "Cette classe ne vous est pas affectée."
+                )
+        elif user.role == "student":
             student = getattr(user, "student_profile", None)
             if student is None or student.current_class_id != room.class_obj_id:
                 raise JitsiAccessDenied(
@@ -336,6 +367,14 @@ def jitsi_health(timeout=5):
                 "pare-feu laisse passer le port 443."
             )
             record("tls", False, tls_detail)
+        except Exception as exc:  # noqa: BLE001 — voir ci-dessous
+            # CETTE FONCTION NE DOIT JAMAIS LEVER, c'est sa raison d'être :
+            # elle alimente la page qui sert à diagnostiquer une panne. Une
+            # exception inattendue ici (bibliothèque TLS d'une plateforme,
+            # environnement de test) ferait tomber l'écran de diagnostic au
+            # moment précis où l'on en a besoin.
+            tls_detail = f"Contrôle TLS impossible pour {probe_host} : {exc}."
+            record("tls", False, tls_detail)
 
     # 6. Réponse HTTP de l'instance — LE contrôle qui fait autorité.
     try:
@@ -378,6 +417,111 @@ def jitsi_health(timeout=5):
             result["status"] = "degraded"
             result["detail"] = result["checks"][-1]["detail"]
             return result
+
+    # 8. `external_api.js` — le fichier que le navigateur charge pour
+    #    ouvrir une conférence. La page d'accueil peut répondre 200 sans
+    #    que ce script soit servi (mauvaise racine, build incomplet) :
+    #    l'utilisateur voit alors « Visioconférence indisponible » alors
+    #    que tous les contrôles précédents sont au vert.
+    # L'URL de sonde est la MÊME que pour le contrôle principal : depuis
+    # un conteneur, `meet.globalfeba.com` n'est pas forcément joignable, et
+    # `JITSI_INTERNAL_URL` existe précisément pour cela (régression P7).
+    # Coder « https://<domaine public> » en dur ici referait ce bug.
+    base = url.rstrip("/")
+    api_url = f"{base}/external_api.js"
+    try:
+        request = urllib.request.Request(api_url, method="GET")
+        with urllib.request.urlopen(request, timeout=timeout) as response:
+            api_status = response.status
+            api_type = (response.headers.get("Content-Type") or "").lower()
+            api_len = len(response.read(4096))
+        servi = api_status == 200 and api_len > 0 and "javascript" in api_type
+        record("external_api", servi,
+               f"external_api.js servi ({api_status}, {api_type or 'type inconnu'})."
+               if servi else
+               f"external_api.js répond {api_status} avec le type "
+               f"« {api_type or 'inconnu'} » : le navigateur ne pourra pas "
+               "ouvrir de conférence.")
+        if not servi:
+            result["status"] = "degraded"
+            result["detail"] = result["checks"][-1]["detail"]
+            return result
+    except Exception as exc:
+        record("external_api", False, f"external_api.js injoignable : {exc}")
+        result["status"] = "degraded"
+        result["detail"] = result["checks"][-1]["detail"]
+        return result
+
+    # 9. Point d'entrée de la signalisation. On ne peut pas établir une
+    #    vraie liaison WebSocket ici — cela demande une négociation XMPP
+    #    complète — mais on peut vérifier que le chemin EXISTE : un 404
+    #    signifie que le reverse proxy n'a pas de règle pour lui, et c'est
+    #    la panne classique « tout le monde entre et personne ne se voit ».
+    ws_url = f"{base}/xmpp-websocket"
+    try:
+        request = urllib.request.Request(ws_url, method="GET")
+        with urllib.request.urlopen(request, timeout=timeout) as response:
+            ws_status = response.status
+    except urllib.error.HTTPError as exc:
+        ws_status = exc.code
+    except Exception as exc:
+        ws_status = None
+        record("signalisation", False,
+               f"Le chemin {ws_url} est injoignable : {exc}")
+    if ws_status is not None:
+        # 404 = aucune règle de proxy. Tout le reste (101, 200, 400, 426,
+        # 501…) prouve qu'une règle existe et répond.
+        route = ws_status != 404
+        record("signalisation", route,
+               f"Le chemin /xmpp-websocket répond ({ws_status}) : le reverse "
+               "proxy a bien une règle pour la signalisation."
+               if route else
+               "Le chemin /xmpp-websocket renvoie 404 : le reverse proxy n'a "
+               "aucune règle pour lui. Les participants entreront dans la "
+               "salle sans jamais se voir.")
+        if not route:
+            result["status"] = "degraded"
+            result["detail"] = result["checks"][-1]["detail"]
+            return result
+
+    # 10. EN-TÊTES RÉELLEMENT SERVIS — pas ceux du dépôt.
+    #
+    # Un fichier nginx correct dans le dépôt ne prouve RIEN sur ce que
+    # l'instance renvoie : `meet.globalfeba.com` est servi par le nginx du
+    # conteneur `jitsi/web`, pas par la configuration hôte du dépôt (qui
+    # appartient à l'autre topologie, « derrière le proxy »). C'est
+    # exactement l'écart que ce contrôle mesure, plutôt que de le
+    # supposer résolu.
+    #
+    # Aucun de ces manques n'empêche une conférence de fonctionner : ils
+    # ne dégradent donc pas l'état global. Ils sont signalés, pas
+    # transformés en panne.
+    attendus = {
+        "strict-transport-security": "HSTS",
+        "x-content-type-options": "X-Content-Type-Options",
+        "referrer-policy": "Referrer-Policy",
+        "content-security-policy": "Content-Security-Policy (frame-ancestors)",
+    }
+    try:
+        request = urllib.request.Request(url, method="GET")
+        with urllib.request.urlopen(request, timeout=timeout) as response:
+            servis = {k.lower(): v for k, v in response.headers.items()}
+        manquants = [nom for cle, nom in attendus.items() if cle not in servis]
+        result["security_headers"] = {
+            cle: servis.get(cle) for cle in attendus
+        }
+        record(
+            "entetes_securite", not manquants,
+            "Tous les en-têtes de sécurité attendus sont servis."
+            if not manquants else
+            "En-têtes absents de la réponse RÉELLE de l'instance : "
+            + ", ".join(manquants)
+            + ". La configuration du dépôt ne les impose pas ici : voir "
+            "JITSI_PRODUCTION_ACTIONS.md.",
+        )
+    except Exception as exc:
+        record("entetes_securite", False,
+               f"En-têtes non lisibles sur {url} : {exc}")
 
     result["status"] = "operational" if result["reachable"] else "degraded"
     if result["status"] == "operational":

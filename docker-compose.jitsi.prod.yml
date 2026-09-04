@@ -57,6 +57,27 @@ services:
       - ENABLE_AUTH=1
       - ENABLE_GUESTS=0
       - AUTH_TYPE=jwt
+      # ── Intégration en iframe ───────────────────────────────────────
+      # `frame-ancestors` SEUL, et c'est délibéré : une Content-Security-
+      # Policy complète rend Jitsi noir et muet (il a besoin de `eval`,
+      # de scripts en ligne, de blobs et de workers). Cette directive-ci
+      # ne touche pas à l'exécution du code — elle dit seulement QUI a le
+      # droit d'embarquer la conférence.
+      #
+      # `'self'` est indispensable : l'External API de Jitsi crée une
+      # iframe sur son propre domaine. La retirer casserait l'ouverture
+      # de la conférence, y compris depuis FEBA.
+      - CSP_HEADER=${JITSI_CSP_HEADER:-frame-ancestors 'self' https://globalfeba.com https://www.globalfeba.com}
+    volumes:
+      # Point d'extension prévu par l'image : son gabarit contient
+      # `include /run/web/config/nginx-custom/*.conf;` au niveau server.
+      # C'est le seul moyen d'ajouter des en-têtes dans CETTE topologie,
+      # où le nginx du conteneur répond directement — le fichier
+      # nginx/sites-available/ du dépôt appartient à l'autre topologie et
+      # n'est jamais lu ici.
+      #
+      # Lecture seule : le conteneur n'a aucune raison d'y écrire.
+      - ./jitsi/nginx-custom:/run/web/config/nginx-custom:ro
     restart: always
     logging: &prod_logging
       driver: json-file

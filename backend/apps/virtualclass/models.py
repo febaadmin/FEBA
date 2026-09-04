@@ -57,6 +57,24 @@ class VirtualRoom(models.Model):
         "subjects.Subject", on_delete=models.SET_NULL, null=True, blank=True,
         related_name="virtual_rooms",
     )
+    # ── Ciblage par RÔLE ─────────────────────────────────────────────────
+    #
+    # Une salle pouvait viser une classe, ou toute l'académie — rien entre
+    # les deux. Il manquait le cas courant : la réunion pédagogique
+    # réservée aux enseignants, le conseil réservé aux administrateurs.
+    # Sans ce champ, une « salle générale » créée pour l'équipe était
+    # ouverte à tous les élèves de l'académie.
+    #
+    # Liste vide = aucun filtre de rôle (comportement historique). Les
+    # salles existantes restent donc strictement inchangées.
+    target_roles = models.JSONField(
+        default=list, blank=True,
+        verbose_name="Rôles autorisés",
+        help_text=(
+            "Rôles pouvant rejoindre la salle (admin, teacher, student, "
+            "parent). Vide = tous les rôles autorisés par ailleurs."
+        ),
+    )
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True,
         related_name="virtual_rooms_created",

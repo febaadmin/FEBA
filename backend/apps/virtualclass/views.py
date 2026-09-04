@@ -106,6 +106,43 @@ class VirtualRoomViewSet(BulkDeleteMixin, viewsets.ModelViewSet):
             school_year = SchoolYear.objects.filter(school=school, is_current=True).first()
         serializer.save(created_by=self.request.user, school=school, school_year=school_year)
 
+    def _salle_a_rejoindre(self):
+        """
+        La salle visée, résolue dans le périmètre de l'ACADÉMIE.
+
+        POURQUOI PAS `get_object()`
+        ---------------------------
+        `get_queryset()` filtre déjà par rôle : un élève ne voit que les
+        salles de sa classe. Passer par lui ici donnait un 404 à un élève
+        qui vise la salle d'une autre classe — et rendait du même coup
+        INATTEIGNABLES les messages de `assert_can_join` écrits pour ce
+        cas précis (« Vous n'êtes pas inscrit dans le groupe de cette
+        salle »). L'utilisateur lisait « ressource introuvable » sur une
+        salle qui existe, sans savoir quoi faire.
+
+        La frontière qui doit rester opaque est celle de l'ACADÉMIE : la
+        salle d'un autre établissement reste un 404, son existence n'est
+        pas révélée. À l'intérieur de l'académie, l'autorisation est une
+        décision qu'on explique — c'est le rôle de `assert_can_join`, qui
+        répond 403 avec le motif.
+        """
+        from django.shortcuts import get_object_or_404
+
+        user = self.request.user
+        qs = VirtualRoom.objects.select_related(
+            "class_obj", "subject", "created_by", "school",
+        ).filter(is_active=True)
+
+        school = get_request_school(self.request)
+        if school is not None:
+            qs = qs.filter(school=school)
+        elif not user.is_superadmin():
+            qs = qs.none()
+
+        room = get_object_or_404(qs, pk=self.kwargs.get("pk"))
+        self.check_object_permissions(self.request, room)
+        return room
+
     @action(detail=True, methods=["post"])
     def join(self, request, pk=None):
         """
@@ -117,7 +154,7 @@ class VirtualRoomViewSet(BulkDeleteMixin, viewsets.ModelViewSet):
             JitsiAccessDenied, JitsiNotConfigured, assert_can_join, build_jitsi_jwt,
         )
 
-        room = self.get_object()
+        room = self._salle_a_rejoindre()
 
         # 1. Droit de rejoindre : académie, fonctionnalité, groupe, état.
         try:

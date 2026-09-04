@@ -543,8 +543,9 @@ class Command(BaseCommand):
 
         from apps.accounts.models import CustomUser
         from apps.classes.models import Class
-        from apps.schools.models import Level, School, SchoolYear
+        from apps.schools.models import Level, Room, School, SchoolYear
         from apps.students.models import Student
+        from apps.subjects.models import Subject
         from apps.teachers.models import Teacher
         from apps.virtualclass.models import VirtualRoom
         from apps.website.models import (
@@ -597,20 +598,75 @@ class Command(BaseCommand):
         year.save(update_fields=["is_current"])
 
         # Les trois groupes de lancement du document de cadrage.
+        #
+        # Chacun illustre un PARCOURS LINGUISTIQUE différent : les groupes
+        # de la diaspora ne suivent pas tous le même. Une base de
+        # démonstration où les trois classes seraient bilingues ne
+        # montrerait jamais le cas monolingue — celui-là même qui était
+        # déclaré « incomplet » pour toujours.
         groups = {}
-        for order, (key, label) in enumerate(
-            [("junior_roots", "Junior Roots"),
-             ("french_explorers", "French Explorers"),
-             ("french_ambassadors", "French Ambassadors")], start=1,
+        for order, (key, label, track) in enumerate(
+            [("junior_roots", "Junior Roots", Class.TRACK_FRANCOPHONE),
+             ("french_explorers", "French Explorers", Class.TRACK_BILINGUAL),
+             ("french_ambassadors", "French Ambassadors", Class.TRACK_ANGLOPHONE)], start=1,
         ):
             level, _ = Level.objects.get_or_create(
                 school=fha, name=label, defaults={"order": order, "cycle": "primaire"},
             )
-            groups[key], _ = Class.objects.get_or_create(
+            groups[key], created = Class.objects.get_or_create(
                 school_year=year, level=level, name=label,
-                defaults={"max_students": 15},
+                defaults={"max_students": 15, "language_track": track},
             )
-        self.stdout.write("  ✅ Groupes : Junior Roots · French Explorers · French Ambassadors")
+            if not created and groups[key].language_track != track:
+                groups[key].language_track = track
+                groups[key].save(update_fields=["language_track"])
+
+        # Matières de chaque parcours, et rattachement aux groupes.
+        #
+        # Sans elles, les trois groupes restent « incomplets » à l'écran et
+        # aucun bulletin n'a de contenu : la démonstration s'arrêtait là.
+        fha_subjects = {}
+        for nom, langue, ordre in (
+            ("Français — expression", "fr", 1),
+            ("Français — lecture", "fr", 2),
+            ("Culture francophone", "fr", 3),
+            ("English — conversation", "en", 4),
+            ("African Heritage & Culture", "en", 5),
+        ):
+            fha_subjects[nom], _ = Subject.objects.get_or_create(
+                school=fha, name=nom,
+                defaults={"language": langue, "coefficient": 1, "order": ordre},
+            )
+        par_langue = {
+            "fr": [s for n, s in fha_subjects.items() if s.language == "fr"],
+            "en": [s for n, s in fha_subjects.items() if s.language == "en"],
+        }
+        for groupe in groups.values():
+            attendues = []
+            for langue in groupe.expected_subject_languages():
+                attendues.extend(par_langue[langue])
+            groupe.subjects.set(attendues)
+
+        self.stdout.write(
+            "  ✅ Groupes : Junior Roots (francophone) · French Explorers "
+            "(bilingue) · French Ambassadors (anglophone)")
+
+        # Salles PHYSIQUES de l'académie en ligne.
+        #
+        # L'écran « Paramètres » affichait « Salles physiques de l'École
+        # (0) » alors que trois groupes existaient. Ce n'était pas un
+        # défaut de portée : une salle physique n'est pas une classe, et
+        # FEBA FHA n'en avait tout simplement aucune. Une académie en ligne
+        # en a peu — mais elle en a : le studio d'où les cours sont
+        # diffusés depuis Cotonou.
+        for rname, rtype in (
+            ("Studio de diffusion 1", "computer"),
+            ("Studio de diffusion 2", "computer"),
+            ("Bureau pédagogique FHA", "admin"),
+        ):
+            Room.objects.get_or_create(
+                school=fha, name=rname, defaults={"room_type": rtype})
+        self.stdout.write("  ✅ 3 salles physiques FHA")
 
         def make_user(email, role, first, last, password):
             user, created = CustomUser.objects.get_or_create(
