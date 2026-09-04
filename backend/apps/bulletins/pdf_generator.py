@@ -239,7 +239,8 @@ def generate_bulletin(student, period, school_year):
         else:
             _build_standard_pdf(buffer, student, period, school_year,
                                 subject_data, bilingual_data, class_stats,
-                                average, bulletin, palette)
+                                average, bulletin, palette,
+                                expected_languages=_expected_languages(student_class))
 
         pdf_bytes = buffer.getvalue()
         buffer.close()
@@ -532,7 +533,35 @@ def _add_language_section(story, title, entries, period, head_color, zebra_color
 
 # ─── Statistiques de classe + moyennes bilingues (BUG N°2 / N°6) ─────────────
 
-def _add_stats_section(story, bilingual_data, class_stats, average, bulletin, period, palette, scale=20):
+def _expected_languages(student_class):
+    """
+    Langues que le bulletin de cette classe doit PRÉSENTER.
+
+    POURQUOI CE N'EST PAS TOUJOURS « FR ET EN »
+    -------------------------------------------
+    Le bulletin standard imprimait les deux parties quoi qu'il arrive.
+    Pour une classe francophone de FEBA FHA, la partie anglaise sortait
+    donc à chaque trimestre avec « Aucune matière dans cette catégorie »,
+    suivie d'une « Moyenne Anglaise » à « — » et d'une moyenne bilingue
+    calculée sur une langue absente. Le document annonçait un manque là
+    où il n'y avait rien à manquer.
+
+    Le parcours DÉCLARÉ de la classe dit ce qui est attendu. En son
+    absence — classe inconnue, modèle plus ancien — on retombe sur le
+    bilingue : c'est le fonctionnement historique de FEBA, et un bulletin
+    ne doit jamais perdre une section par accident.
+    """
+    if student_class is None:
+        return ("fr", "en")
+    getter = getattr(student_class, "expected_subject_languages", None)
+    if not callable(getter):
+        return ("fr", "en")
+    langues = tuple(getter() or ())
+    return langues or ("fr", "en")
+
+
+def _add_stats_section(story, bilingual_data, class_stats, average, bulletin, period, palette,
+                       scale=20, expected_languages=("fr", "en")):
     story.append(HRFlowable(width='100%', thickness=1, color=palette.gold))
     story.append(P('MOYENNES & STATISTIQUES DE LA CLASSE / AVERAGES & CLASS STATISTICS',
                    fontSize=11, fontName='Helvetica-Bold', textColor=palette.primary,
@@ -550,20 +579,43 @@ def _add_stats_section(story, bilingual_data, class_stats, average, bulletin, pe
 
     header = [hc('Catégorie', 'LEFT'), hc('Moyenne élève'), hc('Moy. min. classe'),
               hc('Moy. max. classe'), hc('Lettre')]
-    rows = [
-        header,
-        [C('Moyenne Française / French Average'),
-         _fmt_scale_denom(fr_avg, scale), _fmt_scale(class_stats.get('fr_min'), scale), _fmt_scale(class_stats.get('fr_max'), scale),
-         fr_letter or '—'],
-        [C('Moyenne Anglaise / English Average'),
-         _fmt_scale_denom(en_avg, scale), _fmt_scale(class_stats.get('en_min'), scale), _fmt_scale(class_stats.get('en_max'), scale),
-         en_letter or '—'],
-        [C('Moyenne Bilingue / Bilingual Average ★', bold=True),
-         _fmt_scale_denom(bi_avg, scale), _fmt_scale(class_stats.get('bi_min'), scale), _fmt_scale(class_stats.get('bi_max'), scale),
-         bi_letter or '—'],
-    ]
+
+    # UNE LIGNE PAR LANGUE RÉELLEMENT CONCERNÉE.
+    #
+    # Une langue est présentée si le parcours de la classe l'attend, ou si
+    # une moyenne existe malgré tout — on n'affiche pas une ligne vide qui
+    # ne sera jamais remplie, et on ne cache jamais un résultat réel.
+    attendues = tuple(expected_languages or ("fr", "en"))
+    montrer_fr = 'fr' in attendues or fr_avg is not None
+    montrer_en = 'en' in attendues or en_avg is not None
+    # La moyenne bilingue est une pondération 60/40 de DEUX langues. Sur un
+    # parcours monolingue elle n'a pas d'objet : l'afficher reviendrait à
+    # présenter une note pondérée par une matière que la classe n'enseigne
+    # pas.
+    montrer_bi = montrer_fr and montrer_en
+
+    rows = [header]
+    fonds = []  # (index de ligne, couleur de fond)
+    if montrer_fr:
+        fonds.append((len(rows), palette.light))
+        rows.append([C('Moyenne Française / French Average'),
+                     _fmt_scale_denom(fr_avg, scale), _fmt_scale(class_stats.get('fr_min'), scale),
+                     _fmt_scale(class_stats.get('fr_max'), scale), fr_letter or '—'])
+    if montrer_en:
+        fonds.append((len(rows), EN_BG))
+        rows.append([C('Moyenne Anglaise / English Average'),
+                     _fmt_scale_denom(en_avg, scale), _fmt_scale(class_stats.get('en_min'), scale),
+                     _fmt_scale(class_stats.get('en_max'), scale), en_letter or '—'])
+    ligne_bi = None
+    if montrer_bi:
+        ligne_bi = len(rows)
+        fonds.append((ligne_bi, colors.HexColor('#FFF3CD')))
+        rows.append([C('Moyenne Bilingue / Bilingual Average ★', bold=True),
+                     _fmt_scale_denom(bi_avg, scale), _fmt_scale(class_stats.get('bi_min'), scale),
+                     _fmt_scale(class_stats.get('bi_max'), scale), bi_letter or '—'])
+
     tbl = Table(rows, colWidths=[6.9 * cm, 2.9 * cm, 3.2 * cm, 3.2 * cm, 2.3 * cm])
-    tbl.setStyle(TableStyle([
+    style = [
         ('BACKGROUND', (0, 0), (-1, 0), palette.gold),
         ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
         ('FONTSIZE', (0, 0), (-1, -1), 8),
@@ -573,20 +625,23 @@ def _add_stats_section(story, bilingual_data, class_stats, average, bulletin, pe
         ('RIGHTPADDING', (0, 0), (-1, -1), 4),
         ('TOPPADDING', (0, 0), (-1, -1), 3),
         ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
-        ('BACKGROUND', (0, 1), (-1, 1), palette.light),
-        ('BACKGROUND', (0, 2), (-1, 2), EN_BG),
-        ('BACKGROUND', (0, 3), (-1, 3), colors.HexColor('#FFF3CD')),
-        ('FONTNAME', (0, 3), (-1, 3), 'Helvetica-Bold'),
-    ]))
+    ]
+    # Les index de fond étaient écrits en dur (1, 2, 3). Ils suivent
+    # désormais les lignes réellement produites.
+    style += [('BACKGROUND', (0, i), (-1, i), couleur) for i, couleur in fonds]
+    if ligne_bi is not None:
+        style.append(('FONTNAME', (0, ligne_bi), (-1, ligne_bi), 'Helvetica-Bold'))
+    tbl.setStyle(TableStyle(style))
     story.append(tbl)
 
     story.append(Spacer(1, 0.15 * cm))
-    story.append(P(
-        f'<font color="{palette.brand.primary_color}"><b>Formule bilingue / '
-        'Bilingual formula:</b></font> Moyenne Bilingue = '
-        '(Moyenne Française × 60%) + (Moyenne Anglaise × 40%)',
-        fontSize=8, spaceAfter=5,
-    ))
+    if montrer_bi:
+        story.append(P(
+            f'<font color="{palette.brand.primary_color}"><b>Formule bilingue / '
+            'Bilingual formula:</b></font> Moyenne Bilingue = '
+            '(Moyenne Française × 60%) + (Moyenne Anglaise × 40%)',
+            fontSize=8, spaceAfter=5,
+        ))
 
     # Bande "moyenne générale" — sans rang (BUG N°2)
     letter, _, _ = get_letter_grade(average)
@@ -614,7 +669,8 @@ def _add_stats_section(story, bilingual_data, class_stats, average, bulletin, pe
 # ─── STANDARD PDF Template (Primaire/Collège/Lycée) ──────────────────────────
 
 def _build_standard_pdf(buffer, student, period, school_year, subject_data,
-                        bilingual_data, class_stats, average, bulletin, palette):
+                        bilingual_data, class_stats, average, bulletin, palette,
+                        expected_languages=("fr", "en")):
     # Marges 1.2 cm : largeur utile = 21 - 2×1.2 = 18.6 cm. Toutes les tables
     # sont dimensionnées à ≤ 18.5 cm → marge de sécurité, aucun débordement.
     doc = SimpleDocTemplate(
@@ -637,14 +693,23 @@ def _build_standard_pdf(buffer, student, period, school_year, subject_data,
     en_entries = [e for e in entries if e.get('language') == 'en']
     other_entries = [e for e in entries if e.get('language') not in ('fr', 'en')]
 
-    _add_language_section(
-        story, 'RÉSULTATS — PARTIE FRANÇAISE / FRENCH SECTION',
-        fr_entries, period, palette.fr_head, palette.light, scale,
-    )
-    _add_language_section(
-        story, 'ACADEMIC RESULTS — ENGLISH SECTION / PARTIE ANGLAISE',
-        en_entries, period, EN_HEAD, EN_BG, scale,
-    )
+    # Une section n'est imprimée que si le parcours de la classe l'attend,
+    # ou si des résultats existent malgré tout. Une classe francophone
+    # n'affiche donc plus une partie anglaise vide à chaque trimestre ;
+    # une classe bilingue à qui il manque une langue continue, elle, de
+    # montrer la section vide — c'est une anomalie de configuration, et
+    # la masquer reviendrait à la taire.
+    attendues = tuple(expected_languages or ("fr", "en"))
+    if 'fr' in attendues or fr_entries:
+        _add_language_section(
+            story, 'RÉSULTATS — PARTIE FRANÇAISE / FRENCH SECTION',
+            fr_entries, period, palette.fr_head, palette.light, scale,
+        )
+    if 'en' in attendues or en_entries:
+        _add_language_section(
+            story, 'ACADEMIC RESULTS — ENGLISH SECTION / PARTIE ANGLAISE',
+            en_entries, period, EN_HEAD, EN_BG, scale,
+        )
     if other_entries:
         _add_language_section(
             story, 'AUTRES MATIÈRES / OTHER SUBJECTS',
@@ -652,7 +717,7 @@ def _build_standard_pdf(buffer, student, period, school_year, subject_data,
         )
 
     _add_stats_section(story, bilingual_data, class_stats, average, bulletin,
-                       period, palette, scale)
+                       period, palette, scale, expected_languages=attendues)
     _add_signatures(story, bulletin, palette)
     _add_footer(story, palette)
     doc.build(story)

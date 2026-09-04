@@ -23,6 +23,8 @@
         documents-check documents-install documents-ready documents-calibrate documents-compare \
         branding-check \
         jitsi-up jitsi-down jitsi-restart jitsi-logs jitsi-health jitsi-config-check \
+        jitsi-network jitsi-prod-restart \
+        deploy-check deploy-production deploy-rollback production-health \
         jitsi-prod-up jitsi-prod-down jitsi-prod-logs \
         jitsi-proxy-up jitsi-proxy-down jitsi-proxy-logs \
         health logs logs-all ps down reset \
@@ -172,7 +174,7 @@ JITSI_PROD_COMPOSE = -f docker-compose.jitsi.yml -f docker-compose.jitsi.prod.ym
 # publierait 80 et 443, que nginx-prod occupe déjà.
 JITSI_PROXY_COMPOSE = -f docker-compose.jitsi.yml -f docker-compose.jitsi.behind-proxy.yml --env-file .env.jitsi
 
-jitsi-proxy-up:
+jitsi-proxy-up: jitsi-network
 	@bash scripts/jitsi_config_check.sh || echo "⚠ Configuration incohérente — voir ci-dessus."
 	docker compose $(JITSI_PROXY_COMPOSE) up -d
 	@echo ""
@@ -188,7 +190,46 @@ jitsi-proxy-down:
 jitsi-proxy-logs:
 	docker compose $(JITSI_PROXY_COMPOSE) logs -f
 
-jitsi-prod-up:
+# ── Réseau partagé Jitsi ─────────────────────────────────────────────
+# `feba_jitsi_shared` est POSSÉDÉ par docker-compose.yml et REJOINT par la
+# pile Jitsi, qui le déclare « external ». Démarrer Jitsi sur une machine
+# où la pile FEBA n'a jamais tourné — ou après un `docker network prune` —
+# échouait donc sur :
+#
+#     network feba_jitsi_shared declared as external, but could not be found
+#
+# `scripts/jitsi_up.sh` le créait déjà pour le démarrage de développement.
+# Les démarrages de PRODUCTION ne passent pas par ce script : ils
+# tombaient sur l'erreur, sur le serveur, au pire moment.
+# ── Production : contrôle et déploiement ─────────────────────────────
+# `deploy-check` ne modifie RIEN : il dit si le serveur est en état de
+# recevoir le déploiement. `deploy-production` sauvegarde d'abord, et
+# vérifie ce qu'il a fait plutôt que de l'affirmer.
+deploy-check:
+	@bash scripts/deploy_production.sh --check
+
+deploy-production:
+	@bash scripts/deploy_production.sh
+
+deploy-rollback:
+	@bash scripts/deploy_production.sh --rollback
+
+jitsi-prod-restart: jitsi-network
+	docker compose $(JITSI_PROD_COMPOSE) restart
+	@echo "Pile redémarrée — vérifiez : make jitsi-health JITSI_TARGET=$${JITSI_DOMAIN:-meet.globalfeba.com}"
+
+# État de bout en bout : l'application ET la visioconférence. Les deux
+# répondent séparément, et une seule des deux en panne se diagnostique
+# différemment.
+production-health:
+	@bash scripts/production_health.sh
+
+jitsi-network:
+	@docker network inspect feba_jitsi_shared >/dev/null 2>&1 || \
+	  { echo "Création du réseau partagé feba_jitsi_shared…"; \
+	    docker network create feba_jitsi_shared >/dev/null; }
+
+jitsi-prod-up: jitsi-network
 	@bash scripts/jitsi_config_check.sh || echo "⚠ Configuration incohérente — voir ci-dessus."
 	docker compose $(JITSI_PROD_COMPOSE) up -d
 	@echo "Instance démarrée. Vérifiez : make jitsi-health JITSI_TARGET=$${JITSI_DOMAIN:-meet.globalfeba.com}"

@@ -1713,4 +1713,68 @@ export const EN = {
   "certificate_feba": "FEBA certificate",
   "Diplôme FEBA": "FEBA Diploma",
   "Certificat FEBA": "FEBA Certificate",
+
+  // ── V10 — Parcours linguistique d'une classe ──────────────────────────
+  // FEBA FHA accueille des classes monolingues. « Une matière française ET
+  // une matière anglaise sont obligatoires » était une règle de FEBA
+  // promue en règle universelle : elle reprochait sans fin à une classe
+  // francophone l'absence d'une langue qu'elle n'enseigne pas. Le parcours
+  // déclaré dit désormais ce qui est attendu, et l'anglais doit garder
+  // cette distinction — « expected », pas « required ».
+  "Parcours linguistique": "Language track",
+  "Bilingue (français et anglais)": "Bilingual (French and English)",
+  "Francophone": "French-speaking",
+  "Anglophone": "English-speaking",
+  "Détermine les matières attendues et la forme du bulletin.":
+    "Determines which subjects are expected and how the report card is laid out.",
+  "Cette classe est bilingue : une matière française et une matière anglaise sont attendues.":
+    "This class is bilingual: one French subject and one English subject are expected.",
+  "Cette classe est francophone : seules les matières françaises sont attendues.":
+    "This class is French-speaking: only French subjects are expected.",
+  "Cette classe est anglophone : seules les matières anglaises sont attendues.":
+    "This class is English-speaking: only English subjects are expected.",
+  "Aucune matière française sélectionnée.": "No French subject selected.",
+  "Aucune matière anglaise sélectionnée.": "No English subject selected.",
+  "Configuration complète": "Configuration complete",
+  // {lang} est un code affiché tel quel (FR / EN) ; seul l'ordre des mots
+  // change entre les deux langues.
+  "{n} matière(s) {lang}": "{n} {lang} subject(s)",
+
+  // ── V10 — Salles virtuelles : ouverture en onglet et ciblage ──────────
+  // La conférence s'ouvre désormais dans un onglet dédié. Un bloqueur de
+  // fenêtres surgissantes peut l'empêcher : le message doit dire quoi
+  // faire, pas seulement que cela a échoué.
+  "Votre navigateur a bloqué l'ouverture de la salle. Autorisez les fenêtres surgissantes pour ce site, puis réessayez.":
+    "Your browser blocked the room from opening. Allow pop-ups for this site, then try again.",
+  "Réservée à (facultatif)": "Restricted to (optional)",
+  "Aucune case cochée = ouverte à tous les profils autorisés.":
+    "No box ticked = open to every role allowed to join.",
+
+  // ── V11 — Parcours linguistique : la règle, en toutes lettres ─────────
+  // Ces messages disent CE QUI EST ATTENDU par le parcours de la classe,
+  // jamais « français et anglais obligatoires » — cette phrase était
+  // fausse pour une classe monolingue et rendait l'enregistrement
+  // impossible. Chaque message est une phrase entière : recomposer
+  // l'anglais à partir de fragments traduits séparément en changerait
+  // l'ordre des mots.
+  "Matières Françaises": "French Subjects",
+  "Matières Anglaises": "English Subjects",
+  "Cette classe n'enseigne pas le français : ces matières ne sont pas sélectionnables.":
+    "This class does not teach French, so these subjects cannot be selected.",
+  "Cette classe n'enseigne pas l'anglais : ces matières ne sont pas sélectionnables.":
+    "This class does not teach English, so these subjects cannot be selected.",
+  "Cette classe n'enseigne pas les matières françaises : {noms}.":
+    "This class does not teach the following French subjects: {noms}.",
+  "Cette classe n'enseigne pas la matière française {noms}.":
+    "This class does not teach the French subject {noms}.",
+  "Cette classe n'enseigne pas les matières anglaises : {noms}.":
+    "This class does not teach the following English subjects: {noms}.",
+  "Cette classe n'enseigne pas la matière anglaise {noms}.":
+    "This class does not teach the English subject {noms}.",
+  "Configuration bilingue complète — {fr} FR / {en} EN":
+    "Bilingual setup complete — {fr} FR / {en} EN",
+  "Configuration complète — {n} matière(s) française(s)":
+    "Setup complete — {n} French subject(s)",
+  "Configuration complète — {n} matière(s) anglaise(s)":
+    "Setup complete — {n} English subject(s)",
 };

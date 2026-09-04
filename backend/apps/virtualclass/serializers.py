@@ -23,7 +23,7 @@ class VirtualRoomSerializer(AcademyMetadataMixin, serializers.ModelSerializer):
             "school_year", "scheduled_at", "duration_minutes",
             "status", "is_active", "lobby_enabled",
             "created_by", "created_by_name", "created_at",
-            "join_domain", "participants_count",
+            "join_domain", "participants_count", "target_roles",
         ] + ACADEMY_FIELDS
         read_only_fields = ["room_code", "created_by", "school", "created_at"]
 

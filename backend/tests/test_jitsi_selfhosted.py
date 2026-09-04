@@ -304,8 +304,11 @@ class JitsiHealthInternalUrlTests(TestCase):
 
         def fake_urlopen(request, timeout=5):
             captured["url"] = request.full_url
+            captured.setdefault("toutes", []).append(request.full_url)
             class _Resp:
                 status = 200
+                headers = {"Content-Type": "application/javascript"}
+                def read(self_, n=None): return b"var JitsiMeetExternalAPI;"
                 def __enter__(self_): return self_
                 def __exit__(self_, *a): return False
             return _Resp()
@@ -314,8 +317,12 @@ class JitsiHealthInternalUrlTests(TestCase):
             with mock.patch("urllib.request.urlopen", side_effect=fake_urlopen):
                 report = services.jitsi_health()
 
-        self.assertEqual(captured["url"], "http://jitsi-web:80/")
-        self.assertNotIn("localhost", captured["url"])
+        # TOUTES les sondes doivent passer par l'URL interne : une seule
+        # qui repartirait vers le domaine public referait le bug P7.
+        self.assertEqual(captured["toutes"][0], "http://jitsi-web:80/")
+        for sonde in captured["toutes"]:
+            self.assertTrue(sonde.startswith("http://jitsi-web:80"), sonde)
+            self.assertNotIn("localhost", sonde)
         self.assertEqual(report["probed_url"], "http://jitsi-web:80/")
         self.assertTrue(report["reachable"])
         self.assertEqual(report["status"], "operational")
@@ -331,8 +338,11 @@ class JitsiHealthInternalUrlTests(TestCase):
 
         def fake_urlopen(request, timeout=5):
             captured["url"] = request.full_url
+            captured.setdefault("toutes", []).append(request.full_url)
             class _Resp:
                 status = 200
+                headers = {"Content-Type": "application/javascript"}
+                def read(self_, n=None): return b"var JitsiMeetExternalAPI;"
                 def __enter__(self_): return self_
                 def __exit__(self_, *a): return False
             return _Resp()
@@ -341,7 +351,9 @@ class JitsiHealthInternalUrlTests(TestCase):
             with mock.patch("urllib.request.urlopen", side_effect=fake_urlopen):
                 services.jitsi_health()
 
-        self.assertEqual(captured["url"], "http://localhost:8443/")
+        self.assertEqual(captured["toutes"][0], "http://localhost:8443/")
+        for sonde in captured["toutes"]:
+            self.assertTrue(sonde.startswith("http://localhost:8443"), sonde)
 
     def test_instance_interne_injoignable_est_signalee_degradee(self):
         from apps.virtualclass import services
