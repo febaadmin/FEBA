@@ -167,3 +167,46 @@ Pour éviter toute ambiguïté, ces points sont **vérifiés** :
 - `JITSI_APP_SECRET` est absent du bundle construit ;
 - aucun repli `meet.jit.si` n'existe dans le code ;
 - aucune fuite sur `/.env`, `/.git/config`, `/api/env`.
+
+---
+
+## 7. Identité institutionnelle de FEBA French Heritage Academy
+
+Ces deux points ne sont pas des défauts logiciels et ne se corrigent pas
+en écrivant du code. Ils étaient documentés dans les livraisons
+précédentes et le restent : une limitation qu'on cesse d'écrire redevient
+un oubli à la relecture suivante.
+
+### 7.1 Cachet officiel
+
+**Aucun cachet officiel FEBA FHA n'a été fourni ; aucun cachet d'une autre
+académie n'est réutilisé.**
+
+Les documents de l'académie en ligne — reçus, certificats, fiches —
+sortent donc **sans cachet**. Ce n'est pas un oubli et ce n'est pas
+réparable en écrivant du code : le visuel n'existe pas dans les éléments
+transmis.
+
+Apposer `cachet_feba.png` à la place serait pire que l'absence : cette
+image porte en couronne « COMPLEXE SCOLAIRE FAITH & EXCELLENCE BILINGUAL
+ACADEMY ». Sur un certificat de l'académie en ligne, elle y estampille le
+nom d'une autre personne morale — sur la pièce qui fait foi. Un document
+sans cachet se voit et se corrige ; un document au cachet d'un autre
+établissement circule et fait autorité.
+
+**Pour lever cette limitation :** déposer le cachet officiel FHA dans
+`backend/feba_project/static_files/` et renseigner son nom dans
+`ACADEMY_DEFAULTS["FEBA_FHA"]["stamp"]`
+(`backend/apps/schools/branding.py`). Rien d'autre n'est à modifier.
+
+### 7.2 Nom d'établissement sur deux lignes — limitation levée
+
+Cette limitation figurait dans les livraisons précédentes. Elle **est
+levée** : un nom d'établissement de **79 caractères est composé sur deux
+lignes** sans chevauchement ni troncature, l'interligne étant calculé à
+partir de la taille de police au lieu d'être laissé à sa valeur par défaut
+(`backend/apps/payments/pdf_generator.py`).
+
+Elle est maintenue dans ce document uniquement pour dire qu'elle n'a plus
+lieu d'être : la laisser inscrite ferait renoncer quelqu'un à un service
+qui fonctionne.
