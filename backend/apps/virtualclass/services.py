@@ -484,6 +484,45 @@ def jitsi_health(timeout=5):
             result["detail"] = result["checks"][-1]["detail"]
             return result
 
+    # 10. EN-TÊTES RÉELLEMENT SERVIS — pas ceux du dépôt.
+    #
+    # Un fichier nginx correct dans le dépôt ne prouve RIEN sur ce que
+    # l'instance renvoie : `meet.globalfeba.com` est servi par le nginx du
+    # conteneur `jitsi/web`, pas par la configuration hôte du dépôt (qui
+    # appartient à l'autre topologie, « derrière le proxy »). C'est
+    # exactement l'écart que ce contrôle mesure, plutôt que de le
+    # supposer résolu.
+    #
+    # Aucun de ces manques n'empêche une conférence de fonctionner : ils
+    # ne dégradent donc pas l'état global. Ils sont signalés, pas
+    # transformés en panne.
+    attendus = {
+        "strict-transport-security": "HSTS",
+        "x-content-type-options": "X-Content-Type-Options",
+        "referrer-policy": "Referrer-Policy",
+        "content-security-policy": "Content-Security-Policy (frame-ancestors)",
+    }
+    try:
+        request = urllib.request.Request(url, method="GET")
+        with urllib.request.urlopen(request, timeout=timeout) as response:
+            servis = {k.lower(): v for k, v in response.headers.items()}
+        manquants = [nom for cle, nom in attendus.items() if cle not in servis]
+        result["security_headers"] = {
+            cle: servis.get(cle) for cle in attendus
+        }
+        record(
+            "entetes_securite", not manquants,
+            "Tous les en-têtes de sécurité attendus sont servis."
+            if not manquants else
+            "En-têtes absents de la réponse RÉELLE de l'instance : "
+            + ", ".join(manquants)
+            + ". La configuration du dépôt ne les impose pas ici : voir "
+            "JITSI_PRODUCTION_ACTIONS.md.",
+        )
+    except Exception as exc:
+        record("entetes_securite", False,
+               f"En-têtes non lisibles sur {url} : {exc}")
+
     result["status"] = "operational" if result["reachable"] else "degraded"
     if result["status"] == "operational":
         result["detail"] = "Instance auto-hébergée opérationnelle."
