@@ -226,3 +226,115 @@ Chacun transmet `X-Real-IP`, `X-Forwarded-For` et `X-Forwarded-Proto`.
 > cette configuration : `meet.globalfeba.com` ne sert donc
 > vraisemblablement **pas** le fichier du dépôt. Vérifier quel proxy est
 > réellement en place avant de conclure sur la stabilité des réunions.
+
+---
+
+## 8. Compléments V11 — ce qui a été repris et vérifié à nouveau
+
+Le cahier des charges demandait de **ne pas** considérer les corrections
+antérieures comme suffisantes au motif que le code existe. Voici ce que la
+reprise a changé.
+
+### 8.1 Le refus d'accès était « introuvable » au lieu d'expliqué (§20)
+
+`join` passait par `get_object()`, donc par le queryset **filtré par
+rôle**. Un élève visant la salle d'une autre classe recevait 404 sur une
+salle qui existe — et les messages de `assert_can_join` écrits pour ce cas
+étaient **inatteignables** : du code de protection mort, décrivant une
+garantie qu'aucun utilisateur ne rencontrait jamais.
+
+Deux frontières, deux réponses :
+
+| Frontière | Réponse | Raison |
+|---|---|---|
+| autre **académie** | **404** | l'existence n'est pas révélée |
+| autre **classe**, même académie | **403 + motif** | le refus est une décision qu'on explique |
+
+**Mesuré en navigateur :** l'élève lit « Vous n'êtes pas inscrit dans le
+groupe de cette salle. »
+
+### 8.2 Modérateurs, vérifiés rôle par rôle (§21)
+
+Le drapeau `moderator` permet de couper les micros, expulser et terminer
+la réunion. Il est calculé par la vue depuis `role_level`, **sans jamais
+lire le corps de la requête**.
+
+| Rôle | Niveau | Modérateur |
+|---|---|---|
+| superadmin | 100 | oui |
+| admin | 80 | oui |
+| teacher | 50 | oui |
+| parent | 30 | **non** |
+| student | 10 | **non** |
+
+Vérifié aussi au niveau de l'API : un élève qui POSTe
+`{"moderator": true}` reçoit un jeton **sans** modération.
+
+### 8.3 Jeton (§22)
+
+Ajoutés à la couverture existante : émetteur conforme, mauvais émetteur
+rejeté, algorithme `HS256` explicite (contre `alg: none`), jeton non
+signé rejeté, jeton périmé rejeté, durée de vie ≤ 15 min, aucun secret
+dans la charge utile.
+
+### 8.4 Contrôles de santé complétés (§35)
+
+`jitsi_health` annonçait « opérationnel » alors que deux pannes
+fréquentes étaient possibles :
+
+| Sonde ajoutée | Panne qu'elle attrape |
+|---|---|
+| `external_api.js` | le navigateur ne peut ouvrir aucune conférence, alors que l'accueil répond 200 |
+| `/xmpp-websocket` | aucune règle de proxy — « tout le monde entre et personne ne se voit » |
+
+Les deux dérivent leur URL de la **même base** que le contrôle principal :
+les coder sur le domaine public aurait refait la régression P7 — depuis un
+conteneur, `meet.globalfeba.com` n'est pas joignable, et
+`JITSI_INTERNAL_URL` existe pour cela.
+
+Seul un **404** est traité comme une absence de règle. 400, 426 et 501
+sont des réponses normales à un GET sans en-têtes de mise à niveau ; les
+prendre pour des pannes ferait chercher un problème inexistant.
+
+**Mesuré contre la production :** les deux contrôles sont **OK**.
+
+### 8.5 `jitsi_health` pouvait lever
+
+La fonction promet « ne lève JAMAIS » — c'est sa raison d'être, elle
+alimente la page qui sert à diagnostiquer une panne. Le bloc TLS ne
+rattrapait que deux types d'exception : toute autre faisait tomber
+l'écran de diagnostic au moment précis où l'on en a besoin. Corrigé.
+
+### 8.6 Sécurité de l'hôte (§26)
+
+| Chemin | Résultat |
+|---|---|
+| `/.env`, `/.env.local`, `/.git/config`, `/.git/HEAD`, `/api/env`, `/config.json` | **catch-all du SPA Jitsi**, octet pour octet identique à la page d'accueil — **aucune fuite** |
+| Listage de répertoire (`/images/`, `/css/`, `/libs/`, `/static/`) | **aucun** |
+
+Les deux occurrences de « password » trouvées dans la réponse sont des
+options d'interface Jitsi (`roomPasswordNumberOfDigits`), pas des secrets.
+
+| En-tête | Instance en service | Fichier du dépôt |
+|---|---|---|
+| `Strict-Transport-Security` | présent | présent |
+| `X-Content-Type-Options` | `nosniff` | `nosniff` |
+| `Referrer-Policy` | **absent** | présent |
+| `Content-Security-Policy` (`frame-ancestors`) | **absent** | présent |
+
+> **EXTERNAL ACTION REQUIRED.** L'instance en service ne sert pas la
+> configuration du dépôt. L'absence de `frame-ancestors` laisse n'importe
+> quel site intégrer la conférence dans une iframe.
+
+### 8.7 Réseau partagé (§34)
+
+Le défaut historique — « network feba_jitsi_shared declared as external,
+but could not be found » — est traité structurellement :
+
+| Fichier | Rôle |
+|---|---|
+| `docker-compose.yml` | **possède** le réseau (pas d'`external`) — il le crée |
+| `docker-compose.jitsi.yml` | le déclare `external` — il le **rejoint** |
+| `scripts/jitsi_up.sh` | le crée si Jitsi démarre en premier |
+
+Aucune commande manuelle à ne pas oublier sur le chemin documenté.
