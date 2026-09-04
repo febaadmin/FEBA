@@ -140,6 +140,16 @@ if [ -n "$non_exec" ]; then
 fi
 echo "  OK    tous les scripts .sh sont exécutables"
 
+# Empreinte de CHAQUE fichier du projet, déposée dans l'archive. Elle
+# permet de vérifier un fichier isolé après extraction, là où l'empreinte
+# de l'archive ne dit que « intacte ou non » en bloc.
+#
+# Le fichier s'exclut lui-même du calcul : s'y inclure changerait son
+# contenu et invaliderait sa propre ligne.
+(cd "$CIBLE" && find . -type f ! -name SHA256SUMS.txt -print0 \
+   | sort -z | xargs -0 sha256sum > SHA256SUMS.txt)
+echo "  OK    SHA256SUMS.txt ($(wc -l < "$CIBLE/SHA256SUMS.txt") fichiers)"
+
 ARCHIVE="$SORTIE/${NOM}.zip"
 rm -f "$ARCHIVE"
 (cd "$STAGE" && zip -qr "$ARCHIVE" "$NOM")
