@@ -10,7 +10,6 @@ import { useAuthStore } from "../../store/authStore";
 import PageHeader from "../../components/ui/PageHeader";
 import Modal from "../../components/ui/Modal";
 import ConfirmDialog from "../../components/ui/ConfirmDialog";
-import JitsiMeeting from "../../components/JitsiMeeting";
 import { extractApiError } from "../../utils/errors";
 import { t, getLang } from "../../i18n";
 import JitsiInfrastructureBanner from "../../components/JitsiInfrastructureBanner";
@@ -42,7 +41,7 @@ export default function VirtualRooms() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editItem, setEditItem] = useState(null);
   const [deleteItem, setDeleteItem] = useState(null);
-  const [activeMeeting, setActiveMeeting] = useState(null); // {room_code, join_domain, name}
+
 
   const { register, handleSubmit, reset, formState: { errors } } = useForm();
 
@@ -72,7 +71,7 @@ export default function VirtualRooms() {
   }, [rooms]);
 
   const closeModal = () => { setModalOpen(false); setEditItem(null); reset(); };
-  const openCreate = () => { reset({ duration_minutes: 60 }); setModalOpen(true); };
+  const openCreate = () => { reset({ duration_minutes: 60, target_roles: [] }); setModalOpen(true); };
   const openEdit = (r) => {
     setEditItem(r);
     reset({
@@ -82,6 +81,7 @@ export default function VirtualRooms() {
       subject: r.subject || "",
       scheduled_at: r.scheduled_at ? r.scheduled_at.slice(0, 16) : "",
       duration_minutes: r.duration_minutes,
+      target_roles: r.target_roles || [],
     });
     setModalOpen(true);
   };
@@ -91,6 +91,12 @@ export default function VirtualRooms() {
     class_obj: d.class_obj || null,
     subject: d.subject || null,
     scheduled_at: d.scheduled_at || null,
+    // Un groupe de cases à cocher renvoie `false` quand rien n'est coché,
+    // et une chaîne quand une seule l'est. Le backend attend une liste :
+    // sans cette normalisation, il recevrait `false` et refuserait.
+    target_roles: Array.isArray(d.target_roles)
+      ? d.target_roles.filter(Boolean)
+      : (d.target_roles ? [d.target_roles] : []),
   });
 
   const createMut = useMutation({
@@ -108,14 +114,34 @@ export default function VirtualRooms() {
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["virtual-rooms"] }); toast.success(t("Salle supprimée.")); setDeleteItem(null); },
     onError: (e) => toast.error(extractApiError(e)),
   });
-  const joinMut = useMutation({
-    mutationFn: virtualAPI.join,
-    onSuccess: ({ data }) => {
-      qc.invalidateQueries({ queryKey: ["virtual-rooms"] });
-      setActiveMeeting(data);
-    },
-    onError: (e) => toast.error(extractApiError(e)),
-  });
+  /**
+   * Ouvre la conférence DANS UN NOUVEL ONGLET.
+   *
+   * `window.open` est appelé SYNCHRONEMENT dans le gestionnaire de clic,
+   * avant tout appel réseau. C'est la seule façon qu'un navigateur
+   * considère l'ouverture comme voulue par l'utilisateur : ouvrir après
+   * un `await` fait bloquer l'onglet par le bloqueur de fenêtres
+   * surgissantes, silencieusement.
+   *
+   * L'adhésion elle-même (`virtualAPI.join`) est faite PAR l'onglet
+   * ouvert : le jeton reste ainsi hors de l'URL, et une seule
+   * participation est enregistrée.
+   */
+  const ouvrirConference = (roomId) => {
+    const onglet = window.open(`/virtual-room/${roomId}/join`, "_blank", "noopener");
+    if (!onglet) {
+      // Pas d'écran noir silencieux : on dit ce qui s'est passé et quoi
+      // faire. C'est le cas le plus fréquent sur un poste d'école.
+      toast.error(
+        t("Votre navigateur a bloqué l'ouverture de la salle. Autorisez les fenêtres surgissantes pour ce site, puis réessayez."),
+        { duration: 8000 },
+      );
+      return;
+    }
+    // La liste se met à jour (statut « en cours », participants) sans
+    // rien imposer à l'onglet de conférence, qui vit désormais à part.
+    qc.invalidateQueries({ queryKey: ["virtual-rooms"] });
+  };
   const endMut = useMutation({
     mutationFn: virtualAPI.end,
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["virtual-rooms"] }); toast.success(t("Réunion clôturée.")); },
@@ -199,8 +225,7 @@ export default function VirtualRooms() {
                       <div className="flex items-center gap-1 justify-end">
                         {r.status !== "ended" && r.status !== "cancelled" && (
                           <button
-                            onClick={() => joinMut.mutate(r.id)}
-                            disabled={joinMut.isPending}
+                            onClick={() => ouvrirConference(r.id)}
                             className="btn-primary flex items-center gap-1.5 !py-1.5 !px-3 text-xs"
                           >
                             <Video className="w-3.5 h-3.5" />{t("Rejoindre")}</button>
@@ -267,6 +292,35 @@ export default function VirtualRooms() {
                 </select>
               </div>
             </div>
+            {/* Ciblage par RÔLE.
+                Une salle sans classe visait « toute l'école » — élèves
+                compris. Une réunion pédagogique n'avait donc aucun moyen
+                d'être réservée à l'équipe. Rien de coché = comportement
+                historique : tous les rôles autorisés par ailleurs. */}
+            <div>
+              <label className="label">{t("Réservée à (facultatif)")}</label>
+              <div className="flex flex-wrap gap-3 mt-1">
+                {[
+                  ["admin", t("Administration")],
+                  ["teacher", t("Enseignants")],
+                  ["student", t("Élèves")],
+                  ["parent", t("Parents")],
+                ].map(([code, label]) => (
+                  <label key={code} className="flex items-center gap-2 text-sm text-slate-600">
+                    <input
+                      type="checkbox"
+                      value={code}
+                      {...register("target_roles")}
+                      className="rounded border-slate-300"
+                    />
+                    {label}
+                  </label>
+                ))}
+              </div>
+              <p className="text-xs text-slate-500 mt-1">
+                {t("Aucune case cochée = ouverte à tous les profils autorisés.")}
+              </p>
+            </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="label">{t("Date / heure (vide = permanente)")}</label>
@@ -295,20 +349,6 @@ export default function VirtualRooms() {
         message={`Supprimer la salle "${deleteItem?.name}" ? L'historique des participations sera perdu.`}
       />
 
-      {activeMeeting && (
-        <JitsiMeeting
-          roomName={activeMeeting.room_code}
-          domain={activeMeeting.join_domain}
-          displayName={user ? `${user.first_name || ""} ${user.last_name || ""}`.trim() || user.username : ""}
-          subject={activeMeeting.name}
-          jwt={activeMeeting.jwt || null}
-          onClose={() => {
-            // FIX v35 : clôture de la participation (left_at + durée)
-            virtualAPI.leave(activeMeeting.id).catch(() => {});
-            setActiveMeeting(null);
-          }}
-        />
-      )}
     </div>
   );
 }

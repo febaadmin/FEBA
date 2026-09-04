@@ -15,6 +15,15 @@ class ClassSerializer(AcademyMetadataMixin, serializers.ModelSerializer):
     has_bilingual    = serializers.SerializerMethodField()
     fr_subject_count = serializers.SerializerMethodField()
     en_subject_count = serializers.SerializerMethodField()
+    # Parcours linguistique DÉCLARÉ, et ce qui lui manque réellement.
+    # `missing_languages` remplace le message « français ET anglais
+    # obligatoires » : celui-ci était faux pour une classe monolingue, à
+    # laquelle on reprochait sans fin l'absence d'une langue non enseignée.
+    language_track_display = serializers.CharField(
+        source="get_language_track_display", read_only=True)
+    expected_languages = serializers.SerializerMethodField()
+    missing_languages  = serializers.SerializerMethodField()
+    language_config_ok = serializers.SerializerMethodField()
 
     # IDs pour écriture — ListField simple, pas de queryset au niveau classe
     subject_ids = serializers.ListField(
@@ -32,6 +41,8 @@ class ClassSerializer(AcademyMetadataMixin, serializers.ModelSerializer):
             "student_count",
             "subjects_detail", "subject_ids",
             "has_bilingual", "fr_subject_count", "en_subject_count",
+            "language_track", "language_track_display",
+            "expected_languages", "missing_languages", "language_config_ok",
             "created_at",
         ] + ACADEMY_FIELDS
 
@@ -55,6 +66,15 @@ class ClassSerializer(AcademyMetadataMixin, serializers.ModelSerializer):
 
     def get_has_bilingual(self, obj):
         return obj.has_bilingual_subjects()
+
+    def get_expected_languages(self, obj):
+        return list(obj.expected_subject_languages())
+
+    def get_missing_languages(self, obj):
+        return obj.missing_subject_languages()
+
+    def get_language_config_ok(self, obj):
+        return obj.is_language_configuration_complete()
 
     def get_fr_subject_count(self, obj):
         return obj.get_fr_subjects().count()

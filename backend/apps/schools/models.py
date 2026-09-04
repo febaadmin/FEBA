@@ -353,6 +353,34 @@ class SchoolYear(models.Model):
     def save(self, *args, **kwargs):
         if self.is_current:
             SchoolYear.objects.filter(school=self.school, is_current=True).update(is_current=False)
+        else:
+            # FIX v41 — LA PREMIÈRE ANNÉE D'UNE ACADÉMIE EST ACTIVE.
+            #
+            # Sans cela, une académie pouvait avoir une année et AUCUNE
+            # année active : l'administrateur crée l'entité, ajoute
+            # « 2026-2027 », crée ses classes, et ne clique jamais sur
+            # « Activer » — rien ne le lui demande. Toutes les listes
+            # déroulantes de classes tombaient alors à zéro, en silence.
+            #
+            # DEUX GARDES, chacune indispensable :
+            #
+            #  1. `_state.adding` — uniquement à la CRÉATION. Une année qui
+            #     existe déjà et qu'on enregistre à is_current=False est
+            #     une année qu'on ferme DÉLIBÉRÉMENT (bouton « Clôturer »).
+            #     La réactiver ici rendait la clôture impossible : on la
+            #     fermait, elle se rouvrait dans le même appel.
+            #  2. aucune autre année active — créer une seconde année ne
+            #     doit pas déplacer l'année de travail sous les pieds de
+            #     l'établissement.
+            #
+            # Une académie dont toutes les années sont closes n'est PAS
+            # rattrapée ici, et c'est voulu : `academic_year.active_year()`
+            # se replie alors sur l'année la plus récente pour l'affichage,
+            # sans jamais rouvrir ce qu'un administrateur a fermé.
+            if self._state.adding and not SchoolYear.objects.filter(
+                school=self.school, is_current=True
+            ).exists():
+                self.is_current = True
         super().save(*args, **kwargs)
 
 

@@ -114,6 +114,7 @@ const StudentProfile = lazy(() => import("../pages/student/Profile"));
 // Shared pages
 const SharedAnnouncements = lazy(() => import("../pages/shared/Announcements"));
 const VirtualRooms = lazy(() => import("../pages/shared/VirtualRooms"));
+const VirtualRoomSession = lazy(() => import("../pages/shared/VirtualRoomSession"));
 const ForcePasswordChange = lazy(() => import("../pages/shared/ForcePasswordChange"));
 
 // ── Guard: vérifie l'authentification et le rôle ──────────────────────────
@@ -222,6 +223,25 @@ export default function AppRouter() {
     <Routes>
       <Route path="/login" element={<LoginPage />} />
       <Route path="/change-password-required" element={<ForcePasswordChangeRoute />} />
+
+      {/* ── Conférence : un onglet à elle seule ────────────────────────
+          Montée À LA RACINE, sans layout : ni barre latérale, ni en-tête,
+          ni tableau de bord derrière. Ce n'est pas une préférence
+          esthétique. Dans la modale, la conférence vivait dans l'arbre
+          React du tableau de bord, dont la liste des salles se
+          rafraîchit toutes les 30 secondes : chaque rafraîchissement
+          détruisait et recréait la conférence, et l'utilisateur revenait
+          à « Rejoindre la réunion » en laissant une identité de plus
+          derrière lui. Ici, rien de tout cela ne l'atteint.
+
+          Tous les rôles y ont accès : ce sont `assert_can_join` et le
+          JWT signé côté serveur qui décident qui entre réellement, pas
+          la route. */}
+      <Route path="/virtual-room/:id/join" element={
+        <ProtectedRoute allowedRoles={["superadmin", "admin", "teacher", "student", "parent"]}>
+          <VirtualRoomSession />
+        </ProtectedRoute>
+      } />
 
       {/* ── Site vitrine public (P4) : « / » est désormais le site public.
           La connexion à l'ERP se fait via le bouton « Connexion » du menu.

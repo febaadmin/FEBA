@@ -154,9 +154,40 @@ def assert_can_join(user, room):
     if not room.is_active or room.status == "cancelled":
         raise JitsiAccessDenied("Cette salle n'est plus disponible.")
 
-    # 5. Appartenance au groupe / à la classe.
+    # 5. Ciblage par RÔLE.
+    #
+    # Une salle réservée à l'équipe pédagogique ne doit pas être ouverte à
+    # tous les élèves de l'académie parce qu'elle n'est rattachée à aucune
+    # classe. Liste vide = aucun filtre, comportement historique.
+    target_roles = list(getattr(room, "target_roles", None) or [])
+    if target_roles and not user.is_superadmin():
+        if user.role not in target_roles:
+            raise JitsiAccessDenied(
+                "Cette salle est réservée à d'autres profils "
+                f"({', '.join(sorted(target_roles))})."
+            )
+
+    # 6. Appartenance au groupe / à la classe.
     if room.class_obj_id is not None:
-        if user.role == "student":
+        # UN ENSEIGNANT N'EST PAS AUTOMATIQUEMENT CHEZ LUI.
+        #
+        # Le contrôle ne portait que sur les élèves et les parents : tout
+        # enseignant de l'académie pouvait donc entrer dans le cours d'une
+        # classe qui ne lui est pas confiée. Un enseignant reste
+        # modérateur, mais des classes qu'on lui a réellement affectées.
+        if user.role == "teacher":
+            teacher = getattr(user, "teacher_profile", None)
+            assigned = False
+            if teacher is not None:
+                assigned = teacher.classes.filter(pk=room.class_obj_id).exists()
+            # Le créateur de la salle y garde accès : il l'a ouverte pour
+            # une classe qu'il encadre ponctuellement (remplacement,
+            # soutien) sans en être titulaire.
+            if not assigned and room.created_by_id != user.id:
+                raise JitsiAccessDenied(
+                    "Cette classe ne vous est pas affectée."
+                )
+        elif user.role == "student":
             student = getattr(user, "student_profile", None)
             if student is None or student.current_class_id != room.class_obj_id:
                 raise JitsiAccessDenied(

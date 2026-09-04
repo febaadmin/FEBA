@@ -113,7 +113,7 @@ export default function AdminClasses() {
   const openCreate = () => {
     // FIX v38 : l'année scolaire est pré-sélectionnée (année filtrée sur la
     // page, sinon année active) — la modale ne s'ouvre plus avec un champ vide.
-    reset({ max_students: 30, school_year: yearFilter || activeYearId || "" });
+    reset({ max_students: 30, language_track: "BILINGUAL", school_year: yearFilter || activeYearId || "" });
     setEditItem(null);
     setModalOpen(true);
   };
@@ -125,6 +125,7 @@ export default function AdminClasses() {
       level: c.level,
       school_year: c.school_year,
       max_students: c.max_students,
+      language_track: c.language_track || "BILINGUAL",
     });
     setModalOpen(true);
   };
@@ -305,9 +306,22 @@ export default function AdminClasses() {
                 )} />
             </div>
           </div>
-          <div>
-            <label className="label">{t("Capacité max")}</label>
-            <input {...register("max_students")} type="number" className="input" />
+          <div className="grid sm:grid-cols-2 gap-4">
+            <div>
+              <label className="label">{t("Capacité max")}</label>
+              <input {...register("max_students")} type="number" className="input" />
+            </div>
+            <div>
+              <label className="label">{t("Parcours linguistique")}</label>
+              <select {...register("language_track")} className="input">
+                <option value="BILINGUAL">{t("Bilingue (français et anglais)")}</option>
+                <option value="FRANCOPHONE">{t("Francophone")}</option>
+                <option value="ANGLOPHONE">{t("Anglophone")}</option>
+              </select>
+              <p className="text-xs text-slate-500 mt-1">
+                {t("Détermine les matières attendues et la forme du bulletin.")}
+              </p>
+            </div>
           </div>
           <div className="flex gap-3 justify-end pt-2">
             <button type="button" onClick={closeModal} className="btn-secondary">{t("Annuler")}</button>
@@ -319,26 +333,54 @@ export default function AdminClasses() {
       {/* Modal gestion matières */}
       <Modal open={!!subjectModal} onClose={() => setSubjectModal(null)} title={`Matières — ${subjectModal?.name || ""}`} size="lg">
         <div className="space-y-5">
-          <p className="text-sm text-slate-500">{t("Sélectionnez les matières assignées à cette classe.")}<strong className="text-slate-700"> {t("Au moins une matière française et une matière anglaise sont obligatoires")}</strong> pour le calcul bilingue.
-          </p>
-
-          {/* Vérif bilingue */}
+          {/* Ce qui est ATTENDU dépend du parcours DÉCLARÉ de la classe.
+              La phrase « au moins une matière française ET une anglaise
+              sont obligatoires » était fausse pour une classe monolingue :
+              on lui reprochait sans fin l'absence d'une langue qu'elle
+              n'enseigne pas, et le reproche ne pouvait jamais être levé. */}
           {subjectModal && (() => {
+            const track = subjectModal.language_track || "BILINGUAL";
+            const libelle = {
+              BILINGUAL: t("Cette classe est bilingue : une matière française et une matière anglaise sont attendues."),
+              FRANCOPHONE: t("Cette classe est francophone : seules les matières françaises sont attendues."),
+              ANGLOPHONE: t("Cette classe est anglophone : seules les matières anglaises sont attendues."),
+            }[track];
+            return (
+              <p className="text-sm text-slate-500">
+                {t("Sélectionnez les matières assignées à cette classe.")}{" "}
+                <strong className="text-slate-700">{libelle}</strong>
+              </p>
+            );
+          })()}
+
+          {/* Vérif du parcours — uniquement sur les langues attendues */}
+          {subjectModal && (() => {
+            const track = subjectModal.language_track || "BILINGUAL";
+            const attend = { BILINGUAL: ["fr", "en"], FRANCOPHONE: ["fr"], ANGLOPHONE: ["en"] }[track] || ["fr", "en"];
             const frSel = selectedSubjects.filter(id => frSubjects.some(s => s.id === id));
             const enSel = selectedSubjects.filter(id => enSubjects.some(s => s.id === id));
-            if (frSel.length === 0 || enSel.length === 0) {
+            const compte = { fr: frSel.length, en: enSel.length };
+            // Une phrase entière par langue : découper « Aucune matière »
+            // + « française » + « sélectionnée. » en trois t() donnait un
+            // anglais bancal, l'ordre des mots n'étant pas le même.
+            const manque = {
+              fr: t("Aucune matière française sélectionnée."),
+              en: t("Aucune matière anglaise sélectionnée."),
+            };
+            const manquantes = attend.filter((lang) => compte[lang] === 0);
+
+            if (manquantes.length > 0) {
               return (
-                <div className="flex items-center gap-2 bg-orange-50 border border-orange-200 text-orange-700 rounded-xl p-3 text-sm">
+                <div className="flex items-center gap-2 bg-orange-50 border border-orange-200 text-orange-700 rounded-xl p-3 text-sm" data-testid="matieres-incompletes">
                   <AlertCircle className="w-4 h-4 shrink-0" />
-                  {frSel.length === 0 ? "Aucune matière française sélectionnée." : ""}
-                  {enSel.length === 0 ? " Aucune matière anglaise sélectionnée." : ""}
+                  {manquantes.map((lang) => manque[lang]).join(" ")}
                 </div>
               );
             }
             return (
-              <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-xl p-3 text-sm">
+              <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-xl p-3 text-sm" data-testid="matieres-completes">
                 <CheckCircle className="w-4 h-4 shrink-0" />
-                Classe bilingue ✓ — {frSel.length} matière(s) FR · {enSel.length} matière(s) EN
+                {t("Configuration complète")} ✓ — {attend.map((lang) => t("{n} matière(s) {lang}", { n: compte[lang], lang: lang.toUpperCase() })).join(" · ")}
               </div>
             );
           })()}
