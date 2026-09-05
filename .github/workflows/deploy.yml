@@ -153,14 +153,14 @@ jobs:
             --env-file .env.prod \
             -f docker-compose.prod.yml \
             exec -T backend-prod \
-            python manage.py check
+            python manage.py check </dev/null
 
           echo "==> Vérification des migrations restantes"
           migration_plan="$(docker compose \
             --env-file .env.prod \
             -f docker-compose.prod.yml \
             exec -T backend-prod \
-            python manage.py migrate --plan)"
+            python manage.py migrate --plan </dev/null)"
 
           printf '%s\n' "$migration_plan"
 
