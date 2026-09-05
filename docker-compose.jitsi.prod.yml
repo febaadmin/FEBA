@@ -70,14 +70,14 @@ services:
       - CSP_HEADER=${JITSI_CSP_HEADER:-frame-ancestors 'self' https://globalfeba.com https://www.globalfeba.com}
     volumes:
       # Point d'extension prévu par l'image : son gabarit contient
-      # `include /run/web/config/nginx-custom/*.conf;` au niveau server.
+      # `include /config/nginx-custom/*.conf;` au niveau server.
       # C'est le seul moyen d'ajouter des en-têtes dans CETTE topologie,
       # où le nginx du conteneur répond directement — le fichier
       # nginx/sites-available/ du dépôt appartient à l'autre topologie et
       # n'est jamais lu ici.
       #
       # Lecture seule : le conteneur n'a aucune raison d'y écrire.
-      - ./jitsi/nginx-custom:/run/web/config/nginx-custom:ro
+      - ./jitsi/nginx-custom:/config/nginx-custom:ro
     restart: always
     logging: &prod_logging
       driver: json-file
