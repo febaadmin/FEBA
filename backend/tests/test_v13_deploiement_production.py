@@ -64,12 +64,12 @@ class ScriptDeDeploiementTests(SimpleTestCase):
         LE CONTRÔLE CENTRAL.
 
         Toute la configuration des en-têtes repose sur
-        `include /run/web/config/nginx-custom/*.conf` du gabarit de
+        `include /config/nginx-custom/*.conf` du gabarit de
         jitsi/web. Ce point d'extension existe dans le gabarit publié par
         Jitsi, mais l'image `:stable` déployée peut être plus ancienne.
         Le script doit REGARDER, pas parier.
         """
-        self.assertIn("/run/web/config/nginx-custom", self.script)
+        self.assertIn("/config/nginx-custom", self.script)
         self.assertIn("/defaults/meet.conf", self.script)
         self.assertIn("nginx -T", self.script)
 

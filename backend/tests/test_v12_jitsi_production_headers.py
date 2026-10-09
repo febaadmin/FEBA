@@ -91,7 +91,7 @@ class TopologieServeurDedieTests(SimpleTestCase):
         self.compose = read_repo_file("docker-compose.jitsi.prod.yml")
 
     def test_le_point_d_extension_est_monte(self):
-        self.assertIn("/run/web/config/nginx-custom", self.compose)
+        self.assertIn("/config/nginx-custom", self.compose)
         # Lecture seule : le conteneur n'a aucune raison d'y écrire.
         self.assertIn("nginx-custom:ro", self.compose)
 

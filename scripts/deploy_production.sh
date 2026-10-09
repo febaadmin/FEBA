@@ -167,7 +167,7 @@ sleep 10
 #
 # L'image `jitsi/web` inclut, dans le gabarit de son vhost :
 #
-#     include /run/web/config/nginx-custom/*.conf;
+#     include /config/nginx-custom/*.conf;
 #
 # C'est le point d'extension sur lequel repose toute la configuration des
 # en-têtes. Il est présent dans le gabarit publié par Jitsi, mais l'image
@@ -176,10 +176,10 @@ sleep 10
 titre "Point d'extension nginx-custom — vérification dans le conteneur"
 SERVICE="jitsi-web"
 
-if docker compose $JITSI_COMPOSE exec -T "$SERVICE" test -d /run/web/config/nginx-custom 2>/dev/null; then
-  ok "/run/web/config/nginx-custom est monté dans le conteneur"
+if docker compose $JITSI_COMPOSE exec -T "$SERVICE" test -d /config/nginx-custom 2>/dev/null; then
+  ok "/config/nginx-custom est monté dans le conteneur"
 else
-  echec "/run/web/config/nginx-custom ABSENT du conteneur — le montage n'a pas pris"
+  echec "/config/nginx-custom ABSENT du conteneur — le montage n'a pas pris"
 fi
 
 if docker compose $JITSI_COMPOSE exec -T "$SERVICE" \
