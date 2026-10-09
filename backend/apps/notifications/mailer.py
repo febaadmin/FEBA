@@ -199,3 +199,18 @@ def resend(delivery, text_body, html_body=None, attachments=None):
     delivery.backend = getattr(settings, "EMAIL_BACKEND", "")
     delivery.save(update_fields=["attempts", "status", "backend", "updated_at"])
     return _attempt(delivery, text_body, html_body, attachments)
+
+
+def retry_due(delivery, text_body, html_body=None, attachments=None):
+    """
+    Nouvelle tentative AUTOMATIQUE d'un envoi programmé en « retry ».
+
+    Contrairement à `resend()`, le compteur n'est pas remis à zéro : après
+    MAX_ATTEMPTS, l'envoi passe en échec définitif et attend une décision
+    humaine. Sans cette fonction (et la tâche qui l'appelle), le statut
+    « Nouvel essai programmé » était une promesse : aucune tâche ne
+    relisait `next_retry_at`.
+    """
+    delivery.backend = getattr(settings, "EMAIL_BACKEND", "")
+    delivery.save(update_fields=["backend", "updated_at"])
+    return _attempt(delivery, text_body, html_body, attachments)

@@ -619,3 +619,16 @@ export const virtualAPI = {
   leave: (id)        => api.post(`/virtual-rooms/${id}/leave/`),
   participants: (id) => api.get(`/virtual-rooms/${id}/participants/`),
 };
+
+/* ── Envois d'e-mails groupés par académie (P1) ────────────────────────
+   Le navigateur n'envoie que des RÈGLES d'audience : la liste des
+   destinataires est recalculée et revalidée par le serveur. */
+export const massEmailAPI = {
+  options:    (academyId)        => api.get("/mass-email/options/", { params: { academy_id: academyId || undefined } }),
+  recipients: (academyId, p)     => api.get("/mass-email/recipients/", { params: { academy_id: academyId || undefined, ...p } }),
+  preview:    (d)                => api.post("/mass-email/preview/", d),
+  campaigns:  (academyId)        => api.get("/mass-email/campaigns/", { params: { academy_id: academyId || undefined } }),
+  create:     (d)                => api.post("/mass-email/campaigns/", d),
+  campaign:   (id, academyId)    => api.get(`/mass-email/campaigns/${id}/`, { params: { academy_id: academyId || undefined } }),
+  retryFailed:(id, academyId)    => api.post(`/mass-email/campaigns/${id}/retry-failed/`, { academy_id: academyId || undefined }),
+};
