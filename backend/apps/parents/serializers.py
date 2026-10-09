@@ -2,7 +2,9 @@ from rest_framework import serializers
 from django.db import transaction, IntegrityError
 from apps.accounts.models import CustomUser
 from .models import Parent, ParentStudent
-from apps.core.academy_serializers import ACADEMY_FIELDS, AcademyMetadataMixin
+from apps.core.academy_serializers import (
+    ACADEMY_FIELDS, AcademyMetadataMixin, StudentAgeMixin,
+)
 
 
 class NestedStudentSerializer(serializers.Serializer):
@@ -12,6 +14,9 @@ class NestedStudentSerializer(serializers.Serializer):
     last_name = serializers.CharField(read_only=True)
     matricule = serializers.CharField(read_only=True)
     gender = serializers.CharField(read_only=True)
+    date_of_birth = serializers.DateField(read_only=True)
+    age = serializers.SerializerMethodField()
+    age_status = serializers.SerializerMethodField()
     full_name = serializers.SerializerMethodField()
     class_id = serializers.SerializerMethodField()
     class_name = serializers.SerializerMethodField()
@@ -20,6 +25,14 @@ class NestedStudentSerializer(serializers.Serializer):
 
     def get_full_name(self, obj):
         return obj.get_full_name()
+
+    def get_age(self, obj):
+        from apps.core.age import age_info
+        return age_info(obj.date_of_birth, obj.school)["age"]
+
+    def get_age_status(self, obj):
+        from apps.core.age import age_info
+        return age_info(obj.date_of_birth, obj.school)["age_status"]
 
     def get_class_id(self, obj):
         return obj.current_class_id if obj.current_class else None
@@ -37,8 +50,9 @@ class NestedStudentSerializer(serializers.Serializer):
         return None
 
 
-class ParentStudentSerializer(serializers.ModelSerializer):
+class ParentStudentSerializer(StudentAgeMixin, serializers.ModelSerializer):
     student_name = serializers.CharField(source="student.get_full_name", read_only=True)
+    relationship_label = serializers.CharField(source="get_relationship_display", read_only=True)
     parent_name  = serializers.CharField(source="parent.user.get_full_name", read_only=True)
     class_name   = serializers.SerializerMethodField()
     # FIX: nested student details so the frontend Children.jsx can access link.student_detail
@@ -93,8 +107,12 @@ class ParentSerializer(AcademyMetadataMixin, serializers.ModelSerializer):
             return obj.user.photo.url
         return None
 
+    # Les trois méthodes suivantes lisent `children_links.all()` TEL QUEL :
+    # la vue le précharge. Un `.select_related()` ou un `.count()` sur la
+    # relation relançait une requête par parent — trois par ligne, soit
+    # plusieurs centaines de requêtes pour la liste des parents.
     def get_children_count(self, obj):
-        return obj.children_links.count()
+        return len(obj.children_links.all())
 
     def get_children_names(self, obj):
         return [
@@ -104,13 +122,11 @@ class ParentSerializer(AcademyMetadataMixin, serializers.ModelSerializer):
                 "last_name": link.student.last_name,
                 "full_name": link.student.get_full_name(),
             }
-            for link in obj.children_links.select_related("student").all()
+            for link in obj.children_links.all()
         ]
 
     def get_children_links(self, obj):
-        links = obj.children_links.select_related(
-            "student__current_class__level", "student__school_year"
-        ).all()
+        links = obj.children_links.all()
         return ParentStudentSerializer(
             links, many=True, context=self.context
         ).data

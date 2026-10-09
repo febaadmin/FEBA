@@ -66,10 +66,23 @@ export default function DataTable({
   const filtered = data.filter(row =>
     tableColumns.some(col => String(col.accessor ? (row[col.accessor] ?? "") : "").toLowerCase().includes(search.toLowerCase()))
   );
+  // Tri : une colonne peut fournir `sortValue(row)` (date réelle, âge
+  // numérique…). Sans cela, le tri textuel classait « 10 ans » avant
+  // « 9 ans » et une date « 09/10/2026 » avant « 10/01/2025 ». Les valeurs
+  // inconnues (null) restent en fin de liste dans les deux sens.
+  const sortKeyOf = c => c.sortKey || c.accessor || (c.sortValue ? c.key : undefined);
+  const sortColumn = tableColumns.find(c => sortKeyOf(c) === sortCol);
+  const valueOf = row => (sortColumn?.sortValue ? sortColumn.sortValue(row) : row[sortCol]);
   const sorted = sortCol
     ? [...filtered].sort((a, b) => {
-        const av = a[sortCol] ?? ""; const bv = b[sortCol] ?? "";
-        return sortDir === "asc" ? String(av).localeCompare(String(bv)) : String(bv).localeCompare(String(av));
+        const av = valueOf(a); const bv = valueOf(b);
+        const aMissing = av === null || av === undefined || av === "";
+        const bMissing = bv === null || bv === undefined || bv === "";
+        if (aMissing || bMissing) return aMissing === bMissing ? 0 : (aMissing ? 1 : -1);
+        const cmp = (typeof av === "number" && typeof bv === "number")
+          ? av - bv
+          : String(av).localeCompare(String(bv), undefined, { numeric: true });
+        return sortDir === "asc" ? cmp : -cmp;
       })
     : filtered;
 
@@ -115,11 +128,11 @@ export default function DataTable({
                 </th>
               )}
               {tableColumns.map(col => (
-                <th key={col.key} onClick={() => col.sortable !== false && toggleSort(col.accessor)}
+                <th key={col.key} onClick={() => { const k = sortKeyOf(col); if (col.sortable !== false && k) toggleSort(k); }}
                   className={clsx("px-4 py-3 text-left font-semibold text-slate-600", col.sortable !== false && "cursor-pointer hover:text-primary select-none")}>
                   <div className="flex items-center gap-1">
                     {col.label}
-                    {sortCol === col.accessor && (sortDir === "asc" ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />)}
+                    {sortCol && sortCol === sortKeyOf(col) && (sortDir === "asc" ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />)}
                   </div>
                 </th>
               ))}

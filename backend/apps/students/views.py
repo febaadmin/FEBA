@@ -504,6 +504,34 @@ class StudentEnrollmentViewSet(BulkDeleteMixin, viewsets.ModelViewSet):
     filterset_fields = ['student', 'school_year', 'class_obj']
     tenant_lookup = 'student__school'
 
+    def perform_create(self, serializer):
+        """
+        `student` est en lecture seule dans le serializer : sans cette
+        méthode, un POST sur /students/enrollments/ échouait en erreur 500
+        (contrainte NOT NULL). L'élève est lu dans la requête puis
+        revalidé dans la portée de l'académie — jamais pris tel quel.
+        """
+        from rest_framework.exceptions import ValidationError
+
+        school = get_request_school(self.request)
+        students = Student.objects.all()
+        if school is not None:
+            students = students.filter(school=school)
+        elif not self.request.user.is_superadmin():
+            students = students.none()
+        student = students.filter(pk=self.request.data.get('student')).first()
+        if student is None:
+            raise ValidationError({'student': "Élève introuvable dans votre établissement."})
+        year = serializer.validated_data.get('school_year')
+        if year is not None and year.school_id != student.school_id:
+            raise ValidationError({'school_year': "Cette année appartient à un autre établissement."})
+        class_obj = serializer.validated_data.get('class_obj')
+        if class_obj is not None and class_obj.school_year_id != getattr(year, 'id', None):
+            raise ValidationError({'class_obj': "Cette classe n'appartient pas à l'année choisie."})
+        if StudentEnrollment.objects.filter(student=student, school_year=year).exists():
+            raise ValidationError({'school_year': "Cet élève est déjà inscrit pour cette année."})
+        serializer.save(student=student)
+
     def perform_destroy(self, instance):
         """
         FIX v34 — supprimer une inscription annuelle ne touche qu'à CETTE
@@ -523,7 +551,7 @@ class StudentEnrollmentViewSet(BulkDeleteMixin, viewsets.ModelViewSet):
 
     def get_queryset(self):
         school = get_request_school(self.request)
-        qs = StudentEnrollment.objects.select_related('student', 'school_year', 'class_obj').all()
+        qs = StudentEnrollment.objects.select_related('student__school', 'school_year', 'class_obj').all()
         if school is not None:
             qs = qs.filter(student__school=school)
         elif not self.request.user.is_superadmin():

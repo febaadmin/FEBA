@@ -171,7 +171,7 @@ class ClassViewSet(viewsets.ModelViewSet):
     def students(self, request, pk=None):
         from apps.students.serializers import StudentSerializer
         cls = self.get_object()
-        students = cls.students.filter(is_active=True).select_related("user", "school_year")
+        students = cls.students.filter(is_active=True).select_related("user", "school_year", "school")
         return Response(StudentSerializer(students, many=True).data)
 
     @action(detail=True, methods=["get"])

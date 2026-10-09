@@ -378,7 +378,7 @@ def _add_student_info(story, student, period, school_year, palette):
         [lbl('Nom / Name:'), val(student.get_full_name()), lbl('Matricule:'), val(student.matricule)],
         [lbl('Classe / Class:'), val(class_name), lbl('Niveau / Level:'), val(level_name)],
         [lbl('Période / Period:'), val(_period_label(period)), lbl('Année / Year:'), val(school_year.name)],
-        [lbl('Date de naissance:'), val(str(student.date_of_birth) if student.date_of_birth else '—'),
+        [lbl('Date de naissance:'), val(student.date_of_birth.strftime('%d/%m/%Y') if student.date_of_birth else '—'),
          lbl('Sexe / Gender:'), val(student.get_gender_display() if student.gender else '—')],
     ]
     info_tbl = Table(info, colWidths=[3.5 * cm, 5.8 * cm, 3.5 * cm, 5.7 * cm])

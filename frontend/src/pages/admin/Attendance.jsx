@@ -14,6 +14,7 @@ import { extractApiError } from "../../utils/errors";
 import { t } from "../../i18n";
 import { useSchoolYearScope } from "../../hooks/useSchoolYearScope";
 
+import { ageColumn, studentOptionLabel } from "../../utils/age";
 export default function AdminAttendance() {
   const qc = useQueryClient();
   const [modalOpen, setModalOpen] = useState(false);
@@ -39,7 +40,7 @@ export default function AdminAttendance() {
   const { data: studData } = useQuery({ queryKey: ["students-all"], queryFn: () => studentsAPI.list() });
   const records = data?.data?.results || data?.data || [];
   const students = studData?.data?.results || studData?.data || [];
-  const studentOpts = students.map(s => ({ value: s.id, label: `${s.full_name} — ${s.class_name || "?"}` }));
+  const studentOpts = students.map(s => ({ value: s.id, label: studentOptionLabel(s) }));
 
   const buildPayload = (d) => {
     if (justFile) {
@@ -72,6 +73,7 @@ export default function AdminAttendance() {
 
   const cols = [
     { key: "student", label: t("Élève"), accessor: "student_name" },
+    ageColumn("student_age"),
     { key: "date", label: t("Date"), accessor: "date" },
     { key: "status", label: t("Statut"), render: r => <StatusBadge status={r.status} /> },
     { key: "justification", label: t("Justification"), render: r => r.justification || "—" },

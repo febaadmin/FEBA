@@ -21,6 +21,7 @@ import { extractApiError } from "../../utils/errors";
 import { t } from "../../i18n";
 import { useSchoolYearScope } from "../../hooks/useSchoolYearScope";
 
+import { ageColumn, studentOptionLabel } from "../../utils/age";
 const PERIODS = [
   { value: "T1", label: "Trimestre 1" },
   { value: "T2", label: "Trimestre 2" },
@@ -56,7 +57,7 @@ export default function AdminBulletins() {
   });
 
   const bulletins    = bulletinData?.data?.results || bulletinData?.data || [];
-  const studentOpts  = students.map(s => ({ value: s.id, label: `${s.full_name} — ${s.class_name || "?"}` }));
+  const studentOpts  = students.map(s => ({ value: s.id, label: studentOptionLabel(s) }));
 
   const genMut = useMutation({
     mutationFn: (d) => {
@@ -89,6 +90,7 @@ export default function AdminBulletins() {
 
   const cols = [
     { key: "student",      label: t("Élève"),        accessor: "student_name" },
+    ageColumn("student_age"),
     { key: "class",        label: t("Classe"),        accessor: "student_class" },
     { key: "period",       label: t("Période"),       accessor: "period_label" },
     { key: "year",         label: t("Année"),         accessor: "school_year_name" },

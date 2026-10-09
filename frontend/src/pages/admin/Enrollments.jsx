@@ -32,6 +32,7 @@ import { t, dateLocale } from "../../i18n";
 import { useSchoolYearScope } from "../../hooks/useSchoolYearScope";
 import { useMoney } from "../../hooks/useMoney";
 
+import { ageText } from "../../utils/age";
 /* ── Promotion status labels ──────────────────────────────────────────────── */
 const PROMOTION_STATUSES = [
   { value: "normal",     label: "Passage normal",             icon: UserCheck, color: "text-emerald-600" },
@@ -246,6 +247,7 @@ export default function AdminEnrollments() {
     setEoyDecisions(prev => [...prev, {
       student_id: Number(eoyStudentId),
       student_name: student ? `${student.first_name} ${student.last_name}` : `Élève #${eoyStudentId}`,
+      student_age_text: student ? ageText(student.age, student.age_status) : "",
       action: eoyAction,
       class_id: eoyClass ? Number(eoyClass) : undefined,
       reason: eoyReason || undefined,
@@ -260,7 +262,7 @@ export default function AdminEnrollments() {
   const eoyMut = useMutation({
     mutationFn: () => studentsAPI.endOfYearAssistant({
       target_year_id: Number(eoyYear),
-      decisions: eoyDecisions.map(({ student_name: _, ...d }) => d),
+      decisions: eoyDecisions.map(({ student_name: _, student_age_text: __, ...d }) => d),
     }),
     onSuccess: (r) => {
       setEoyResult(r.data);
@@ -307,7 +309,7 @@ export default function AdminEnrollments() {
   const classOptionsAllYears = uniqueClasses.map(c => classToOption(c, true));
   const studentOptions = students.map(s => ({
     value: s.id,
-    label: `${s.first_name} ${s.last_name} — ${s.class_name || "Sans classe"} (${s.matricule || ""})`,
+    label: `${s.first_name} ${s.last_name} — ${s.class_name || "Sans classe"} (${s.matricule || ""}) · ${ageText(s.age, s.age_status)}`,
   }));
 
   const statusBadge = (status) => {
@@ -577,6 +579,7 @@ export default function AdminEnrollments() {
                     <div className="flex items-center gap-3">
                       <BookOpen className="w-4 h-4 text-slate-400" />
                       <span className="font-medium text-slate-800">{d.student_name}</span>
+                      {d.student_age_text && <span className="text-xs text-slate-500">{d.student_age_text}</span>}
                       <span className="text-slate-500">→</span>
                       <span className="text-primary font-medium">{ACTION_LABELS[d.action] || d.action}</span>
                       {d.class_id && (

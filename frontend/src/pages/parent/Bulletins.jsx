@@ -6,6 +6,7 @@ import DataTable from "../../components/ui/DataTable";
 import { Download, FileText } from "lucide-react";
 import { t } from "../../i18n";
 
+import { ageColumn } from "../../utils/age";
 export default function ParentBulletins() {
   const [selectedYear, setSelectedYear] = useState("");
 
@@ -24,6 +25,7 @@ export default function ParentBulletins() {
 
   const cols = [
     { key: "student", label: t("Élève"), accessor: "student_name" },
+    ageColumn("student_age"),
     { key: "class",   label: t("Classe"), accessor: "student_class" },
     { key: "period",  label: t("Période"), accessor: "period_label" },
     { key: "year",    label: t("Année"), accessor: "school_year_name" },

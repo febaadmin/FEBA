@@ -1777,4 +1777,12 @@ export const EN = {
     "Setup complete — {n} French subject(s)",
   "Configuration complète — {n} matière(s) anglaise(s)":
     "Setup complete — {n} English subject(s)",
+  "Date invalide":
+    "Invalid date",
+  "{n} an":
+    "{n} year old",
+  "{n} ans":
+    "{n} years old",
+  "Date de naissance dans le futur ou invraisemblable : à corriger dans la fiche élève.":
+    "Date of birth in the future or implausible: please correct it in the student record.",
 };

@@ -8,6 +8,7 @@ import { Download, CheckCircle, Clock, Info } from "lucide-react";
 import { t } from "../../i18n";
 import { useMoney } from "../../hooks/useMoney";
 
+import { ageColumn } from "../../utils/age";
 export default function ParentPayments() {
   // P0 : la devise vient de l'académie active, jamais d'un symbole codé en dur.
   const money = useMoney();
@@ -46,6 +47,7 @@ export default function ParentPayments() {
   const cols = [
     { key: "ref",     label: t("Référence"),  accessor: "reference_number" },
     { key: "student", label: t("Élève"),      accessor: "student_name" },
+    ageColumn("student_age"),
     { key: "type",    label: t("Type"),       render: r => t(r.payment_type_label || r.payment_type || "—") },
     { key: "amount",  label: t("Montant"),    render: r =>
         <span className="font-bold text-success">{money.amountOf(r)}</span> },

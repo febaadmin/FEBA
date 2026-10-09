@@ -60,7 +60,7 @@ class GradeViewSet(BulkDeleteMixin, viewsets.ModelViewSet):
         )
 
         qs = Grade.objects.select_related(
-            "student", "subject", "teacher__user", "school_year"
+            "student__school", "subject", "teacher__user", "school_year"
         ).prefetch_related("history__changed_by")
 
         # --- Isolation multi-tenant (FIX v29) -------------------------------
@@ -776,7 +776,11 @@ class GradeViewSet(BulkDeleteMixin, viewsets.ModelViewSet):
             else SchoolYear.objects.filter(school=school, is_current=True).first()
         )
 
-        students = Student.objects.filter(current_class_id=class_id, is_active=True)
+        from apps.core.age import age_info
+
+        students = Student.objects.filter(
+            current_class_id=class_id, is_active=True,
+        ).select_related("school")
         if school is not None:
             students = students.filter(school=school)
         elif not request.user.is_superadmin():
@@ -784,9 +788,12 @@ class GradeViewSet(BulkDeleteMixin, viewsets.ModelViewSet):
         data = []
         for s in students:
             avg = Grade.calculate_average(s, school_year, period)
+            age = age_info(s.date_of_birth, s.school)
             data.append({
                 "student_id":   s.id,
                 "student_name": s.get_full_name(),
+                "student_age":  age["age"],
+                "student_age_status": age["age_status"],
                 "average":      float(avg) if avg is not None else None,
             })
 

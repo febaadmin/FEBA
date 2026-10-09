@@ -15,6 +15,7 @@ import { t, dateLocale } from "../../i18n";
 import { useSchoolYearScope } from "../../hooks/useSchoolYearScope";
 import { useMoney } from "../../hooks/useMoney";
 
+import { ageColumn, studentOptionLabel } from "../../utils/age";
 function exportCSV(rows, filename) {
   if (!rows.length) { toast.error(t("Aucune donnée à exporter.")); return; }
   const headers = Object.keys(rows[0]);
@@ -67,7 +68,7 @@ export default function AdminPayments() {
   const summary         = summaryData?.data || {};
   const students        = studData?.data?.results || studData?.data || [];
   const paymentHistory  = historyData?.data || [];
-  const studentOptions  = students.map(s => ({ value: s.id, label: `${s.full_name} — ${s.matricule} (${s.class_name || "?"})` }));
+  const studentOptions  = students.map(s => ({ value: s.id, label: studentOptionLabel(s, { withMatricule: true }) }));
 
   const cancelMut = useMutation({
     mutationFn: ({ id, justification }) => paymentsAPI.cancel(id, justification),
@@ -136,6 +137,7 @@ export default function AdminPayments() {
   const cols = [
     { key: "ref",    label: t("Référence"),  accessor: "reference_number" },
     { key: "student",label: t("Élève"),      accessor: "student_name" },
+    ageColumn("student_age"),
     { key: "class",  label: t("Classe"),     accessor: "student_class" },
     { key: "type",   label: t("Type"),       render: r => t(r.payment_type_label || r.payment_type || "—") },
     { key: "amount", label: t("Montant"),    render: r => <span className="font-bold text-success">{money.amountOf(r)}</span> },

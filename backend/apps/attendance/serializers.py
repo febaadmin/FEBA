@@ -1,9 +1,11 @@
 from rest_framework import serializers
 from .models import Attendance
-from apps.core.academy_serializers import ACADEMY_FIELDS, AcademyMetadataMixin
+from apps.core.academy_serializers import (
+    ACADEMY_FIELDS, STUDENT_AGE_FIELDS, AcademyMetadataMixin, StudentAgeMixin,
+)
 
 
-class AttendanceSerializer(AcademyMetadataMixin, serializers.ModelSerializer):
+class AttendanceSerializer(AcademyMetadataMixin, StudentAgeMixin, serializers.ModelSerializer):
     #: Chemin ORM vers l'académie propriétaire de l'objet.
     academy_source = "student.school"
 

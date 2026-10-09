@@ -101,8 +101,9 @@ class ParentViewSet(BulkDeleteMixin, viewsets.ModelViewSet):
         school = get_request_school(self.request)
         school_year_id = self.request.query_params.get("school_year")
         qs = Parent.objects.select_related("user").prefetch_related(
-            "children_links__student__current_class",
+            "children_links__student__current_class__level",
             "children_links__student__school_year",
+            "children_links__student__school",
         )
 
         # --- Isolation multi-tenant -----------------------------------------
@@ -185,7 +186,7 @@ class ParentViewSet(BulkDeleteMixin, viewsets.ModelViewSet):
         students = [
             link.student
             for link in parent.children_links.select_related(
-                "student__current_class", "student__school_year"
+                "student__current_class", "student__school_year", "student__school"
             ).all()
         ]
         return Response(StudentSerializer(students, many=True).data)

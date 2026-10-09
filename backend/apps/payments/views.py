@@ -65,7 +65,7 @@ class PaymentViewSet(BulkDeleteMixin, viewsets.ModelViewSet):
         school = get_request_school(self.request)
         show_deleted = self.request.query_params.get("show_deleted", "0") == "1"
         qs = Payment.objects.select_related(
-            "student__current_class", "school_year", "received_by"
+            "student__current_class", "student__school", "school_year", "received_by"
         ).prefetch_related("history__performed_by")
 
         # --- Isolation multi-tenant (FIX CRITIQUE v29) ----------------------

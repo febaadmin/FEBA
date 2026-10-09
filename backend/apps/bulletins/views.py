@@ -38,7 +38,7 @@ class BulletinViewSet(BulkDeleteMixin, viewsets.ModelViewSet):
     def get_queryset(self):
         user = self.request.user
         school = get_request_school(self.request)
-        qs   = Bulletin.objects.select_related("student__current_class", "school_year")
+        qs   = Bulletin.objects.select_related("student__current_class", "student__school", "school_year")
 
         # --- Isolation multi-tenant (FIX v29) -------------------------------
         if school is not None:

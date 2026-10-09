@@ -35,6 +35,7 @@ import { useAcademyKey } from "../../hooks/useEntityContext";
 import { t } from "../../i18n";
 import { extractApiError } from "../../utils/errors";
 
+import { ageColumn } from "../../utils/age";
 const MOIS = [
   "", "janvier", "février", "mars", "avril", "mai", "juin",
   "juillet", "août", "septembre", "octobre", "novembre", "décembre",
@@ -180,6 +181,7 @@ export default function MonthlyReports() {
   const colonnes = [
     { key: "reference", label: t("Référence"), accessor: "reference" },
     { key: "student", label: t("Élève"), accessor: "student_name" },
+    ageColumn("student_age"),
     { key: "period", label: t("Période"), accessor: "period_label" },
     { key: "version", label: t("Version"), render: (r) => `v${r.version}` },
     { key: "pdf", label: t("PDF"), sortable: false, render: (r) =>

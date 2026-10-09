@@ -72,7 +72,7 @@ class MonthlyReportViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         fha = self._fha()
         base = (MonthlyStudentReport.objects
-                .select_related("academy", "student", "school_year")
+                .select_related("academy", "student__school", "school_year")
                 .prefetch_related("attempts"))
         if fha is None:
             return base.none()

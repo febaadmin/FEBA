@@ -21,7 +21,9 @@ class AttendanceViewSet(BulkDeleteMixin, viewsets.ModelViewSet):
     def get_queryset(self):
         user = self.request.user
         school = get_request_school(self.request)
-        qs = Attendance.objects.select_related("student", "created_by", "school_year", "subject")
+        qs = Attendance.objects.select_related(
+            "student__school", "student__current_class", "created_by", "school_year", "subject",
+        )
 
         # --- Isolation multi-tenant (FIX v29) -------------------------------
         if school is not None:

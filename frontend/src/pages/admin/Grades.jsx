@@ -29,6 +29,7 @@ import AcademyBadge from "../../components/AcademyBadge";
 import { useAcademy } from "../../context/AcademyContext";
 import { useSchoolYearScope } from "../../hooks/useSchoolYearScope";
 
+import { ageText, studentOptionLabel } from "../../utils/age";
 const PERIODS = [
   { value: "T1", label: "Trimestre 1" },
   { value: "T2", label: "Trimestre 2" },
@@ -213,11 +214,11 @@ export default function AdminGrades() {
   });
   const allHistRows = allHistData?.data?.results || [];
 
-  const studentOpts = students.map(s => ({ value: s.id, label: `${s.full_name || s.first_name + ' ' + s.last_name} — ${s.class_name || "?"}` }));
+  const studentOpts = students.map(s => ({ value: s.id, label: studentOptionLabel(s) }));
   const subjectOpts = subjects.map(s => ({ value: s.id, label: `${s.name}${s.language ? ` (${s.language.toUpperCase()})` : ""}` }));
   // Saisie groupée : élèves avec identifiant de classe + options de classe.
   const bulkStudentOpts = students.map(s => ({
-    value: s.id, label: `${s.full_name || s.first_name + ' ' + s.last_name} — ${s.class_name || "?"}`,
+    value: s.id, label: studentOptionLabel(s),
     classId: s.current_class ?? s.class_id ?? "",
   }));
   const classOpts = classes.map(c => ({ value: c.id, label: c.name }));
@@ -480,6 +481,7 @@ export default function AdminGrades() {
                       <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500">{t("Académie")}</th>
                     )}
                     <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500">{t("Élève")}</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500">{t("Âge")}</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500">{t("Matière")}</th>
                     <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500">{t("Période")}</th>
                     <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500">{t("Type")}</th>
@@ -489,10 +491,10 @@ export default function AdminGrades() {
                 </thead>
                 <tbody className="divide-y divide-gray-100">
                   {isLoading && (
-                    <tr><td colSpan={8} className="px-4 py-8 text-center text-gray-400">{t("Chargement…")}</td></tr>
+                    <tr><td colSpan={9} className="px-4 py-8 text-center text-gray-400">{t("Chargement…")}</td></tr>
                   )}
                   {!isLoading && grades.length === 0 && (
-                    <tr><td colSpan={8} className="px-4 py-8 text-center text-gray-400">{t("Aucune note pour cette sélection.")}</td></tr>
+                    <tr><td colSpan={9} className="px-4 py-8 text-center text-gray-400">{t("Aucune note pour cette sélection.")}</td></tr>
                   )}
                   {grades.slice((gradePage-1)*GRADES_PER_PAGE, gradePage*GRADES_PER_PAGE).map(r => (
                     <tr
@@ -511,6 +513,7 @@ export default function AdminGrades() {
                         </td>
                       )}
                       <td className="px-4 py-3 font-medium text-gray-800">{r.student_name || r.student}</td>
+                      <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{ageText(r.student_age, r.student_age_status)}</td>
                       <td className="px-4 py-3 text-gray-600">{r.subject_name || r.subject}</td>
                       <td className="px-4 py-3 text-center">
                         <span className="text-xs font-medium px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full">{r.period}</span>

@@ -116,5 +116,5 @@ class TeacherViewSet(BulkDeleteMixin, viewsets.ModelViewSet):
         teacher = self.get_object()
         students = Student.objects.filter(
             current_class__in=teacher.classes.all(), is_active=True
-        ).select_related("current_class", "school_year").distinct()
+        ).select_related("current_class", "school_year", "school").distinct()
         return Response(StudentSerializer(students, many=True).data)

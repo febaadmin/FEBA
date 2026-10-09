@@ -2,7 +2,9 @@ from decimal import Decimal
 from rest_framework import serializers
 from .grading import ASSESSMENT_WEIGHT
 from .models import Grade, GradeHistory, get_letter_grade, get_appreciation
-from apps.core.academy_serializers import ACADEMY_FIELDS, AcademyMetadataMixin
+from apps.core.academy_serializers import (
+    ACADEMY_FIELDS, STUDENT_AGE_FIELDS, AcademyMetadataMixin, StudentAgeMixin,
+)
 
 
 class GradeHistorySerializer(serializers.ModelSerializer):
@@ -18,7 +20,7 @@ class GradeHistorySerializer(serializers.ModelSerializer):
         return obj.changed_by.get_full_name() if obj.changed_by else None
 
 
-class GradeSerializer(AcademyMetadataMixin, serializers.ModelSerializer):
+class GradeSerializer(AcademyMetadataMixin, StudentAgeMixin, serializers.ModelSerializer):
     #: Chemin ORM vers l'académie propriétaire de l'objet.
     academy_source = "student.school"
 
@@ -50,7 +52,7 @@ class GradeSerializer(AcademyMetadataMixin, serializers.ModelSerializer):
             'is_deleted', 'deleted_at', 'deleted_by', 'deleted_by_name',
             'created_at', 'updated_at',
             'history',
-        ] + ACADEMY_FIELDS
+        ] + ACADEMY_FIELDS + STUDENT_AGE_FIELDS
 
     def get_note_type_label(self, obj):
         return obj.get_note_type_display()
