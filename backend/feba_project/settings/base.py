@@ -263,7 +263,44 @@ MONTHLY_REPORTS_MINUTE = config('MONTHLY_REPORTS_MINUTE', default=0, cast=int)
 MONTHLY_REPORTS_AUTO_SEND = config('MONTHLY_REPORTS_AUTO_SEND',
                                    default=False, cast=bool)
 
+# ── Envois d'e-mails groupés (P1 — octobre 2026) ──────────────────────
+# Garde-fous contre l'envoi massif involontaire. Valeurs prudentes par
+# défaut ; un établissement plus grand les relève explicitement.
+MASS_EMAIL_MAX_RECIPIENTS = config('MASS_EMAIL_MAX_RECIPIENTS', default=2000, cast=int)
+MASS_EMAIL_MAX_CAMPAIGNS_PER_HOUR = config('MASS_EMAIL_MAX_CAMPAIGNS_PER_HOUR', default=10, cast=int)
+MASS_EMAIL_BATCH_SIZE = config('MASS_EMAIL_BATCH_SIZE', default=50, cast=int)
+
+# ── Relances de paiement (P1 — octobre 2026) ──────────────────────────
+# Interrupteur GLOBAL : faux par défaut, et donc en développement et en
+# test. Aucune relance réelle ne part tant qu'il n'est pas explicitement
+# mis à True dans l'environnement de production ET que la politique de
+# l'académie n'est pas activée depuis l'écran « Relances de paiement ».
+PAYMENT_REMINDERS_ENABLED = config('PAYMENT_REMINDERS_ENABLED', default=False, cast=bool)
+PAYMENT_REMINDERS_HOUR = config('PAYMENT_REMINDERS_HOUR', default=8, cast=int)
+PAYMENT_REMINDERS_MINUTE = config('PAYMENT_REMINDERS_MINUTE', default=30, cast=int)
+
 CELERY_BEAT_SCHEDULE = {
+    'relances-paiements-quotidiennes': {
+        'task': 'payments.run_payment_reminders',
+        'schedule': crontab(hour=str(PAYMENT_REMINDERS_HOUR), minute=str(PAYMENT_REMINDERS_MINUTE)),
+        # Pas de rattrapage tardif : une relance « du matin » exécutée le
+        # soir après une panne attendra le lendemain.
+        'options': {'expires': 6 * 3600},
+    },
+    # Reprise des envois groupés interrompus (broker indisponible au moment
+    # de la création, worker redémarré pendant l'envoi).
+    'envois-groupes-reprise': {
+        'task': 'notifications.process_pending_campaigns',
+        'schedule': crontab(minute='*/5'),
+        'options': {'expires': 240},
+    },
+    # Nouvelles tentatives des envois en « nouvel essai programmé ». Sans
+    # cette entrée, `next_retry_at` était calculé et jamais relu.
+    'envois-email-nouvelles-tentatives': {
+        'task': 'notifications.retry_due_deliveries',
+        'schedule': crontab(minute='*/10'),
+        'options': {'expires': 540},
+    },
     'rapports-mensuels-feba-fha': {
         'task': 'monthly_reports.generate_month',
         'schedule': crontab(

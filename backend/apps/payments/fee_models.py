@@ -16,8 +16,10 @@ l'académie.
 
 CE QUE CE MODÈLE N'EST PAS
 --------------------------
-Ce n'est pas un module de facturation. Il n'y a ici ni échéancier, ni
-solde, ni relance, ni avoir. Une facture — au sens comptable — suppose une
+Ce n'est pas un module de facturation. Depuis octobre 2026, les
+ÉCHÉANCES d'un tarif (tranches, mensualités) vivent dans `FeeInstallment`
+et les relances dans `PaymentReminder` (voir schedule_models.py) ; il n'y
+a toujours ni avoir ni facture légale. Une facture — au sens comptable — suppose une
 numérotation légale, un séquencement inaltérable et des règles fiscales
 propres au Bénin comme aux États-Unis ; l'inventer à moitié serait pire
 que de ne pas l'avoir. La grille répond à une question précise et unique :
@@ -72,6 +74,31 @@ class FeeSchedule(models.Model):
     currency = models.CharField(max_length=3, default=DEFAULT_CURRENCY, editable=False)
 
     is_active = models.BooleanField(default=True)
+
+    # ── Échéancier (P1 relances — octobre 2026) ──────────────────────
+    # Obligatoire : dû par tout élève inscrit du périmètre (scolarité,
+    # inscription). Sinon : dû uniquement par les élèves ABONNÉS (cantine,
+    # transport, garderie) — voir StudentFeeArrangement. Sans cette
+    # distinction, un parent qui n'a jamais inscrit son enfant à la cantine
+    # recevrait une relance pour la cantine.
+    is_mandatory = models.BooleanField(
+        default=True,
+        help_text="Dû par tous les élèves du périmètre (sinon : abonnés uniquement).",
+    )
+    INSTALLMENTS_SPLIT = "split"
+    INSTALLMENTS_RECURRING = "recurring"
+    INSTALLMENT_MODES = [
+        (INSTALLMENTS_SPLIT, "Tranches : la somme des échéances = montant total"),
+        (INSTALLMENTS_RECURRING, "Récurrent : chaque échéance est un montant dû (ex. mensuel)"),
+    ]
+    installment_mode = models.CharField(
+        max_length=10, choices=INSTALLMENT_MODES, default=INSTALLMENTS_SPLIT,
+        help_text=(
+            "En mode « tranches », un échéancier dont la somme diffère du "
+            "montant total est une anomalie : aucune relance n'est envoyée "
+            "tant qu'elle n'est pas corrigée."
+        ),
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

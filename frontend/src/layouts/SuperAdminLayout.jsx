@@ -1,11 +1,8 @@
 import { NavLink } from "react-router-dom";
 import { useState, useEffect } from "react";
-import { FileBarChart,
-  LayoutDashboard, Users, Shield, GraduationCap, UserCheck,
-  Users2, BookOpen, DollarSign, Megaphone, Settings, LogOut,
-  Menu, X, MessageSquare, Layers, ClipboardList, FileText,
-  Calendar, UserCog, FolderOpen, Image, ClipboardCheck, Video, Globe,
-  AlertTriangle, CreditCard, Award } from "lucide-react";
+import {
+  FileBarChart, LayoutDashboard, Users, Shield, GraduationCap, UserCheck, Users2, BookOpen, DollarSign, Megaphone, Settings, LogOut, Menu, X, MessageSquare, Layers, ClipboardList, FileText, Calendar, UserCog, FolderOpen, Image, ClipboardCheck, Video, Globe, AlertTriangle, CreditCard, Award, Mail, BellRing,
+} from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
 import { useBranding } from "../hooks/useBranding";
 import { clsx } from "clsx";
@@ -24,6 +21,7 @@ const nav = [
     { label: "Tous les utilisateurs", icon: Users,            to: "/superadmin/users" },
     { label: "Gestion Admins",        icon: Shield,           to: "/superadmin/admins" },
     { label: "Messages",              icon: MessageSquare,    to: "/superadmin/messages", badge: true },
+    { label: "E-mails groupés", icon: Mail, to: "/superadmin/emails" },
     { label: "Incidents techniques",  icon: AlertTriangle,    to: "/superadmin/incidents" },
     { label: "Mon profil",            icon: UserCog,          to: "/superadmin/profile" },
   ]},
@@ -38,6 +36,7 @@ const nav = [
     { label: "Bulletins",         icon: FileText,      to: "/superadmin/bulletins" },
     { label: "Paiements",         icon: DollarSign,    to: "/superadmin/payments" },
   { label: "Transactions carte", icon: CreditCard, to: "/superadmin/card-transactions" },
+  { label: "Relances de paiement", icon: BellRing, to: "/superadmin/payment-reminders" },
   { label: "Documents officiels", icon: Award, to: "/superadmin/official-documents" },
     { label: "Absences",          icon: Calendar,      to: "/superadmin/attendance" },
     { label: "Devoirs",           icon: BookOpen,      to: "/superadmin/homework" },

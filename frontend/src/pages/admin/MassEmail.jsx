@@ -11,7 +11,7 @@
  *   - un jeton par brouillon : un double clic ne crée pas deux envois ;
  *   - le bouton est désactivé pendant la requête.
  */
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import {
@@ -69,7 +69,7 @@ export default function MassEmail() {
   const [search, setSearch] = useState("");
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
-  const [preview, setPreview] = useState(null);
+  const [previewState, setPreviewState] = useState(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [clientToken, setClientToken] = useState(newClientToken);
   const [openCampaign, setOpenCampaign] = useState(null);
@@ -100,9 +100,11 @@ export default function MassEmail() {
   });
   const campaigns = campaignsQuery.data?.data?.results || [];
 
-  // Toute modification du brouillon invalide l'aperçu : on ne confirme
-  // jamais un nombre calculé pour une autre sélection.
-  useEffect(() => { setPreview(null); }, [audience, effectiveAcademyId, subject, body]);
+  // L'aperçu n'est valable que pour le brouillon qui l'a produit : toute
+  // modification (sélection, académie, objet, message) l'invalide — on ne
+  // confirme jamais un nombre calculé pour une autre sélection.
+  const draftSignature = JSON.stringify([effectiveAcademyId, audience, subject, body]);
+  const preview = previewState?.signature === draftSignature ? previewState.data : null;
 
   const changeAcademy = (id) => {
     setAcademyId(id);
@@ -121,11 +123,21 @@ export default function MassEmail() {
   const selectedCount = allUsers.filter((u) => isSelected(u, audience)).length;
 
   const previewMut = useMutation({
+    // La signature est FIGÉE à la demande : si le brouillon change pendant
+    // le calcul, la réponse ne sera pas attribuée au nouveau brouillon.
     mutationFn: () => massEmailAPI.preview({ academy_id: effectiveAcademyId, ...audiencePayload(audience) }),
-    onSuccess: (res) => setPreview(res.data),
+    onSuccess: (res, signature) => setPreviewState({ signature, data: res.data }),
     onError: (e) => toast.error(extractApiError(e)),
   });
 
+  // Verrou SYNCHRONE : `isPending` ne désactive le bouton qu'au rendu
+  // suivant ; deux clics dans le même instant partaient tous les deux.
+  const sendingRef = useRef(false);
+  const sendOnce = () => {
+    if (sendingRef.current) return;
+    sendingRef.current = true;
+    sendMut.mutate();
+  };
   const sendMut = useMutation({
     mutationFn: () => massEmailAPI.create({
       academy_id: effectiveAcademyId, ...audiencePayload(audience),
@@ -134,12 +146,13 @@ export default function MassEmail() {
     onSuccess: (res) => {
       setConfirmOpen(false);
       toast.success(t("Envoi mis en file : {n} destinataire(s).", { n: res.data.total_recipients }));
-      setSubject(""); setBody(""); setAudience(emptyAudience()); setPreview(null);
+      setSubject(""); setBody(""); setAudience(emptyAudience()); setPreviewState(null);
       setClientToken(newClientToken());
       setOpenCampaign(res.data.id);
       qc.invalidateQueries({ queryKey: ["mass-email-campaigns", effectiveAcademyId] });
     },
     onError: (e) => { setConfirmOpen(false); toast.error(extractApiError(e)); },
+    onSettled: () => { sendingRef.current = false; },
   });
 
   if (optionsQuery.isError) {
@@ -269,7 +282,7 @@ export default function MassEmail() {
             </p>
           </div>
           <button type="button" className="btn-secondary w-full flex items-center justify-center gap-2"
-                  disabled={!canPreview || previewMut.isPending} onClick={() => previewMut.mutate()}>
+                  disabled={!canPreview || previewMut.isPending} onClick={() => previewMut.mutate(draftSignature)}>
             {previewMut.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Eye className="w-4 h-4" />}
             {t("Prévisualiser")}
           </button>
@@ -356,7 +369,7 @@ export default function MassEmail() {
             {t("Annuler")}
           </button>
           <button type="button" className="btn-primary flex items-center gap-2" disabled={sendMut.isPending}
-                  onClick={() => sendMut.mutate()}>
+                  onClick={sendOnce}>
             {sendMut.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
             {sendMut.isPending ? t("Envoi…") : t("Confirmer l'envoi")}
           </button>

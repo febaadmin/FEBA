@@ -632,3 +632,24 @@ export const massEmailAPI = {
   campaign:   (id, academyId)    => api.get(`/mass-email/campaigns/${id}/`, { params: { academy_id: academyId || undefined } }),
   retryFailed:(id, academyId)    => api.post(`/mass-email/campaigns/${id}/retry-failed/`, { academy_id: academyId || undefined }),
 };
+
+/* ── Échéanciers et relances de paiement (P1) ──────────────────────── */
+export const feeSchedulesAPI = {
+  list:   ()       => api.get("/payments/fee-schedules/"),
+  create: (d)      => api.post("/payments/fee-schedules/", d),
+  update: (id, d)  => api.patch(`/payments/fee-schedules/${id}/`, d),
+  delete: (id)     => api.delete(`/payments/fee-schedules/${id}/`),
+  arrangements:      (feeId) => api.get("/payments/fee-arrangements/", { params: { fee_schedule: feeId } }),
+  createArrangement: (d)     => api.post("/payments/fee-arrangements/", d),
+  deleteArrangement: (id)    => api.delete(`/payments/fee-arrangements/${id}/`),
+};
+
+export const remindersAPI = {
+  status:  ()      => api.get("/payments/reminders/status/"),
+  policy:  ()      => api.get("/payments/reminders/policy/"),
+  updatePolicy: (d) => api.patch("/payments/reminders/policy/", d),
+  preview: (p)     => api.get("/payments/reminders/preview/", { params: p }),
+  run:     ()      => api.post("/payments/reminders/run/", { confirm: true }),
+  history: (p)     => api.get("/payments/reminders/history/", { params: p }),
+  runs:    ()      => api.get("/payments/reminders/runs/"),
+};

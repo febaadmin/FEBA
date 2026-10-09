@@ -1795,4 +1795,280 @@ export const EN = {
     "time not recorded",
   "Heure locale de l'académie. Laissez vide si elle n'est pas connue.":
     "Academy local time. Leave empty if unknown.",
+  "Envoi mis en file : {n} destinataire(s).":
+    "Sending queued: {n} recipient(s).",
+  "E-mails groupés":
+    "Group e-mails",
+  "Envoi par académie et par type de profil":
+    "Send by academy and profile type",
+  "Aucun serveur de messagerie réel n'est configuré : les messages seront journalisés mais ne partiront pas sur Internet.":
+    "No real mail server is configured: messages will be logged but will not leave the server.",
+  "Types de profil":
+    "Profile types",
+  "Rechercher une personne…":
+    "Search for a person…",
+  "Filtrer par profil":
+    "Filter by profile",
+  "Cocher la liste affichée":
+    "Select displayed list",
+  "Décocher la liste affichée":
+    "Unselect displayed list",
+  "Aucun compte pour ce filtre.":
+    "No account for this filter.",
+  "Sélectionner":
+    "Select",
+  "{n} destinataire(s) sélectionné(s)":
+    "{n} recipient(s) selected",
+  "Objet":
+    "Subject",
+  "Chaque destinataire reçoit un message individuel : aucune adresse n'est visible des autres.":
+    "Each recipient receives an individual message: no address is visible to the others.",
+  "{n} destinataire(s) recevront ce message.":
+    "{n} recipient(s) will receive this message.",
+  "{n} ignoré(s).":
+    "{n} skipped.",
+  "Aperçu du message":
+    "Message preview",
+  "Envoyer à {n} destinataire(s)":
+    "Send to {n} recipient(s)",
+  "Envois récents":
+    "Recent sends",
+  "Aucun envoi groupé pour cette académie.":
+    "No group send for this academy.",
+  "Remis":
+    "Delivered",
+  "Échecs":
+    "Failures",
+  "Ignorés":
+    "Skipped",
+  "Rapport":
+    "Report",
+  "Confirmer l'envoi":
+    "Confirm sending",
+  "Vous allez envoyer « {subject} » à {n} destinataire(s) de {academy}. Cette action ne peut pas être annulée.":
+    "You are about to send “{subject}” to {n} recipient(s) of {academy}. This cannot be undone.",
+  "{n} envoi(s) en échec remis en file.":
+    "{n} failed send(s) queued again.",
+  "Rapport d'envoi":
+    "Sending report",
+  "« Remis au serveur » signifie que le serveur de messagerie a accepté le message ; la réception dans la boîte du destinataire ne peut pas être garantie.":
+    "“Handed to server” means the mail server accepted the message; arrival in the recipient's inbox cannot be guaranteed.",
+  "Relancer uniquement les échecs ({n})":
+    "Retry failures only ({n})",
+  "Relances de paiement":
+    "Payment reminders",
+  "Échéanciers, retards et relances automatiques par e-mail et notification":
+    "Payment schedules, arrears and automatic reminders by e-mail and notification",
+  "Règles enregistrées.":
+    "Rules saved.",
+  "État du service":
+    "Service status",
+  "Relances automatiques opérationnelles.":
+    "Automatic reminders are operational.",
+  "Interrupteur serveur":
+    "Server switch",
+  "Activé":
+    "Enabled",
+  "Désactivé":
+    "Disabled",
+  "Serveur SMTP":
+    "SMTP server",
+  "Configuré":
+    "Configured",
+  "Non configuré":
+    "Not configured",
+  "Dernière planification":
+    "Last scheduled run",
+  "Dernier envoi réel":
+    "Last real sending",
+  "Règles de relance":
+    "Reminder rules",
+  "Suspendu manuellement":
+    "Manually paused",
+  "Suspendre les envois automatiques":
+    "Pause automatic sending",
+  "Activer les envois automatiques":
+    "Enable automatic sending",
+  "Délai de grâce (jours)":
+    "Grace period (days)",
+  "Intervalle entre relances (jours)":
+    "Interval between reminders (days)",
+  "Relances maximum par échéance":
+    "Maximum reminders per installment",
+  "Solde minimum relancé":
+    "Minimum balance reminded",
+  "Notification interne":
+    "In-app notification",
+  "Modalités de paiement rappelées":
+    "Payment options recalled",
+  "Coordonnées de contact":
+    "Contact details",
+  "Relances lancées : le résultat apparaîtra dans l'historique.":
+    "Reminders started: the result will appear in the history.",
+  "Situation au":
+    "Situation as of",
+  "Afficher aussi les échéances réglées et à venir":
+    "Also show paid and upcoming installments",
+  "Envoi réel désactivé sur ce serveur (PAYMENT_REMINDERS_ENABLED).":
+    "Real sending disabled on this server (PAYMENT_REMINDERS_ENABLED).",
+  "Envoyer les relances dues ({n})":
+    "Send due reminders ({n})",
+  "Simulation : cet écran ne crée aucune relance et n'envoie rien.":
+    "Simulation: this screen creates no reminder and sends nothing.",
+  "Anomalies — aucune relance n'est envoyée pour les éléments concernés :":
+    "Anomalies — no reminder is sent for the items concerned:",
+  "Aucune échéance en retard.":
+    "No overdue installment.",
+  "{n} j":
+    "{n} d",
+  "Relance n°{n}":
+    "Reminder #{n}",
+  "Confirmer l'envoi des relances":
+    "Confirm sending reminders",
+  "{n} relance(s) vont être envoyées maintenant (e-mail et notification interne). Les relances déjà envoyées ne seront pas renvoyées.":
+    "{n} reminder(s) will be sent now (e-mail and in-app notification). Reminders already sent will not be sent again.",
+  "Échéancier enregistré.":
+    "Schedule saved.",
+  "Nouvel échéancier":
+    "New schedule",
+  "Aucun tarif configuré.":
+    "No fee configured.",
+  "Obligatoire":
+    "Mandatory",
+  "Abonnés uniquement":
+    "Subscribers only",
+  "Somme des tranches ≠ total":
+    "Installments ≠ total",
+  "Élèves (abonnements, exonérations…)":
+    "Students (subscriptions, exemptions…)",
+  "Supprimer ce tarif et ses échéances ?":
+    "Delete this fee and its installments?",
+  "échéances":
+    "installments",
+  "Modifier l'échéancier":
+    "Edit schedule",
+  "Type de frais":
+    "Fee type",
+  "Libellé":
+    "Label",
+  "Tous les niveaux":
+    "All levels",
+  "Montant total":
+    "Total amount",
+  "Tranches (somme = total)":
+    "Installments (sum = total)",
+  "Récurrent (ex. mensuel)":
+    "Recurring (e.g. monthly)",
+  "Dû par tous les élèves du périmètre (sinon : élèves abonnés uniquement)":
+    "Due by all students in scope (otherwise: subscribed students only)",
+  "Échéances":
+    "Installments",
+  "Ajouter une échéance":
+    "Add an installment",
+  "Enregistré.":
+    "Saved.",
+  "Choisir un élève":
+    "Choose a student",
+  "Abonnement au service":
+    "Service subscription",
+  "Exonération totale":
+    "Full exemption",
+  "Réduction / bourse (montant fixe)":
+    "Discount / scholarship (fixed amount)",
+  "Montant de la réduction":
+    "Discount amount",
+  "Début":
+    "Start",
+  "Fin":
+    "End",
+  "Aucune disposition pour ce tarif.":
+    "No arrangement for this fee.",
+  "Relances envoyées":
+    "Reminders sent",
+  "Aucune relance.":
+    "No reminder.",
+  "Exécutions du moteur":
+    "Engine runs",
+  "Garderie":
+    "Daycare",
+  "État et règles":
+    "Status and rules",
+  "Échéanciers":
+    "Schedules",
+  "Frais":
+    "Fee",
+  "Échéance":
+    "Installment",
+  "Prévu":
+    "Expected",
+  "Reste dû":
+    "Balance due",
+  "Relance prévue":
+    "Planned reminder",
+  "Destinataire":
+    "Recipient",
+  "N°":
+    "No.",
+  "Remis au serveur":
+    "Handed to server",
+  "Aucune adresse":
+    "No address",
+  "Adresse invalide":
+    "Invalid address",
+  "Compte inactif":
+    "Inactive account",
+  "Adresse en double":
+    "Duplicate address",
+  "Non joignable":
+    "Unreachable",
+  "En file d'attente":
+    "Queued",
+  "Envoi en cours":
+    "Sending",
+  "Terminé avec des échecs":
+    "Completed with failures",
+  "Remis au serveur de messagerie":
+    "Handed to mail server",
+  "Nouvel essai programmé":
+    "Retry scheduled",
+  "Ignoré — aucune adresse":
+    "Skipped — no address",
+  "Ignoré — adresse invalide":
+    "Skipped — invalid address",
+  "Ignoré — compte inactif":
+    "Skipped — inactive account",
+  "Ignoré — adresse en double":
+    "Skipped — duplicate address",
+  "E-mail remis au serveur de messagerie":
+    "E-mail handed to mail server",
+  "Notification interne uniquement (pas d'e-mail)":
+    "In-app notification only (no e-mail)",
+  "E-mail : nouvel essai programmé":
+    "E-mail: retry scheduled",
+  "Échec de l'e-mail":
+    "E-mail failed",
+  "Aucun canal disponible":
+    "No channel available",
+  "En cours de traitement":
+    "Processing",
+  "À venir":
+    "Upcoming",
+  "Réglée":
+    "Paid",
+  "Échue — impayée":
+    "Overdue — unpaid",
+  "Échue — partiellement payée":
+    "Overdue — partly paid",
+  "Exonérée":
+    "Exempted",
+  "Planification automatique":
+    "Automatic schedule",
+  "Lancement manuel":
+    "Manual run",
+  "Simulation sans envoi":
+    "Simulation (no sending)",
+  "Terminée":
+    "Completed",
+  "Non exécutée (désactivée)":
+    "Not run (disabled)",
 };

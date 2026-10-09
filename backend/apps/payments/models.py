@@ -26,6 +26,10 @@ class Payment(models.Model):
         ("mensualite", "Mensualité"),
         ("cantine", "Cantine"),
         ("transport", "Transport"),
+        # Service publié sur la grille FEBA 2026-2027 (41 900 FCFA/mois)
+        # sans type de paiement correspondant : il était impossible de
+        # l'encaisser autrement que comme « Autre ».
+        ("garderie", "Garderie"),
         ("other", "Autre"),
     ]
     PAYMENT_METHODS = [
@@ -266,6 +270,12 @@ class PaymentHistory(models.Model):
 from apps.payments.fee_models import FeeSchedule  # noqa: E402,F401
 from apps.payments.transaction_models import (  # noqa: E402,F401  (import tardif volontaire)
     PaymentTransaction, WebhookEvent,
+)
+
+# ── Échéanciers et relances (P1 — octobre 2026) ───────────────────────
+from apps.payments.schedule_models import (  # noqa: E402,F401
+    FeeInstallment, PaymentReminder, PaymentReminderPolicy, ReminderRun,
+    StudentFeeArrangement,
 )
 
 # ── Taux de change (P1 — totaux consolidés multi-académies) ────────────

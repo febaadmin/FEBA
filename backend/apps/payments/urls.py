@@ -9,12 +9,26 @@ détail d'un paiement dont l'identifiant serait « card ».
 from django.urls import path
 from rest_framework.routers import DefaultRouter
 
-from . import card_views, views
+from . import card_views, reminder_views, views
 
 router = DefaultRouter()
 router.register(r"", views.PaymentViewSet, basename="payment")
 
+# Échéanciers et dispositions : routeurs séparés, montés AVANT le routeur
+# des paiements (sinon « fee-schedules » serait lu comme un identifiant).
+schedules_router = DefaultRouter()
+schedules_router.register(r"fee-schedules", reminder_views.FeeScheduleViewSet, basename="fee-schedule")
+schedules_router.register(r"fee-arrangements", reminder_views.ArrangementViewSet, basename="fee-arrangement")
+
 urlpatterns = [
+    # ── Relances de paiement ──────────────────────────────────────────
+    path("reminders/status/", reminder_views.ReminderStatusView.as_view(), name="reminders-status"),
+    path("reminders/policy/", reminder_views.ReminderPolicyView.as_view(), name="reminders-policy"),
+    path("reminders/preview/", reminder_views.ReminderPreviewView.as_view(), name="reminders-preview"),
+    path("reminders/run/", reminder_views.ReminderRunView.as_view(), name="reminders-run"),
+    path("reminders/history/", reminder_views.ReminderHistoryView.as_view(), name="reminders-history"),
+    path("reminders/runs/", reminder_views.ReminderRunsView.as_view(), name="reminders-runs"),
+] + schedules_router.urls + [
     # ── Paiement par carte ────────────────────────────────────────────
     path("card/config/", card_views.CardPaymentConfigView.as_view(),
          name="card-payment-config"),

@@ -401,6 +401,7 @@ export default function AdminPayments() {
                 <option value="mensualite">{t("Mensualité")}</option>
                 <option value="cantine">{t("Cantine")}</option>
                 <option value="transport">{t("Transport")}</option>
+                <option value="garderie">{t("Garderie")}</option>
                 <option value="other">{t("Autre")}</option>
               </select>
             </div>

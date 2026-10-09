@@ -1,10 +1,8 @@
 import { NavLink, useNavigate } from "react-router-dom";
 import { useState, useEffect, useRef } from "react";
-import { FileBarChart,
-  LayoutDashboard, Users, GraduationCap, UserCheck, BookOpen,
-  ClipboardList, DollarSign, Calendar, FileText, Bell, MessageSquare,
-  Megaphone, Settings, LogOut, School, Menu, X, UserCog, Layers, FolderOpen,
-  ClipboardCheck, Video, Globe, CreditCard, Award } from "lucide-react";
+import {
+  FileBarChart, LayoutDashboard, Users, GraduationCap, UserCheck, BookOpen, ClipboardList, DollarSign, Calendar, FileText, Bell, MessageSquare, Megaphone, Settings, LogOut, School, Menu, X, UserCog, Layers, FolderOpen, ClipboardCheck, Video, Globe, CreditCard, Award, Mail, BellRing,
+} from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
 import { useBranding } from "../hooks/useBranding";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -37,8 +35,10 @@ const nav = [
   { label: "Devoirs",         icon: BookOpen,         to: "/admin/homework" },
   { label: "Paiements",       icon: DollarSign,       to: "/admin/payments" },
   { label: "Transactions carte", icon: CreditCard, to: "/admin/card-transactions" },
+  { label: "Relances de paiement", icon: BellRing, to: "/admin/payment-reminders" },
   { label: "Documents officiels", icon: Award, to: "/admin/official-documents" },
   { label: "Messages",        icon: MessageSquare,    to: "/admin/messages" },
+  { label: "E-mails groupés", icon: Mail, to: "/admin/emails" },
   { label: "Annonces",        icon: Megaphone,        to: "/admin/announcements" },
   { label: "Utilisateurs",    icon: UserCog,          to: "/admin/users" },
   { label: "Fichiers",         icon: FolderOpen,       to: "/admin/user-files" },
