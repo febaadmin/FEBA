@@ -69,8 +69,10 @@ class HomeworkViewSet(BulkDeleteMixin, viewsets.ModelViewSet):
         return qs.none()
 
     def get_permissions(self):
-        if self.action in ["create", "update", "partial_update", "destroy"]:
-            return [IsAuthenticated(), IsAdminOrTeacher()]
+        # `delete_attachment` était ouvert à tout utilisateur authentifié :
+        # un parent ou un élève pouvait supprimer la pièce jointe d'un devoir.
+        if self.action in ["create", "update", "partial_update", "destroy", "delete_attachment"]:
+            return [IsAuthenticated(), IsAdminOrTeacher(), IsSameTenant()]
         return super().get_permissions()
 
     def perform_create(self, serializer):

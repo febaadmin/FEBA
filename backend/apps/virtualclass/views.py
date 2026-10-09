@@ -89,6 +89,11 @@ class VirtualRoomViewSet(BulkDeleteMixin, viewsets.ModelViewSet):
 
         return qs.filter(general)
 
+    def get_bulk_delete_permissions(self):
+        # `bulk_delete` est déjà couvert par get_permissions() ci-dessous
+        # (enseignant ou plus, fonctionnalité de l'entité).
+        return []
+
     def get_permissions(self):
         # `HasEntityFeature` est présent sur TOUTES les actions, y compris
         # les actions d'écriture : sans lui, un enseignant FEBA pourrait

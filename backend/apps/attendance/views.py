@@ -58,6 +58,17 @@ class AttendanceViewSet(BulkDeleteMixin, viewsets.ModelViewSet):
                 return qs.none()
         return qs.none()
 
+    def get_permissions(self):
+        """
+        FAILLE CORRIGÉE : aucune restriction de rôle sur les écritures. Un
+        parent pouvait transformer l'absence de son enfant en présence ou la
+        supprimer, un élève aussi. Écritures : administrateurs et enseignants.
+        """
+        if self.action in ("create", "update", "partial_update", "destroy", "bulk"):
+            from apps.accounts.permissions import IsAdminOrTeacher
+            return [IsAuthenticated(), IsAdminOrTeacher(), IsSameTenant()]
+        return super().get_permissions()
+
     def perform_create(self, serializer):
         # BUG FIX #2: Auto-assign school_year so records are never orphaned from the filter
         from apps.schools.models import SchoolYear

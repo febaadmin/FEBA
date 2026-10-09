@@ -92,7 +92,15 @@ class StudentViewSet(BulkDeleteMixin, viewsets.ModelViewSet):
         return qs.none()
 
     def get_permissions(self):
-        if self.action in ['create', 'update', 'partial_update', 'destroy']:
+        # FAILLE CORRIGÉE : cette méthode écrasait les `permission_classes`
+        # déclarées sur les actions (enroll, promote, end-of-year-assistant…)
+        # et laissait remove-from-year, reactivate, bulk-remove-from-year
+        # sans aucune restriction : tout utilisateur authentifié de
+        # l'académie (parent, élève) pouvait les appeler. Désormais TOUTE
+        # écriture exige un administrateur ; la lecture reste filtrée par
+        # get_queryset().
+        from rest_framework.permissions import SAFE_METHODS
+        if self.request is not None and self.request.method not in SAFE_METHODS:
             return [IsAuthenticated(), IsAdminOrAbove(), IsSameTenant()]
         return [IsAuthenticated(), IsSameTenant()]
 

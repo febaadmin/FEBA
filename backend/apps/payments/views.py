@@ -176,6 +176,28 @@ class PaymentViewSet(BulkDeleteMixin, viewsets.ModelViewSet):
                 )
         except Exception as exc:
             logger.warning("Erreur non bloquante ignorée : %s", exc, exc_info=True)
+    def perform_bulk_soft_delete(self, queryset, request):
+        """
+        Suppression groupée = même traitement que la suppression unitaire :
+        historique, annulation, date et auteur. Auparavant un simple
+        `update(is_deleted=True)` : aucune trace, paiement toujours
+        « confirmé », et restauration impossible à reconstituer.
+        """
+        justification = (request.data.get("justification") or "").strip() or "Suppression groupée"
+        now = timezone.now()
+        for payment in queryset.filter(is_deleted=False):
+            _log_payment_action(
+                payment=payment, action="cancel", performed_by=request.user,
+                justification=justification,
+                notes=f"Soft delete (groupée): {payment.reference_number}",
+                is_confirmed_before=payment.is_confirmed, is_confirmed_after=False,
+            )
+            payment.is_deleted = True
+            payment.deleted_at = now
+            payment.deleted_by = request.user
+            payment.is_confirmed = False
+            payment.save(update_fields=["is_deleted", "deleted_at", "deleted_by", "is_confirmed"])
+
     def destroy(self, request, *args, **kwargs):
         """Soft delete — keeps data, logs action."""
         instance = self.get_object()

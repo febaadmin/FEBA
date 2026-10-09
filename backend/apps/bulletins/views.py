@@ -73,9 +73,13 @@ class BulletinViewSet(BulkDeleteMixin, viewsets.ModelViewSet):
         return qs.none()
 
     def get_permissions(self):
-        if self.action in ["generate", "generate_class", "generate_all", "destroy"]:
-            return [IsAuthenticated(), IsAdminOrAbove()]
-        return [IsAuthenticated()]
+        # Toute écriture (y compris create / update / partial_update, qui
+        # étaient ouvertes à tout utilisateur authentifié — un parent
+        # pouvait modifier le bulletin de son enfant) exige un administrateur.
+        from rest_framework.permissions import SAFE_METHODS
+        if self.request is not None and self.request.method not in SAFE_METHODS:
+            return [IsAuthenticated(), IsAdminOrAbove(), IsSameTenant()]
+        return [IsAuthenticated(), IsSameTenant()]
 
     def get_serializer_context(self):
         ctx = super().get_serializer_context()

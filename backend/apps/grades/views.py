@@ -253,6 +253,18 @@ class GradeViewSet(BulkDeleteMixin, viewsets.ModelViewSet):
         _log_grade(grade, old_value, old_comment, "update", self.request.user,
                    justification=self.request.data.get("justification", ""))
 
+    def perform_bulk_soft_delete(self, queryset, request):
+        """Suppression groupée tracée comme la suppression unitaire."""
+        justification = ((request.data.get("justification") or "").strip()
+                         or "Suppression groupée (sans justification saisie)")
+        now = timezone.now()
+        for grade in queryset.filter(is_deleted=False):
+            grade.is_deleted = True
+            grade.deleted_at = now
+            grade.deleted_by = request.user
+            grade.save(update_fields=["is_deleted", "deleted_at", "deleted_by"])
+            _log_grade(grade, grade.value, grade.comment, "delete", request.user, justification=justification)
+
     def destroy(self, request, *args, **kwargs):
         """Soft delete avec justification obligatoire."""
         instance = self.get_object()
