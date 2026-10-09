@@ -1,9 +1,12 @@
+from apps.core.tenancy import TenantRelationsMixin
 from rest_framework import serializers
 from .models import Subject
 from apps.core.academy_serializers import ACADEMY_FIELDS, AcademyMetadataMixin
 
 
-class SubjectSerializer(AcademyMetadataMixin, serializers.ModelSerializer):
+class SubjectSerializer(TenantRelationsMixin, AcademyMetadataMixin, serializers.ModelSerializer):
+    #: Isolation des relations écrites (voir apps.core.tenancy.TenantRelationsMixin).
+    tenant_relations = {"level": "school", "school": ""}
     # P3 : chaque objet expose son académie, sans quoi la vue
     # « Toutes les Académies » ne peut pas étiqueter ses lignes.
     academy_source = "school"

@@ -1,3 +1,4 @@
+from apps.core.tenancy import TenantRelationsMixin
 from rest_framework import serializers
 from .models import Homework, HomeworkAttachment
 from apps.core.academy_serializers import ACADEMY_FIELDS, AcademyMetadataMixin
@@ -17,7 +18,9 @@ class HomeworkAttachmentSerializer(serializers.ModelSerializer):
         return None
 
 
-class HomeworkSerializer(AcademyMetadataMixin, serializers.ModelSerializer):
+class HomeworkSerializer(TenantRelationsMixin, AcademyMetadataMixin, serializers.ModelSerializer):
+    #: Isolation des relations écrites (voir apps.core.tenancy.TenantRelationsMixin).
+    tenant_relations = {"cls": "school_year.school", "subject": "school", "teacher": "user.school", "school_year": "school"}
     #: Chemin ORM vers l'académie propriétaire de l'objet.
     academy_source = "school_year.school"
 

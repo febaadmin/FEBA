@@ -287,11 +287,10 @@ export const studentsAPI = {
   enrollAllFromYear: (d)         => api.post("/students/enroll-all-from-year/", d),
   enrollClass:       (d)         => api.post("/students/enroll-class/", d),
   promote:           (d)         => api.post("/students/promote/", d),
-  grades: (id)      => api.get(`/students/${id}/grades/`),
-  attendance: (id)  => api.get(`/students/${id}/attendance/`),
-  payments: (id)    => api.get(`/students/${id}/payments/`),
+  // Retirés (audit oct. 2026) : grades / attendance / payments / bulletins
+  // pointaient vers /students/<id>/… qui n'existe pas (404) et n'étaient
+  // appelés par aucun écran. Utiliser gradesAPI, attendanceAPI, etc.
   checkDuplicate: (p) => api.get("/students/check_duplicate/", { params: p }),
-  bulletins: (id)   => api.get(`/students/${id}/bulletins/`),
   history: (id)     => api.get(`/students/${id}/history/`),
   endOfYearAssistant: (d) => api.post("/students/end-of-year-assistant/", d),
 };
@@ -509,12 +508,9 @@ export const messagesAPI = {
   inbox: ()         => api.get("/messages/inbox/"),
   sent: ()          => api.get("/messages/sent/"),
   unreadCount: ()   => api.get("/messages/unread-count/"),
-  send: (d) => {
-    if (d instanceof FormData) {
-      return api.post("/messages/", d, { headers: { "Content-Type": "multipart/form-data" } });
-    }
-    return api.post("/messages/", d);
-  },
+  // `send` et `delete` retirés (audit oct. 2026) : /messages/ est en lecture
+  // seule côté serveur (405) et aucun écran ne les appelait. L'envoi passe
+  // par conversationsAPI.
   reply: (id, d) => {
     if (d instanceof FormData) {
       return api.post(`/messages/${id}/reply/`, d, { headers: { "Content-Type": "multipart/form-data" } });
@@ -522,7 +518,6 @@ export const messagesAPI = {
     return api.post(`/messages/${id}/reply/`, d);
   },
   markRead: (id)    => api.put(`/messages/${id}/read/`),
-  delete: (id)      => api.delete(`/messages/${id}/`),
 };
 
 export const announcementsAPI = {

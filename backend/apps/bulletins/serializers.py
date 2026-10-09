@@ -1,3 +1,4 @@
+from apps.core.tenancy import TenantRelationsMixin
 from rest_framework import serializers
 from .models import Bulletin
 from apps.core.academy_serializers import (
@@ -5,7 +6,9 @@ from apps.core.academy_serializers import (
 )
 
 
-class BulletinSerializer(AcademyMetadataMixin, StudentAgeMixin, serializers.ModelSerializer):
+class BulletinSerializer(TenantRelationsMixin, AcademyMetadataMixin, StudentAgeMixin, serializers.ModelSerializer):
+    #: Isolation des relations écrites (voir apps.core.tenancy.TenantRelationsMixin).
+    tenant_relations = {"student": "school", "school_year": "school"}
     #: Chemin ORM vers l'académie propriétaire de l'objet.
     academy_source = "student.school"
 

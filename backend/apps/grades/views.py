@@ -277,8 +277,32 @@ class GradeViewSet(BulkDeleteMixin, viewsets.ModelViewSet):
 
     @action(detail=True, methods=["post"])
     def restore(self, request, pk=None):
-        """POST /api/grades/{id}/restore/"""
-        grade = Grade.objects.get(pk=pk)
+        """
+        POST /api/grades/{id}/restore/
+
+        FAILLE CORRIGÉE : `Grade.objects.get(pk=pk)` ne filtrait par AUCUNE
+        académie — tout administrateur ou enseignant pouvait restaurer une
+        note d'une autre académie en devinant son identifiant (et un
+        identifiant inexistant levait une erreur 500). La note est désormais
+        cherchée dans la portée de l'académie, et un enseignant doit avoir
+        le droit de noter cet élève dans cette matière.
+        """
+        from django.shortcuts import get_object_or_404
+        from rest_framework.exceptions import PermissionDenied
+
+        school = get_request_school(request)
+        qs = Grade.objects.select_related("student", "subject")
+        if school is not None:
+            qs = qs.filter(student__school=school)
+        elif not request.user.is_superadmin():
+            qs = qs.none()
+        grade = get_object_or_404(qs, pk=pk)
+        if request.user.is_teacher():
+            teacher = self._resolve_teacher()
+            ok, err = (self._validate_teacher_permission(teacher, grade.subject, grade.student)
+                       if teacher else (False, "Profil enseignant introuvable."))
+            if not ok:
+                raise PermissionDenied(err)
         if not grade.is_deleted:
             return Response({"detail": "Cette note n'est pas supprimée."}, status=400)
         grade.is_deleted = False

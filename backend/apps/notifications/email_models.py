@@ -93,6 +93,10 @@ class EmailDelivery(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     sent_at = models.DateTimeField(null=True, blank=True)
     next_retry_at = models.DateTimeField(null=True, blank=True)
+    #: Dernier renvoi MANUEL (bouton « Renvoyer »). Sert à la fenêtre
+    #: anti-doublon : un double clic ne renvoie pas deux fois, mais l'envoi
+    #: automatique initial n'empêche pas un renvoi demandé aussitôt.
+    manual_resend_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         verbose_name = "Envoi d'e-mail"

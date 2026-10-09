@@ -63,6 +63,13 @@ services:
         condition: service_healthy
     restart: unless-stopped
     command: celery -A feba_project worker --loglevel=info --concurrency=2
+    healthcheck:
+      # Le worker répond-il au broker ? (envois groupés, relances, rapports)
+      test: ["CMD-SHELL", "celery -A feba_project inspect ping -d celery@$$HOSTNAME --timeout 10 >/dev/null 2>&1"]
+      interval: 120s
+      timeout: 20s
+      retries: 3
+      start_period: 60s
 
   celery-beat:
     build:
@@ -74,7 +81,16 @@ services:
       backend-prod:
         condition: service_healthy
     restart: unless-stopped
-    command: celery -A feba_project beat --loglevel=info
+    # Fichier d'état explicite : sert au contrôle de santé ci-dessous. Les
+    # relances de paiement et la reprise des envois groupés dépendent de
+    # Beat ; un planificateur figé ne doit plus passer inaperçu.
+    command: celery -A feba_project beat --loglevel=info --schedule=/tmp/celerybeat-schedule
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import os,time,sys; f='/tmp/celerybeat-schedule'; sys.exit(0 if os.path.exists(f) and time.time()-os.path.getmtime(f) < 900 else 1)\""]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
 
   frontend-prod:
     build:

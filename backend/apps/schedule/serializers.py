@@ -6,6 +6,7 @@ les champs affichés, les validations et même la notion de conflit ne sont
 pas les mêmes. Un serializer unique aurait dû rendre optionnels tous les
 champs des deux côtés — donc n'en valider aucun.
 """
+from apps.core.tenancy import TenantRelationsMixin
 from rest_framework import serializers
 
 from apps.core.academy_serializers import ACADEMY_FIELDS, AcademyMetadataMixin
@@ -13,7 +14,9 @@ from apps.core.academy_serializers import ACADEMY_FIELDS, AcademyMetadataMixin
 from .models import ClassSchedule, OnlineSessionSchedule
 
 
-class ClassScheduleSerializer(AcademyMetadataMixin, serializers.ModelSerializer):
+class ClassScheduleSerializer(TenantRelationsMixin, AcademyMetadataMixin, serializers.ModelSerializer):
+    #: Isolation des relations écrites (voir apps.core.tenancy.TenantRelationsMixin).
+    tenant_relations = {"cls": "school_year.school", "subject": "school", "teacher": "user.school", "school_year": "school"}
     """Créneau présentiel FEBA — classe, matière, enseignant, salle physique."""
 
     #: L'année scolaire porte l'académie (une classe n'a pas de champ école).

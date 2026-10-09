@@ -64,7 +64,11 @@ class PaymentViewSet(BulkDeleteMixin, viewsets.ModelViewSet):
     def get_queryset(self):
         user = self.request.user
         school = get_request_school(self.request)
-        show_deleted = self.request.query_params.get("show_deleted", "0") == "1"
+        # `restore` porte par définition sur un paiement SUPPRIMÉ : sans
+        # cette exception, get_object() ne le trouvait jamais et le bouton
+        # « Restaurer » répondait toujours 404.
+        restoring = getattr(self, "action", None) == "restore"
+        show_deleted = restoring or self.request.query_params.get("show_deleted", "0") == "1"
         qs = Payment.objects.select_related(
             "student__current_class", "student__school", "school_year", "received_by"
         ).prefetch_related("history__performed_by")
@@ -83,7 +87,8 @@ class PaymentViewSet(BulkDeleteMixin, viewsets.ModelViewSet):
             qs = qs.filter(is_deleted=False)
 
         # FIX: Default to current active year to avoid inactive year data leaking
-        if not self.request.query_params.get("school_year") and self.request.query_params.get("all_years") != "1":
+        if (not restoring and not self.request.query_params.get("school_year")
+                and self.request.query_params.get("all_years") != "1"):
             from apps.core.tenancy import current_school_years
             current_years = current_school_years(school)
             if current_years.exists():
@@ -205,12 +210,24 @@ class PaymentViewSet(BulkDeleteMixin, viewsets.ModelViewSet):
         payment = self.get_object()
         if not payment.is_deleted:
             return Response({"detail": "Ce paiement n'est pas supprimé."}, status=400)
+        # Restaurer rend l'état d'AVANT la suppression : un paiement annulé
+        # (avec justification) puis supprimé reste annulé. Le remettre
+        # « confirmé » d'office en refaisait une recette.
+        deletion = (
+            payment.history.filter(action="cancel", notes__startswith="Soft delete")
+            .order_by("-performed_at").first()
+        )
+        was_confirmed = (
+            deletion.is_confirmed_before
+            if deletion is not None and deletion.is_confirmed_before is not None else True
+        )
         payment.is_deleted = False
         payment.deleted_at = None
         payment.deleted_by = None
-        payment.is_confirmed = True
+        payment.is_confirmed = was_confirmed
         payment.save(update_fields=["is_deleted", "deleted_at", "deleted_by", "is_confirmed"])
-        _log_payment_action(payment, "update", request.user, justification="Restauration du paiement")
+        _log_payment_action(payment, "update", request.user, justification="Restauration du paiement",
+                            is_confirmed_before=False, is_confirmed_after=was_confirmed)
         return Response(PaymentSerializer(payment, context={"request": request}).data)
 
     @action(detail=True, methods=["post"])

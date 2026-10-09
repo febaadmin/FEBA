@@ -9,6 +9,7 @@ Corrections :
   - StudentSerializer : ajout de 'enrolled_at_class' pour afficher la date
     d'inscription dans la classe courante.
 """
+from apps.core.tenancy import TenantRelationsMixin
 import logging
 from rest_framework import serializers
 from .models import Student, StudentEnrollment
@@ -80,7 +81,9 @@ class StudentEnrollmentSerializer(StudentAgeMixin, serializers.ModelSerializer):
         return attrs
 
 
-class StudentSerializer(AcademyMetadataMixin, serializers.ModelSerializer):
+class StudentSerializer(TenantRelationsMixin, AcademyMetadataMixin, serializers.ModelSerializer):
+    #: Isolation des relations écrites (voir apps.core.tenancy.TenantRelationsMixin).
+    tenant_relations = {"current_class": "school_year.school", "school_year": "school"}
     # P3 : chaque objet expose son académie, sans quoi la vue
     # « Toutes les Académies » ne peut pas étiqueter ses lignes.
     academy_source = "school"

@@ -1,3 +1,4 @@
+from apps.core.tenancy import TenantRelationsMixin
 from decimal import Decimal
 from rest_framework import serializers
 from .grading import ASSESSMENT_WEIGHT
@@ -20,7 +21,9 @@ class GradeHistorySerializer(serializers.ModelSerializer):
         return obj.changed_by.get_full_name() if obj.changed_by else None
 
 
-class GradeSerializer(AcademyMetadataMixin, StudentAgeMixin, serializers.ModelSerializer):
+class GradeSerializer(TenantRelationsMixin, AcademyMetadataMixin, StudentAgeMixin, serializers.ModelSerializer):
+    #: Isolation des relations écrites (voir apps.core.tenancy.TenantRelationsMixin).
+    tenant_relations = {"student": "school", "subject": "school", "teacher": "user.school", "school_year": "school"}
     #: Chemin ORM vers l'académie propriétaire de l'objet.
     academy_source = "student.school"
 

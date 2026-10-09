@@ -7,7 +7,7 @@ L'ordre compte : le routeur DRF est enregistré sur le préfixe vide, donc
 détail d'un paiement dont l'identifiant serait « card ».
 """
 from django.urls import path
-from rest_framework.routers import DefaultRouter
+from rest_framework.routers import DefaultRouter, SimpleRouter
 
 from . import card_views, reminder_views, views
 
@@ -16,7 +16,9 @@ router.register(r"", views.PaymentViewSet, basename="payment")
 
 # Échéanciers et dispositions : routeurs séparés, montés AVANT le routeur
 # des paiements (sinon « fee-schedules » serait lu comme un identifiant).
-schedules_router = DefaultRouter()
+# SimpleRouter et non DefaultRouter : ce dernier ajoute une « racine d'API »
+# sur le préfixe vide, qui capturait GET/POST /api/payments/ (405 à la création).
+schedules_router = SimpleRouter()
 schedules_router.register(r"fee-schedules", reminder_views.FeeScheduleViewSet, basename="fee-schedule")
 schedules_router.register(r"fee-arrangements", reminder_views.ArrangementViewSet, basename="fee-arrangement")
 

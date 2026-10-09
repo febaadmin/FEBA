@@ -1,7 +1,7 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
-from django.db.models import F, Sum, Count
+from django.db.models import F, Q, Sum, Count
 from django.utils import timezone
 import logging
 
@@ -60,6 +60,9 @@ class AdminDashboardView(APIView):
                 payment_date__year=now.year,
                 payment_date__month=m,
                 is_deleted=False,
+                # Paiements ANNULÉS exclus, comme dans l'écran Paiements :
+                # une recette annulée n'est pas une recette.
+                is_confirmed=True,
             )
             if active_year:
                 pay_qs = pay_qs.filter(school_year=active_year)
@@ -86,7 +89,7 @@ class AdminDashboardView(APIView):
         # FIX v20: Filtrer les élèves par année active (school_year field)
         if active_year:
             student_qs = student_qs.filter(school_year=active_year)
-        payment_qs = Payment.objects.filter(student__school=school, is_deleted=False)
+        payment_qs = Payment.objects.filter(student__school=school, is_deleted=False, is_confirmed=True)
         if active_year:
             # Élèves avec une inscription dans la classe courante (année active)
             payment_qs = payment_qs.filter(school_year=active_year)
@@ -130,7 +133,9 @@ class AdminDashboardView(APIView):
                 "total_revenue_ytd_minor": int(ytd_minor),
                 "total_revenue_ytd_display": Money(
                     int(ytd_minor), currency_code).formatted(),
-                "announcements": Announcement.objects.filter(is_published=True, author__school=school).count(),
+                "announcements": Announcement.objects.filter(is_published=True).filter(
+                    Q(school_year__school=school) | Q(school_year__isnull=True, author__school=school)
+                ).count(),
                 "total_bulletins": bulletin_count,
             },
             "monthly_revenue": monthly_revenue,

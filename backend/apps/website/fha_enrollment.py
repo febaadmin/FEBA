@@ -410,7 +410,10 @@ def send_confirmation(application, user=None, *, skip_sent=False):
         FHAEnrollmentApplication.objects.select_for_update().filter(pk=application.pk).first()
         latest = _latest_ack(application)
         if latest is not None:
-            recent = dj_timezone.now() - latest.updated_at < timedelta(seconds=CONFIRMATION_DEDUP_SECONDS)
+            recent = (
+                latest.manual_resend_at is not None
+                and dj_timezone.now() - latest.manual_resend_at < timedelta(seconds=CONFIRMATION_DEDUP_SECONDS)
+            )
             if recent and latest.status in (EmailDelivery.PENDING, EmailDelivery.SENT, EmailDelivery.ACCEPTED):
                 return RESULT_RECENTLY_SENT, latest
             if skip_sent and latest.is_delivered_to_provider:
@@ -423,6 +426,8 @@ def send_confirmation(application, user=None, *, skip_sent=False):
         # dossier attend, puis voit l'envoi récent et s'abstient. (Le délai
         # est borné par EMAIL_TIMEOUT ; l'action est rare et manuelle.)
         delivery = resend_parent_acknowledgement(application, user=user)
+        EmailDelivery.objects.filter(pk=delivery.pk).update(manual_resend_at=dj_timezone.now())
+        delivery.manual_resend_at = dj_timezone.now()
     if delivery.is_delivered_to_provider:
         return RESULT_SENT, delivery
     if delivery.status == EmailDelivery.RETRY:

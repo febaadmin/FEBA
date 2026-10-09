@@ -50,8 +50,9 @@ def submit(first, email=None):
 
 
 def age_deliveries():
-    """Sort de la fenêtre anti-doublon les envois faits pendant la mise en place."""
-    EmailDelivery.objects.update(updated_at=timezone.now() - timedelta(minutes=5))
+    """Sort de la fenêtre anti-doublon les renvois manuels déjà faits."""
+    EmailDelivery.objects.exclude(manual_resend_at=None).update(
+        manual_resend_at=timezone.now() - timedelta(minutes=5))
 
 
 class ConfirmationBase(TestCase):
