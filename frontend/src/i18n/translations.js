@@ -2071,4 +2071,42 @@ export const EN = {
     "Completed",
   "Non exécutée (désactivée)":
     "Not run (disabled)",
+  "{sent} envoyé(s), {n} non envoyé(s) : voir la colonne « E-mail parent ».":
+    "{sent} sent, {n} not sent: see the “Parent e-mail” column.",
+  "{sent} confirmation(s) envoyée(s).":
+    "{sent} confirmation(s) sent.",
+  "Sélectionner les {n} dossiers affichés":
+    "Select the {n} displayed applications",
+  "Tout désélectionner":
+    "Unselect all",
+  "{n} dossier(s) sélectionné(s)":
+    "{n} application(s) selected",
+  "{n} masqué(s) par le filtre, non inclus":
+    "{n} hidden by the filter, not included",
+  "Relancer les échecs ({n})":
+    "Retry failures ({n})",
+  "Envoyer les confirmations aux lignes sélectionnées ({n})":
+    "Send confirmations to selected rows ({n})",
+  "Confirmer l'envoi groupé":
+    "Confirm group sending",
+  "L'accusé de réception va être envoyé aux responsables de {n} dossier(s) sélectionné(s). Chaque dossier est traité séparément ; le résultat s'affiche sur sa ligne.":
+    "The acknowledgement will be sent to the guardians of {n} selected application(s). Each application is processed separately; the result is shown on its row.",
+  "Ne pas renvoyer aux dossiers dont la confirmation est déjà partie":
+    "Do not resend to applications whose confirmation was already sent",
+  "Envoyer ({n})":
+    "Send ({n})",
+  "Sélectionner toutes les lignes de ce tableau":
+    "Select all rows of this table",
+  "Sélectionner le dossier":
+    "Select application",
+  "Échec temporaire — nouvel essai programmé":
+    "Temporary failure — retry scheduled",
+  "Destinataire manquant ou invalide":
+    "Missing or invalid recipient",
+  "Déjà envoyé — non renvoyé":
+    "Already sent — not resent",
+  "Envoi déjà en cours ou tout juste effectué":
+    "Sending already in progress or just done",
+  "Dossier introuvable dans votre académie":
+    "Application not found in your academy",
 };

@@ -454,6 +454,22 @@ def _latest_email_state(application, purpose):
         .filter(purpose=purpose, subject_reference=application.reference)
         .order_by('-created_at').first()
     )
+    return _email_state(delivery)
+
+
+def _latest_deliveries(references, purpose):
+    """Dernier envoi par référence, en UNE requête (listes)."""
+    from apps.notifications.email_models import EmailDelivery
+
+    latest = {}
+    for delivery in (EmailDelivery.objects
+                     .filter(purpose=purpose, subject_reference__in=set(references))
+                     .order_by('subject_reference', '-created_at')):
+        latest.setdefault(delivery.subject_reference, delivery)
+    return latest
+
+
+def _email_state(delivery):
     if delivery is None:
         return {
             'status': 'none', 'status_display': 'Aucun envoi enregistré',
@@ -514,8 +530,20 @@ class FHAApplicationListSerializer(serializers.ModelSerializer):
         ]
 
     def get_confirmation_email(self, obj):
+        """
+        État du dernier accusé. En liste, les états de TOUTE la page sont lus
+        en une requête (auparavant : une requête par dossier).
+        """
         from .fha_enrollment import PURPOSE_PARENT_ACK
-        return _latest_email_state(obj, PURPOSE_PARENT_ACK)
+
+        rows = getattr(self.parent, 'instance', None) if self.parent is not None else None
+        if rows is None:
+            return _latest_email_state(obj, PURPOSE_PARENT_ACK)
+        cache = self.context.get('_ack_cache')
+        if cache is None:
+            cache = _latest_deliveries([a.reference for a in rows], PURPOSE_PARENT_ACK)
+            self.context['_ack_cache'] = cache
+        return _email_state(cache.get(obj.reference))
 
 
 class FHAApplicationDetailSerializer(serializers.ModelSerializer):

@@ -16,7 +16,7 @@
  * P4 — L'académie active fait partie des `queryKey` : une bascule ne peut
  * pas resservir le cache de l'académie précédente.
  */
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import {
@@ -220,7 +220,7 @@ function ApplicationsTab({ consolidated }) {
     queryFn: () => websiteAdminAPI.fhaApplications(),
   });
 
-  const rows = data?.data?.results || data?.data || [];
+  const rows = useMemo(() => data?.data?.results || data?.data || [], [data]);
 
   const filtered = useMemo(() => {
     const needle = search.trim().toLowerCase();
@@ -266,33 +266,137 @@ function ApplicationsTab({ consolidated }) {
     onError: (e) => toast.error(extractApiError(e)),
   });
 
-  const sheetMut = useMutation({
-    mutationFn: (id) => websiteAdminAPI.fhaApplicationSheet(id),
-    onSuccess: (response, id) => {
+  // ── Actions PAR LIGNE ───────────────────────────────────────────────
+  //
+  // CAUSE RACINE DU DÉFAUT « un clic déclenche toutes les lignes » : un
+  // indicateur d'occupation UNIQUE (`resendMut.isPending`) était passé à
+  // toutes les lignes. Un clic désactivait et grisait les boutons de TOUTES
+  // les lignes, et un second clic ailleurs remplaçait l'appel en cours dans
+  // l'unique mutation. L'état est désormais tenu par IDENTIFIANT de dossier :
+  // seule la ligne concernée est occupée, et son résultat lui est attaché.
+  const [pending, setPending] = useState({});        // id -> "resend" | "sheet"
+  const [rowResults, setRowResults] = useState({});  // id -> { result, label }
+  const inFlight = useRef(new Set());                // verrou synchrone anti double-clic
+
+  const runRowAction = async (id, kind, action) => {
+    const key = `${kind}:${id}`;
+    if (inFlight.current.has(key)) return;
+    inFlight.current.add(key);
+    setPending((p) => ({ ...p, [id]: kind }));
+    try {
+      await action();
+    } finally {
+      inFlight.current.delete(key);
+      setPending((p) => {
+        const next = { ...p };
+        delete next[id];
+        return next;
+      });
+    }
+  };
+
+  const downloadSheet = (id) => runRowAction(id, "sheet", async () => {
+    try {
+      const response = await websiteAdminAPI.fhaApplicationSheet(id);
       const row = rows.find((r) => r.id === id);
-      downloadBlob(`${row?.reference || "fiche"}-fiche-inscription.pdf`,
-                   response.data, "application/pdf");
-    },
-    onError: (e) => toast.error(extractApiError(e)),
+      downloadBlob(`${row?.reference || "fiche"}-fiche-inscription.pdf`, response.data, "application/pdf");
+    } catch (e) {
+      toast.error(extractApiError(e));
+    }
   });
 
-  const resendMut = useMutation({
-    mutationFn: (id) => websiteAdminAPI.fhaResendConfirmation(id),
-    onSuccess: (response) => {
-      qc.invalidateQueries({ queryKey: ["fha-applications", academyKey] });
+  const resendOne = (id) => runRowAction(id, "resend", async () => {
+    try {
+      const response = await websiteAdminAPI.fhaResendConfirmation(id);
+      setRowResults((r) => ({ ...r, [id]: { result: response.data.result, label: response.data.result_label } }));
       // On rapporte ce qui s'est réellement produit, pas un succès de
       // principe : « accepté par le fournisseur » n'est pas « reçu ».
       if (response.data.accepted && response.data.used_real_provider) {
         toast.success(t("E-mail accepté par le fournisseur."));
       } else if (response.data.accepted) {
-        toast(t("Enregistré, mais aucun fournisseur réel n'est configuré."),
-              { icon: "⚠️" });
+        toast(t("Enregistré, mais aucun fournisseur réel n'est configuré."), { icon: "⚠️" });
       } else {
         toast.error(response.data.error || t("L'envoi a de nouveau échoué."));
       }
-    },
-    onError: (e) => toast.error(extractApiError(e)),
+    } catch (e) {
+      const body = e?.response?.data;
+      if (body?.result) setRowResults((r) => ({ ...r, [id]: { result: body.result, label: body.result_label } }));
+      toast.error(extractApiError(e));
+    } finally {
+      qc.invalidateQueries({ queryKey: ["fha-applications", academyKey] });
+    }
   });
+
+  // ── Sélection et envoi groupé ───────────────────────────────────────
+  const [selected, setSelected] = useState(() => new Set());
+  const [bulkOpen, setBulkOpen] = useState(false);
+  const [skipSent, setSkipSent] = useState(true);
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const bulkLock = useRef(false);
+
+  // Seules les lignes AFFICHÉES comptent : une ligne sélectionnée puis
+  // masquée par un filtre ou une recherche n'est jamais envoyée en douce.
+  const visibleIds = filtered.map((r) => r.id);
+  const selectedVisible = visibleIds.filter((id) => selected.has(id));
+  const hiddenSelected = selected.size - selectedVisible.length;
+  const failedIds = Object.entries(rowResults)
+    .filter(([, r]) => ["failed", "retry"].includes(r.result))
+    .map(([id]) => Number(id));
+
+  const toggleRow = (id) => setSelected((prev) => {
+    const next = new Set(prev);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    return next;
+  });
+  const setMany = (ids, checked) => setSelected((prev) => {
+    const next = new Set(prev);
+    ids.forEach((id) => (checked ? next.add(id) : next.delete(id)));
+    return next;
+  });
+
+  const sendBulk = async (ids, skip) => {
+    if (bulkLock.current || ids.length === 0) return;
+    bulkLock.current = true;
+    setBulkBusy(true);
+    setPending((p) => Object.fromEntries([...Object.entries(p), ...ids.map((id) => [id, "resend"])]));
+    try {
+      const response = await websiteAdminAPI.fhaBulkResendConfirmation(ids, skip);
+      const results = response.data.results || [];
+      setRowResults((prev) => {
+        const next = { ...prev };
+        results.forEach((r) => { next[r.id] = { result: r.result, label: r.result_label }; });
+        return next;
+      });
+      const sent = results.filter((r) => r.result === "sent").length;
+      const problems = results.filter((r) => !["sent", "already_sent"].includes(r.result)).length;
+      if (problems) toast.error(t("{sent} envoyé(s), {n} non envoyé(s) : voir la colonne « E-mail parent ».", { sent, n: problems }));
+      else toast.success(t("{sent} confirmation(s) envoyée(s).", { sent }));
+      setBulkOpen(false);
+    } catch (e) {
+      toast.error(extractApiError(e));
+    } finally {
+      bulkLock.current = false;
+      setBulkBusy(false);
+      setPending((p) => {
+        const next = { ...p };
+        ids.forEach((id) => { delete next[id]; });
+        return next;
+      });
+      qc.invalidateQueries({ queryKey: ["fha-applications", academyKey] });
+    }
+  };
+
+  const tableProps = {
+    onOpen: setDetail,
+    onStatus: (id, status) => statusMut.mutate({ id, status }),
+    onSheet: downloadSheet,
+    onResend: resendOne,
+    pending,
+    rowResults,
+    selected,
+    onToggle: toggleRow,
+    onSetMany: setMany,
+  };
 
   return (
     <div className="space-y-4">
@@ -317,6 +421,35 @@ function ApplicationsTab({ consolidated }) {
         }
       />
 
+      {filtered.length > 0 && (
+        <div className="card flex flex-wrap items-center gap-2 text-sm">
+          <button type="button" className="btn-secondary text-xs" onClick={() => setMany(visibleIds, true)}>
+            {t("Sélectionner les {n} dossiers affichés", { n: visibleIds.length })}
+          </button>
+          <button type="button" className="btn-secondary text-xs" disabled={selected.size === 0}
+                  onClick={() => setSelected(new Set())}>
+            {t("Tout désélectionner")}
+          </button>
+          <span className="text-slate-600">
+            {t("{n} dossier(s) sélectionné(s)", { n: selectedVisible.length })}
+            {hiddenSelected > 0 && (
+              <span className="text-slate-400"> · {t("{n} masqué(s) par le filtre, non inclus", { n: hiddenSelected })}</span>
+            )}
+          </span>
+          <div className="flex-1" />
+          {failedIds.length > 0 && (
+            <button type="button" className="btn-secondary text-xs flex items-center gap-1" disabled={bulkBusy}
+                    onClick={() => sendBulk(failedIds, true)}>
+              <RefreshCw className="w-3.5 h-3.5" />{t("Relancer les échecs ({n})", { n: failedIds.length })}
+            </button>
+          )}
+          <button type="button" className="btn-primary text-xs flex items-center gap-1"
+                  disabled={selectedVisible.length === 0 || bulkBusy} onClick={() => setBulkOpen(true)}>
+            <Send className="w-3.5 h-3.5" />{t("Envoyer les confirmations aux lignes sélectionnées ({n})", { n: selectedVisible.length })}
+          </button>
+        </div>
+      )}
+
       {isLoading ? (
         <div className="card py-12 text-center text-slate-400">{t("Chargement…")}</div>
       ) : filtered.length === 0 ? (
@@ -329,26 +462,38 @@ function ApplicationsTab({ consolidated }) {
               <h2 className="font-bold text-slate-800">{code}</h2>
               <Badge>{group.length} {t("dossier(s)")}</Badge>
             </header>
-            <ApplicationTable
-              rows={group}
-              onOpen={setDetail}
-              onStatus={(id, status) => statusMut.mutate({ id, status })}
-              onSheet={(id) => sheetMut.mutate(id)}
-              onResend={(id) => resendMut.mutate(id)}
-              busy={sheetMut.isPending || resendMut.isPending}
-            />
+            <ApplicationTable rows={group} {...tableProps} />
           </section>
         ))
       ) : (
         <div className="card">
-          <ApplicationTable
-            rows={filtered}
-            onOpen={setDetail}
-            onStatus={(id, status) => statusMut.mutate({ id, status })}
-            onSheet={(id) => sheetMut.mutate(id)}
-            onResend={(id) => resendMut.mutate(id)}
-            busy={sheetMut.isPending || resendMut.isPending}
-          />
+          <ApplicationTable rows={filtered} {...tableProps} />
+        </div>
+      )}
+
+      {bulkOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true"
+             aria-label={t("Confirmer l'envoi groupé")}>
+          <div className="absolute inset-0 bg-black/40" onClick={() => !bulkBusy && setBulkOpen(false)} />
+          <div className="relative z-10 w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl space-y-4 text-sm">
+            <h2 className="text-lg font-bold text-slate-800">{t("Confirmer l'envoi groupé")}</h2>
+            <p className="text-slate-600">
+              {t("L'accusé de réception va être envoyé aux responsables de {n} dossier(s) sélectionné(s). Chaque dossier est traité séparément ; le résultat s'affiche sur sa ligne.", { n: selectedVisible.length })}
+            </p>
+            <label className="flex items-start gap-2">
+              <input type="checkbox" checked={skipSent} onChange={(e) => setSkipSent(e.target.checked)} />
+              <span>{t("Ne pas renvoyer aux dossiers dont la confirmation est déjà partie")}</span>
+            </label>
+            <div className="flex justify-end gap-2">
+              <button type="button" className="btn-secondary" disabled={bulkBusy} onClick={() => setBulkOpen(false)}>
+                {t("Annuler")}
+              </button>
+              <button type="button" className="btn-primary" disabled={bulkBusy}
+                      onClick={() => sendBulk(selectedVisible, skipSent)}>
+                {bulkBusy ? t("Envoi…") : t("Envoyer ({n})", { n: selectedVisible.length })}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
@@ -357,12 +502,31 @@ function ApplicationsTab({ consolidated }) {
   );
 }
 
-function ApplicationTable({ rows, onOpen, onStatus, onSheet, onResend, busy }) {
+const RESULT_TONE = {
+  sent: "bg-emerald-50 text-emerald-700",
+  already_sent: "bg-slate-100 text-slate-600",
+  recently_sent: "bg-slate-100 text-slate-600",
+  retry: "bg-amber-50 text-amber-700",
+  failed: "bg-red-50 text-red-700",
+  missing_recipient: "bg-red-50 text-red-700",
+  not_found: "bg-red-50 text-red-700",
+};
+
+function ApplicationTable({ rows, onOpen, onStatus, onSheet, onResend, pending, rowResults, selected, onToggle, onSetMany }) {
+  const ids = rows.map((r) => r.id);
+  const allChecked = ids.length > 0 && ids.every((id) => selected.has(id));
+  const someChecked = ids.some((id) => selected.has(id));
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-sm">
         <thead>
           <tr className="text-left text-slate-500 border-b border-slate-100">
+            <th className="py-2 pr-3 w-8">
+              <input type="checkbox" checked={allChecked}
+                     ref={(el) => { if (el) el.indeterminate = someChecked && !allChecked; }}
+                     onChange={() => onSetMany(ids, !allChecked)}
+                     aria-label={t("Sélectionner toutes les lignes de ce tableau")} />
+            </th>
             <th className="py-2 pr-3 font-semibold">{t("Dossier")}</th>
             <th className="py-2 pr-3 font-semibold">{t("Académie")}</th>
             <th className="py-2 pr-3 font-semibold">{t("Enfant")}</th>
@@ -376,94 +540,110 @@ function ApplicationTable({ rows, onOpen, onStatus, onSheet, onResend, busy }) {
           </tr>
         </thead>
         <tbody>
-          {rows.map((row) => (
-            <tr key={row.id} className="border-b border-slate-50 hover:bg-slate-50/60">
-              <td className="py-2.5 pr-3">
-                <button
-                  type="button"
-                  onClick={() => onOpen(row.id)}
-                  className="font-semibold text-indigo-600 hover:underline"
-                >
-                  {row.reference}
-                </button>
-              </td>
-              <td className="py-2.5 pr-3"><Badge>{row.entity_code}</Badge></td>
-              <td className="py-2.5 pr-3">
-                {row.child_first_name} {row.child_last_name}
-                {row.child_age != null && (
-                  <span className="text-slate-400"> · {row.child_age} {t("ans")}</span>
-                )}
-              </td>
-              <td className="py-2.5 pr-3 text-slate-500">
-                {(row.recommended_group || row.suggested_group || "—").replace(/_/g, " ")}
-              </td>
-              <td className="py-2.5 pr-3">
-                <div>{row.parent1_first_name} {row.parent1_last_name}</div>
-                <div className="text-slate-400 text-xs break-all">{row.parent1_email}</div>
-                {row.parent1_whatsapp && (
-                  <div className="text-slate-400 text-xs">
-                    WhatsApp&nbsp;: {row.parent1_whatsapp}
-                  </div>
-                )}
-              </td>
-              <td className="py-2.5 pr-3">
-                <select
-                  value={row.status}
-                  onChange={(e) => onStatus(row.id, e.target.value)}
-                  aria-label={t("Changer le statut")}
-                  className={`rounded-md px-2 py-1 text-xs font-semibold border-0 ${
-                    STATUS_TONE[row.status] || "bg-slate-100 text-slate-700"
-                  }`}
-                >
-                  {APPLICATION_STATUSES.map(([value, label]) => (
-                    <option key={value} value={value}>{label}</option>
-                  ))}
-                </select>
-              </td>
-              <td className="py-2.5 pr-3">
-                {row.has_sheet
-                  ? <Badge tone="bg-emerald-50 text-emerald-700">{t("Produite")}</Badge>
-                  : <Badge tone="bg-red-50 text-red-700">{t("Absente")}</Badge>}
-              </td>
-              <td className="py-2.5 pr-3">
-                <EmailStatus state={row.confirmation_email} />
-              </td>
-              <td className="py-2.5 pr-3 text-slate-500 whitespace-nowrap">
-                {(row.created_at || "").slice(0, 10)}
-              </td>
-              <td className="py-2.5 pr-3">
-                <div className="flex items-center gap-1 justify-end">
-                  <button
-                    type="button" disabled={busy}
-                    onClick={() => onSheet(row.id)}
-                    title={t("Télécharger la fiche PDF")}
-                    aria-label={t("Télécharger la fiche PDF")}
-                    className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-500 disabled:opacity-40"
-                  >
-                    <FileText className="w-4 h-4" />
-                  </button>
-                  <button
-                    type="button" disabled={busy}
-                    onClick={() => onResend(row.id)}
-                    title={t("Renvoyer l'e-mail de confirmation")}
-                    aria-label={t("Renvoyer l'e-mail de confirmation")}
-                    className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-500 disabled:opacity-40"
-                  >
-                    <Send className="w-4 h-4" />
-                  </button>
+          {rows.map((row) => {
+            const busy = pending[row.id];
+            const result = rowResults[row.id];
+            return (
+              <tr key={row.id} className={`border-b border-slate-50 hover:bg-slate-50/60 ${selected.has(row.id) ? "bg-blue-50/50" : ""}`}>
+                <td className="py-2.5 pr-3">
+                  <input type="checkbox" checked={selected.has(row.id)} onChange={() => onToggle(row.id)}
+                         aria-label={`${t("Sélectionner le dossier")} ${row.reference}`} />
+                </td>
+                <td className="py-2.5 pr-3">
                   <button
                     type="button"
                     onClick={() => onOpen(row.id)}
-                    title={t("Voir le détail complet")}
-                    aria-label={t("Voir le détail complet")}
-                    className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-500"
+                    className="font-semibold text-indigo-600 hover:underline"
                   >
-                    <Search className="w-4 h-4" />
+                    {row.reference}
                   </button>
-                </div>
-              </td>
-            </tr>
-          ))}
+                </td>
+                <td className="py-2.5 pr-3"><Badge>{row.entity_code}</Badge></td>
+                <td className="py-2.5 pr-3">
+                  {row.child_first_name} {row.child_last_name}
+                  {row.child_age != null && (
+                    <span className="text-slate-400"> · {row.child_age} {t("ans")}</span>
+                  )}
+                </td>
+                <td className="py-2.5 pr-3 text-slate-500">
+                  {(row.recommended_group || row.suggested_group || "—").replace(/_/g, " ")}
+                </td>
+                <td className="py-2.5 pr-3">
+                  <div>{row.parent1_first_name} {row.parent1_last_name}</div>
+                  <div className="text-slate-400 text-xs break-all">{row.parent1_email}</div>
+                  {row.parent1_whatsapp && (
+                    <div className="text-slate-400 text-xs">
+                      WhatsApp&nbsp;: {row.parent1_whatsapp}
+                    </div>
+                  )}
+                </td>
+                <td className="py-2.5 pr-3">
+                  <select
+                    value={row.status}
+                    onChange={(e) => onStatus(row.id, e.target.value)}
+                    aria-label={t("Changer le statut")}
+                    className={`rounded-md px-2 py-1 text-xs font-semibold border-0 ${
+                      STATUS_TONE[row.status] || "bg-slate-100 text-slate-700"
+                    }`}
+                  >
+                    {APPLICATION_STATUSES.map(([value, label]) => (
+                      <option key={value} value={value}>{label}</option>
+                    ))}
+                  </select>
+                </td>
+                <td className="py-2.5 pr-3">
+                  {row.has_sheet
+                    ? <Badge tone="bg-emerald-50 text-emerald-700">{t("Produite")}</Badge>
+                    : <Badge tone="bg-red-50 text-red-700">{t("Absente")}</Badge>}
+                </td>
+                <td className="py-2.5 pr-3">
+                  <EmailStatus state={row.confirmation_email} />
+                  {result && (
+                    <div className="mt-1" data-testid={`row-result-${row.id}`}>
+                      <Badge tone={RESULT_TONE[result.result]}>{t(result.label)}</Badge>
+                    </div>
+                  )}
+                </td>
+                <td className="py-2.5 pr-3 text-slate-500 whitespace-nowrap">
+                  {(row.created_at || "").slice(0, 10)}
+                </td>
+                <td className="py-2.5 pr-3">
+                  <div className="flex items-center gap-1 justify-end">
+                    <button
+                      type="button" disabled={busy === "sheet"}
+                      onClick={(e) => { e.stopPropagation(); onSheet(row.id); }}
+                      title={t("Télécharger la fiche PDF")}
+                      aria-label={`${t("Télécharger la fiche PDF")} ${row.reference}`}
+                      className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-500 disabled:opacity-40"
+                    >
+                      <FileText className="w-4 h-4" />
+                    </button>
+                    <button
+                      type="button" disabled={busy === "resend"}
+                      onClick={(e) => { e.stopPropagation(); onResend(row.id); }}
+                      title={t("Renvoyer l'e-mail de confirmation")}
+                      aria-label={`${t("Renvoyer l'e-mail de confirmation")} ${row.reference}`}
+                      aria-busy={busy === "resend"}
+                      className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-500 disabled:opacity-40"
+                    >
+                      {busy === "resend"
+                        ? <RefreshCw className="w-4 h-4 animate-spin" />
+                        : <Send className="w-4 h-4" />}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => onOpen(row.id)}
+                      title={t("Voir le détail complet")}
+                      aria-label={t("Voir le détail complet")}
+                      className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-500"
+                    >
+                      <Search className="w-4 h-4" />
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </div>

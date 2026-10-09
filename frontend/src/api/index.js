@@ -165,6 +165,10 @@ export const websiteAdminAPI = {
   fhaApplicationSheet: (id)   => api.get(`/website/admin/fha-applications/${id}/sheet/`, { responseType: "blob" }),
   fhaRegenerateSheet: (id)    => api.post(`/website/admin/fha-applications/${id}/regenerate-sheet/`),
   fhaResendConfirmation: (id) => api.post(`/website/admin/fha-applications/${id}/resend-confirmation/`),
+  // Envoi groupé : le serveur revalide chaque identifiant dans la portée de
+  // l'académie et renvoie un résultat PAR LIGNE.
+  fhaBulkResendConfirmation: (ids, skipSent = true) =>
+    api.post("/website/admin/fha-applications/bulk-resend-confirmation/", { ids, skip_sent: skipSent }),
   exportFhaApplications: ()   => api.get("/website/admin/fha-applications/export/", { responseType: "blob" }),
 
   fhaPlacementTests: (params) => api.get("/website/admin/fha-placement-tests/", { params: { ...BIG, ...params } }),

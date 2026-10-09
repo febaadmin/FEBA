@@ -346,6 +346,90 @@ def _create_in_app_notifications(application):
         )
 
 
+#: Fenêtre anti-doublon : un second envoi demandé pour le MÊME dossier
+#: moins de N secondes après le précédent (double clic, double requête,
+#: envoi individuel pendant un envoi groupé) n'est pas exécuté.
+CONFIRMATION_DEDUP_SECONDS = 30
+
+#: Taille maximale d'un envoi groupé synchrone.
+CONFIRMATION_BULK_MAX = 100
+
+# Résultats par ligne, communs à l'envoi individuel et à l'envoi groupé.
+RESULT_SENT = "sent"
+RESULT_RETRY = "retry"
+RESULT_FAILED = "failed"
+RESULT_MISSING_RECIPIENT = "missing_recipient"
+RESULT_ALREADY_SENT = "already_sent"
+RESULT_RECENTLY_SENT = "recently_sent"
+RESULT_NOT_FOUND = "not_found"
+RESULT_LABELS = {
+    RESULT_SENT: "Remis au serveur de messagerie",
+    RESULT_RETRY: "Échec temporaire — nouvel essai programmé",
+    RESULT_FAILED: "Échec",
+    RESULT_MISSING_RECIPIENT: "Destinataire manquant ou invalide",
+    RESULT_ALREADY_SENT: "Déjà envoyé — non renvoyé",
+    RESULT_RECENTLY_SENT: "Envoi déjà en cours ou tout juste effectué",
+    RESULT_NOT_FOUND: "Dossier introuvable dans votre académie",
+}
+
+
+def _latest_ack(application):
+    from apps.notifications.email_models import EmailDelivery
+
+    return (
+        EmailDelivery.objects
+        .filter(purpose=PURPOSE_PARENT_ACK, subject_reference=application.reference)
+        .order_by("-updated_at").first()
+    )
+
+
+def send_confirmation(application, user=None, *, skip_sent=False):
+    """
+    Envoie (ou renvoie) l'accusé de réception d'UN dossier, de façon sûre.
+
+    - Verrou de ligne sur le dossier : deux requêtes simultanées pour le
+      même dossier sont sérialisées (PostgreSQL), la seconde voit le
+      résultat de la première et s'abstient.
+    - Pas de second envoi dans la fenêtre anti-doublon.
+    - `skip_sent` : un dossier dont le dernier accusé est déjà parti n'est
+      pas relancé (reprise des seuls échecs d'un envoi groupé).
+    - Adresse absente ou invalide : aucun envoi, résultat explicite.
+
+    Renvoie `(code_résultat, delivery | None)`.
+    """
+    from datetime import timedelta
+
+    from django.core.exceptions import ValidationError as DjangoValidationError
+    from django.core.validators import validate_email
+    from django.utils import timezone as dj_timezone
+
+    from apps.notifications.email_models import EmailDelivery
+    from apps.website.models import FHAEnrollmentApplication
+
+    with transaction.atomic():
+        FHAEnrollmentApplication.objects.select_for_update().filter(pk=application.pk).first()
+        latest = _latest_ack(application)
+        if latest is not None:
+            recent = dj_timezone.now() - latest.updated_at < timedelta(seconds=CONFIRMATION_DEDUP_SECONDS)
+            if recent and latest.status in (EmailDelivery.PENDING, EmailDelivery.SENT, EmailDelivery.ACCEPTED):
+                return RESULT_RECENTLY_SENT, latest
+            if skip_sent and latest.is_delivered_to_provider:
+                return RESULT_ALREADY_SENT, latest
+        try:
+            validate_email(application.parent1_email or "")
+        except DjangoValidationError:
+            return RESULT_MISSING_RECIPIENT, None
+        # L'envoi a lieu SOUS le verrou : une requête concurrente pour ce
+        # dossier attend, puis voit l'envoi récent et s'abstient. (Le délai
+        # est borné par EMAIL_TIMEOUT ; l'action est rare et manuelle.)
+        delivery = resend_parent_acknowledgement(application, user=user)
+    if delivery.is_delivered_to_provider:
+        return RESULT_SENT, delivery
+    if delivery.status == EmailDelivery.RETRY:
+        return RESULT_RETRY, delivery
+    return RESULT_FAILED, delivery
+
+
 def resend_parent_acknowledgement(application, user=None):
     """
     Relance l'accusé de réception depuis l'administration.
