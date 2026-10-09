@@ -52,6 +52,7 @@ class PaymentViewSet(BulkDeleteMixin, viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated, IsSameTenant]
     filterset_fields = ["student", "school_year", "payment_type", "payment_method", "is_confirmed"]
     search_fields = ["reference_number", "student__first_name", "student__last_name"]
+    ordering_fields = ["payment_date", "paid_at", "created_at", "amount_minor"]
     http_method_names = ["get", "post", "patch", "delete", "head", "options"]
     tenant_lookup = "student__school"
 
@@ -87,6 +88,17 @@ class PaymentViewSet(BulkDeleteMixin, viewsets.ModelViewSet):
             current_years = current_school_years(school)
             if current_years.exists():
                 qs = qs.filter(school_year__in=current_years)
+
+        # Filtre par période (dates LOCALES de paiement, bornes incluses).
+        from django.utils.dateparse import parse_date
+        from rest_framework.exceptions import ValidationError
+        for param, lookup in (("date_from", "payment_date__gte"), ("date_to", "payment_date__lte")):
+            raw = self.request.query_params.get(param)
+            if raw:
+                parsed = parse_date(raw)
+                if parsed is None:
+                    raise ValidationError({param: "Date invalide : format attendu AAAA-MM-JJ."})
+                qs = qs.filter(**{lookup: parsed})
 
         if user.role_level >= 80:
             return qs

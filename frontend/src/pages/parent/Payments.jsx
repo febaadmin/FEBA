@@ -9,6 +9,7 @@ import { t } from "../../i18n";
 import { useMoney } from "../../hooks/useMoney";
 
 import { ageColumn } from "../../utils/age";
+import { paymentDateTimeText, paymentSortValue } from "../../utils/datetime";
 export default function ParentPayments() {
   // P0 : la devise vient de l'académie active, jamais d'un symbole codé en dur.
   const money = useMoney();
@@ -52,10 +53,14 @@ export default function ParentPayments() {
     { key: "amount",  label: t("Montant"),    render: r =>
         <span className="font-bold text-success">{money.amountOf(r)}</span> },
     { key: "method",  label: t("Mode"),       render: r => t(r.payment_method_label || r.payment_method || "—") },
-    { key: "date",    label: t("Date"),       accessor: "payment_date" },
+    { key: "date",    label: t("Date et heure"), accessor: "paid_at_display", sortValue: paymentSortValue,
+      render: r => <span className="whitespace-nowrap">{paymentDateTimeText(r)}</span> },
+    // `is_confirmed = false` signifie ANNULÉ (annulation justifiée par
+    // l'administration), pas « en attente » : l'ancien libellé laissait un
+    // parent croire qu'un paiement annulé allait encore être validé.
     { key: "status",  label: t("Statut"),     render: r => r.is_confirmed
         ? <span className="flex items-center gap-1 text-xs text-green-600 font-medium"><CheckCircle className="w-3 h-3"/>{t("Confirmé")}</span>
-        : <span className="flex items-center gap-1 text-xs text-amber-500 font-medium"><Clock className="w-3 h-3"/>{t("En attente")}</span>
+        : <span className="flex items-center gap-1 text-xs text-red-500 font-medium"><Clock className="w-3 h-3"/>{t("Annulé")}</span>
     },
     { key: "receipt", label: t("Reçu"),       sortable: false,
       render: r => (r.receipt_url || r.receipt_file)

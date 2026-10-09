@@ -80,6 +80,17 @@ def _as_date(value):
         return None
 
 
+def as_date(value):
+    """Convertit une date, un datetime ou une chaîne ISO en `date` (ou None)."""
+    return _as_date(value)
+
+
+def format_birth_date(value, empty="—"):
+    """Date de naissance au format JJ/MM/AAAA, quel que soit son type d'origine."""
+    value = _as_date(value)
+    return value.strftime("%d/%m/%Y") if value else empty
+
+
 def compute_age(birth_date, on):
     """
     Âge en années révolues au jour `on`, ou None si non calculable.

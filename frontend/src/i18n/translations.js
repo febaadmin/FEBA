@@ -1785,4 +1785,14 @@ export const EN = {
     "{n} years old",
   "Date de naissance dans le futur ou invraisemblable : à corriger dans la fiche élève.":
     "Date of birth in the future or implausible: please correct it in the student record.",
+  "Date et heure":
+    "Date and time",
+  "Heure non enregistrée pour ce paiement":
+    "Time not recorded for this payment",
+  "heure n.e.":
+    "time n/r",
+  "heure non enregistrée":
+    "time not recorded",
+  "Heure locale de l'académie. Laissez vide si elle n'est pas connue.":
+    "Academy local time. Leave empty if unknown.",
 };

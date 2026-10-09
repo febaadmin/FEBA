@@ -179,9 +179,21 @@ def generate_receipt(payment):
 
     # Référence
     year_name = payment.school_year.name if payment.school_year else "—"
+    # Heures dans le fuseau DE L'ACADÉMIE : `timezone.now().strftime()`
+    # imprimait l'heure UTC (une heure de moins à Cotonou, cinq de plus que
+    # New York).
+    from zoneinfo import ZoneInfo
+    try:
+        academy_zone = ZoneInfo(payment.academy_timezone)
+    except Exception:
+        academy_zone = timezone.get_current_timezone()
+    generated_local = timezone.now().astimezone(academy_zone)
+    paid_local = payment.local_paid_at()
+    paid_label = (paid_local.strftime("%d/%m/%Y %H:%M") if paid_local
+                  else payment.payment_date.strftime("%d/%m/%Y"))
     ref_tbl = Table([
-        ["N° Référence:", payment.reference_number, "Date:", payment.payment_date.strftime("%d/%m/%Y")],
-        ["Année scolaire:", year_name, "Généré le:", timezone.now().strftime("%d/%m/%Y %H:%M")],
+        ["N° Référence:", payment.reference_number, "Date:", paid_label],
+        ["Année scolaire:", year_name, "Généré le:", generated_local.strftime("%d/%m/%Y %H:%M")],
     ], colWidths=[4*cm, 6*cm, 3*cm, 4*cm])
     ref_tbl.setStyle(TableStyle([
         ("FONTNAME",  (0,0), (-1,-1), "Helvetica"),
@@ -301,7 +313,7 @@ def generate_receipt(payment):
          # n'a pas de campus à Cotonou. P0 — plus aucun repli textuel : une
          # académie sans ville affiche la date seule.
          [P((f"{brand.location_line}, le " if brand.location_line else "Le ")
-            + timezone.now().strftime('%d/%m/%Y'),
+            + generated_local.strftime('%d/%m/%Y'),
             fontSize=8, alignment=1, textColor=colors.grey)]],
         colWidths=[6.2*cm], rowHeights=[0.6*cm, 3.3*cm, 0.6*cm],
     )
@@ -322,7 +334,7 @@ def generate_receipt(payment):
     story.append(bottom_tbl)
     story.append(Spacer(1, 0.4*cm))
     story.append(HRFlowable(width="100%", thickness=1, color=colors.lightgrey))
-    footer = (f"Généré le {timezone.now().strftime('%d/%m/%Y à %H:%M')} | "
+    footer = (f"Généré le {generated_local.strftime('%d/%m/%Y à %H:%M')} | "
               f"Réf: {payment.reference_number}")
     if brand.footer_text:
         footer += f" | {brand.footer_text}"

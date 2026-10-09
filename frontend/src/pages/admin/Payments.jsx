@@ -11,9 +11,14 @@ import ConfirmDialog from "../../components/ui/ConfirmDialog";
 import StatCard from "../../components/ui/StatCard";
 import SearchableSelect from "../../components/ui/SearchableSelect";
 import { extractApiError } from "../../utils/errors";
-import { t, dateLocale } from "../../i18n";
+import { t } from "../../i18n";
 import { useSchoolYearScope } from "../../hooks/useSchoolYearScope";
 import { useMoney } from "../../hooks/useMoney";
+import { useAcademy } from "../../context/AcademyContext";
+import {
+  academyNowParts, formatDateTime, paymentDateTimeText, paymentSortValue,
+} from "../../utils/datetime";
+import { ageText } from "../../utils/age";
 
 import { ageColumn, studentOptionLabel } from "../../utils/age";
 function exportCSV(rows, filename) {
@@ -35,9 +40,15 @@ export default function AdminPayments() {
   const [deleteItem, setDeleteItem] = useState(null);
   const [showDeleted, setShowDeleted] = useState(false);
   const [viewItem, setViewItem] = useState(null);
-  const { register, handleSubmit, reset, control } = useForm({
-    defaultValues: { payment_date: new Date().toISOString().slice(0, 10), payment_method: "cash" }
-  });
+  // Date et heure proposées par défaut : celles de l'ACADÉMIE active.
+  // `new Date().toISOString().slice(0, 10)` donnait la date UTC — le
+  // lendemain pour un encaissement saisi le soir à New York.
+  const { activeAcademy } = useAcademy();
+  const formDefaults = () => {
+    const now = academyNowParts(activeAcademy?.timezone);
+    return { payment_date: now.date, payment_time: now.time, payment_method: "cash" };
+  };
+  const { register, handleSubmit, reset, control } = useForm({ defaultValues: formDefaults() });
 
   const { data: yearsData } = useQuery({ queryKey: ["years"], queryFn: schoolsAPI.years });
   const years = yearsData?.data?.results || yearsData?.data || [];
@@ -108,7 +119,8 @@ export default function AdminPayments() {
     onError: (e) => toast.error(extractApiError(e)),
   });
 
-  const closeModal = () => { setModalOpen(false); reset({ payment_date: new Date().toISOString().slice(0, 10), payment_method: "cash" }); };
+  const closeModal = () => { setModalOpen(false); reset(formDefaults()); };
+  const openModal = () => { reset(formDefaults()); setModalOpen(true); };
 
   /* ── Excel Export ──────────────────────────────────────────────────────── */
   const exportPayments = () => {
@@ -124,7 +136,10 @@ export default function AdminPayments() {
       "Montant": Number(p.amount || 0).toFixed(2),
       "Devise": p.currency || "",
       "Mode":          p.payment_method_label || p.payment_method || "",
-      "Date":          p.payment_date || "",
+      // Même valeur que la colonne affichée : date ET heure, dans le
+      // fuseau de l'académie (date seule si l'heure n'a jamais été saisie).
+      "Date et heure": paymentDateTimeText(p),
+      "Âge élève":     ageText(p.student_age, p.student_age_status),
       "Reçu par":      p.received_by_name || "",
       "Statut":        p.is_confirmed ? t("Confirmé") : t("Annulé"),
       "Année":         p.school_year_name || "",
@@ -142,7 +157,13 @@ export default function AdminPayments() {
     { key: "type",   label: t("Type"),       render: r => t(r.payment_type_label || r.payment_type || "—") },
     { key: "amount", label: t("Montant"),    render: r => <span className="font-bold text-success">{money.amountOf(r)}</span> },
     { key: "method", label: t("Mode"),       render: r => t(r.payment_method_label || r.payment_method || "—") },
-    { key: "date",   label: t("Date"),       accessor: "payment_date" },
+    { key: "date",   label: t("Date et heure"), accessor: "paid_at_display", sortValue: paymentSortValue,
+      render: r => (
+        <span className="whitespace-nowrap" title={r.has_time ? "" : t("Heure non enregistrée pour ce paiement")}>
+          {paymentDateTimeText(r)}
+          {!r.has_time && <span className="ml-1 text-xs text-slate-400">· {t("heure n.e.")}</span>}
+        </span>
+      ) },
     { key: "status", label: t("Statut"),     render: r => r.is_confirmed
       ? <span className="text-xs text-success font-medium bg-success/10 px-2 py-0.5 rounded-full">{t("Confirmé")}</span>
       : <span className="text-xs text-danger font-medium bg-danger/10 px-2 py-0.5 rounded-full">{t("Annulé")}</span> },
@@ -158,7 +179,7 @@ export default function AdminPayments() {
             <button onClick={() => setShowDeleted(true)}
               className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium bg-danger/10 text-danger hover:bg-danger/20 transition-all">
               <Eye className="w-4 h-4" />{t("Voir supprimés")}</button>
-            <button onClick={() => setModalOpen(true)} className="btn-primary flex items-center gap-2">
+            <button onClick={openModal} className="btn-primary flex items-center gap-2">
               <Plus className="w-4 h-4" />{t("Nouveau paiement")}</button>
           </div>
         } />
@@ -261,7 +282,9 @@ export default function AdminPayments() {
                 ["Type",      t(viewItem.payment_type_label || "")],
                 ["Montant",   <span key="amount" className="font-bold text-success">{money.amountOf(viewItem)}</span>],
                 ["Mode",      t(viewItem.payment_method_label || "")],
-                ["Date",      viewItem.payment_date],
+                ["Date et heure", viewItem.has_time
+                  ? paymentDateTimeText(viewItem)
+                  : `${paymentDateTimeText(viewItem)} (${t("heure non enregistrée")})`],
                 ["Reçu par",  viewItem.received_by_name],
                 ["Statut",    <span key="status" className={viewItem.is_confirmed ? "text-success font-medium" : "text-danger font-medium"}>{viewItem.is_confirmed ? t("Confirmé") : t("Annulé")}</span>],
               ].map(([label, val]) => (
@@ -276,10 +299,16 @@ export default function AdminPayments() {
               <div>
                 <p className="text-xs font-semibold text-slate-500 mb-2">{t("Historique")}</p>
                 <div className="space-y-1">
-                  {paymentHistory.slice(0, 5).map((h, i) => (
-                    <div key={i} className="text-xs bg-slate-50 rounded-lg px-3 py-1.5 flex justify-between">
-                      <span className="text-slate-600">{h.action || h.changed_by_name}</span>
-                      <span className="text-slate-400">{h.changed_at ? new Date(h.changed_at).toLocaleDateString(dateLocale()) : ""}</span>
+                  {/* L'API renvoie `performed_at` / `action_label` /
+                      `performed_by_name` : l'écran lisait `changed_at`, qui
+                      n'existe pas — la date de chaque action restait vide. */}
+                  {paymentHistory.slice(0, 5).map((h) => (
+                    <div key={h.id} className="text-xs bg-slate-50 rounded-lg px-3 py-1.5 flex justify-between gap-2">
+                      <span className="text-slate-600">
+                        {t(h.action_label || h.action || "")}
+                        {h.performed_by_name ? ` — ${h.performed_by_name}` : ""}
+                      </span>
+                      <span className="text-slate-400 whitespace-nowrap">{formatDateTime(h.performed_at, viewItem.academy_timezone)}</span>
                     </div>
                   ))}
                 </div>
@@ -324,8 +353,8 @@ export default function AdminPayments() {
                 <table className="w-full text-sm">
                   <thead className="bg-slate-50 border-b border-slate-100">
                     <tr>
-                      {["Référence", "Élève", "Type", "Montant", "Date", ""].map(h => (
-                        <th key={h} className="px-3 py-2 text-left font-semibold text-slate-600">{h}</th>
+                      {["Référence", "Élève", "Type", "Montant", "Date et heure", ""].map(h => (
+                        <th key={h} className="px-3 py-2 text-left font-semibold text-slate-600">{h ? t(h) : ""}</th>
                       ))}
                     </tr>
                   </thead>
@@ -336,7 +365,7 @@ export default function AdminPayments() {
                         <td className="px-3 py-2">{p.student_name}</td>
                         <td className="px-3 py-2">{t(p.payment_type_label)}</td>
                         <td className="px-3 py-2 font-bold text-slate-600">{money.amountOf(p)}</td>
-                        <td className="px-3 py-2 text-slate-500">{p.payment_date}</td>
+                        <td className="px-3 py-2 text-slate-500 whitespace-nowrap">{paymentDateTimeText(p)}</td>
                         <td className="px-3 py-2">
                           <button onClick={() => restoreMut.mutate(p.id)}
                             className="flex items-center gap-1 text-xs text-success hover:underline">
@@ -372,14 +401,17 @@ export default function AdminPayments() {
                 <option value="mensualite">{t("Mensualité")}</option>
                 <option value="cantine">{t("Cantine")}</option>
                 <option value="transport">{t("Transport")}</option>
-                <option value="autre">{t("Autre")}</option>
+                <option value="other">{t("Autre")}</option>
               </select>
             </div>
             <div>
               <label className="label">{t("Mode *")}</label>
               <select {...register("payment_method")} className="input">
+                {/* Valeurs EXACTES du serveur : « mobile_money » n'existait
+                    pas côté API et l'enregistrement échouait (erreur 400). */}
                 <option value="cash">{t("Espèces")}</option>
-                <option value="mobile_money">{t("Mobile Money")}</option>
+                <option value="mtn_momo">MTN MoMo</option>
+                <option value="moov_money">Moov Money</option>
                 <option value="bank_transfer">{t("Virement")}</option>
                 <option value="check">{t("Chèque")}</option>
               </select>
@@ -395,9 +427,18 @@ export default function AdminPayments() {
               <input {...register("payment_date", { required: true })} type="date" className="input" />
             </div>
           </div>
-          <div>
-            <label className="label">{t("Mois concerné")}</label>
-            <input {...register("month_concerned")} type="month" className="input" />
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="label">{t("Heure")}</label>
+              <input {...register("payment_time")} type="time" className="input" />
+              <p className="text-xs text-slate-400 mt-1">{t("Heure locale de l'académie. Laissez vide si elle n'est pas connue.")}</p>
+            </div>
+            <div>
+              {/* Le champ s'appelait « month_concerned », inconnu du
+                  serveur : la valeur saisie était perdue sans erreur. */}
+              <label className="label">{t("Mois concerné")}</label>
+              <input {...register("period_month")} type="month" className="input" />
+            </div>
           </div>
           <div>
             <label className="label">{t("Notes")}</label>

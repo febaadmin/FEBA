@@ -233,13 +233,21 @@ class PaymentTransaction(models.Model):
 
         payment = self.payment
         if payment is None:
+            from apps.core.age import academy_today
+
+            confirmed_at = timezone.now()
             payment = Payment.objects.create(
                 student=self.student,
                 school_year=self.school_year,
                 payment_type=self.payment_type,
                 amount_minor=self.amount_minor,
                 payment_method="card",
-                payment_date=timezone.now().date(),
+                # Date LOCALE de l'académie : `timezone.now().date()` donnait
+                # la date UTC — un paiement FHA réglé à 21 h à New York était
+                # daté du lendemain.
+                payment_date=academy_today(self.academy, confirmed_at),
+                paid_at=confirmed_at,
+                paid_at_source=Payment.PAID_AT_CARD,
                 received_by=None,
                 notes=f"Paiement par carte — {self.provider} {self.reference}",
             )

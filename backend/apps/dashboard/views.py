@@ -1,7 +1,7 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
-from django.db.models import Sum, Count
+from django.db.models import F, Sum, Count
 from django.utils import timezone
 import logging
 
@@ -146,9 +146,18 @@ class AdminDashboardView(APIView):
                     "type": p.get_payment_type_display(),
                     "payment_type": p.payment_type,
                     "date": str(p.payment_date),
+                    "paid_at": p.paid_at.isoformat() if p.paid_at else None,
+                    "paid_at_display": (
+                        p.local_paid_at().strftime("%d/%m/%Y %H:%M") if p.paid_at
+                        else p.payment_date.strftime("%d/%m/%Y")
+                    ),
+                    "has_time": p.paid_at is not None,
                     "reference_number": p.reference_number,
                 }
-                for p in payment_qs.select_related("student__current_class").order_by("-payment_date")[:5]
+                # Ordre chronologique RÉEL : à date égale, l'heure départage
+                # (et l'ordre de saisie quand l'heure est inconnue).
+                for p in payment_qs.select_related("student__current_class", "student__school")
+                .order_by("-payment_date", F("paid_at").desc(nulls_last=True), "-created_at")[:5]
             ],
             "recent_students": [
                 {

@@ -10,6 +10,7 @@ The Payment itself is never deleted (soft-cancel via is_confirmed=False).
 """
 from django.core.exceptions import ValidationError
 from django.db import models
+from django.db.models import F
 from django.utils import timezone
 
 from apps.core.currency import DEFAULT_CURRENCY, Money, get_currency
@@ -32,6 +33,11 @@ class Payment(models.Model):
         ("mtn_momo", "MTN MoMo"),
         ("moov_money", "Moov Money"),
         ("card", "Carte bancaire"),
+        # Proposés par le formulaire d'encaissement depuis longtemps mais
+        # refusés par l'API (erreur 400 « choix invalide ») : l'écran
+        # promettait un mode que le serveur n'acceptait pas.
+        ("bank_transfer", "Virement bancaire"),
+        ("check", "Chèque"),
     ]
 
     student = models.ForeignKey(
@@ -64,7 +70,38 @@ class Payment(models.Model):
             "n'est jamais lue depuis le formulaire."
         ),
     )
-    payment_date = models.DateField(default=timezone.now)
+    payment_date = models.DateField(default=timezone.localdate)
+    # ── Horodatage de la transaction (P1 — octobre 2026) ──────────────
+    # `payment_date` ne porte qu'une DATE : l'heure d'un encaissement n'a
+    # jamais été conservée, et la colonne « Date » ne pouvait donc pas
+    # l'afficher. `paid_at` est l'instant réel de la transaction (stocké
+    # en UTC comme tout DateTimeField, affiché dans le fuseau de
+    # l'académie). Il reste NUL quand l'heure n'est pas connue : une heure
+    # inventée serait pire qu'une heure absente sur une pièce comptable.
+    PAID_AT_RECORDED = "recorded"
+    PAID_AT_CARD = "card"
+    PAID_AT_BACKFILL = "backfill_created_at"
+    PAID_AT_SOURCES = [
+        ("", "Heure non enregistrée"),
+        (PAID_AT_RECORDED, "Heure saisie ou constatée à l'enregistrement"),
+        (PAID_AT_CARD, "Confirmation du prestataire de paiement"),
+        (PAID_AT_BACKFILL, "Horodatage d'enregistrement du même jour (reprise)"),
+    ]
+    paid_at = models.DateTimeField(
+        null=True, blank=True,
+        help_text="Date et heure réelles de la transaction. Vide = heure inconnue.",
+    )
+    paid_at_source = models.CharField(
+        max_length=24, choices=PAID_AT_SOURCES, blank=True, default="",
+        help_text="Provenance de l'heure affichée — jamais une heure inventée.",
+    )
+    # Le formulaire proposait « Mois concerné » sans que la valeur soit
+    # enregistrée nulle part. Elle l'est désormais (1er jour du mois) et
+    # sert à imputer un paiement à l'échéance de ce mois.
+    period_month = models.DateField(
+        null=True, blank=True,
+        help_text="Mois couvert par ce paiement (1er jour du mois), si précisé.",
+    )
     received_by = models.ForeignKey(
         CustomUser,
         on_delete=models.SET_NULL,
@@ -90,7 +127,11 @@ class Payment(models.Model):
 
     class Meta:
         verbose_name = "Paiement"
-        ordering = ["-payment_date", "-created_at"]
+        # NULLS LAST : sous PostgreSQL, un tri descendant place les NULL en
+        # tête — les paiements sans heure seraient passés devant ceux du
+        # même jour dont l'heure est connue.
+        ordering = ["-payment_date", F("paid_at").desc(nulls_last=True), "-created_at"]
+        indexes = [models.Index(fields=["payment_date", "paid_at"], name="payment_date_paid_at_idx")]
         constraints = [
             # Garde-fou au niveau de la base : même un import direct en SQL
             # ne peut pas créer un encaissement négatif.
@@ -118,6 +159,22 @@ class Payment(models.Model):
     @property
     def money(self):
         return Money(self.amount_minor, self.currency or DEFAULT_CURRENCY)
+
+    @property
+    def academy_timezone(self):
+        academy = self.academy
+        from django.conf import settings
+        return getattr(academy, "timezone", None) or settings.TIME_ZONE
+
+    def local_paid_at(self):
+        """`paid_at` dans le fuseau de l'académie, ou None si l'heure est inconnue."""
+        if self.paid_at is None:
+            return None
+        from zoneinfo import ZoneInfo
+        try:
+            return timezone.localtime(self.paid_at, ZoneInfo(self.academy_timezone))
+        except Exception:
+            return timezone.localtime(self.paid_at)
 
     @property
     def formatted_amount(self):
