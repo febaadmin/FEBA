@@ -2109,4 +2109,6 @@ export const EN = {
     "Sending already in progress or just done",
   "Dossier introuvable dans votre académie":
     "Application not found in your academy",
+  "Journalisé — aucun fournisseur réel":
+    "Logged — no real provider",
 };

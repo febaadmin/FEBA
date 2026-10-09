@@ -25,8 +25,17 @@ class AttendanceSerializer(TenantRelationsMixin, AcademyMetadataMixin, StudentAg
         return obj.created_by.get_full_name() if obj.created_by else ""
 
     def validate_date(self, value):
-        from django.utils import timezone
-        if value and value > timezone.localdate():
+        # « Futur » s'apprécie dans le fuseau de l'ACADÉMIE de l'élève (FEBA
+        # FHA : New York), pas dans celui du serveur (Porto-Novo).
+        from apps.core.age import academy_today
+        student = None
+        raw = self.initial_data.get("student") if hasattr(self, "initial_data") else None
+        if raw:
+            from apps.students.models import Student
+            student = Student.objects.select_related("school").filter(pk=raw).first()
+        elif self.instance is not None:
+            student = self.instance.student
+        if value and value > academy_today(getattr(student, "school", None)):
             raise serializers.ValidationError(
                 "La date ne peut pas être dans le futur."
             )
