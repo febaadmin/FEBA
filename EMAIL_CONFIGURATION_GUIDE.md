@@ -159,7 +159,9 @@ et images, téléchargement des autres), et permet de **relancer** un échec
   cet envoi historique » : le contenu n'avait pas été conservé, il n'est pas
   inventé.
 - Les messages porteurs de liens de sécurité sont archivés **expurgés**
-  (« lien de sécurité masqué dans l'archive »).
+  (« lien de sécurité masqué dans l'archive ») et ne sont **jamais rejoués**
+  depuis cette archive (le lien serait inutilisable) : un échec est définitif,
+  la relance est refusée, la personne doit redemander un nouveau lien.
 - Un envoi groupé partage UN contenu et UN exemplaire des fichiers ; chaque
   destinataire a son propre envoi et son propre statut ; aucune adresse n'est
   visible des autres.

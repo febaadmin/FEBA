@@ -128,6 +128,11 @@ _SECRET_URL = re.compile(
 )
 _SECRET_PARAM = re.compile(r"(?i)\b(token|code|key|password|pwd|secret)=([^\s&\"'<]+)")
 REDACTED_LINK = "[lien de sécurité masqué dans l'archive]"
+NOT_ARCHIVED = "Contenu non archivé pour cet envoi historique : impossible de le rejouer."
+# Rejouer l'archive masquée enverrait un message au lien inutilisable,
+# présenté comme « accepté » : ce serait un succès trompeur.
+REDACTED_NOT_REPLAYABLE = ("Message porteur d'un lien de sécurité (masqué dans l'archive) : "
+                           "il n'est jamais renvoyé depuis l'archive. Demander un nouveau lien.")
 
 
 def redact(text):
@@ -251,15 +256,26 @@ def retry_due(delivery):
     return _attempt(delivery)
 
 
+def replay_blocker(delivery):
+    """Pourquoi cet envoi ne peut pas être rejoué depuis l'archive ('' si rien)."""
+    content = delivery.content
+    if content is None:
+        return NOT_ARCHIVED
+    if content.is_redacted:
+        return REDACTED_NOT_REPLAYABLE
+    return ""
+
+
 def build_message(delivery, live_bodies=None):
     """Message reconstruit depuis l'archive (ou les corps fournis)."""
     content = delivery.content
     if live_bodies is not None:
         text_body, html_body = live_bodies
-    elif content is not None:
-        text_body, html_body = content.text_body, content.html_body
     else:
-        raise LookupError("Contenu non archivé pour cet envoi historique : impossible de le rejouer.")
+        blocker = replay_blocker(delivery)
+        if blocker:
+            raise LookupError(blocker)
+        text_body, html_body = content.text_body, content.html_body
     message = EmailMultiAlternatives(
         subject=delivery.subject,
         body=text_body or "",
@@ -306,6 +322,10 @@ def _attempt(delivery, *, manual=False, live_bodies=None):
         # pas dans les messages d'erreur SMTP).
         error = f"{type(exc).__name__}: {exc}"[:2000]
 
+    if error and not permanent and live_bodies is not None and replay_blocker(delivery):
+        # Le premier essai partait avec les corps réels ; un nouvel essai ne
+        # pourrait rejouer que l'archive masquée. Échec définitif, expliqué.
+        error, permanent = f"{error}\n{replay_blocker(delivery)}", True
     if error:
         delivery.last_error = error
         _schedule_retry_or_fail(delivery, permanent=permanent)

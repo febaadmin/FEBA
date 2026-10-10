@@ -93,6 +93,19 @@ describe("Boîte d'envoi", () => {
     fireEvent.click(button);
     await waitFor(() => expect(outboxAPI.retry).toHaveBeenCalledTimes(1));
   });
+
+  it("message à lien de sécurité : pas de bouton de relance, explication affichée", async () => {
+    outboxAPI.detail.mockResolvedValue({ data: {
+      ...DETAIL, status: "failed", can_retry: false, is_redacted: true,
+      redaction_note: "Liens et jetons de sécurité masqués dans l'archive.",
+      retry_note: "Message porteur d'un lien de sécurité (masqué dans l'archive) : il n'est jamais renvoyé depuis l'archive. Demander un nouveau lien.",
+    } });
+    renderPage();
+    fireEvent.click(await screen.findByText("Sortie scolaire"));
+    const dialog = await screen.findByRole("dialog");
+    expect(await within(dialog).findByText(/Demander un nouveau lien/)).toBeTruthy();
+    expect(within(dialog).queryByRole("button", { name: /Relancer cet envoi/ })).toBeNull();
+  });
 });
 
 describe("Sélecteur de pièces jointes", () => {

@@ -22,11 +22,16 @@ import { render, screen } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const etat = { user: null, accessToken: null, _hasHydrated: false };
+const etat = {
+  user: null, accessToken: null, _hasHydrated: false,
+  setAuth: () => {}, clearAuth: () => {},
+};
 
 vi.mock("../store/authStore", () => ({
   useAuthStore: (selecteur) => (selecteur ? selecteur(etat) : etat),
 }));
+// « /api/auth/me/ n'a pas encore répondu » : la requête reste en attente.
+vi.mock("../api", () => ({ authAPI: { me: () => new Promise(() => {}) } }));
 
 const { default: AppRouter } = await import("./index.jsx");
 

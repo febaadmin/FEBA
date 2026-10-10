@@ -40,11 +40,45 @@ anciens affichent la date seule avec « heure n.e. ». Aucune heure n'est
 inventée.
 
 ### 0.5 Livraison réelle des e-mails
-**À TESTER EN ENVIRONNEMENT RÉEL.** Les envois ont été vérifiés jusqu'au
-protocole SMTP contre Mailpit (serveur de test local). Le fournisseur SMTP
-de production, et les enregistrements SPF/DKIM/DMARC chez Hostinger, n'ont
-pas pu être testés d'ici. Commande de vérification : voir
-`EMAIL_CONFIGURATION_GUIDE.md` § 2.
+**À TESTER EN ENVIRONNEMENT RÉEL / BLOCAGE EXTERNE.** Tous les envois ont
+été vérifiés jusqu'au protocole SMTP contre Mailpit (serveur de test
+local) : contenu, destinataires, pièces jointes octet pour octet. Aucun
+identifiant de fournisseur réel n'était disponible : la remise par un
+fournisseur SMTP de production, et les enregistrements SPF/DKIM/DMARC,
+n'ont **pas** été testés. Commande à lancer, vers UNE adresse de test
+autorisée : `EMAIL_CONFIGURATION_GUIDE.md` § 4.
+
+Même avec un fournisseur réel, FEBA ne peut constater que l'**acceptation**
+par le serveur de messagerie (statut « Accepté par le serveur de
+messagerie — réception non garantie ») : la réception dans la boîte du
+destinataire, le classement en indésirables ou un rebond asynchrone ne
+remontent pas jusqu'à l'application (pas de webhook de rebond).
+
+### 0.5 bis Boîte d'envoi et pièces jointes — limites assumées
+- **Pas d'antivirus.** Les pièces jointes sont filtrées par extension,
+  par signature binaire (un `.exe` renommé en `.pdf` est refusé), par
+  taille unitaire et totale ; aucune analyse antivirale n'est faite.
+  Brancher ClamAV (ou équivalent) avant d'accepter des fichiers de tiers.
+- **Envois antérieurs non archivés.** Les envois journalisés avant la
+  migration `notifications.0006` n'ont pas de contenu conservé : la boîte
+  d'envoi affiche « Contenu non archivé pour cet envoi historique » et ne
+  propose pas de relance (rien à renvoyer fidèlement).
+- **Liens sensibles masqués.** Les messages porteurs de jetons
+  (réinitialisation de mot de passe, liens signés) sont archivés avec les
+  liens remplacés par `[lien de sécurité masqué]` : on peut lire le
+  message, pas réutiliser le lien. Une relance de ces messages renvoie la
+  version masquée ; il faut redemander un nouveau lien.
+- **`localhost` / `127.0.0.1` ne sont pas considérés comme Mailpit.** Un
+  relais SMTP local peut être réel (Postfix) : seuls les hôtes `mailpit`,
+  `mailhog`, `mailcatcher`, `smtp4dev`, `maildev` sont classés « capture »
+  par défaut. Pour un Mailpit sur 127.0.0.1, ajouter l'hôte à
+  `EMAIL_CAPTURE_HOSTS`.
+- **Refus d'authentification SMTP** : vérifié par simulation (Mailpit
+  n'exige pas d'authentification) ; le message d'erreur réel dépend du
+  fournisseur.
+- **Rétention.** Contenus et pièces jointes archivés sont conservés sans
+  purge automatique (volume `private_media`). Prévoir une politique de
+  rétention (RGPD) avant un usage intensif.
 
 ### 0.6 Suppression d'une conversation
 **LIMITATION CONNUE — décision métier.** Supprimer une conversation

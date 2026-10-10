@@ -214,6 +214,7 @@ function OutboxDetail({ id, onClose }) {
               <dt className="text-slate-500">{t("Suivi")}</dt><dd className="break-all text-xs text-slate-500">{d.tracking_id} {d.message_id}</dd>
             </dl>
             {d.last_error && <p className="rounded-lg bg-red-50 p-2 text-xs text-red-700 break-all">{d.last_error}</p>}
+            {d.retry_note && <p className="rounded-lg bg-amber-50 p-2 text-xs text-amber-800">{d.retry_note}</p>}
             {d.can_retry && (
               <button type="button" className="btn-secondary flex items-center gap-2" disabled={retryMut.isPending}
                       onClick={() => { if (!retrying.current) { retrying.current = true; retryMut.mutate(); } }}>

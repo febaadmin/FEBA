@@ -178,6 +178,8 @@ class OutboxDetailView(APIView):
     permission_classes = [IsAuthenticated, IsAdminOrAbove]
 
     def get(self, request, pk):
+        from .mailer import replay_blocker
+
         d = get_object_or_404(visible_deliveries(request).prefetch_related("content__attachments"), pk=pk)
         body = _row(d)
         content = d.content
@@ -199,7 +201,9 @@ class OutboxDetailView(APIView):
                  "smtp_host": a.smtp_host, "error": a.error, "manual": a.manual}
                 for a in d.attempt_log.all()
             ],
-            "can_retry": d.status in (EmailDelivery.FAILED, EmailDelivery.RETRY) and d.content_id is not None,
+            "can_retry": d.status in (EmailDelivery.FAILED, EmailDelivery.RETRY) and not replay_blocker(d),
+            "retry_note": (replay_blocker(d) or None)
+            if d.status in (EmailDelivery.FAILED, EmailDelivery.RETRY) else None,
         })
         return Response(body)
 
@@ -231,7 +235,7 @@ class OutboxRetryView(APIView):
 
     def post(self, request, pk):
         from .campaigns import recipient_for_delivery, refresh_campaign_status, sync_recipient
-        from .mailer import deliver
+        from .mailer import deliver, replay_blocker
 
         visible = visible_deliveries(request)
         with transaction.atomic():
@@ -240,9 +244,9 @@ class OutboxRetryView(APIView):
             if delivery.status not in (EmailDelivery.FAILED, EmailDelivery.RETRY):
                 return Response({"detail": "Seul un envoi en échec peut être relancé.",
                                  "status": delivery.status}, status=status.HTTP_409_CONFLICT)
-            if delivery.content_id is None:
-                return Response({"detail": "Contenu non archivé pour cet envoi historique : "
-                                           "relance impossible."}, status=status.HTTP_409_CONFLICT)
+            blocker = replay_blocker(delivery)
+            if blocker:
+                return Response({"detail": blocker}, status=status.HTTP_409_CONFLICT)
             delivery.status = EmailDelivery.PENDING
             delivery.next_retry_at = None
             delivery.save(update_fields=["status", "next_retry_at", "updated_at"])

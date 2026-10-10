@@ -18,7 +18,7 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-NOM="${1:-FEBA_VERSION_CORRIGEE_AUDIT_COMPLET}"
+NOM="${1:-FEBA_VERSION_EMAILS_CORRIGEE_AUDIT_COMPLET}"
 SORTIE="${2:-$(dirname "$ROOT")}"
 STAGE="$(mktemp -d)"
 # Le dossier racine porte le MÊME nom que l'archive. En V8 il était
@@ -164,7 +164,17 @@ for requis in backend/manage.py frontend/package.json Makefile \
               backend/tests/test_audit_role_escalation.py \
               frontend/src/pages/admin/MassEmail.jsx \
               frontend/src/pages/admin/PaymentReminders.jsx \
-              frontend/src/utils/age.jsx frontend/src/utils/datetime.js; do
+              frontend/src/utils/age.jsx frontend/src/utils/datetime.js \
+              EMAIL_OUTBOX_CORRECTIONS_REPORT.md EMAIL_OUTBOX_VALIDATION_REPORT.md \
+              backend/apps/notifications/attachments.py \
+              backend/apps/notifications/backends.py \
+              backend/apps/notifications/outbox_views.py \
+              backend/apps/notifications/migrations/0006_email_outbox_content_attachments.py \
+              backend/tests/test_email_outbox.py \
+              backend/tests/test_email_single_path.py \
+              frontend/src/pages/admin/Outbox.jsx \
+              frontend/src/pages/admin/Outbox.test.jsx \
+              frontend/src/router/restoreUser.test.jsx; do
   [ -e "$CIBLE/$requis" ] || { echo "  ÉCHEC : « $requis » manquant"; exit 1; }
 done
 echo "  OK    tous les fichiers attendus sont présents"

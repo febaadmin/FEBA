@@ -366,6 +366,57 @@ class FailureAndRetryTests(OutboxBase):
         self.assertEqual((d.status, d.purpose), ("retry", "fha_notification"))
 
 
+class RedactedReplayTests(OutboxBase):
+    """
+    Un message porteur d'un lien de sécurité est archivé MASQUÉ. Le rejouer
+    enverrait un lien inutilisable, présenté comme « accepté » : ni la
+    relance manuelle ni la relance automatique ne doivent le faire.
+    """
+    RESET = "Réinitialisez : https://globalfeba.com/reset/MQ/abc-123/"
+
+    def test_transient_failure_of_sensitive_message_is_final_and_never_replayed(self):
+        from apps.notifications.tasks import retry_due_deliveries
+        with mock.patch.object(mail.EmailMultiAlternatives, "send",
+                               side_effect=smtplib.SMTPServerDisconnected("Connection unexpectedly closed")):
+            d = send_tracked_email(purpose="password_reset", to_email="u@b.test", subject="Mot de passe",
+                                   text_body=self.RESET, entity=self.a, sensitive=True)
+        self.assertEqual(d.status, "failed")
+        self.assertIsNone(d.next_retry_at)
+        self.assertIn("SMTPServerDisconnected", d.last_error)
+        self.assertIn("nouveau lien", d.last_error)
+        self.assertEqual(retry_due_deliveries(), 0)
+        client = self.api(self.admin_a)
+        detail = client.get(f"/api/notifications/outbox/{d.pk}/").json()
+        self.assertFalse(detail["can_retry"])
+        self.assertIn("nouveau lien", detail["retry_note"])
+        self.assertNotIn("abc-123", detail["text_body"])
+        resp = client.post(f"/api/notifications/outbox/{d.pk}/retry/")
+        self.assertEqual(resp.status_code, 409)
+        self.assertEqual(len(mail.outbox), 0)
+
+    @override_settings(EMAIL_BACKEND=TRACKING,
+                       EMAIL_TRANSPORT_BACKEND="django.core.mail.backends.locmem.EmailBackend")
+    def test_untracked_reset_mail_failure_cannot_be_retried_from_outbox(self):
+        from django.core.mail import send_mail
+        from django.core.mail.backends.locmem import EmailBackend
+        with mock.patch.object(EmailBackend, "send_messages", side_effect=OSError("no route")):
+            send_mail("Mot de passe", self.RESET, "noreply@feba.bj", ["u@test.io"], fail_silently=True)
+        d = EmailDelivery.objects.get(purpose="untracked_module")
+        self.assertEqual(d.status, "failed")
+        resp = self.api(self.superadmin).post(f"/api/notifications/outbox/{d.pk}/retry/")
+        self.assertEqual(resp.status_code, 409, resp.content)
+        self.assertEqual(len(mail.outbox), 0)
+
+    def test_ordinary_message_stays_retryable(self):
+        with mock.patch.object(mail.EmailMultiAlternatives, "send", side_effect=OSError("no route")):
+            d = send_tracked_email(purpose="t", to_email="u@b.test", subject="s",
+                                   text_body="Bonjour, rien de secret.", entity=self.a, sensitive=True)
+        self.assertEqual(d.status, "retry")
+        detail = self.api(self.admin_a).get(f"/api/notifications/outbox/{d.pk}/").json()
+        self.assertTrue(detail["can_retry"])
+        self.assertIsNone(detail["retry_note"])
+
+
 class TrackingBackendTests(PrivateMediaMixin, TestCase):
     @override_settings(EMAIL_BACKEND=TRACKING,
                        EMAIL_TRANSPORT_BACKEND="django.core.mail.backends.locmem.EmailBackend")
