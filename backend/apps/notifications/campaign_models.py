@@ -50,6 +50,12 @@ class EmailCampaign(models.Model):
     created_by_email = models.EmailField(blank=True)
     subject = models.CharField(max_length=200)
     body = models.TextField()
+    #: Contenu archivé (texte, HTML, pièces jointes) partagé par tous les
+    #: destinataires : un seul exemplaire des fichiers.
+    content = models.ForeignKey(
+        "notifications.EmailContent", on_delete=models.SET_NULL, null=True, blank=True,
+        related_name="campaigns",
+    )
     #: Règles d'audience telles que soumises : rôles, « tous les profils »,
     #: inclusions et exclusions explicites. Sert d'audit, pas de source :
     #: les destinataires réels sont les lignes EmailCampaignRecipient.

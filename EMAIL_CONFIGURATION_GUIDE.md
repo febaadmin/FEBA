@@ -1,135 +1,210 @@
-# FEBA — Guide de configuration des e-mails
+# FEBA — Guide des e-mails : configuration, test, diagnostic, boîte d'envoi
 
-Ce guide couvre **tous** les envois d'e-mails de FEBA : accusés de réception
-FEBA FHA, envois groupés par académie (« E-mails groupés »), relances de
-paiement, rapports mensuels. Ils passent tous par la même couche
-(`backend/apps/notifications/mailer.py`) et laissent tous une trace dans le
-journal `EmailDelivery`.
+Tous les envois de FEBA (e-mails groupés, accusés et notifications FEBA FHA,
+relances de paiement, rapports mensuels, tests SMTP) passent par une couche
+unique (`backend/apps/notifications/mailer.py`). Chaque message est
+**enregistré, archivé (texte, HTML, pièces jointes), tenté, et son résultat
+exact conservé**. Un backend de traçage (`TrackingEmailBackend`) journalise en
+plus tout envoi qui contournerait cette couche.
 
 ---
 
-## 1. Ce que FEBA garantit — et ce qu'il ne prétend pas
+## 1. Mailpit ou fournisseur réel : la différence qui compte
 
-| Statut affiché | Signification exacte |
+| | Mailpit (développement) | Fournisseur SMTP réel (production) |
+|---|---|---|
+| Rôle | **Capture** les messages pour les inspecter | **Distribue** les messages sur Internet |
+| Arrivée dans Gmail/Yahoo… | **Jamais** | Oui, si le fournisseur et le DNS sont corrects |
+| Où lire les messages | `http://localhost:8025` | Boîte du destinataire |
+| Statut affiché par FEBA | « Capturé par le serveur de test (Mailpit) — non distribué » | « Accepté par le serveur de messagerie (réception non garantie) » |
+
+**Cause du « je ne reçois rien » constaté en octobre 2026** : l'installation
+Docker de développement envoie à `mailpit:1025`. Les messages étaient bien
+acceptés… par Mailpit, qui ne les transmet jamais. FEBA les présentait comme
+« envoyés via un fournisseur réel » : c'est corrigé, le transport est désormais
+qualifié et affiché.
+
+Statuts d'un envoi :
+
+| Statut | Signification |
 |---|---|
-| **Remis au serveur de messagerie** (`sent`) | Le serveur SMTP a accepté le message sans erreur. |
-| **Nouvel essai programmé** (`retry`) | Échec temporaire ; une tâche Celery réessaie à +5 min, +30 min, +3 h. |
-| **Échec** (`failed`) | Refus définitif ou 4 tentatives épuisées ; l'erreur SMTP exacte est conservée. |
-| **Sans fournisseur** | Backend `console`/`locmem` : le message n'est **pas** parti sur Internet. |
+| Enregistré — en file d'attente | message archivé, pas encore traité (envoi groupé) |
+| Envoi en cours | tentative en cours |
+| Accepté par le serveur de messagerie | le serveur SMTP a dit oui — **ce n'est pas une preuve de réception** |
+| Échec temporaire — nouvel essai programmé | relance automatique à +5 min, +30 min, +3 h |
+| Échec définitif | 4 tentatives épuisées ou envoi impossible ; relance manuelle possible |
 
-FEBA **ne peut pas** savoir qu'un message est arrivé dans la boîte du
-destinataire. « Remis au serveur » est l'état le plus fort constatable.
+## 2. Développement local avec Docker et Mailpit
 
-## 2. Configuration SMTP (production)
-
-Dans `.env.prod` (jamais versionné) :
+`.env.dev` (créé à l'installation depuis `.env.dev.example`) :
 
 ```
 EMAIL_BACKEND=django.core.mail.backends.smtp.EmailBackend
-EMAIL_HOST=smtp.votre-fournisseur.com
-EMAIL_PORT=587
-EMAIL_HOST_USER=noreply@globalfeba.com
-EMAIL_HOST_PASSWORD=********
-EMAIL_USE_TLS=True
-EMAIL_TIMEOUT=10
-DEFAULT_FROM_EMAIL=noreply@globalfeba.com
-FEBA_FROM_EMAIL=          # expéditeur propre à FEBA (facultatif)
-FHA_FROM_EMAIL=           # expéditeur propre à FEBA FHA (facultatif)
-EMAIL_REPLY_TO=
+EMAIL_HOST=mailpit
+EMAIL_PORT=1025
+EMAIL_USE_TLS=False
+EMAIL_DELIVERY_MODE=auto
+MAILPIT_UI_URL=http://localhost:8025
 ```
 
-Aucun de ces secrets n'est exposé au frontend, à une URL ou à une réponse
-d'API. Le DNS (Hostinger) doit porter les enregistrements **SPF, DKIM et
-DMARC** du fournisseur choisi, faute de quoi les messages risquent d'être
-classés en indésirables : c'est une action externe à FEBA.
+`mailpit` est le **nom du service Docker** : il fonctionne depuis les conteneurs
+`backend-dev`, `celery-dev` et `celery-beat-dev`. Ne pas écrire `localhost`
+(dans un conteneur, `localhost` désigne le conteneur lui-même).
 
-Vérification après configuration :
+Parcours de vérification :
+
+1. `docker compose up -d` puis `docker compose ps` : `feba_mailpit_dev` *healthy*.
+2. Configuration effective dans chaque conteneur (secrets masqués) :
+   ```bash
+   docker compose exec -T backend-dev python manage.py email_check </dev/null
+   ```
+   ```bash
+   docker compose exec -T celery-dev python manage.py email_check </dev/null
+   ```
+3. FEBA → **E-mails groupés** : choisir des destinataires, joindre un PDF,
+   prévisualiser, envoyer. Le bandeau « Mode test… Ouvrir Mailpit » s'affiche.
+4. Ouvrir `http://localhost:8025` : un message par destinataire, avec ses
+   pièces jointes.
+5. FEBA → **Boîte d'envoi** : ouvrir le message, lire le texte et le HTML,
+   ouvrir/télécharger les pièces jointes.
+
+## 3. Fournisseur SMTP réel
+
+Paramètres à placer dans `.env.prod` (ou, pour un test local vers de vraies
+boîtes, dans `.env.dev` — à remettre sur Mailpit ensuite) :
+
+```
+EMAIL_BACKEND=django.core.mail.backends.smtp.EmailBackend
+EMAIL_HOST=<serveur SMTP du fournisseur>
+EMAIL_PORT=587              # 587 avec STARTTLS, ou 465 avec SSL
+EMAIL_USE_TLS=True          # pour 587
+EMAIL_USE_SSL=False         # True (et TLS False) pour 465
+EMAIL_HOST_USER=<compte SMTP>
+EMAIL_HOST_PASSWORD=<mot de passe ou clé d'application>
+DEFAULT_FROM_EMAIL=<adresse d'un domaine autorisé chez le fournisseur>
+FEBA_FROM_EMAIL=            # facultatif : expéditeur propre à FEBA
+FHA_FROM_EMAIL=             # facultatif : expéditeur propre à FEBA FHA
+EMAIL_REPLY_TO=
+EMAIL_TIMEOUT=10
+```
+
+Les valeurs exactes (hôte, port, chiffrement) sont celles **indiquées par le
+fournisseur** ; aucune n'est écrite dans le code. Les secrets ne sont jamais
+affichés (ni par `email_check`, ni par l'API, ni dans le journal).
+
+DNS (chez Hostinger pour `globalfeba.com`) — selon le fournisseur :
+
+- **SPF** : enregistrement TXT `v=spf1 include:<domaine fourni par le fournisseur> ~all`
+- **DKIM** : clé(s) publique(s) fournie(s) par le fournisseur (TXT ou CNAME)
+- **DMARC** : TXT `_dmarc` (commencer par `p=none` pour observer)
+
+Sans eux, les messages risquent d'être refusés ou classés en indésirables —
+FEBA ne peut pas le détecter : un serveur qui accepte puis rejette plus tard
+n'en informe pas l'expéditeur par SMTP.
+
+Après redémarrage des conteneurs (`backend`, `celery`, `celery-beat`), lancer
+le test de la section 4 vers **une seule adresse de test autorisée**.
+
+Un relais SMTP interne au nom inhabituel peut être qualifié explicitement :
+`EMAIL_DELIVERY_MODE=real` (ou `capture`), ou `EMAIL_CAPTURE_HOSTS=nom1,nom2`.
+
+## 4. Tester l'envoi
+
+Depuis l'écran **Boîte d'envoi** → « Diagnostic et test d'envoi » :
+configuration effective, joignabilité réseau du serveur, envoi d'un message
+de test à une adresse saisie (administrateurs uniquement, 5 tests par heure
+et par personne, tracé dans la boîte d'envoi).
+
+En ligne de commande (production) :
 
 ```bash
-docker compose -f docker-compose.prod.yml --env-file .env.prod exec -T backend-prod python manage.py email_check --to votre.adresse@exemple.com </dev/null
+docker compose -f docker-compose.prod.yml --env-file .env.prod exec -T backend-prod python manage.py email_check --to adresse.de.test@exemple.com </dev/null
 ```
 
-## 3. Envois groupés par académie (écran « E-mails groupés »)
+Codes de sortie : `0` accepté par un serveur réel, `1` échec (erreur affichée),
+`2` transport de test/local (console, mémoire, Mailpit) — rien n'est parti.
 
-Accès : administrateurs (leur académie uniquement) et super-administrateurs
-(académie choisie explicitement).
+## 5. Diagnostiquer une erreur
 
-Parcours : académie → types de profil (administrateurs, enseignants,
-parents, élèves — seuls les rôles réellement présents sont proposés) et/ou
-personnes cochées une à une, exclusions possibles → objet et message →
-**aperçu** (nombre réel calculé par le serveur) → **confirmation** → suivi →
-rapport par destinataire → « Relancer uniquement les échecs ».
+L'erreur exacte est conservée sur l'envoi (Boîte d'envoi → détail →
+« Historique des tentatives »).
 
-Règles :
+| Erreur | Cause probable | Action |
+|---|---|---|
+| `ConnectionRefusedError` / `timed out` | hôte ou port faux, pare-feu | vérifier `EMAIL_HOST`/`EMAIL_PORT` ; « Réseau » du diagnostic |
+| `SMTPAuthenticationError (535)` | identifiant ou mot de passe refusé | régénérer la clé d'application du fournisseur |
+| `SMTPServerDisconnected` | TLS/SSL inversés (587 ↔ 465) | ajuster `EMAIL_USE_TLS` / `EMAIL_USE_SSL` |
+| `SMTPSenderRefused` | expéditeur non autorisé | `DEFAULT_FROM_EMAIL` sur un domaine validé chez le fournisseur |
+| `SMTPRecipientsRefused` | adresse du destinataire refusée | corriger l'adresse |
+| `FileNotFoundError` sur une pièce jointe | fichier privé absent (volume non monté) | vérifier le volume `private_media` (§ 7) |
+| « Capturé… non distribué » | transport Mailpit | normal en développement ; § 3 pour l'envoi réel |
 
-- Les destinataires sont **recalculés par le serveur** à partir des règles
-  d'audience. Un identifiant d'une autre académie fait échouer la demande
-  entière (rien n'est envoyé).
-- **Un message individuel par destinataire** : aucune adresse n'est visible
-  des autres (ni « À » multiple, ni copie).
-- Ignorés et rapportés : compte inactif, adresse absente, adresse invalide,
-  adresse en double (comparaison insensible à la casse).
-- Le super-administrateur n'est jamais destinataire (rôle plateforme).
+Les échecs temporaires sont relancés automatiquement par
+`notifications.retry_due_deliveries` (Celery Beat, toutes les 10 min). Si le
+statut ne bouge pas : vérifier `celery-dev`/`celery-beat-dev` (`docker compose ps`).
 
-Garde-fous configurables :
+## 6. Boîte d'envoi
+
+Menu **Boîte d'envoi** (administrateurs : leur académie ; super-administrateur :
+toutes, ou une académie). Filtres : recherche (objet, destinataire, contenu),
+destinataire, statut, origine, période. Liste paginée côté serveur.
+
+Le détail montre objet, date et heure, expéditeur, destinataire, académie,
+origine, statut et transport, tentatives et erreurs, texte, HTML (affiché dans
+un cadre isolé **sans exécution de script**), pièces jointes (aperçu des PDF
+et images, téléchargement des autres), et permet de **relancer** un échec
+(verrou anti double clic ; un envoi réussi n'est jamais relancé).
+
+- Les envois antérieurs à cette version affichent « Contenu non archivé pour
+  cet envoi historique » : le contenu n'avait pas été conservé, il n'est pas
+  inventé.
+- Les messages porteurs de liens de sécurité sont archivés **expurgés**
+  (« lien de sécurité masqué dans l'archive »).
+- Un envoi groupé partage UN contenu et UN exemplaire des fichiers ; chaque
+  destinataire a son propre envoi et son propre statut ; aucune adresse n'est
+  visible des autres.
+
+## 7. Pièces jointes
+
+- Formats par défaut : PDF, PNG, JPEG, GIF, WebP, Word (doc, docx), Excel
+  (xls, xlsx), PowerPoint (ppt, pptx), OpenDocument (odt, ods), TXT, CSV.
+  Jamais : exécutables, scripts, archives, HTML, SVG.
+- Le serveur vérifie l'extension **et le contenu réel** (signature binaire) :
+  un exécutable renommé en `.pdf` est refusé. Noms de fichiers neutralisés
+  (aucun chemin, aucun caractère de contrôle).
+- Limites : `EMAIL_ATTACHMENT_MAX_FILE_MB` (10), `EMAIL_ATTACHMENT_MAX_TOTAL_MB`
+  (20), `EMAIL_ATTACHMENT_MAX_FILES` (10), liste
+  `EMAIL_ATTACHMENT_ALLOWED_EXTENSIONS`. nginx accepte 25 Mo par requête.
+- Stockage **privé** : `PRIVATE_MEDIA_ROOT/email_attachments/` (hors média
+  public) ; téléchargement uniquement par l'API, après contrôle des droits.
+  En production, le volume `private_media_prod` est partagé entre
+  `backend-prod` et `celery-prod` (le worker lit les fichiers qu'il envoie).
+- **Aucune analyse antivirus** n'est disponible dans cette installation :
+  aucune n'est annoncée.
+
+## 8. Variables d'environnement
 
 | Variable | Défaut | Rôle |
 |---|---|---|
-| `MASS_EMAIL_MAX_RECIPIENTS` | 2000 | Plafond de destinataires par envoi |
-| `MASS_EMAIL_MAX_CAMPAIGNS_PER_HOUR` | 10 | Envois groupés par utilisateur et par heure |
-| `MASS_EMAIL_BATCH_SIZE` | 50 | Taille des lots traités par le worker |
+| `EMAIL_BACKEND` | console | transport (smtp, console…) |
+| `EMAIL_HOST`, `EMAIL_PORT`, `EMAIL_USE_TLS`, `EMAIL_USE_SSL` | — | serveur SMTP |
+| `EMAIL_HOST_USER`, `EMAIL_HOST_PASSWORD` | — | authentification (jamais affichée) |
+| `DEFAULT_FROM_EMAIL`, `FEBA_FROM_EMAIL`, `FHA_FROM_EMAIL`, `EMAIL_REPLY_TO` | — | expéditeurs |
+| `EMAIL_TIMEOUT` | 10 | délai SMTP (s) |
+| `EMAIL_DELIVERY_MODE` | auto | auto / capture / real |
+| `EMAIL_CAPTURE_HOSTS` | — | hôtes de capture supplémentaires |
+| `MAILPIT_UI_URL` | http://localhost:8025 | lien affiché en mode capture |
+| `EMAIL_ATTACHMENT_*` | voir § 7 | pièces jointes |
+| `EMAIL_TEST_MAX_PER_HOUR` | 5 | tests SMTP par utilisateur et par heure |
+| `MASS_EMAIL_MAX_RECIPIENTS`, `MASS_EMAIL_MAX_CAMPAIGNS_PER_HOUR`, `MASS_EMAIL_BATCH_SIZE` | 2000 / 10 / 50 | garde-fous des envois groupés |
+| `PRIVATE_MEDIA_ROOT` | `backend/private_media` | fichiers privés (fiches, pièces jointes) |
 
-Plus : aperçu obligatoire, confirmation du **nombre exact** (refus si la
-liste a changé depuis l'aperçu), jeton anti double-clic.
-
-Fonctionnement technique : la campagne et ses destinataires sont créés en
-base, puis confiés au worker Celery (`notifications.send_campaign`). Le
-worker réserve les lignes par lots (`SELECT … FOR UPDATE SKIP LOCKED`) :
-deux workers ne prennent jamais le même destinataire. Après un redémarrage
-de Celery, la tâche planifiée `notifications.process_pending_campaigns`
-(toutes les 5 min) reprend ce qui reste, sans renvoyer ce qui est parti.
-
-## 4. Relances automatiques des échecs
-
-`notifications.retry_due_deliveries` (Celery Beat, toutes les 10 min)
-relance les envois en « nouvel essai programmé » dont l'heure est venue.
-**Avant cette version, aucune tâche ne relisait ces échéances** : le statut
-« nouvel essai programmé » restait indéfiniment affiché sans qu'aucun essai
-n'ait lieu.
-
-## 5. Accusés de réception FEBA FHA (écran « Admissions FEBA FHA »)
-
-- Le bouton « Renvoyer l'e-mail de confirmation » d'une ligne n'envoie
-  **qu'à cette ligne** ; seul son bouton est occupé pendant l'envoi.
-- Deux clics (ou deux requêtes) dans les 30 secondes : un seul envoi.
-- Envoi groupé : cases à cocher, « Sélectionner les N dossiers affichés »
-  (les dossiers masqués par un filtre ne sont jamais inclus), confirmation,
-  résultat sur chaque ligne, « Relancer les échecs ».
-- Par défaut, l'envoi groupé ne renvoie pas aux dossiers dont l'accusé est
-  déjà parti (case à décocher pour forcer).
-
-## 6. Tests sans envoi réel
-
-- Tests automatisés : backend `locmem` (aucun réseau).
-- Test SMTP réel contre **Mailpit** (serveur de test local) :
+## 9. Tests automatisés sans envoi réel
 
 ```bash
-docker run -d --rm --name feba_mailpit -p 51025:1025 -p 58025:8025 axllent/mailpit
+docker run -d --rm --name feba_mailpit_test -p 51025:1025 -p 58025:8025 axllent/mailpit
 ```
 
 ```bash
-cd backend && MAILPIT_SMTP_PORT=51025 MAILPIT_API_URL=http://127.0.0.1:58025 DJANGO_SETTINGS_MODULE=feba_project.settings.test_sqlite python -m pytest tests/test_audit_p1_mass_email.py -k Mailpit
+cd backend && MAILPIT_SMTP_PORT=51025 MAILPIT_API_URL=http://127.0.0.1:58025 DJANGO_SETTINGS_MODULE=feba_project.settings.test_sqlite python -m pytest tests/test_email_outbox.py tests/test_audit_p1_mass_email.py
 ```
-
-- Environnement de développement Docker : Mailpit est inclus
-  (`http://localhost:8025`).
-
-## 7. Diagnostic
-
-| Symptôme | Où regarder |
-|---|---|
-| « Sans fournisseur » partout | `EMAIL_BACKEND` vaut `console` : configurer le SMTP |
-| Échecs `SMTPAuthenticationError` | identifiants SMTP |
-| Échecs `SMTPRecipientsRefused` | adresse du destinataire à corriger |
-| « Nouvel essai » qui ne bouge pas | worker ou Beat arrêté : `docker compose ps` (healthchecks) |
-| Envoi groupé « En file d'attente » + message Redis | broker indisponible ; la reprise est automatique au retour du service |

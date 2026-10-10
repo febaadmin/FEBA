@@ -33,6 +33,11 @@ services:
     env_file: .env.prod
     volumes:
       - media_prod:/app/media
+      # Fichiers PRIVÉS (fiches FHA, pièces jointes des e-mails) : hors du
+      # média public, et PARTAGÉS avec le worker Celery qui envoie les
+      # e-mails. Sans ce volume, ils vivaient dans le système de fichiers
+      # du conteneur : perdus à la reconstruction et invisibles du worker.
+      - private_media_prod:/app/private_media
       - static_prod:/app/staticfiles
     depends_on:
       postgres-prod:
@@ -58,6 +63,7 @@ services:
     env_file: .env.prod
     volumes:
       - media_prod:/app/media
+      - private_media_prod:/app/private_media
     depends_on:
       backend-prod:
         condition: service_healthy
@@ -124,6 +130,7 @@ services:
     restart: unless-stopped
 
 volumes:
+  private_media_prod:
   postgres_prod_data:
   media_prod:
   static_prod:

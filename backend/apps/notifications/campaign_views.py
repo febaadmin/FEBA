@@ -29,7 +29,10 @@ from apps.core.tenancy import get_request_school
 
 from . import campaigns as svc
 from .campaign_models import EmailCampaign, EmailCampaignRecipient
-from .mailer import provider_is_configured
+from django.conf import settings
+
+from .attachments import limits_payload
+from .mailer import current_transport, provider_is_configured
 
 
 def resolve_academy(request, raw_id=None):
@@ -95,6 +98,10 @@ def campaign_summary(campaign):
         "counts": counts,
         "audience": campaign.audience,
         "last_error": campaign.last_error,
+        "attachments": [
+            {"id": a.pk, "name": a.original_name, "size": a.size, "content_type": a.content_type}
+            for a in (campaign.content.attachments.all() if campaign.content_id else [])
+        ],
     }
 
 
@@ -114,7 +121,10 @@ class MassEmailOptionsView(APIView):
             "academies": [_academy_payload(a) for a in academies],
             "roles": svc.audience_roles(academy),
             "provider_configured": provider_is_configured(),
+            "transport": current_transport(),
+            "capture_ui_url": getattr(settings, "MAILPIT_UI_URL", ""),
             "max_recipients": svc.max_recipients(),
+            "attachments": limits_payload(),
         })
 
 
@@ -176,16 +186,36 @@ class MassEmailCampaignListView(APIView):
         return Response({"results": [campaign_summary(c) for c in campaigns]})
 
     def post(self, request):
-        academy = resolve_academy(request)
-        audience = _audience_from(request.data)
-        if request.data.get("confirm") is not True:
+        """
+        JSON, ou multipart (`payload` = JSON des champs + fichiers
+        `attachments`) quand le message porte des pièces jointes.
+        """
+        import json
+
+        from .attachments import AttachmentError, validate_uploads
+
+        data = request.data
+        files = []
+        if "payload" in data:
+            try:
+                data = json.loads(data["payload"])
+            except (TypeError, ValueError):
+                raise ValidationError({"payload": "Données du formulaire illisibles."})
+            files = request.FILES.getlist("attachments")
+        academy = resolve_academy(request, raw_id=data.get("academy_id"))
+        audience = _audience_from(data)
+        if data.get("confirm") is not True:
             raise ValidationError({"confirm": "Confirmation explicite requise avant l'envoi."})
+        try:
+            attachments = validate_uploads(files)
+        except AttachmentError as exc:
+            raise ValidationError({"attachments": str(exc)})
         try:
             campaign, created = svc.create_campaign(
                 academy=academy, user=request.user,
-                subject=request.data.get("subject"), body=request.data.get("body"),
-                audience=audience, client_token=request.data.get("client_token"),
-                expected_count=request.data.get("expected_count"),
+                subject=data.get("subject"), body=data.get("body"),
+                audience=audience, client_token=data.get("client_token"),
+                expected_count=data.get("expected_count"), attachments=attachments,
             )
         except svc.AudienceError as exc:
             raise ValidationError({exc.field or "non_field_errors": str(exc)})
@@ -218,6 +248,9 @@ class MassEmailCampaignDetailView(APIView):
                 "role": r.role, "status": r.status, "status_display": r.get_status_display(),
                 "attempts": r.attempts, "error": r.error, "sent_at": r.sent_at,
                 "used_real_provider": bool(r.delivery and r.delivery.used_real_provider),
+                "delivery_id": r.delivery_id,
+                "transport": r.delivery.transport if r.delivery else "",
+                "delivery_summary": r.delivery.delivery_summary() if r.delivery else "",
             }
             for r in campaign.recipients.select_related("delivery").order_by("status", "full_name")
         ]

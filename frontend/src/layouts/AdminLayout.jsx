@@ -1,7 +1,7 @@
 import { NavLink, useNavigate } from "react-router-dom";
 import { useState, useEffect, useRef } from "react";
 import {
-  FileBarChart, LayoutDashboard, Users, GraduationCap, UserCheck, BookOpen, ClipboardList, DollarSign, Calendar, FileText, Bell, MessageSquare, Megaphone, Settings, LogOut, School, Menu, X, UserCog, Layers, FolderOpen, ClipboardCheck, Video, Globe, CreditCard, Award, Mail, BellRing,
+  FileBarChart, LayoutDashboard, Users, GraduationCap, UserCheck, BookOpen, ClipboardList, DollarSign, Calendar, FileText, Bell, MessageSquare, Megaphone, Settings, LogOut, School, Menu, X, UserCog, Layers, FolderOpen, ClipboardCheck, Video, Globe, CreditCard, Award, Mail, BellRing, Inbox,
 } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
 import { useBranding } from "../hooks/useBranding";
@@ -39,6 +39,7 @@ const nav = [
   { label: "Documents officiels", icon: Award, to: "/admin/official-documents" },
   { label: "Messages",        icon: MessageSquare,    to: "/admin/messages" },
   { label: "E-mails groupés", icon: Mail, to: "/admin/emails" },
+  { label: "Boîte d'envoi", icon: Inbox, to: "/admin/outbox" },
   { label: "Annonces",        icon: Megaphone,        to: "/admin/announcements" },
   { label: "Utilisateurs",    icon: UserCog,          to: "/admin/users" },
   { label: "Fichiers",         icon: FolderOpen,       to: "/admin/user-files" },

@@ -24,7 +24,9 @@ class Notification(models.Model):
 
 # Journal d'envoi des e-mails — voir apps/notifications/email_models.py.
 # Importé ici pour que Django le découvre comme modèle de cette app.
-from .email_models import EmailDelivery  # noqa: E402,F401
+from .email_models import (  # noqa: E402,F401
+    EmailAttachment, EmailContent, EmailDelivery, EmailDeliveryAttempt,
+)
 
 # Envois groupés par académie — voir apps/notifications/campaign_models.py.
 from .campaign_models import EmailCampaign, EmailCampaignRecipient  # noqa: E402,F401

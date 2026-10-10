@@ -627,7 +627,15 @@ export const massEmailAPI = {
   recipients: (academyId, p)     => api.get("/mass-email/recipients/", { params: { academy_id: academyId || undefined, ...p } }),
   preview:    (d)                => api.post("/mass-email/preview/", d),
   campaigns:  (academyId)        => api.get("/mass-email/campaigns/", { params: { academy_id: academyId || undefined } }),
-  create:     (d)                => api.post("/mass-email/campaigns/", d),
+  // Avec pièces jointes : multipart (`payload` JSON + fichiers). Le
+  // serveur revalide formats, signatures et tailles.
+  create:     (d, files = [])    => {
+    if (!files.length) return api.post("/mass-email/campaigns/", d);
+    const form = new FormData();
+    form.append("payload", JSON.stringify(d));
+    files.forEach((f) => form.append("attachments", f));
+    return api.post("/mass-email/campaigns/", form, { headers: { "Content-Type": "multipart/form-data" } });
+  },
   campaign:   (id, academyId)    => api.get(`/mass-email/campaigns/${id}/`, { params: { academy_id: academyId || undefined } }),
   retryFailed:(id, academyId)    => api.post(`/mass-email/campaigns/${id}/retry-failed/`, { academy_id: academyId || undefined }),
 };
@@ -651,4 +659,18 @@ export const remindersAPI = {
   run:     ()      => api.post("/payments/reminders/run/", { confirm: true }),
   history: (p)     => api.get("/payments/reminders/history/", { params: p }),
   runs:    ()      => api.get("/payments/reminders/runs/"),
+};
+
+/* ── Boîte d'envoi et diagnostic SMTP ──────────────────────────────── */
+export const outboxAPI = {
+  list:       (p)        => api.get("/notifications/outbox/", { params: p }),
+  detail:     (id, p)    => api.get(`/notifications/outbox/${id}/`, { params: p }),
+  retry:      (id, p)    => api.post(`/notifications/outbox/${id}/retry/`, {}, { params: p }),
+  // Fichier récupéré AVEC le jeton (jamais par une URL publique).
+  attachment: (id, attId, inline = false, p = {}) =>
+    api.get(`/notifications/outbox/${id}/attachments/${attId}/`, {
+      params: { ...p, inline: inline ? 1 : undefined }, responseType: "blob",
+    }),
+  config:     (check = false) => api.get("/notifications/email-config/", { params: { check: check ? 1 : undefined } }),
+  testSend:   (to)       => api.post("/notifications/email-config/test/", { to }),
 };

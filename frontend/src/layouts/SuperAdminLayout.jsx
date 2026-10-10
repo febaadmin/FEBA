@@ -1,7 +1,7 @@
 import { NavLink } from "react-router-dom";
 import { useState, useEffect } from "react";
 import {
-  FileBarChart, LayoutDashboard, Users, Shield, GraduationCap, UserCheck, Users2, BookOpen, DollarSign, Megaphone, Settings, LogOut, Menu, X, MessageSquare, Layers, ClipboardList, FileText, Calendar, UserCog, FolderOpen, Image, ClipboardCheck, Video, Globe, AlertTriangle, CreditCard, Award, Mail, BellRing,
+  FileBarChart, LayoutDashboard, Users, Shield, GraduationCap, UserCheck, Users2, BookOpen, DollarSign, Megaphone, Settings, LogOut, Menu, X, MessageSquare, Layers, ClipboardList, FileText, Calendar, UserCog, FolderOpen, Image, ClipboardCheck, Video, Globe, AlertTriangle, CreditCard, Award, Mail, BellRing, Inbox,
 } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
 import { useBranding } from "../hooks/useBranding";
@@ -22,6 +22,7 @@ const nav = [
     { label: "Gestion Admins",        icon: Shield,           to: "/superadmin/admins" },
     { label: "Messages",              icon: MessageSquare,    to: "/superadmin/messages", badge: true },
     { label: "E-mails groupés", icon: Mail, to: "/superadmin/emails" },
+    { label: "Boîte d'envoi", icon: Inbox, to: "/superadmin/outbox" },
     { label: "Incidents techniques",  icon: AlertTriangle,    to: "/superadmin/incidents" },
     { label: "Mon profil",            icon: UserCog,          to: "/superadmin/profile" },
   ]},

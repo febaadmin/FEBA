@@ -12,8 +12,6 @@ utilise le backend `locmem` : les envois sont vérifiables sans réseau.
 """
 import logging
 
-from django.conf import settings
-from django.core.mail import send_mail
 
 logger = logging.getLogger("apps")
 
@@ -37,21 +35,29 @@ def _admissions_recipients(entity):
     )
 
 
-def _send(subject, body, recipients):
+def _send(subject, body, recipients, *, entity=None, reference="", purpose="fha_notification"):
+    """
+    Un envoi TRACÉ par destinataire (apps.notifications.mailer).
+
+    Auparavant : `send_mail(..., fail_silently=True)` — une panne SMTP était
+    avalée en silence et rien n'en restait. Désormais chaque message est
+    journalisé, son contenu archivé, son échec visible et relancé. Renvoie
+    le nombre de messages ACCEPTÉS par le serveur de messagerie.
+    """
+    from apps.notifications.mailer import send_tracked_email
+
+    recipients = [r for r in dict.fromkeys(recipients or []) if r]
     if not recipients:
         logger.info("Notification FHA non envoyée (aucun destinataire) : %s", subject)
         return 0
-    try:
-        return send_mail(
-            subject=subject,
-            message=body,
-            from_email=getattr(settings, "DEFAULT_FROM_EMAIL", None),
-            recipient_list=list(recipients),
-            fail_silently=True,
+    accepted = 0
+    for address in recipients:
+        delivery = send_tracked_email(
+            purpose=purpose, to_email=address, subject=subject, text_body=body,
+            entity=entity, reference=reference,
         )
-    except Exception as exc:  # pragma: no cover - ne bloque jamais la soumission
-        logger.warning("Échec d'envoi de notification FHA (%s) : %s", subject, exc)
-        return 0
+        accepted += int(delivery.is_delivered_to_provider)
+    return accepted
 
 
 def notify_application_submitted(application):
@@ -86,7 +92,7 @@ def notify_application_submitted(application):
             f"— {entity.legal_name or entity.name}"
         )
 
-    sent = _send(subject, body, [application.parent1_email])
+    sent = _send(subject, body, [application.parent1_email], entity=entity, reference=reference)
 
     # Notification interne — uniquement aux admins de cette entité.
     admin_subject = f"[{entity.name}] Nouvelle fiche d'inscription — {reference}"
@@ -100,7 +106,7 @@ def notify_application_submitted(application):
         f"Pays : {application.child_country or 'non précisé'}\n"
         f"Fuseau famille : {application.family_timezone or 'non précisé'}\n"
     )
-    _send(admin_subject, admin_body, _admissions_recipients(entity))
+    _send(admin_subject, admin_body, _admissions_recipients(entity), entity=entity, reference=reference)
 
     logger.info("FHA — notification « fiche reçue » émise pour %s", reference)
     return sent
@@ -135,7 +141,7 @@ def notify_status_changed(application, previous_status):
         "FHA — notification de changement d'état %s : %s → %s",
         reference, previous_status, application.status,
     )
-    return _send(subject, body, [application.parent1_email])
+    return _send(subject, body, [application.parent1_email], entity=entity, reference=reference)
 
 
 # ── Notifications du parcours de test de placement ──────────────────────────
@@ -174,7 +180,7 @@ def notify_placement_test_requested(test_request):
             f"— {entity.legal_name or entity.name}"
         )
 
-    sent = _send(subject, body, [test_request.parent_email])
+    sent = _send(subject, body, [test_request.parent_email], entity=entity, reference=reference)
 
     admin_subject = f"[{entity.name}] Nouvelle demande de test — {reference}"
     admin_body = (
@@ -189,7 +195,7 @@ def notify_placement_test_requested(test_request):
         f"Créneau souhaité : {test_request.preferred_date or '—'} "
         f"{test_request.preferred_time or ''}\n"
     )
-    _send(admin_subject, admin_body, _admissions_recipients(entity))
+    _send(admin_subject, admin_body, _admissions_recipients(entity), entity=entity, reference=reference)
 
     logger.info("FHA — notification « demande de test » émise pour %s", reference)
     return sent
@@ -247,4 +253,4 @@ def notify_placement_test_scheduled(test_request):
         )
 
     logger.info("FHA — notification « test planifié » émise pour %s", reference)
-    return _send(subject, body, [test_request.parent_email])
+    return _send(subject, body, [test_request.parent_email], entity=entity, reference=reference)

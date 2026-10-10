@@ -2111,4 +2111,122 @@ export const EN = {
     "Application not found in your academy",
   "Journalisé — aucun fournisseur réel":
     "Logged — no real provider",
+  "Mode test : les messages sont capturés par Mailpit et n'atteignent aucune boîte réelle.":
+    "Test mode: messages are captured by Mailpit and never reach a real inbox.",
+  "Ouvrir Mailpit":
+    "Open Mailpit",
+  "« {name} » : format non autorisé.":
+    "“{name}”: format not allowed.",
+  "« {name} » dépasse {n} Mo.":
+    "“{name}” exceeds {n} MB.",
+  "Au plus {n} pièces jointes.":
+    "At most {n} attachments.",
+  "Taille totale supérieure à {n} Mo.":
+    "Total size exceeds {n} MB.",
+  "Formats acceptés : {list}. Au plus {n} Mo par fichier, {total} Mo au total.":
+    "Accepted formats: {list}. At most {n} MB per file, {total} MB in total.",
+  "Boîte d'envoi":
+    "Outbox",
+  "Tous les e-mails envoyés depuis FEBA, avec leur contenu et leurs pièces jointes":
+    "Every e-mail sent from FEBA, with its content and attachments",
+  "Recherche":
+    "Search",
+  "Objet, destinataire, contenu…":
+    "Subject, recipient, content…",
+  "Origine":
+    "Origin",
+  "Toutes les origines":
+    "All origins",
+  "Du":
+    "From",
+  "Au":
+    "To",
+  "Aucun e-mail pour ces critères.":
+    "No e-mail matches these criteria.",
+  "Ouvrir":
+    "Open",
+  "{n} e-mail(s)":
+    "{n} message(s)",
+  "Nouvelle tentative : {s}":
+    "New attempt: {s}",
+  "Détail de l'e-mail":
+    "E-mail details",
+  "Expéditeur":
+    "Sender",
+  "prochain essai":
+    "next attempt",
+  "Suivi":
+    "Tracking",
+  "Relancer cet envoi":
+    "Retry this sending",
+  "Contenu texte":
+    "Text content",
+  "Version HTML":
+    "HTML version",
+  "Aucune pièce jointe.":
+    "No attachment.",
+  "fichier introuvable":
+    "file not found",
+  "relance manuelle":
+    "manual retry",
+  "Transport e-mail":
+    "E-mail transport",
+  "Masquer le diagnostic":
+    "Hide diagnostics",
+  "Diagnostic et test d'envoi":
+    "Diagnostics and test sending",
+  "Serveur":
+    "Server",
+  "défini (masqué)":
+    "set (hidden)",
+  "vide":
+    "empty",
+  "Réseau":
+    "Network",
+  "Adresse de test":
+    "Test address",
+  "Envoyer un message de test":
+    "Send a test message",
+  "Enregistré — en file d'attente":
+    "Recorded — queued",
+  "Accepté par le serveur de messagerie":
+    "Accepted by the mail server",
+  "Échec définitif":
+    "Permanent failure",
+  "Accepté par le serveur":
+    "Accepted by the server",
+  "Capturé par le serveur de test (Mailpit) — non distribué sur Internet":
+    "Captured by the test server (Mailpit) — not delivered on the Internet",
+  "Écrit localement — aucun envoi réel":
+    "Written locally — no real sending",
+  "Accepté par le serveur de messagerie (réception non garantie)":
+    "Accepted by the mail server (receipt not guaranteed)",
+  "Contenu non archivé pour cet envoi historique.":
+    "Content not archived for this historical sending.",
+  "E-mail groupé":
+    "Group e-mail",
+  "Relance de paiement":
+    "Payment reminder",
+  "Test de configuration SMTP":
+    "SMTP configuration test",
+  "Notification admissions FHA":
+    "FHA admissions notification",
+  "Accusé de réception FHA (parent)":
+    "FHA acknowledgement (parent)",
+  "Alerte admissions FHA (équipe)":
+    "FHA admissions alert (team)",
+  "Diagnostic (ligne de commande)":
+    "Diagnostics (command line)",
+  "Envoi hors couche centrale (tracé automatiquement)":
+    "Sent outside the central layer (traced automatically)",
+  "Serveur de test (Mailpit) — capturé, non distribué":
+    "Test server (Mailpit) — captured, not delivered",
+  "Serveur SMTP réel":
+    "Real SMTP server",
+  "Console du serveur (aucun envoi)":
+    "Server console (no sending)",
+  "Mémoire (tests, aucun envoi)":
+    "Memory (tests, no sending)",
+  "Non enregistré (envoi historique)":
+    "Not recorded (historical sending)",
 };

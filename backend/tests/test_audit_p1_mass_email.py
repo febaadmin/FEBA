@@ -303,9 +303,10 @@ class ReliabilityTests(MassEmailBase):
         first, second = campaign.recipients.filter(status="pending").order_by("pk")[:2]
         # Simulation : le worker a envoyé `first` puis s'est arrêté avant de
         # mettre la ligne à jour ; `second` était réservé mais pas envoyé.
-        from apps.notifications.mailer import send_tracked_email
-        send_tracked_email(purpose="academy_mass_email", to_email=first.email, subject="x",
-                           text_body="x", entity=self.feba, reference=first.tracking_reference)
+        # Chaque destinataire a son envoi enregistré dès la création :
+        # le worker l'a tenté avec succès, puis s'est arrêté.
+        from apps.notifications.mailer import deliver
+        deliver(first.delivery)
         old = timezone.now() - timedelta(hours=1)
         EmailCampaignRecipient.objects.filter(pk__in=[first.pk, second.pk]).update(status="sending")
         EmailCampaignRecipient.objects.filter(pk__in=[first.pk, second.pk]).update(updated_at=old)
@@ -367,7 +368,9 @@ class MailpitSmtpIntegrationTests(MassEmailBase):
             self.skipTest("Mailpit non configuré (MAILPIT_SMTP_PORT / MAILPIT_API_URL).")
         self.api = api.rstrip("/")
         urllib.request.urlopen(urllib.request.Request(f"{self.api}/api/v1/messages", method="DELETE"))
-        self.override = override_settings(EMAIL_PORT=int(port))
+        # 127.0.0.1 pourrait être un vrai relais : on déclare explicitement
+        # que c'est ici un serveur de CAPTURE (Mailpit).
+        self.override = override_settings(EMAIL_PORT=int(port), EMAIL_CAPTURE_HOSTS="127.0.0.1")
         self.override.enable()
         self.addCleanup(self.override.disable)
 
@@ -382,4 +385,7 @@ class MailpitSmtpIntegrationTests(MassEmailBase):
             self.assertFalse(message.get("Bcc"))
         campaign = EmailCampaign.objects.get()
         self.assertEqual(campaign.status, EmailCampaign.DONE)
-        self.assertTrue(all(r.delivery.used_real_provider for r in campaign.recipients.filter(status="sent")))
+        # Mailpit ACCEPTE mais ne distribue pas : jamais « fournisseur réel ».
+        for r in campaign.recipients.filter(status="sent"):
+            self.assertEqual(r.delivery.transport, "capture")
+            self.assertFalse(r.delivery.used_real_provider)

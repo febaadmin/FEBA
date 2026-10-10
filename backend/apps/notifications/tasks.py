@@ -47,45 +47,30 @@ def process_pending_campaigns():
     return len(ids)
 
 
-def _retry_campaign(delivery):
-    from .campaign_models import EmailCampaignRecipient
-    from .campaigns import rebuild_for_delivery
-    from .email_models import EmailDelivery
-    from .mailer import retry_due
+def _sync_linked_records(delivery):
+    """Reporte le résultat d'une nouvelle tentative sur les objets métier liés."""
+    from .campaigns import recipient_for_delivery, refresh_campaign_status, sync_recipient
 
-    rebuilt = rebuild_for_delivery(delivery)
-    if rebuilt is None:
-        return False
-    text, html_body, recipient = rebuilt
-    if recipient.status == EmailCampaignRecipient.SENT:
-        return True
-    delivery = retry_due(delivery, text, html_body)
-    recipient.attempts += 1
-    if delivery.status in (EmailDelivery.SENT, EmailDelivery.ACCEPTED):
-        recipient.status = EmailCampaignRecipient.SENT
-        recipient.sent_at = delivery.sent_at
-        recipient.error = ""
-    elif delivery.status == EmailDelivery.RETRY:
-        recipient.status = EmailCampaignRecipient.RETRY
-        recipient.error = delivery.last_error
-    else:
-        recipient.status = EmailCampaignRecipient.FAILED
-        recipient.error = delivery.last_error
-    recipient.save(update_fields=["status", "sent_at", "error", "attempts", "updated_at"])
-    from .campaigns import refresh_campaign_status
-    refresh_campaign_status(recipient.campaign)
-    return True
+    recipient = recipient_for_delivery(delivery)
+    if recipient is not None:
+        recipient.attempts += 1
+        sync_recipient(recipient, delivery)
+        refresh_campaign_status(recipient.campaign)
+    try:
+        from apps.payments.reminders import sync_reminders_with_delivery
+        sync_reminders_with_delivery(delivery)
+    except ImportError:  # pragma: no cover
+        pass
 
 
-def _retry_fha_ack(delivery):
+def _retry_legacy_fha_ack(delivery):
+    """Envois FHA antérieurs à l'archivage du contenu : corps reconstruit."""
     from apps.website.fha_enrollment import parent_ack_bodies
     from apps.website.models import FHAEnrollmentApplication
 
-    from .mailer import retry_due
+    from .mailer import create_content
 
-    application = FHAEnrollmentApplication.objects.filter(
-        reference=delivery.subject_reference,
-    ).first()
+    application = FHAEnrollmentApplication.objects.filter(reference=delivery.subject_reference).first()
     if application is None:
         return False
     attachments = []
@@ -93,40 +78,38 @@ def _retry_fha_ack(delivery):
         from apps.website.fha_pdf import sheet_filename
         with open(application.sheet_absolute_path, "rb") as handle:
             attachments = [(sheet_filename(application), handle.read(), "application/pdf")]
-    _subject, text, html_body = parent_ack_bodies(application)
-    retry_due(delivery, text, html_body, attachments)
+    subject, text, html_body = parent_ack_bodies(application)
+    delivery.content = create_content(subject=subject, text_body=text, html_body=html_body,
+                                      attachments=attachments)
+    delivery.save(update_fields=["content", "updated_at"])
     return True
 
 
-def _retry_payment_reminder(delivery):
-    from apps.payments.reminders import retry_reminder_delivery
-
-    return retry_reminder_delivery(delivery)
-
-
-#: Objets d'envoi dont le corps peut être reconstruit pour une relance
-#: automatique. Les autres restent en « nouvel essai » visible, et
-#: l'administration dispose d'une action de renvoi manuelle.
-RETRY_HANDLERS = {
-    "academy_mass_email": _retry_campaign,
-    "fha_enrollment_ack": _retry_fha_ack,
-    "payment_reminder": _retry_payment_reminder,
+#: Envois HISTORIQUES (sans contenu archivé) dont le corps peut être
+#: reconstruit. Les envois récents sont tous rejouables depuis l'archive.
+LEGACY_REBUILDERS = {
+    "fha_enrollment_ack": _retry_legacy_fha_ack,
 }
 
 
 @shared_task(name="notifications.retry_due_deliveries", ignore_result=True)
 def retry_due_deliveries(limit=200):
+    """
+    Nouvelles tentatives des envois en « échec temporaire » dont l'heure est
+    venue. Tout envoi au contenu archivé est rejouable ; les envois
+    historiques sans contenu ne le sont que si leur corps peut être
+    reconstruit, sinon ils passent en échec définitif, avec la raison.
+    """
     from .email_models import EmailDelivery
+    from .mailer import retry_due
 
     with transaction.atomic():
         due = list(
             EmailDelivery.objects.select_for_update(skip_locked=True)
-            .filter(status=EmailDelivery.RETRY, next_retry_at__lte=timezone.now(),
-                    purpose__in=list(RETRY_HANDLERS))
+            .filter(status=EmailDelivery.RETRY, next_retry_at__lte=timezone.now())
             .order_by("next_retry_at")[:limit]
         )
-        # Réservées : passées « en attente » pour qu'un second worker ne
-        # les reprenne pas pendant l'envoi.
+        # Réservés : un second worker ne les reprendra pas pendant l'envoi.
         EmailDelivery.objects.filter(pk__in=[d.pk for d in due]).update(
             status=EmailDelivery.PENDING, next_retry_at=None,
         )
@@ -134,12 +117,17 @@ def retry_due_deliveries(limit=200):
     for delivery in due:
         delivery.refresh_from_db()
         try:
-            if RETRY_HANDLERS[delivery.purpose](delivery):
-                handled += 1
-            else:
-                delivery.status = EmailDelivery.FAILED
-                delivery.last_error = (delivery.last_error + "\nObjet d'origine introuvable : relance impossible.").strip()
-                delivery.save(update_fields=["status", "last_error", "updated_at"])
+            if delivery.content_id is None:
+                rebuild = LEGACY_REBUILDERS.get(delivery.purpose)
+                if rebuild is None or not rebuild(delivery):
+                    delivery.status = EmailDelivery.FAILED
+                    delivery.last_error = (delivery.last_error + "\nContenu non archivé pour cet "
+                                           "envoi historique : relance automatique impossible.").strip()
+                    delivery.save(update_fields=["status", "last_error", "updated_at"])
+                    continue
+            retry_due(delivery)
+            _sync_linked_records(delivery)
+            handled += 1
         except Exception as exc:
             logger.exception("Relance de l'envoi %s impossible : %s", delivery.pk, exc)
             delivery.status = EmailDelivery.RETRY

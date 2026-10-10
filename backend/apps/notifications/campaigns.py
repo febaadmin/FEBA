@@ -221,12 +221,16 @@ def preview_payload(resolution, limit=500):
 # ── Création ──────────────────────────────────────────────────────────
 
 def create_campaign(*, academy, user, subject, body, audience, client_token,
-                    expected_count):
+                    expected_count, attachments=None):
     """
     Crée la campagne et ses destinataires, puis la met en file d'attente.
 
     Idempotent par `client_token` : un second envoi du même formulaire
     renvoie la campagne existante (`created=False`) sans rien renvoyer.
+
+    `attachments` : [(nom, octets, type MIME)] DÉJÀ validés
+    (apps.notifications.attachments.validate_uploads). Ils sont archivés UNE
+    fois, avec le contenu, et partagés par tous les destinataires.
     """
     subject = (subject or "").strip()
     body = (body or "").strip()
@@ -273,6 +277,9 @@ def create_campaign(*, academy, user, subject, body, audience, client_token,
             "Affichez de nouveau l'aperçu avant de confirmer.", "expected_count",
         )
 
+    from .email_models import EmailDelivery
+    from .mailer import create_content, create_delivery
+
     try:
         with transaction.atomic():
             campaign = EmailCampaign.objects.create(
@@ -280,6 +287,10 @@ def create_campaign(*, academy, user, subject, body, audience, client_token,
                 subject=subject, body=body, audience=audience, client_token=client_token,
                 total_recipients=count, skipped_count=len(resolution["skipped"]),
             )
+            text, html_body = _bodies(campaign)
+            campaign.content = create_content(subject=subject, text_body=text,
+                                              html_body=html_body, attachments=attachments)
+            campaign.save(update_fields=["content"])
             EmailCampaignRecipient.objects.bulk_create([
                 EmailCampaignRecipient(
                     campaign=campaign, user=entry["user"], email=entry["email"],
@@ -288,6 +299,16 @@ def create_campaign(*, academy, user, subject, body, audience, client_token,
                 )
                 for entry in resolution["recipients"] + resolution["skipped"]
             ])
+            # Chaque destinataire joignable a, DÈS MAINTENANT, son envoi
+            # enregistré (« en file d'attente ») : la boîte d'envoi montre
+            # le message avant même que le worker l'ait traité.
+            for recipient in campaign.recipients.filter(status=EmailCampaignRecipient.PENDING):
+                recipient.delivery = create_delivery(
+                    purpose=PURPOSE_CAMPAIGN, to_email=recipient.email, subject=subject,
+                    entity=academy, reference=recipient.tracking_reference,
+                    content=campaign.content, initiated_by=user, status=EmailDelivery.QUEUED,
+                )
+                recipient.save(update_fields=["delivery"])
     except IntegrityError:
         # Course entre deux soumissions du même jeton : l'autre a gagné.
         existing = EmailCampaign.objects.filter(created_by=user, client_token=client_token).first()
@@ -364,21 +385,31 @@ def _claim_batch(campaign_id, size):
     return ids
 
 
-def _send_one(recipient, text, html_body):
+def _ensure_delivery(recipient):
+    """Envoi enregistré du destinataire (campagnes antérieures : créé à la volée)."""
     from .email_models import EmailDelivery
-    from .mailer import resend, send_tracked_email
+    from .mailer import create_content, create_delivery
 
+    if recipient.delivery_id and recipient.delivery.content_id:
+        return recipient.delivery
     campaign = recipient.campaign
-    if recipient.delivery_id:
-        delivery = resend(recipient.delivery, text, html_body)
-    else:
-        delivery = send_tracked_email(
-            purpose=PURPOSE_CAMPAIGN, to_email=recipient.email, subject=campaign.subject,
-            text_body=text, html_body=html_body, entity=campaign.academy,
-            reference=recipient.tracking_reference,
-        )
+    if campaign.content_id is None:
+        text, html_body = _bodies(campaign)
+        campaign.content = create_content(subject=campaign.subject, text_body=text, html_body=html_body)
+        campaign.save(update_fields=["content"])
+    recipient.delivery = create_delivery(
+        purpose=PURPOSE_CAMPAIGN, to_email=recipient.email, subject=campaign.subject,
+        entity=campaign.academy, reference=recipient.tracking_reference,
+        content=campaign.content, status=EmailDelivery.QUEUED,
+    )
+    return recipient.delivery
+
+
+def sync_recipient(recipient, delivery):
+    """Reporte sur la ligne de campagne le résultat réel de l'envoi."""
+    from .email_models import EmailDelivery
+
     recipient.delivery = delivery
-    recipient.attempts += 1
     if delivery.status in (EmailDelivery.SENT, EmailDelivery.ACCEPTED):
         recipient.status = EmailCampaignRecipient.SENT
         recipient.sent_at = delivery.sent_at or timezone.now()
@@ -391,6 +422,14 @@ def _send_one(recipient, text, html_body):
         recipient.error = delivery.last_error
     recipient.save(update_fields=["delivery", "attempts", "status", "sent_at", "error", "updated_at"])
     return recipient.status
+
+
+def _send_one(recipient, manual=False):
+    from .mailer import deliver
+
+    delivery = deliver(_ensure_delivery(recipient), manual=manual)
+    recipient.attempts += 1
+    return sync_recipient(recipient, delivery)
 
 
 def recover_stale(campaign_id, older_than_minutes=15):
@@ -409,7 +448,7 @@ def recover_stale(campaign_id, older_than_minutes=15):
     )
     recovered = 0
     for recipient in stale:
-        delivery = (
+        delivery = recipient.delivery or (
             EmailDelivery.objects.filter(
                 purpose=PURPOSE_CAMPAIGN, subject_reference=recipient.tracking_reference,
             ).order_by("-created_at").first()
@@ -465,16 +504,15 @@ def process_campaign(campaign_id):
         campaign.status = EmailCampaign.SENDING
         campaign.save(update_fields=["started_at", "status"])
 
-    text, html_body = _bodies(campaign)
     sent = failed = 0
     while True:
         ids = _claim_batch(campaign_id, batch_size())
         if not ids:
             break
         for recipient in EmailCampaignRecipient.objects.filter(pk__in=ids).select_related(
-            "campaign__academy", "delivery",
+            "campaign__academy", "campaign__content", "delivery__content",
         ):
-            outcome = _send_one(recipient, text, html_body)
+            outcome = _send_one(recipient)
             if outcome == EmailCampaignRecipient.SENT:
                 sent += 1
             else:
@@ -491,9 +529,20 @@ def retry_failed(campaign):
     Remet en file les seuls destinataires en échec. Les envois réussis ne
     sont JAMAIS renvoyés.
     """
-    updated = campaign.recipients.filter(
-        status__in=EmailCampaignRecipient.RETRYABLE,
-    ).update(status=EmailCampaignRecipient.PENDING, updated_at=timezone.now())
+    from .email_models import EmailDelivery
+
+    with transaction.atomic():
+        rows = campaign.recipients.select_for_update().filter(status__in=EmailCampaignRecipient.RETRYABLE)
+        delivery_ids = [r.delivery_id for r in rows if r.delivery_id]
+        # Relance HUMAINE : compteur remis à zéro, et l'envoi est retiré de la
+        # reprise automatique (statut « en file ») pour qu'aucune tâche ne
+        # le traite en même temps que le worker de la campagne.
+        EmailDelivery.objects.filter(pk__in=delivery_ids).update(
+            status=EmailDelivery.QUEUED, attempts=0, next_retry_at=None, updated_at=timezone.now(),
+        )
+        updated = campaign.recipients.filter(
+            status__in=EmailCampaignRecipient.RETRYABLE,
+        ).update(status=EmailCampaignRecipient.PENDING, updated_at=timezone.now())
     if updated:
         campaign.status = EmailCampaign.SENDING
         campaign.finished_at = None
@@ -502,16 +551,9 @@ def retry_failed(campaign):
     return updated
 
 
-def rebuild_for_delivery(delivery):
-    """
-    Corps d'un e-mail de campagne à relancer automatiquement (tâche de
-    reprise des envois). Renvoie (texte, html, recipient) ou None.
-    """
-    recipient = (
+def recipient_for_delivery(delivery):
+    """Ligne de campagne d'un envoi (relance automatique), ou None."""
+    return (
         EmailCampaignRecipient.objects.select_related("campaign__academy")
         .filter(delivery=delivery).first()
     )
-    if recipient is None:
-        return None
-    text, html_body = _bodies(recipient.campaign)
-    return text, html_body, recipient

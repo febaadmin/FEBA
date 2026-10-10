@@ -425,10 +425,27 @@ class TestEnvoi:
         assert "Monthly report" in mail.outbox[0].subject
         assert "Please find attached" in mail.outbox[0].body
 
+    def test_un_rapport_capture_par_mailpit_n_est_pas_envoye(
+            self, eleve_fha, settings, monkeypatch):
+        """
+        Mailpit ACCEPTE le message mais ne le distribue jamais : le rapport
+        ne doit pas être présenté comme envoyé (défaut signalé en octobre
+        2026 — l'hôte « mailpit » était pris pour un fournisseur réel).
+        """
+        settings.EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+        settings.EMAIL_HOST = "mailpit"
+        self._avec_parent(eleve_fha)
+        report, _ = generate_report(eleve_fha, ANNEE, MOIS)
+        monkeypatch.setattr(
+            "django.core.mail.EmailMultiAlternatives.send", lambda self, **k: 1)
+        report = send_report(report)
+        assert report.status != MonthlyReportStatus.SENT
+        assert report.really_sent is False
+
     def test_un_fournisseur_externe_permet_le_statut_envoye(
             self, eleve_fha, settings, monkeypatch):
         settings.EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
-        settings.EMAIL_HOST = "mailpit"
+        settings.EMAIL_HOST = "smtp.fournisseur.test"
         self._avec_parent(eleve_fha)
         report, _ = generate_report(eleve_fha, ANNEE, MOIS)
 
@@ -445,7 +462,7 @@ class TestEnvoi:
             self, eleve_fha, settings, monkeypatch):
         """Garde-fou anti-doublon : la tâche peut être rejouée."""
         settings.EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
-        settings.EMAIL_HOST = "mailpit"
+        settings.EMAIL_HOST = "smtp.fournisseur.test"
         self._avec_parent(eleve_fha)
         report, _ = generate_report(eleve_fha, ANNEE, MOIS)
         appels = []

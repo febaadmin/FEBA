@@ -69,6 +69,7 @@ export default function MassEmail() {
   const [search, setSearch] = useState("");
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
+  const [files, setFiles] = useState([]);
   const [previewState, setPreviewState] = useState(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [clientToken, setClientToken] = useState(newClientToken);
@@ -103,7 +104,9 @@ export default function MassEmail() {
   // L'aperçu n'est valable que pour le brouillon qui l'a produit : toute
   // modification (sélection, académie, objet, message) l'invalide — on ne
   // confirme jamais un nombre calculé pour une autre sélection.
-  const draftSignature = JSON.stringify([effectiveAcademyId, audience, subject, body]);
+  const draftSignature = JSON.stringify([
+    effectiveAcademyId, audience, subject, body, files.map((f) => [f.name, f.size, f.lastModified]),
+  ]);
   const preview = previewState?.signature === draftSignature ? previewState.data : null;
 
   const changeAcademy = (id) => {
@@ -142,11 +145,11 @@ export default function MassEmail() {
     mutationFn: () => massEmailAPI.create({
       academy_id: effectiveAcademyId, ...audiencePayload(audience),
       subject, body, confirm: true, expected_count: preview?.count, client_token: clientToken,
-    }),
+    }, files),
     onSuccess: (res) => {
       setConfirmOpen(false);
       toast.success(t("Envoi mis en file : {n} destinataire(s).", { n: res.data.total_recipients }));
-      setSubject(""); setBody(""); setAudience(emptyAudience()); setPreviewState(null);
+      setSubject(""); setBody(""); setFiles([]); setAudience(emptyAudience()); setPreviewState(null);
       setClientToken(newClientToken());
       setOpenCampaign(res.data.id);
       qc.invalidateQueries({ queryKey: ["mass-email-campaigns", effectiveAcademyId] });
@@ -170,7 +173,20 @@ export default function MassEmail() {
     <div className="space-y-6">
       <PageHeader title={t("E-mails groupés")} subtitle={t("Envoi par académie et par type de profil")} />
 
-      {options && !options.provider_configured && (
+      {options && options.transport === "capture" && (
+        <div className="card border border-amber-200 bg-amber-50 text-sm text-amber-800 flex gap-2">
+          <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+          <span>
+            {t("Mode test : les messages sont capturés par Mailpit et n'atteignent aucune boîte réelle.")}{" "}
+            {options.capture_ui_url && (
+              <a href={options.capture_ui_url} target="_blank" rel="noreferrer" className="font-semibold underline">
+                {t("Ouvrir Mailpit")}
+              </a>
+            )}
+          </span>
+        </div>
+      )}
+      {options && !options.provider_configured && options.transport !== "capture" && (
         <div className="card border border-amber-200 bg-amber-50 text-sm text-amber-800 flex gap-2">
           <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
           {t("Aucun serveur de messagerie réel n'est configuré : les messages seront journalisés mais ne partiront pas sur Internet.")}
@@ -281,6 +297,7 @@ export default function MassEmail() {
               {t("Chaque destinataire reçoit un message individuel : aucune adresse n'est visible des autres.")}
             </p>
           </div>
+          <AttachmentPicker files={files} onChange={setFiles} limits={options?.attachments} />
           <button type="button" className="btn-secondary w-full flex items-center justify-center gap-2"
                   disabled={!canPreview || previewMut.isPending} onClick={() => previewMut.mutate(draftSignature)}>
             {previewMut.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Eye className="w-4 h-4" />}
@@ -306,6 +323,11 @@ export default function MassEmail() {
                 <p className="text-xs text-slate-400">{t("Aperçu du message")}</p>
                 <p className="font-semibold text-slate-800">{subject}</p>
                 <p className="whitespace-pre-wrap text-slate-700 text-wrapsafe">{body}</p>
+                {files.length > 0 && (
+                  <p className="mt-2 text-xs text-slate-500">
+                    {t("Pièces jointes")} : {files.map((f) => f.name).join(", ")}
+                  </p>
+                )}
                 <p className="mt-2 border-t pt-2 text-xs text-slate-400">{preview.academy?.name}</p>
               </div>
               <button type="button" className="btn-primary w-full flex items-center justify-center gap-2"
@@ -450,7 +472,9 @@ function CampaignReport({ id, academyId, onClose }) {
                       <Badge tone={STATUS_TONE[r.status]}>{t(r.status_display)}</Badge>
                       {/* Backend console/locmem : « remis » ne veut pas dire « parti ». */}
                       {r.status === "sent" && !r.used_real_provider && (
-                        <div className="mt-1"><Badge tone="bg-amber-50 text-amber-700">{t("Journalisé — aucun fournisseur réel")}</Badge></div>
+                        <div className="mt-1"><Badge tone="bg-amber-50 text-amber-700">
+                          {t(r.delivery_summary || "Journalisé — aucun fournisseur réel")}
+                        </Badge></div>
                       )}
                     </td>
                     <td className="px-3 py-2 text-xs text-red-600 break-all">{r.error}</td>
@@ -462,5 +486,75 @@ function CampaignReport({ id, academyId, onClose }) {
         </div>
       )}
     </Modal>
+  );
+}
+
+function formatBytes(n) {
+  if (n < 1024) return `${n} o`;
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(0)} Ko`;
+  return `${(n / (1024 * 1024)).toFixed(1)} Mo`;
+}
+
+/**
+ * Pièces jointes : sélection multiple, liste (nom, taille), retrait.
+ * Le contrôle ici n'est qu'un CONFORT : le serveur revalide extension,
+ * signature binaire et tailles, et refuse l'envoi entier en cas d'erreur.
+ */
+export function AttachmentPicker({ files, onChange, limits }) {
+  const [error, setError] = useState("");
+  const allowed = limits?.allowed_extensions || [];
+  const maxFile = (limits?.max_file_mb || 10) * 1024 * 1024;
+  const maxTotal = (limits?.max_total_mb || 20) * 1024 * 1024;
+  const maxFiles = limits?.max_files || 10;
+
+  const add = (list) => {
+    setError("");
+    const next = [...files];
+    for (const file of list) {
+      const ext = (file.name.split(".").pop() || "").toLowerCase();
+      if (allowed.length && !allowed.includes(ext)) {
+        setError(t("« {name} » : format non autorisé.", { name: file.name })); continue;
+      }
+      if (file.size > maxFile) {
+        setError(t("« {name} » dépasse {n} Mo.", { name: file.name, n: limits?.max_file_mb || 10 })); continue;
+      }
+      if (next.some((f) => f.name === file.name && f.size === file.size)) continue;
+      next.push(file);
+    }
+    if (next.length > maxFiles) { setError(t("Au plus {n} pièces jointes.", { n: maxFiles })); return; }
+    if (next.reduce((sum, f) => sum + f.size, 0) > maxTotal) {
+      setError(t("Taille totale supérieure à {n} Mo.", { n: limits?.max_total_mb || 20 })); return;
+    }
+    onChange(next);
+  };
+
+  return (
+    <div className="space-y-2">
+      <label className="label" htmlFor="mass-email-files">{t("Pièces jointes")}</label>
+      <input id="mass-email-files" type="file" multiple className="block text-sm"
+             accept={allowed.map((e) => `.${e}`).join(",")}
+             onChange={(e) => { add([...e.target.files]); e.target.value = ""; }} />
+      {allowed.length > 0 && (
+        <p className="text-xs text-slate-400">
+          {t("Formats acceptés : {list}. Au plus {n} Mo par fichier, {total} Mo au total.",
+             { list: allowed.join(", "), n: limits?.max_file_mb, total: limits?.max_total_mb })}
+        </p>
+      )}
+      {error && <p className="text-xs text-red-600" role="alert">{error}</p>}
+      {files.length > 0 && (
+        <ul className="divide-y divide-slate-100 rounded-xl border border-slate-100 text-sm">
+          {files.map((file, i) => (
+            <li key={`${file.name}-${file.size}`} className="flex items-center justify-between gap-2 px-3 py-1.5">
+              <span className="break-all">{file.name} <span className="text-xs text-slate-400">({formatBytes(file.size)})</span></span>
+              <button type="button" className="text-xs text-danger hover:underline"
+                      aria-label={`${t("Retirer")} ${file.name}`}
+                      onClick={() => onChange(files.filter((_, j) => j !== i))}>
+                {t("Retirer")}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
   );
 }

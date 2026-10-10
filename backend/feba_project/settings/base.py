@@ -319,7 +319,26 @@ CELERY_BEAT_SCHEDULE = {
 }
 
 # Email
-EMAIL_BACKEND = config('EMAIL_BACKEND', default='django.core.mail.backends.console.EmailBackend')
+# Le TRANSPORT (SMTP, console…) se choisit toujours par la variable
+# d'environnement EMAIL_BACKEND. Django, lui, passe par le backend de
+# traçage, qui journalise tout envoi échappant à apps/notifications/mailer.py
+# avant de le confier à ce transport.
+EMAIL_TRANSPORT_BACKEND = config('EMAIL_BACKEND', default='django.core.mail.backends.console.EmailBackend')
+EMAIL_BACKEND = 'apps.notifications.backends.TrackingEmailBackend'
+# auto : un hôte de capture connu (mailpit, mailhog…) est signalé « capturé,
+# non distribué » ; capture / real forcent la qualification.
+EMAIL_DELIVERY_MODE = config('EMAIL_DELIVERY_MODE', default='auto')
+EMAIL_CAPTURE_HOSTS = config('EMAIL_CAPTURE_HOSTS', default='')
+# Interface web du serveur de capture (indiquée à l'utilisateur).
+MAILPIT_UI_URL = config('MAILPIT_UI_URL', default='http://localhost:8025')
+# Pièces jointes (validation serveur, voir apps/notifications/attachments.py).
+EMAIL_ATTACHMENT_ALLOWED_EXTENSIONS = config('EMAIL_ATTACHMENT_ALLOWED_EXTENSIONS', default='')
+EMAIL_ATTACHMENT_MAX_FILE_MB = config('EMAIL_ATTACHMENT_MAX_FILE_MB', default=10, cast=int)
+EMAIL_ATTACHMENT_MAX_TOTAL_MB = config('EMAIL_ATTACHMENT_MAX_TOTAL_MB', default=20, cast=int)
+EMAIL_ATTACHMENT_MAX_FILES = config('EMAIL_ATTACHMENT_MAX_FILES', default=10, cast=int)
+# Test SMTP depuis l'écran d'administration : nombre maximal par heure et
+# par utilisateur (protection contre l'usage abusif).
+EMAIL_TEST_MAX_PER_HOUR = config('EMAIL_TEST_MAX_PER_HOUR', default=5, cast=int)
 EMAIL_HOST = config('EMAIL_HOST', default='')
 EMAIL_PORT = config('EMAIL_PORT', default=587, cast=int)
 EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='')

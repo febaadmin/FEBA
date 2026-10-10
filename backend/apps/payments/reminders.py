@@ -663,28 +663,21 @@ def resume_pending(academy, policy, now=None, older_than_minutes=10):
     return len(stale)
 
 
-def retry_reminder_delivery(delivery):
-    """Relance automatique d'un e-mail de relance en « nouvel essai »."""
+def sync_reminders_with_delivery(delivery):
+    """
+    Reporte sur les relances liées le résultat d'une nouvelle tentative
+    automatique de l'e-mail (le contenu est rejoué depuis l'archive).
+    """
     from apps.notifications.email_models import EmailDelivery
-    from apps.notifications.mailer import retry_due
     from apps.payments.models import PaymentReminder
 
-    rows = list(
-        PaymentReminder.objects.filter(email_delivery=delivery)
-        .select_related("academy", "recipient", "student")
-    )
-    if not rows:
-        return False
-    academy, recipient = rows[0].academy, rows[0].recipient
-    _subject, text, html_body, _t, _m = build_message(academy, get_policy(academy), recipient, rows)
-    delivery = retry_due(delivery, text, html_body)
+    rows = PaymentReminder.objects.filter(email_delivery=delivery)
+    if not rows.exists():
+        return 0
     if delivery.status in (EmailDelivery.SENT, EmailDelivery.ACCEPTED):
         status, error = PaymentReminder.SENT, ""
     elif delivery.status == EmailDelivery.RETRY:
         status, error = PaymentReminder.RETRY, delivery.last_error
     else:
         status, error = PaymentReminder.FAILED, delivery.last_error
-    PaymentReminder.objects.filter(pk__in=[r.pk for r in rows]).update(
-        status=status, error=error, updated_at=timezone.now(),
-    )
-    return True
+    return rows.update(status=status, error=error, updated_at=timezone.now())
