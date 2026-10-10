@@ -18,7 +18,7 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-NOM="${1:-feba_v9_version_finale_corrigee}"
+NOM="${1:-FEBA_VERSION_CORRIGEE_AUDIT_COMPLET}"
 SORTIE="${2:-$(dirname "$ROOT")}"
 STAGE="$(mktemp -d)"
 # Le dossier racine porte le MÊME nom que l'archive. En V8 il était
@@ -31,8 +31,26 @@ trap 'rm -rf "$STAGE"' EXIT
 
 mkdir -p "$CIBLE"
 
+# ── Source de l'archive ───────────────────────────────────────────────
+# Dans un dépôt Git, l'archive est construite depuis le COMMIT courant
+# (`git archive HEAD`) : elle contient exactement la version validée, et
+# rien de ce que les tests ou un poste de développement laissent traîner
+# (médias générés, bases SQLite, captures, caches). Un arbre de travail
+# modifié est refusé : on ne livre pas un état qui n'existe nulle part
+# dans l'historique.
+if git -C "$ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+  if [ -n "$(git -C "$ROOT" status --porcelain --untracked-files=no)" ]; then
+    echo "ÉCHEC : modifications non validées dans le dépôt — validez-les avant de livrer."
+    git -C "$ROOT" status --short --untracked-files=no
+    exit 1
+  fi
+  echo "Source : commit $(git -C "$ROOT" rev-parse --short HEAD) ($(git -C "$ROOT" rev-parse --abbrev-ref HEAD))"
+  git -C "$ROOT" archive --format=tar HEAD | tar -xf - -C "$CIBLE"
+  git -C "$ROOT" log -1 --format='commit %H%nbranche '"$(git -C "$ROOT" rev-parse --abbrev-ref HEAD)"'%ndate %ci%n%s' > "$CIBLE/SOURCE_COMMIT.txt"
+else
 tar -C "$ROOT" \
     --exclude='./.git' \
+    --exclude='./.claude' \
     --exclude='./frontend/node_modules' \
     --exclude='./frontend/dist' \
     --exclude='__pycache__' \
@@ -45,7 +63,7 @@ tar -C "$ROOT" \
     --exclude='./backend/staticfiles' \
     --exclude='./backend/media' \
     --exclude='./backend/private_media' \
-    --exclude='./backend/db.sqlite3' \
+    --exclude='*.sqlite3' \
     --exclude='*.log' \
     --exclude='./.env' \
     --exclude='./.env.dev' \
@@ -55,6 +73,7 @@ tar -C "$ROOT" \
     --exclude='./backend/.env' \
     --exclude='.DS_Store' \
     -cf - . | tar -xf - -C "$CIBLE"
+fi
 
 # ── Garde-fous : on VÉRIFIE, on ne suppose pas ────────────────────────
 echo "Contrôles avant compression :"
@@ -123,7 +142,29 @@ for requis in backend/manage.py frontend/package.json Makefile \
               scripts/deploy_production.sh scripts/production_health.sh \
               backend/tests/test_v13_deploiement_production.py \
               ROLLBACK_GUIDE.md PRODUCTION_CHECKLIST.md \
-              TURN_DEPLOYMENT_GUIDE.md; do
+              TURN_DEPLOYMENT_GUIDE.md \
+              EMAIL_CONFIGURATION_GUIDE.md PAYMENT_REMINDERS_GUIDE.md \
+              AUDIT_CORRECTIONS_REPORT.md VALIDATION_REPORT.md \
+              backend/apps/core/age.py \
+              backend/apps/notifications/campaigns.py \
+              backend/apps/notifications/campaign_models.py \
+              backend/apps/notifications/tasks.py \
+              backend/apps/payments/reminders.py \
+              backend/apps/payments/schedule_models.py \
+              backend/apps/payments/fee_plans/feba_2026_2027.json \
+              backend/apps/payments/management/commands/load_fee_plan.py \
+              backend/apps/payments/migrations/0011_backfill_payment_paid_at.py \
+              backend/apps/payments/migrations/0013_optional_services_not_mandatory.py \
+              backend/tests/test_audit_p1_student_age.py \
+              backend/tests/test_audit_p1_payment_datetime.py \
+              backend/tests/test_audit_p1_mass_email.py \
+              backend/tests/test_audit_p1_payment_reminders.py \
+              backend/tests/test_audit_p1_confirmation_emails.py \
+              backend/tests/test_audit_cross_academy_writes.py \
+              backend/tests/test_audit_role_escalation.py \
+              frontend/src/pages/admin/MassEmail.jsx \
+              frontend/src/pages/admin/PaymentReminders.jsx \
+              frontend/src/utils/age.jsx frontend/src/utils/datetime.js; do
   [ -e "$CIBLE/$requis" ] || { echo "  ÉCHEC : « $requis » manquant"; exit 1; }
 done
 echo "  OK    tous les fichiers attendus sont présents"
@@ -161,7 +202,7 @@ sha256sum "$ARCHIVE" | sed "s#$SORTIE/##" > "$ARCHIVE.sha256"
 
 echo ""
 echo "Archive : $ARCHIVE"
-echo "Taille  : $(du -h "$ARCHIVE" | cut -f1) ($(stat -c%s "$ARCHIVE") octets)"
+echo "Taille  : $(du -h "$ARCHIVE" | cut -f1) ($(wc -c < "$ARCHIVE" | tr -d ' ') octets)"
 echo "SHA-256 : $(sha256sum "$ARCHIVE" | cut -d' ' -f1)"
 echo "Fichiers: $(unzip -l "$ARCHIVE" | tail -1 | awk '{print $2}')"
 echo "Empreinte déposée dans : $ARCHIVE.sha256"

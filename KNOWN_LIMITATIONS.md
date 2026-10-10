@@ -5,6 +5,58 @@ Rien ici n'est présenté comme fonctionnel sans preuve.
 
 ---
 
+## 0. Version « audit complet » (octobre 2026) — points ouverts
+
+### 0.1 Jours d'échéance de la grille 2026-2027 — DÉCISION MÉTIER
+**BLOCAGE EXTERNE (décision de l'administration).** L'affiche des frais
+2026-2027 donne le MOIS de chaque tranche (septembre, novembre, janvier),
+pas le jour. `fee_plans/feba_2026_2027.json` retient le dernier jour du
+mois ; la date limite des frais d'inscription (30/09/2026) et les mois de
+garderie (septembre → juin) sont également des hypothèses. Rien n'est
+chargé sans `--apply`, et les relances restent désactivées tant que
+`PAYMENT_REMINDERS_ENABLED` n'est pas activé. À confirmer avant mise en
+service.
+
+### 0.2 Noms des niveaux en production
+**À TESTER EN ENVIRONNEMENT RÉEL.** `load_fee_plan` associe les tarifs aux
+niveaux par leur NOM (« CE1 », « Maternelle 1 », « CI »…). La base de
+démonstration utilise « CP1 / CP2 » : la commande les signale comme sans
+tarif. Lancer la simulation (sans `--apply`) sur la base de production et
+lire la liste « Niveaux sans tarif ».
+
+### 0.3 Abonnements aux services optionnels
+**LIMITATION CONNUE.** Cantine, transport et garderie ne sont dus que par
+les élèves déclarés « abonnés » (onglet Échéanciers → Élèves). Aucune
+donnée d'abonnement n'existait auparavant : tant qu'elles ne sont pas
+saisies, aucune relance n'est envoyée pour ces services — c'est voulu
+(aucune relance injustifiée), mais cela signifie aussi qu'aucun retard de
+cantine n'est relancé avant la saisie.
+
+### 0.4 Paiements historiques sans heure
+**LIMITATION CONNUE.** L'heure n'a jamais été enregistrée avant cette
+version. La migration `payments.0011` reprend l'horodatage de saisie
+uniquement quand il tombe le jour même du paiement ; les autres paiements
+anciens affichent la date seule avec « heure n.e. ». Aucune heure n'est
+inventée.
+
+### 0.5 Livraison réelle des e-mails
+**À TESTER EN ENVIRONNEMENT RÉEL.** Les envois ont été vérifiés jusqu'au
+protocole SMTP contre Mailpit (serveur de test local). Le fournisseur SMTP
+de production, et les enregistrements SPF/DKIM/DMARC chez Hostinger, n'ont
+pas pu être testés d'ici. Commande de vérification : voir
+`EMAIL_CONFIGURATION_GUIDE.md` § 2.
+
+### 0.6 Suppression d'une conversation
+**LIMITATION CONNUE — décision métier.** Supprimer une conversation
+(messagerie interne) l'efface aussi pour l'interlocuteur. Le comportement
+n'a pas été modifié faute de règle métier explicite (suppression pour
+soi seul ou pour tous).
+
+### 0.7 Point d'API `payments/pending`
+**LIMITATION CONNUE.** Cette route renvoie les paiements `is_confirmed=False`,
+c'est-à-dire ANNULÉS, sous le nom « pending ». Aucun écran ne l'utilise ;
+elle est conservée pour ne pas casser d'éventuels appels externes.
+
 ## 1. Visioconférence — ce qui exige un environnement réel
 
 ### 1.1 Réunion à deux participants (§32)
