@@ -143,11 +143,11 @@ function EmailStatus({ state }) {
     );
   }
   if (!state.used_real_provider) {
-    // Le message a été écrit dans la console du serveur. L'annoncer comme
-    // « envoyé » serait un mensonge poli.
+    // Console, mémoire ou Mailpit (capturé) : l'annoncer comme « envoyé »
+    // serait un mensonge poli.
     return (
       <Badge tone="bg-slate-100 text-slate-600">
-        {t("Sans fournisseur")}
+        {state.transport === "capture" ? t("Capturé (Mailpit)") : t("Sans fournisseur")}
       </Badge>
     );
   }

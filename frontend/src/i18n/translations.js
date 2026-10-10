@@ -2229,4 +2229,6 @@ export const EN = {
     "Memory (tests, no sending)",
   "Non enregistré (envoi historique)":
     "Not recorded (historical sending)",
+  "Capturé (Mailpit)":
+    "Captured (Mailpit)",
 };

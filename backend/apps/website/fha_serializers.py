@@ -486,6 +486,9 @@ def _email_state(delivery):
         # Sans ce drapeau, un écran pourrait afficher « envoyé » alors que
         # le message a été écrit dans la console du serveur.
         'used_real_provider': delivery.used_real_provider,
+        'transport': delivery.transport,
+        'delivery_summary': delivery.delivery_summary(),
+        'delivery_id': delivery.pk,
         'sent_at': delivery.sent_at,
         'attempts': delivery.attempts,
         'next_retry_at': delivery.next_retry_at,

@@ -1,6 +1,26 @@
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useEffect } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import { useAuthStore } from "../store/authStore";
+import { authAPI } from "../api";
+
+/**
+ * Jeton présent mais utilisateur absent (connexion interrompue entre
+ * l'obtention du jeton et `/auth/me`, rechargement pendant la connexion,
+ * `/auth/me` en échec) : on recharge l'utilisateur UNE fois ; en cas
+ * d'échec, on revient à la connexion. Auparavant, l'écran restait
+ * indéfiniment sur « Chargement… ».
+ */
+let restoring = null;
+export function useRestoreUser() {
+  const { user, accessToken, refreshToken, _hasHydrated, setAuth, clearAuth } = useAuthStore();
+  useEffect(() => {
+    if (!_hasHydrated || !accessToken || user?.role || restoring) return;
+    restoring = authAPI.me()
+      .then((me) => setAuth(me.data, accessToken, refreshToken))
+      .catch(() => clearAuth())
+      .finally(() => { restoring = null; });
+  }, [_hasHydrated, accessToken, refreshToken, user, setAuth, clearAuth]);
+}
 
 // ── Site vitrine public (P4 v4) — chargé en lazy pour ne pas alourdir le
 // bundle de l'ERP (code splitting : le chunk "site" n'est téléchargé que
@@ -123,6 +143,7 @@ const ForcePasswordChange = lazy(() => import("../pages/shared/ForcePasswordChan
 // ── Guard: vérifie l'authentification et le rôle ──────────────────────────
 function ProtectedRoute({ children, allowedRoles }) {
   const { user, accessToken, _hasHydrated } = useAuthStore();
+  useRestoreUser();
 
   // FIX v25: Wait until Zustand has rehydrated from localStorage.
   // Without this, the first render always sees user=null → redirect to /login
@@ -193,6 +214,7 @@ function ProtectedRoute({ children, allowedRoles }) {
 // n'oriente pas quelqu'un sur une supposition.
 function RoleRedirect() {
   const { user, accessToken, _hasHydrated } = useAuthStore();
+  useRestoreUser();
   if (!_hasHydrated) return null;
   if (!accessToken) return <Navigate to="/login" replace />;
   // Jeton présent, utilisateur pas encore chargé : on patiente.
