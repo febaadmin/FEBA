@@ -178,7 +178,7 @@ class VerificationDuJetonTests(BaseJeton):
             jwt.decode(perime, SECRET, algorithms=["HS256"], audience="jitsi")
 
 
-@override_settings(JITSI_DOMAIN=DOMAINE, JITSI_APP_ID=EMETTEUR,
+@override_settings(VIDEO_PROVIDER="jitsi", JITSI_DOMAIN=DOMAINE, JITSI_APP_ID=EMETTEUR,
                    JITSI_APP_SECRET=SECRET)
 class LeClientNeChoisitPasSonRoleTests(BaseJeton):
     """

@@ -1,0 +1,140 @@
+# ══════════════════════════════════════════════════════════════════════
+# plugNmeet auto-hébergé pour FEBA (remplace Jitsi).
+#
+# Services isolés dans leur propre projet Compose (« feba-pnm ») et leur
+# propre réseau : rien n'est partagé avec la pile FEBA ni avec Jitsi.
+#
+#   plugnmeet    API + interface de conférence (client v2.5.3)
+#   pnm-livekit  serveur média WebRTC (SFU) + TURN intégré
+#   pnm-nats     messagerie temps réel (chat, tableau blanc, sondages)
+#   pnm-redis    état des salles
+#   pnm-db       MariaDB (salles, enregistrements, analyses)
+#
+# HTTP(S) : plugnmeet:8080, LiveKit:7880 et NATS-WS:8222 n'écoutent que
+# sur 127.0.0.1 ; le proxy TLS (plugnmeet/edge) les publie sous un seul
+# nom de domaine. Seuls les ports MÉDIA sont publics.
+#
+# Préparation (secrets, configurations, client) :
+#     scripts/plugnmeet_setup.sh --domain pnm.globalfeba.com --public-ip <IP>
+# Démarrage :
+#     docker compose -p feba-pnm -f plugnmeet/docker-compose.plugnmeet.yml \
+#        --env-file plugnmeet/runtime/plugnmeet.env up -d
+# Guide complet : PLUGNMEET_DEPLOYMENT_GUIDE.md
+# ══════════════════════════════════════════════════════════════════════
+name: feba-pnm
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "20m"
+    max-file: "5"
+
+services:
+  pnm-redis:
+    image: redis:7.4.10-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--requirepass", "${PNM_REDIS_PASSWORD:?secret manquant}", "--appendonly", "yes"]
+    volumes:
+      - pnm_redis:/data
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a \"$$REDIS_PASSWORD\" --no-auth-warning ping | grep -q PONG"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+    environment:
+      REDIS_PASSWORD: ${PNM_REDIS_PASSWORD}
+    logging: *logging
+
+  pnm-db:
+    image: mariadb:11.4.12
+    restart: unless-stopped
+    environment:
+      MARIADB_ROOT_PASSWORD: ${PNM_DB_ROOT_PASSWORD:?secret manquant}
+      MARIADB_DATABASE: plugnmeet
+      MARIADB_USER: plugnmeet
+      MARIADB_PASSWORD: ${PNM_DB_PASSWORD:?secret manquant}
+    volumes:
+      - pnm_db:/var/lib/mysql
+      # Schéma officiel v2.5.3, appliqué au PREMIER démarrage seulement
+      # (volume vide). Les mises à jour de schéma se font par la commande
+      # de migration de la version suivante, jamais en supprimant le volume.
+      - ./sql/install.sql:/docker-entrypoint-initdb.d/install.sql:ro
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+    logging: *logging
+
+  pnm-nats:
+    image: nats:2.15.0-alpine
+    restart: unless-stopped
+    command: ["-config", "/nats-server.conf"]
+    volumes:
+      - ./runtime/nats-server.conf:/nats-server.conf:ro
+      - pnm_nats:/data/jetstream
+    ports:
+      - "127.0.0.1:${PNM_NATS_WS_HOST_PORT:-8222}:8222"
+    logging: *logging
+
+  pnm-livekit:
+    image: livekit/livekit-server:v1.13.9
+    restart: unless-stopped
+    command: ["--config", "/etc/livekit.yaml", "--node-ip", "${PNM_PUBLIC_IP:?IP publique manquante}"]
+    volumes:
+      - ./runtime/livekit.yaml:/etc/livekit.yaml:ro
+      - ${PNM_TLS_CERT_DIR:-./runtime/certs}:/certs:ro
+    ports:
+      - "127.0.0.1:${PNM_LIVEKIT_HOST_PORT:-7880}:7880"
+      - "7881:7881/tcp"
+      - "${LIVEKIT_UDP_START}-${LIVEKIT_UDP_END}:${LIVEKIT_UDP_START}-${LIVEKIT_UDP_END}/udp"
+      - "3478:3478/udp"
+      - "5349:5349/tcp"
+    depends_on:
+      pnm-redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1:7880 || exit 1"]
+      interval: 15s
+      timeout: 3s
+      retries: 10
+    logging: *logging
+
+  plugnmeet:
+    image: mynaparrot/plugnmeet-server:v2.5.3
+    restart: unless-stopped
+    volumes:
+      - ./runtime/config.yaml:/app/config.yaml:ro
+      - ./runtime/client:/app/client:ro
+      - pnm_recordings:/app/recording_files
+      - pnm_uploads:/app/upload
+      - pnm_artifacts:/app/artifacts
+      - pnm_logs:/app/log
+    ports:
+      - "127.0.0.1:${PNM_HTTP_HOST_PORT:-8080}:8080"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      pnm-db:
+        condition: service_healthy
+      pnm-redis:
+        condition: service_healthy
+      pnm-nats:
+        condition: service_started
+      pnm-livekit:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8080/healthCheck >/dev/null || exit 1"]
+      interval: 15s
+      timeout: 3s
+      retries: 10
+    logging: *logging
+
+volumes:
+  pnm_redis:
+  pnm_db:
+  pnm_nats:
+  pnm_recordings:
+  pnm_uploads:
+  pnm_artifacts:
+  pnm_logs:

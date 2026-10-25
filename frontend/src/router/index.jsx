@@ -16,8 +16,15 @@ export function useRestoreUser() {
   useEffect(() => {
     if (!_hasHydrated || !accessToken || user?.role || restoring) return;
     restoring = authAPI.me()
-      .then((me) => setAuth(me.data, accessToken, refreshToken))
-      .catch(() => clearAuth())
+      // Jetons relus APRÈS la réponse : un renouvellement a pu avoir lieu
+      // pendant l'appel (intercepteur 401), ne pas réécrire l'ancien.
+      .then((me) => {
+        const now = useAuthStore.getState();
+        setAuth(me.data, now.accessToken, now.refreshToken);
+      })
+      // Seul un refus d'authentification efface la session ; une coupure
+      // réseau la conserve (elle sera rechargée au prochain rendu).
+      .catch((e) => { if (e?.response?.status === 401) clearAuth(); })
       .finally(() => { restoring = null; });
   }, [_hasHydrated, accessToken, refreshToken, user, setAuth, clearAuth]);
 }
@@ -138,6 +145,7 @@ const StudentProfile = lazy(() => import("../pages/student/Profile"));
 const SharedAnnouncements = lazy(() => import("../pages/shared/Announcements"));
 const VirtualRooms = lazy(() => import("../pages/shared/VirtualRooms"));
 const VirtualRoomSession = lazy(() => import("../pages/shared/VirtualRoomSession"));
+const VirtualRoomEnded = lazy(() => import("../pages/shared/VirtualRoomEnded"));
 const ForcePasswordChange = lazy(() => import("../pages/shared/ForcePasswordChange"));
 
 // ── Guard: vérifie l'authentification et le rôle ──────────────────────────
@@ -265,6 +273,12 @@ export default function AppRouter() {
       <Route path="/virtual-room/:id/join" element={
         <ProtectedRoute allowedRoles={["superadmin", "admin", "teacher", "student", "parent"]}>
           <VirtualRoomSession />
+        </ProtectedRoute>
+      } />
+      {/* Retour de plugNmeet (logout_url) : la session FEBA est intacte. */}
+      <Route path="/virtual-room/:id/ended" element={
+        <ProtectedRoute allowedRoles={["superadmin", "admin", "teacher", "student", "parent"]}>
+          <VirtualRoomEnded />
         </ProtectedRoute>
       } />
 

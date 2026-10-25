@@ -226,6 +226,44 @@ def jitsi_is_configured():
         return False
     return bool(JITSI_APP_ID and JITSI_APP_SECRET)
 
+
+# ── Visioconférence : plugNmeet auto-hébergé (remplace Jitsi) ─────────
+#
+# VIDEO_PROVIDER choisit le moteur : « plugnmeet » (par défaut) ou
+# « jitsi ». Jitsi ne reste sélectionnable que pour le RETOUR ARRIÈRE,
+# tant que plugNmeet n'a pas été validé en production (voir
+# PLUGNMEET_DEPLOYMENT_GUIDE.md § Retour arrière). Aucun repli
+# automatique : un moteur mal configuré produit une erreur explicite.
+VIDEO_PROVIDER = config('VIDEO_PROVIDER', default='plugnmeet').strip().lower()
+
+# Adresse publique du serveur plugNmeet (navigateur ET backend), par ex.
+# https://meet.globalfeba.com. Clé et secret de l'API : côté serveur
+# UNIQUEMENT — ils ne sont jamais transmis au frontend.
+PLUGNMEET_SERVER_URL = config('PLUGNMEET_SERVER_URL', default='').rstrip('/')
+# Adresse utilisée par le BACKEND s'il ne joint pas l'URL publique
+# (réseau Docker interne). Vide = PLUGNMEET_SERVER_URL.
+PLUGNMEET_INTERNAL_URL = config('PLUGNMEET_INTERNAL_URL', default='').rstrip('/')
+PLUGNMEET_API_KEY = config('PLUGNMEET_API_KEY', default='')
+PLUGNMEET_API_SECRET = config('PLUGNMEET_API_SECRET', default='')
+PLUGNMEET_TIMEOUT = config('PLUGNMEET_TIMEOUT', default=10, cast=int)
+# URL publique de FEBA à laquelle plugNmeet envoie ses webhooks
+# (présences, début et fin de réunion). Vide = pas de webhook : les
+# présences reposent alors sur les appels « rejoindre / quitter ».
+PLUGNMEET_WEBHOOK_URL = config('PLUGNMEET_WEBHOOK_URL', default='')
+# Fonctions dépendant d'un service SUPPLÉMENTAIRE : désactivées tant que
+# ce service n'est pas déployé et vérifié. Les activer sans lui afficherait
+# un bouton qui ne fait rien.
+PLUGNMEET_RECORDING_ENABLED = config('PLUGNMEET_RECORDING_ENABLED', default=False, cast=bool)
+PLUGNMEET_RTMP_ENABLED = config('PLUGNMEET_RTMP_ENABLED', default=False, cast=bool)
+PLUGNMEET_INSIGHTS_ENABLED = config('PLUGNMEET_INSIGHTS_ENABLED', default=False, cast=bool)
+# Durée maximale d'une réunion en minutes (0 = illimitée).
+PLUGNMEET_MAX_ROOM_MINUTES = config('PLUGNMEET_MAX_ROOM_MINUTES', default=0, cast=int)
+
+
+def plugnmeet_is_configured():
+    """True si l'URL, la clé et le secret de l'API plugNmeet sont fournis."""
+    return bool(PLUGNMEET_SERVER_URL and PLUGNMEET_API_KEY and PLUGNMEET_API_SECRET)
+
 # Channels
 CHANNEL_LAYERS = {
     'default': {
@@ -298,6 +336,13 @@ CELERY_BEAT_SCHEDULE = {
     # cette entrée, `next_retry_at` était calculé et jamais relu.
     'envois-email-nouvelles-tentatives': {
         'task': 'notifications.retry_due_deliveries',
+        'schedule': crontab(minute='*/10'),
+        'options': {'expires': 540},
+    },
+    # Filet de sécurité de la visioconférence : une salle « en cours » dont
+    # la réunion n'existe plus côté plugNmeet (webhook perdu) est close.
+    'visio-reconciliation-salles': {
+        'task': 'virtualclass.reconcile_live_rooms',
         'schedule': crontab(minute='*/10'),
         'options': {'expires': 540},
     },

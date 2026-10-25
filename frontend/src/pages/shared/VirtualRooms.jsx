@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Plus, Pencil, Trash2, Video, Users, CalendarClock, StopCircle } from "lucide-react";
+import { Plus, Pencil, Trash2, Video, Users, CalendarClock, StopCircle, Film } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { format } from "date-fns";
 import { fr, enGB } from "date-fns/locale";
@@ -41,6 +41,7 @@ export default function VirtualRooms() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editItem, setEditItem] = useState(null);
   const [deleteItem, setDeleteItem] = useState(null);
+  const [recordingsRoom, setRecordingsRoom] = useState(null);
 
 
   const { register, handleSubmit, reset, formState: { errors } } = useForm();
@@ -71,7 +72,7 @@ export default function VirtualRooms() {
   }, [rooms]);
 
   const closeModal = () => { setModalOpen(false); setEditItem(null); reset(); };
-  const openCreate = () => { reset({ duration_minutes: 60, target_roles: [] }); setModalOpen(true); };
+  const openCreate = () => { reset({ duration_minutes: 60, target_roles: [], lobby_enabled: true, allow_recording: false }); setModalOpen(true); };
   const openEdit = (r) => {
     setEditItem(r);
     reset({
@@ -82,6 +83,8 @@ export default function VirtualRooms() {
       scheduled_at: r.scheduled_at ? r.scheduled_at.slice(0, 16) : "",
       duration_minutes: r.duration_minutes,
       target_roles: r.target_roles || [],
+      lobby_enabled: r.lobby_enabled ?? true,
+      allow_recording: !!r.allow_recording,
     });
     setModalOpen(true);
   };
@@ -157,7 +160,7 @@ export default function VirtualRooms() {
     <div className="space-y-6">
       <PageHeader
         title={t("Salles virtuelles")}
-        subtitle={t("Visioconférence intégrée (Jitsi Meet) — cours en ligne, réunions parents-professeurs…")}
+        subtitle={t("Visioconférence FEBA (plugNmeet) — cours en ligne, tableau blanc, sous-groupes, sondages, réunions parents-professeurs…")}
         action={canManage && (
           <button onClick={openCreate} className="btn-primary flex items-center gap-2">
             <Plus className="w-4 h-4" />{t("Nouvelle salle")}</button>
@@ -223,12 +226,22 @@ export default function VirtualRooms() {
                     </td>
                     <td className="py-3 px-4">
                       <div className="flex items-center gap-1 justify-end">
-                        {r.status !== "ended" && r.status !== "cancelled" && (
+                        {r.status !== "cancelled" && (r.status !== "ended" || canManage) && (
                           <button
                             onClick={() => ouvrirConference(r.id)}
                             className="btn-primary flex items-center gap-1.5 !py-1.5 !px-3 text-xs"
                           >
-                            <Video className="w-3.5 h-3.5" />{t("Rejoindre")}</button>
+                            <Video className="w-3.5 h-3.5" />
+                            {r.status === "ended" ? t("Rouvrir") : t("Rejoindre")}</button>
+                        )}
+                        {r.capabilities?.recording && (
+                          <button
+                            onClick={() => setRecordingsRoom(r)}
+                            title={t("Enregistrements")}
+                            className="p-1.5 rounded-lg hover:bg-primary-50 text-slate-400 hover:text-primary"
+                          >
+                            <Film className="w-4 h-4" />
+                          </button>
                         )}
                         {canManage && r.status === "live" && (
                           <button
@@ -331,6 +344,19 @@ export default function VirtualRooms() {
                 <input {...register("duration_minutes", { valueAsNumber: true })} type="number" min="5" className="input" />
               </div>
             </div>
+            <div className="space-y-2">
+              <label className="flex items-center gap-2 text-sm text-slate-600">
+                <input type="checkbox" {...register("lobby_enabled")} className="rounded border-slate-300" />
+                {t("Salle d'attente : j'admets moi-même les participants")}
+              </label>
+              <label className="flex items-center gap-2 text-sm text-slate-600">
+                <input type="checkbox" {...register("allow_recording")} className="rounded border-slate-300" />
+                {t("Autoriser l'enregistrement du cours")}
+              </label>
+              <p className="text-xs text-slate-500">
+                {t("L'enregistrement n'est proposé que si le service d'enregistrement est installé sur le serveur.")}
+              </p>
+            </div>
             <div className="flex gap-3 justify-end pt-2">
               <button type="button" onClick={closeModal} className="btn-secondary">{t("Annuler")}</button>
               <button type="submit" disabled={createMut.isPending || updateMut.isPending} className="btn-primary">
@@ -339,6 +365,10 @@ export default function VirtualRooms() {
             </div>
           </form>
         </Modal>
+      )}
+
+      {recordingsRoom && (
+        <RecordingsModal room={recordingsRoom} onClose={() => setRecordingsRoom(null)} />
       )}
 
       <ConfirmDialog
@@ -350,5 +380,49 @@ export default function VirtualRooms() {
       />
 
     </div>
+  );
+}
+
+/**
+ * Enregistrements d'une salle. La liste et chaque lien de téléchargement
+ * sont fournis par le backend APRÈS contrôle des droits ; le lien est à
+ * durée limitée et n'est demandé qu'au clic.
+ */
+function RecordingsModal({ room, onClose }) {
+  const { data, isLoading, error } = useQuery({
+    queryKey: ["virtual-room-recordings", room.id],
+    queryFn: () => virtualAPI.recordings(room.id).then((r) => r.data),
+    retry: false,
+  });
+  const download = async (recordId) => {
+    try {
+      const { data: link } = await virtualAPI.recordingDownload(room.id, recordId);
+      window.open(link.url, "_blank", "noopener");
+    } catch (e) {
+      toast.error(extractApiError(e));
+    }
+  };
+  return (
+    <Modal open onClose={onClose} title={`${t("Enregistrements")} — ${room.name}`}>
+      {isLoading ? (
+        <p className="text-slate-400 text-sm">{t("Chargement…")}</p>
+      ) : error ? (
+        <p className="text-sm text-red-600">{extractApiError(error)}</p>
+      ) : !data?.length ? (
+        <p className="text-sm text-slate-500">{t("Aucun enregistrement pour cette salle.")}</p>
+      ) : (
+        <ul className="divide-y divide-slate-100">
+          {data.map((rec) => (
+            <li key={rec.record_id} className="flex items-center justify-between py-2 text-sm">
+              <span>{rec.created_at ? new Date(Number(rec.created_at) * 1000).toLocaleString() : rec.record_id}
+                {rec.size_mb ? ` · ${rec.size_mb} Mo` : ""}</span>
+              <button type="button" className="btn-secondary !py-1 !px-3 text-xs" onClick={() => download(rec.record_id)}>
+                {t("Télécharger")}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </Modal>
   );
 }

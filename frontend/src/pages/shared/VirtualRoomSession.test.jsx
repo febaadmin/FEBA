@@ -347,3 +347,68 @@ describe("VirtualRoomSession — la portée d'académie d'abord", () => {
     expect(virtualAPI.join).not.toHaveBeenCalled();
   });
 });
+
+describe("plugNmeet : l'onglet rejoint la salle par un jeton à usage unique", () => {
+  const PNM = {
+    id: 7, name: "Cours de maths", provider: "plugnmeet", room_code: "feba-fha-7-abc",
+    join_domain: "meet.globalfeba.com",
+    join_url: "https://meet.globalfeba.com/?access_token=jeton-unique",
+  };
+  let replace;
+  let originalLocation;
+
+  beforeEach(() => {
+    montages = [];
+    academie = { scopeReady: true, hasAcademyError: false };
+    vi.clearAllMocks();
+    originalLocation = window.location;
+    replace = vi.fn();
+    Object.defineProperty(window, "location", {
+      configurable: true, value: { ...originalLocation, replace },
+    });
+    useAuthStore.setState({ user: { first_name: "Awa", last_name: "D.", role: "student" },
+      accessToken: "jwt-feba", refreshToken: "refresh-feba", _hasHydrated: true });
+  });
+  afterEach(() => {
+    Object.defineProperty(window, "location", { configurable: true, value: originalLocation });
+  });
+
+  it("redirige l'onglet (replace, pas d'historique) sans monter Jitsi ni toucher à la session FEBA", async () => {
+    virtualAPI.join.mockResolvedValue({ data: PNM });
+    ouvrir();
+    await flush();
+    expect(virtualAPI.join).toHaveBeenCalledTimes(1);
+    expect(replace).toHaveBeenCalledWith(PNM.join_url);
+    expect(montages).toHaveLength(0);
+    expect(screen.getByText(/Connexion à la salle de classe/)).toBeTruthy();
+    // La session FEBA est intacte : rien n'a été effacé.
+    expect(useAuthStore.getState().accessToken).toBe("jwt-feba");
+    expect(useAuthStore.getState().refreshToken).toBe("refresh-feba");
+    // Le départ est constaté par plugNmeet, pas par cette page qui s'efface.
+    window.dispatchEvent(new Event("pagehide"));
+    expect(virtualAPI.leave).not.toHaveBeenCalled();
+  });
+
+  it("une seule adhésion sous StrictMode (aucun jeton gaspillé)", async () => {
+    virtualAPI.join.mockResolvedValue({ data: PNM });
+    render(
+      <StrictMode>
+        <MemoryRouter initialEntries={["/virtual-room/7/join"]}>
+          <Routes><Route path="/virtual-room/:id/join" element={<VirtualRoomSession />} /></Routes>
+        </MemoryRouter>
+      </StrictMode>,
+    );
+    await flush();
+    expect(virtualAPI.join).toHaveBeenCalledTimes(1);
+    expect(replace).toHaveBeenCalledTimes(1);
+  });
+
+  it("serveur de visioconférence indisponible : message clair, aucune redirection", async () => {
+    virtualAPI.join.mockRejectedValue({ response: { status: 503, data: {
+      detail: "Le serveur de visioconférence ne répond pas. Réessayez dans quelques instants ; si le problème persiste, contactez le support technique." } } });
+    ouvrir();
+    await flush();
+    expect(replace).not.toHaveBeenCalled();
+    expect(screen.getByText(/ne répond pas/)).toBeTruthy();
+  });
+});

@@ -1,28 +1,25 @@
 /**
  * VirtualRoomSession — la conférence, seule, dans son propre onglet.
  *
- * CE QUI REMPLACE LA MODALE
- * -------------------------
- * La conférence s'ouvrait par-dessus le tableau de bord : une modale,
- * posée sur une page qui continuait de vivre derrière elle. Cette page
- * rafraîchissait la liste des salles toutes les 30 secondes, se rendait à
- * nouveau, et détruisait la conférence au passage (voir
- * `components/JitsiMeeting.jsx`).
+ * PLUGNMEET (moteur par défaut)
+ * -----------------------------
+ * Cette page demande au backend `virtualAPI.join(id)`. Le backend vérifie
+ * les droits FEBA (académie, rôle, classe, état de la salle), ouvre ou
+ * retrouve la réunion plugNmeet et renvoie une URL contenant un jeton
+ * d'adhésion À USAGE UNIQUE. L'onglet s'y rend aussitôt
+ * (`location.replace` : le jeton ne reste pas dans l'historique, le
+ * bouton « Précédent » ne le rejoue pas). Ni la clé ni le secret de l'API
+ * plugNmeet n'existent dans le navigateur.
  *
- * Corriger le composant ne suffisait pas : tant que la conférence vit
- * dans l'arbre React du tableau de bord, elle reste à la merci de tout ce
- * qui s'y passe — un poll, une invalidation de cache, une navigation.
- * Cette route la met hors de portée. Elle est montée à la RACINE du
- * routeur, sans layout : ni barre latérale, ni en-tête, ni tableau de
- * bord derrière, ni modale. Jitsi occupe l'onglet entier.
+ * À la sortie, plugNmeet renvoie l'onglet vers /virtual-room/:id/ended
+ * (page FEBA) — la session FEBA n'a jamais été touchée : les jetons FEBA
+ * restent dans le stockage partagé, maintenus à jour par l'onglet FEBA
+ * principal (hooks/useSessionKeepAlive) et renouvelés au besoin ici.
  *
- * LE JETON NE TRANSITE PAS PAR L'URL
- * ----------------------------------
- * L'onglet est ouvert en same-origin ; la session FEBA y est donc déjà
- * valide. Cette page appelle elle-même `virtualAPI.join(id)`, reçoit le
- * JWT signé par le backend, et le garde en mémoire. L'URL ne contient que
- * l'identifiant de la salle — rien qui traîne dans un historique, un
- * journal de proxy ou un signet.
+ * JITSI (retour arrière, VIDEO_PROVIDER=jitsi)
+ * --------------------------------------------
+ * La conférence est intégrée dans la page (components/JitsiMeeting), comme
+ * dans les versions précédentes.
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
@@ -56,6 +53,7 @@ function raisonDuRefus(e) {
 
 const PHASE = {
   JOINING: "joining",
+  REDIRECTING: "redirecting",
   IN_CALL: "in_call",
   LEFT: "left",
   ERROR: "error",
@@ -122,6 +120,20 @@ export default function VirtualRoomSession() {
       .join(id)
       .then(({ data }) => {
         if (!pourCetteSalle()) return;
+        if (data?.provider === "plugnmeet") {
+          if (!data.join_url) {
+            setError("La visioconférence n'est pas configurée pour cette académie. " +
+              "Contactez l'administration.");
+            setPhase(PHASE.ERROR);
+            return;
+          }
+          // Le départ sera constaté par plugNmeet (webhook) : pas de
+          // « leave » envoyé par cette page quand elle s'efface.
+          leaveSent.current = true;
+          setPhase(PHASE.REDIRECTING);
+          window.location.replace(data.join_url);
+          return;
+        }
         if (!data?.join_domain) {
           setError(
             "La visioconférence n'est pas configurée pour cette académie. " +
@@ -222,6 +234,14 @@ export default function VirtualRoomSession() {
             cet onglet ; si le problème persiste, contactez l'administration.
           </p>
         </div>
+      </Plein>
+    );
+  }
+
+  if (phase === PHASE.REDIRECTING) {
+    return (
+      <Plein>
+        <p className="text-slate-300 text-sm">Connexion à la salle de classe…</p>
       </Plein>
     );
   }

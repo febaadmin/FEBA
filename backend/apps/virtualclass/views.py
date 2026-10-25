@@ -151,13 +151,12 @@ class VirtualRoomViewSet(BulkDeleteMixin, viewsets.ModelViewSet):
     @action(detail=True, methods=["post"])
     def join(self, request, pk=None):
         """
-        Enregistre la participation et renvoie les informations de
-        connexion Jitsi (domaine + nom de salle). Le client ouvre
-        ensuite l'iframe Jitsi avec ces informations.
+        Contrôle le droit d'entrer, ouvre (ou retrouve) la réunion et renvoie
+        l'URL d'adhésion. Le jeton d'adhésion est à usage unique, émis par
+        le serveur après ce contrôle ; la clé et le secret de l'API ne
+        quittent jamais le backend.
         """
-        from .services import (
-            JitsiAccessDenied, JitsiNotConfigured, assert_can_join, build_jitsi_jwt,
-        )
+        from .services import JitsiAccessDenied, assert_can_join
 
         room = self._salle_a_rejoindre()
 
@@ -167,8 +166,65 @@ class VirtualRoomViewSet(BulkDeleteMixin, viewsets.ModelViewSet):
         except JitsiAccessDenied as exc:
             return Response({"detail": str(exc)}, status=status.HTTP_403_FORBIDDEN)
 
-        # 2. Infrastructure prête ? Un défaut de configuration renvoie une
-        #    erreur explicite — JAMAIS un repli vers une instance publique.
+        moderator = request.user.role_level >= 50
+        # Une réunion FERMÉE par l'enseignant ne se rouvre pas par un élève :
+        # seul un modérateur peut relancer une salle terminée.
+        if room.status == "ended" and not moderator:
+            return Response(
+                {"detail": "Ce cours est terminé. Il pourra être rejoint quand "
+                           "l'enseignant l'aura rouvert.", "code": "meeting_ended"},
+                status=status.HTTP_409_CONFLICT,
+            )
+
+        from .meetings import provider
+        if provider() == "jitsi":
+            return self._join_jitsi(request, room)
+        return self._join_plugnmeet(request, room, moderator)
+
+    def _join_plugnmeet(self, request, room, moderator):
+        from . import plugnmeet
+        from .meetings import open_meeting
+
+        lang = (request.headers.get("Accept-Language") or "fr")[:2].lower()
+        try:
+            opened = open_meeting(room, request.user, moderator=moderator, lang=lang)
+        except plugnmeet.PlugNmeetNotConfigured as exc:
+            return Response(
+                {"detail": "La visioconférence n'est pas encore configurée. Contactez "
+                           "l'administration : aucune session n'est ouverte sur un "
+                           "service public.",
+                 "infrastructure_error": str(exc), "code": "video_not_configured"},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+        except plugnmeet.PlugNmeetUnavailable:
+            return Response(
+                {"detail": "Le serveur de visioconférence ne répond pas. Réessayez dans "
+                           "quelques instants ; si le problème persiste, contactez le "
+                           "support technique.", "code": "video_unavailable"},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+        except plugnmeet.PlugNmeetError as exc:
+            return Response(
+                {"detail": f"La réunion n'a pas pu être ouverte : {exc}", "code": "video_refused"},
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
+        room.refresh_from_db()
+        data = self.get_serializer(room).data
+        data.update({
+            "provider": "plugnmeet",
+            "join_url": opened["join_url"],
+            "attendance_id": opened["attendance"].id if opened["attendance"] else None,
+            "moderator": moderator,
+        })
+        response = Response(data)
+        # L'URL contient un jeton : jamais en cache.
+        response["Cache-Control"] = "no-store"
+        return response
+
+    def _join_jitsi(self, request, room):
+        """Moteur de RETOUR ARRIÈRE (VIDEO_PROVIDER=jitsi) — inchangé."""
+        from .services import JitsiNotConfigured, build_jitsi_jwt
+
         try:
             jwt_token = build_jitsi_jwt(
                 request.user, room.room_code,
@@ -199,43 +255,134 @@ class VirtualRoomViewSet(BulkDeleteMixin, viewsets.ModelViewSet):
             room=room, user=request.user, enrollment=enrollment,
         )
 
-        if room.status == "scheduled":
+        if room.status in ("scheduled", "ended"):
             room.status = "live"
             room.save(update_fields=["status"])
 
         data = self.get_serializer(room).data
-        # Jeton signé par le backend, portant l'académie et le groupe.
-        # Enseignants et administrateurs sont modérateurs.
+        data["provider"] = "jitsi"
         data["jwt"] = jwt_token
         data["attendance_id"] = attendance.id
         return Response(data)
 
     @action(detail=True, methods=["post"])
     def leave(self, request, pk=None):
-        """Clôt la participation courante (left_at + durée) — FIX v35."""
-        from django.utils import timezone
+        """
+        Départ signalé par le navigateur (FIX v35). Avec plugNmeet, les
+        événements du serveur font foi ; cet appel ne clôt que les
+        présences qu'aucun événement ne suit.
+        """
+        from .meetings import record_api_leave
+
         room = self.get_object()
-        attendance = (
-            room.attendances.filter(user=request.user, left_at__isnull=True)
-            .order_by("-joined_at").first()
-        )
+        attendance = record_api_leave(room, request.user)
         if attendance is None:
             return Response({"detail": "Aucune participation en cours."})
-        attendance.left_at = timezone.now()
-        attendance.duration_seconds = int(
-            (attendance.left_at - attendance.joined_at).total_seconds()
-        )
-        attendance.save(update_fields=["left_at", "duration_seconds"])
-        return Response({"detail": "Participation clôturée.",
-                         "duration_seconds": attendance.duration_seconds})
+        return Response({"detail": "Participation enregistrée.",
+                         "duration_seconds": attendance.duration_seconds,
+                         "source": attendance.source})
 
     @action(detail=True, methods=["post"], url_path="end")
     def end_meeting(self, request, pk=None):
-        """Clôture la salle (enseignant/admin)."""
+        """Ferme RÉELLEMENT la réunion (enseignant/admin), puis la salle FEBA."""
+        from . import plugnmeet
+        from .meetings import end_meeting
+
         room = self.get_object()
-        room.status = "ended"
-        room.save(update_fields=["status"])
+        try:
+            end_meeting(room)
+        except plugnmeet.PlugNmeetUnavailable:
+            return Response(
+                {"detail": "Le serveur de visioconférence ne répond pas : la réunion "
+                           "n'a pas pu être fermée. Réessayez.", "code": "video_unavailable"},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+        except plugnmeet.PlugNmeetError as exc:
+            return Response({"detail": f"Fermeture refusée : {exc}"}, status=status.HTTP_502_BAD_GATEWAY)
         return Response(self.get_serializer(room).data)
+
+    @action(detail=True, methods=["get"], url_path="meeting-status")
+    def meeting_status(self, request, pk=None):
+        """État RÉEL de la réunion côté plugNmeet (et resynchronisation)."""
+        from . import plugnmeet
+        from .meetings import close_open_attendances, provider
+
+        room = self.get_object()
+        if provider() != "plugnmeet":
+            return Response({"provider": provider(), "status": room.status, "active": None})
+        try:
+            active = plugnmeet.is_room_active(room)
+        except plugnmeet.PlugNmeetError:
+            return Response({"provider": "plugnmeet", "status": room.status, "active": None,
+                             "detail": "Serveur de visioconférence injoignable."},
+                            status=status.HTTP_503_SERVICE_UNAVAILABLE)
+        if not active and room.status == "live":
+            from django.utils import timezone
+            room.status = "ended"
+            room.meeting_ended_at = room.meeting_ended_at or timezone.now()
+            room.save(update_fields=["status", "meeting_ended_at", "updated_at"])
+            close_open_attendances(room)
+        return Response({"provider": "plugnmeet", "status": room.status, "active": active})
+
+    def _recordings_room(self, request):
+        """Salle dont on consulte les enregistrements : mêmes droits que pour y entrer."""
+        from .services import JitsiAccessDenied, assert_can_join
+
+        room = self._salle_a_rejoindre()
+        try:
+            assert_can_join(request.user, room)
+        except JitsiAccessDenied as exc:
+            return None, Response({"detail": str(exc)}, status=status.HTTP_403_FORBIDDEN)
+        from django.conf import settings
+        if not settings.PLUGNMEET_RECORDING_ENABLED:
+            return None, Response(
+                {"detail": "L'enregistrement n'est pas activé sur ce serveur (service "
+                           "d'enregistrement non déployé).", "code": "recording_disabled"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        return room, None
+
+    @action(detail=True, methods=["get"])
+    def recordings(self, request, pk=None):
+        from . import plugnmeet
+
+        room, error = self._recordings_room(request)
+        if error:
+            return error
+        try:
+            items = plugnmeet.fetch_recordings(room)
+        except plugnmeet.PlugNmeetError:
+            return Response({"detail": "Serveur de visioconférence injoignable."},
+                            status=status.HTTP_503_SERVICE_UNAVAILABLE)
+        return Response([
+            {"record_id": r.get("record_id"), "created_at": r.get("creation_time"),
+             "size_mb": r.get("file_size"), "duration": r.get("duration")}
+            for r in items
+        ])
+
+    @action(detail=True, methods=["post"], url_path=r"recordings/(?P<record_id>[\w.\-]+)/download")
+    def recording_download(self, request, pk=None, record_id=None):
+        """Lien de téléchargement à durée limitée, émis après contrôle des droits."""
+        from . import plugnmeet
+
+        room, error = self._recordings_room(request)
+        if error:
+            return error
+        try:
+            info = plugnmeet.recording_info(record_id)
+            # L'enregistrement doit appartenir à CETTE salle : pas d'accès à un
+            # autre cours par simple changement d'identifiant.
+            if (info.get("room_id") or "") != plugnmeet.room_id_for(room):
+                return Response({"detail": "Enregistrement introuvable."}, status=status.HTTP_404_NOT_FOUND)
+            url = plugnmeet.recording_download_url(record_id)
+        except plugnmeet.PlugNmeetUnavailable:
+            return Response({"detail": "Serveur de visioconférence injoignable."},
+                            status=status.HTTP_503_SERVICE_UNAVAILABLE)
+        except plugnmeet.PlugNmeetError:
+            return Response({"detail": "Enregistrement introuvable."}, status=status.HTTP_404_NOT_FOUND)
+        response = Response({"url": url})
+        response["Cache-Control"] = "no-store"
+        return response
 
     @action(detail=True, methods=["get"])
     def participants(self, request, pk=None):
@@ -248,6 +395,33 @@ class VirtualRoomViewSet(BulkDeleteMixin, viewsets.ModelViewSet):
             )
         qs = room.attendances.select_related("user").order_by("-joined_at")[:200]
         return Response(VirtualRoomAttendanceSerializer(qs, many=True).data)
+
+
+class PlugNmeetWebhookView(APIView):
+    """
+    POST /api/virtual-rooms/webhook/ — événements plugNmeet.
+
+    Pas de session ni de jeton FEBA : l'authenticité est prouvée par la
+    signature (en-tête Hash-Token, JWT HS256 sur l'empreinte du corps).
+    Une signature invalide → 401, rien n'est enregistré.
+    """
+    authentication_classes = []
+    permission_classes = []
+
+    def post(self, request):
+        from . import plugnmeet
+        from .meetings import handle_webhook
+
+        body = request.body
+        token = request.headers.get("Hash-Token") or request.headers.get("Authorization") or ""
+        try:
+            event = plugnmeet.verify_webhook(body, token)
+        except plugnmeet.WebhookRejected as exc:
+            import logging
+            logging.getLogger("apps").warning("Webhook plugNmeet refusé : %s", exc)
+            return Response({"detail": "Signature invalide."}, status=status.HTTP_401_UNAUTHORIZED)
+        record, created = handle_webhook(event)
+        return Response({"received": True, "duplicate": not created and record is not None})
 
 
 class JitsiHealthView(APIView):
@@ -263,8 +437,14 @@ class JitsiHealthView(APIView):
     permission_classes = [IsAuthenticated, IsTeacherOrAbove]
 
     def get(self, request):
-        from .services import jitsi_health
-        payload = jitsi_health()
+        from .meetings import provider
+        if provider() == "plugnmeet":
+            from .plugnmeet import health
+            payload = health()
+        else:
+            from .services import jitsi_health
+            payload = jitsi_health()
+            payload["provider"] = "jitsi"
 
         # Le statut HTTP reflète l'état : un moniteur externe peut s'y fier.
         http_status = (

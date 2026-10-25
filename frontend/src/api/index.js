@@ -1,6 +1,7 @@
 import axios from "axios";
 import { useAuthStore } from "../store/authStore";
 import { getLang } from "../i18n";
+import { SessionExpiredError, readStoredTokens, refreshAccessToken } from "./tokenRefresh";
 import {
   HEADER as ACADEMY_SCOPE_HEADER,
   StaleAcademyResponse,
@@ -72,49 +73,60 @@ const NON_CRITICAL_ENDPOINTS = [
   "/messages/inbox",
 ];
 
+// Requêtes d'authentification : un 401 y est une réponse métier (mauvais
+// mot de passe, jeton de renouvellement refusé), pas un jeton expiré.
+const AUTH_ENDPOINTS = ["/auth/login/", "/auth/refresh/"];
+
+const postRefresh = async (refresh) => {
+  const { data } = await axios.post(`${API_URL}/auth/refresh/`, { refresh });
+  return data;
+};
+
+/** Renouvellement préventif (voir hooks/useSessionKeepAlive). */
+export const refreshSession = () => refreshAccessToken(null, postRefresh);
+
 api.interceptors.response.use(
   (r) => r,
   async (error) => {
     const orig = error.config;
-    if (error.response?.status === 401 && !orig._retry) {
-      // Si l'URL est non-critique ET qu'il n'y a pas de refreshToken, ne pas déconnecter
-      const url = orig.url || "";
-      const isNonCritical = NON_CRITICAL_ENDPOINTS.some(ep => url.includes(ep));
-      const rt = useAuthStore.getState().refreshToken;
+    if (error.response?.status !== 401 || !orig || orig._retry) return Promise.reject(error);
+    const url = orig.url || "";
+    if (AUTH_ENDPOINTS.some((ep) => url.includes(ep))) return Promise.reject(error);
 
-      if (!rt && isNonCritical) {
-        // Pas de token du tout — laisse React Query gérer l'erreur silencieusement
-        return Promise.reject(error);
+    const isNonCritical = NON_CRITICAL_ENDPOINTS.some((ep) => url.includes(ep));
+    const { refreshToken } = useAuthStore.getState();
+    if (!refreshToken && !readStoredTokens().refreshToken) {
+      // Aucune session : un visiteur, ou une session déjà close ailleurs.
+      if (!isNonCritical) {
+        useAuthStore.getState().clearAuth();
+        window.location.href = "/login";
       }
-
-      orig._retry = true;
-      if (rt) {
-        try {
-          const { data } = await axios.post(`${API_URL}/auth/refresh/`, { refresh: rt });
-          useAuthStore.getState().setAuth(useAuthStore.getState().user, data.access, data.refresh || rt);
-          orig.headers.Authorization = `Bearer ${data.access}`;
-          // Le contrôleur d'annulation de la tentative précédente est
-          // consommé : on le retire pour que le rejeu soit à son tour
-          // annulable en cas de bascule d'académie.
-          delete orig.signal;
-          delete orig.__academyController;
-          return api(orig);
-        } catch {
-          // Refresh échoué — déconnecter seulement si l'endpoint était critique
-          if (!isNonCritical) {
-            useAuthStore.getState().clearAuth();
-            window.location.href = "/login";
-          }
-        }
-      } else {
-        // Pas de refreshToken → déconnecter (sauf endpoint non-critique)
-        if (!isNonCritical) {
-          useAuthStore.getState().clearAuth();
-          window.location.href = "/login";
-        }
-      }
+      return Promise.reject(error);
     }
-    return Promise.reject(error);
+
+    orig._retry = true;
+    const failed = (orig.headers?.Authorization || "").replace(/^Bearer\s+/, "") || null;
+    try {
+      // UN seul renouvellement pour toutes les requêtes refusées en même
+      // temps, et pour tous les onglets (voir api/tokenRefresh.js).
+      const access = await refreshAccessToken(failed, postRefresh);
+      orig.headers.Authorization = `Bearer ${access}`;
+      // Le contrôleur d'annulation de la tentative précédente est
+      // consommé : on le retire pour que le rejeu soit à son tour
+      // annulable en cas de bascule d'académie.
+      delete orig.signal;
+      delete orig.__academyController;
+      return api(orig);
+    } catch (refreshError) {
+      if (refreshError instanceof SessionExpiredError) {
+        // Le serveur a REFUSÉ le renouvellement : la session est finie
+        // (expirée ou révoquée). Seul cas où l'on renvoie à la connexion.
+        if (!isNonCritical) window.location.href = "/login";
+      }
+      // Erreur réseau : la session est conservée ; la requête échoue et
+      // sera rejouée plus tard (React Query), sans déconnexion.
+      return Promise.reject(error);
+    }
   }
 );
 
@@ -614,6 +626,9 @@ export const virtualAPI = {
   delete: (id)       => api.delete(`/virtual-rooms/${id}/`),
   bulkDelete: (ids)  => api.post(`/virtual-rooms/bulk-delete/`, { ids }),
   join: (id)         => api.post(`/virtual-rooms/${id}/join/`),
+  meetingStatus: (id) => api.get(`/virtual-rooms/${id}/meeting-status/`),
+  recordings: (id)   => api.get(`/virtual-rooms/${id}/recordings/`),
+  recordingDownload: (id, recordId) => api.post(`/virtual-rooms/${id}/recordings/${encodeURIComponent(recordId)}/download/`),
   end: (id)          => api.post(`/virtual-rooms/${id}/end/`),
   leave: (id)        => api.post(`/virtual-rooms/${id}/leave/`),
   participants: (id) => api.get(`/virtual-rooms/${id}/participants/`),

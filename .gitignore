@@ -83,3 +83,6 @@ backend/private_media/
 !.env.dev.example
 !.env.prod.example
 !.env.jitsi.example
+
+# plugNmeet : secrets, configurations rendues, client téléchargé — JAMAIS versionnés
+plugnmeet/runtime/

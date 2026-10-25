@@ -1,5 +1,7 @@
 /**
- * JitsiInfrastructureBanner — état réel de l'instance de visioconférence.
+ * JitsiInfrastructureBanner — état réel de l'instance de visioconférence
+ * (plugNmeet, ou Jitsi en retour arrière : le backend répond pour le
+ * moteur actif — le nom du composant est historique).
  *
  * Remplace l'ancienne bannière « Mode démonstration (meet.jit.si) — appels
  * limités à 5 minutes ». Il n'existe plus d'instance publique de repli :
@@ -22,9 +24,14 @@ import { useAuthStore } from "../store/authStore";
 export default function JitsiInfrastructureBanner() {
   const user = useAuthStore((s) => s.user);
   const isAdmin = ["admin", "superadmin"].includes(user?.role);
+  // Le diagnostic est réservé aux enseignants et au-dessus (le backend
+  // répond 403 aux autres). Un élève recevait ce 403 et le bandeau rouge
+  // « indisponible » s'affichait à tort sur une instance en bon état.
+  const canSee = (user?.role_level ?? 0) >= 50;
 
   const { data, isLoading } = useQuery({
     queryKey: ["jitsi-health"],
+    enabled: canSee,
     // Le endpoint répond 503 quand l'instance est en panne : on récupère
     // le corps de la réponse plutôt que de traiter cela comme une erreur.
     queryFn: () =>
@@ -36,8 +43,9 @@ export default function JitsiInfrastructureBanner() {
     retry: false,
   });
 
-  if (isLoading || !data) return null;
-  if (data.status === "operational") return null;
+  if (!canSee || isLoading || !data) return null;
+  if (!["degraded", "unavailable"].includes(data.status)) return null;
+  const plugnmeet = data.provider === "plugnmeet";
 
   const degraded = data.status === "degraded";
   const Icon = degraded ? AlertTriangle : ServerCrash;
@@ -75,9 +83,9 @@ export default function JitsiInfrastructureBanner() {
           <p className="mt-1 text-xs opacity-90">
             <Video className="w-3 h-3 inline mr-1" aria-hidden="true" />
             {t("Relancez l'instance avec")}{" "}
-            <code className="bg-black/10 px-1 rounded">make jitsi-up</code>{" "}
+            <code className="bg-black/10 px-1 rounded">{plugnmeet ? "make plugnmeet-up" : "make jitsi-up"}</code>{" "}
             {t("puis vérifiez avec")}{" "}
-            <code className="bg-black/10 px-1 rounded">make jitsi-health</code>.
+            <code className="bg-black/10 px-1 rounded">{plugnmeet ? "make plugnmeet-health" : "make jitsi-health"}</code>.
           </p>
         )}
       </div>

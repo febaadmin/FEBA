@@ -69,6 +69,7 @@ class VirtualRoomTenantTests(TestCase):
 
 
 @override_settings(
+    VIDEO_PROVIDER="jitsi",
     JITSI_APP_ID="feba-test",
     JITSI_APP_SECRET="t" * 32,
     JITSI_DOMAIN="jitsi.localhost:8443",

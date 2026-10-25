@@ -2,6 +2,7 @@ import AppRouter from "./router";
 import { useI18n } from "./i18n";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { useNumberInputGuard } from "./utils/useNumberInputGuard";
+import { useSessionKeepAlive } from "./hooks/useSessionKeepAlive";
 
 export default function App() {
   // key={lang} : remonte tout l'arbre au changement de langue, garantissant
@@ -10,6 +11,8 @@ export default function App() {
   const { lang } = useI18n();
   // V7 : neutralise la modification accidentelle des champs numériques à la molette.
   useNumberInputGuard();
+  // Session maintenue pendant les longues visioconférences (voir le hook).
+  useSessionKeepAlive();
   return (
     <ErrorBoundary>
       <AppRouter key={lang} />
