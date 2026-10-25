@@ -46,8 +46,14 @@ class TrackingEmailBackend(BaseEmailBackend):
         return total
 
     def _send_untracked(self, message):
+        from django.conf import settings
+
         from .email_models import EmailDelivery
-        from .mailer import create_content, current_transport, smtp_target, transport_backend
+        from .mailer import create_content, current_transport, normalize_sender, smtp_target, transport_backend
+
+        # Même règle d'expéditeur que la couche centrale : jamais l'adresse
+        # retirée, quel que soit le module qui a construit le message.
+        message.from_email = normalize_sender(message.from_email or settings.DEFAULT_FROM_EMAIL)
 
         html = ""
         for alt_content, mimetype in getattr(message, "alternatives", []) or []:
@@ -69,6 +75,14 @@ class TrackingEmailBackend(BaseEmailBackend):
             )
             for address in list(message.to or []) + list(message.cc or []) + list(message.bcc or [])
         ]
+        # Copie SMS, comme pour tout autre e-mail (le contenu archivé est
+        # expurgé s'il porte un lien de sécurité : le SMS est alors exclu).
+        from .sms import schedule_for_email
+        for delivery in deliveries:
+            try:
+                schedule_for_email(delivery)
+            except Exception:
+                logger.exception("SMS miroir de l'envoi %s non enregistré.", delivery.pk)
         error = ""
         sent = 0
         try:

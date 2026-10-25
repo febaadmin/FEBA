@@ -35,6 +35,10 @@ logger = logging.getLogger("apps")
 
 JOIN_EVENTS = {"participant_joined"}
 LEAVE_EVENTS = {"participant_left"}
+#: Seuls ces événements sont conservés : plugNmeet en émet bien d'autres
+#: (track_published à chaque micro ou caméra, artifact_created…), dont
+#: l'archivage ferait grossir la base sans rien apporter aux présences.
+STORED_EVENTS = JOIN_EVENTS | LEAVE_EVENTS | {"room_started", "room_finished"}
 
 
 def provider():
@@ -194,6 +198,8 @@ def handle_webhook(event):
     if not event_id:
         logger.warning("Webhook plugNmeet sans identifiant (%s) : ignoré.", name)
         return None, False
+    if name not in STORED_EVENTS:
+        return None, False
     if VirtualRoomEvent.objects.filter(event_id=event_id).exists():
         return VirtualRoomEvent.objects.get(event_id=event_id), False
 
@@ -263,6 +269,12 @@ def recompute_attendance(attendance, finished_at=None):
     open_since = None
     last_left = None
     total = 0
+    if events and events[0].event in LEAVE_EVENTS and events[0].occurred_at >= attendance.joined_at:
+        # Événement d'ENTRÉE perdu (webhook refusé, plugNmeet a renoncé) :
+        # la présence court depuis l'adhésion enregistrée par FEBA. Constaté
+        # pendant l'essai réel ; sans ce repli, la durée valait 0.
+        open_since = attendance.joined_at
+        joins = 1
     for item in events:
         if item.event in JOIN_EVENTS:
             joins += 1

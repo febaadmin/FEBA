@@ -29,6 +29,19 @@ class CustomUser(AbstractUser):
     role = models.CharField(max_length=12, choices=ROLE_CHOICES, default='student')
     role_level = models.PositiveSmallIntegerField(default=10)
     phone = models.CharField(max_length=20, blank=True)
+    # ── Consentement aux SMS (copie des e-mails et relances) ───────────
+    # « unknown » tant que la personne ne s'est pas prononcée. Avec
+    # SMS_REQUIRE_EXPLICIT_CONSENT (par défaut), seul « granted » reçoit
+    # des SMS ; « refused » n'en reçoit JAMAIS, quel que soit le réglage.
+    SMS_CONSENT_UNKNOWN, SMS_CONSENT_GRANTED, SMS_CONSENT_REFUSED = "unknown", "granted", "refused"
+    SMS_CONSENT_CHOICES = [
+        (SMS_CONSENT_UNKNOWN, "Non renseigné"),
+        (SMS_CONSENT_GRANTED, "Accepte les SMS"),
+        (SMS_CONSENT_REFUSED, "Refuse les SMS"),
+    ]
+    sms_consent = models.CharField(max_length=10, choices=SMS_CONSENT_CHOICES,
+                                   default=SMS_CONSENT_UNKNOWN, db_default=SMS_CONSENT_UNKNOWN)
+    sms_consent_at = models.DateTimeField(null=True, blank=True)
     # Préférence linguistique de l'interface (fr/en). Prioritaire sur le
     # choix local du navigateur lorsque l'utilisateur se reconnecte.
     preferred_language = models.CharField(

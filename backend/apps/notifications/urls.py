@@ -10,7 +10,7 @@ router.register(r"", views.NotificationViewSet, basename="notification")
 # « unread-count » comme un identifiant → 404. En plaçant les alias AVANT,
 # ils sont résolus en priorité. Le frontend appelle /unread-count/ (tiret) ;
 # le routeur expose /unread_count/ (underscore) — les deux fonctionnent.
-from . import outbox_views
+from . import outbox_views, sms_views
 
 urlpatterns = [
     # Boîte d'envoi et diagnostic SMTP — avant le routeur (préfixe vide).
@@ -19,6 +19,9 @@ urlpatterns = [
     path("outbox/<int:pk>/retry/", outbox_views.OutboxRetryView.as_view(), name="outbox-retry"),
     path("outbox/<int:pk>/attachments/<int:attachment_id>/", outbox_views.OutboxAttachmentView.as_view(),
          name="outbox-attachment"),
+    path("sms/", sms_views.SmsListView.as_view(), name="sms-list"),
+    path("sms/<int:pk>/retry/", sms_views.SmsRetryView.as_view(), name="sms-retry"),
+    path("sms/status/", sms_views.TwilioStatusCallbackView.as_view(), name="sms-status-callback"),
     path("email-config/", outbox_views.EmailConfigView.as_view(), name="email-config"),
     path("email-config/test/", outbox_views.EmailConfigTestView.as_view(), name="email-config-test"),
     path("unread-count/", views.NotificationViewSet.as_view({"get": "unread_count"}), name="notification-unread-count"),

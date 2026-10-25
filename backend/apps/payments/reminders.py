@@ -612,6 +612,13 @@ def _deliver(academy, policy, recipient, rows, stats=None):
         stats["notifications"] += 1
     status = PaymentReminder.NOTIFIED if notification else PaymentReminder.NO_CHANNEL
     delivery, error, email_to = None, "", ""
+    # UN événement de relance = UN SMS, quel que soit le nombre de canaux
+    # (e-mail, notification interne) et de reprises : la clé est celle de
+    # l'événement. Le SMS revérifie la dette AU MOMENT de l'envoi.
+    # Clé indépendante de l'ORDRE des lignes : une reprise qui les liste
+    # autrement désigne le même événement (constaté en test).
+    sms_key = f"reminder:{min(r.pk for r in rows)}"
+    sms_precheck = {"type": "payment_reminder", "reminder_ids": sorted(r.pk for r in rows)}
     if policy.send_email and _email_ok(recipient.email):
         email_to = recipient.email
         delivery = send_tracked_email(
@@ -619,6 +626,7 @@ def _deliver(academy, policy, recipient, rows, stats=None):
             text_body=text, html_body=html_body, entity=academy,
             reference=f"REM-{rows[0].pk}",
             language=getattr(recipient, "preferred_language", ""),
+            sms_user=recipient, sms_key=sms_key, sms_precheck=sms_precheck,
         )
         if delivery.is_delivered_to_provider:
             status = PaymentReminder.SENT
@@ -632,11 +640,50 @@ def _deliver(academy, policy, recipient, rows, stats=None):
     elif policy.send_email:
         error = "Aucune adresse e-mail valide pour ce responsable."
         stats["no_email"] += 1
+    from apps.notifications.sms import schedule as schedule_sms
+    # Relance publiée SANS e-mail (notification interne seule) : le SMS part
+    # quand même, avec le texte complet de cette relance. Avec e-mail, la
+    # même clé désigne le SMS déjà mis en file : pas de doublon.
+    sms = schedule_sms(key=sms_key, purpose=PURPOSE_REMINDER, body=text, entity=academy,
+                       user=recipient, email_delivery=delivery, precheck=sms_precheck)
     PaymentReminder.objects.filter(pk__in=[r.pk for r in rows]).update(
         status=status, notification=notification, email_delivery=delivery,
-        email_to=email_to, error=error, updated_at=timezone.now(),
+        email_to=email_to, error=error, sms_message=sms, updated_at=timezone.now(),
     )
     return status
+
+
+def reminder_sms_still_valid(reminder_ids):
+    """
+    Le SMS d'une relance est-il toujours exact, AU MOMENT de l'envoi ?
+    (ok, explication). Faux si : relance ou échéance supprimée, relances
+    suspendues, parent plus rattaché à l'élève, montant restant dû changé
+    (paiement reçu entre la programmation et l'envoi). Le texte annonçant
+    un montant qui n'est plus le bon n'est pas envoyé : la prochaine
+    relance portera le montant exact.
+    """
+    from apps.payments.models import PaymentReminder
+
+    if not reminders_globally_enabled():
+        return False, "Relances de paiement suspendues (PAYMENT_REMINDERS_ENABLED)."
+    rows = list(PaymentReminder.objects.filter(pk__in=reminder_ids)
+                .select_related("academy", "recipient", "student"))
+    if len(rows) != len(set(reminder_ids)) or not rows:
+        return False, "Relance supprimée depuis sa programmation."
+    academy = rows[0].academy
+    current = {(i.student.pk, i.installment.pk): i for i in compute_dues(academy).items}
+    for row in rows:
+        if row.installment_id is None:
+            return False, f"Échéance « {row.installment_label} » supprimée."
+        # Même règle que le choix initial du destinataire.
+        if row.recipient_id not in {u.pk for u in responsible_parents(row.student)}:
+            return False, "Le destinataire n'est plus responsable financier de cet élève."
+        item = current.get((row.student_id, row.installment_id))
+        if item is None or item.outstanding <= 0:
+            return False, f"« {row.installment_label} » réglée depuis la relance."
+        if item.outstanding != row.amount_due_minor:
+            return False, f"Montant restant dû de « {row.installment_label} » modifié depuis la relance."
+    return True, ""
 
 
 def resume_pending(academy, policy, now=None, older_than_minutes=10):

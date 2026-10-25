@@ -30,3 +30,4 @@ from .email_models import (  # noqa: E402,F401
 
 # Envois groupés par académie — voir apps/notifications/campaign_models.py.
 from .campaign_models import EmailCampaign, EmailCampaignRecipient  # noqa: E402,F401
+from .sms_models import SmsMessage, SmsPart  # noqa: E402,F401

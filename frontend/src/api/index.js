@@ -688,4 +688,6 @@ export const outboxAPI = {
     }),
   config:     (check = false) => api.get("/notifications/email-config/", { params: { check: check ? 1 : undefined } }),
   testSend:   (to)       => api.post("/notifications/email-config/test/", { to }),
+  smsList:    (p)        => api.get("/notifications/sms/", { params: p }),
+  smsRetry:   (id, p)    => api.post(`/notifications/sms/${id}/retry/`, {}, { params: p }),
 };

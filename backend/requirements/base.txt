@@ -24,3 +24,4 @@ num2words==0.5.13
 stripe==12.5.1
 openpyxl==3.1.2
 PyJWT>=2.8,<3
+phonenumbers==9.0.40   # normalisation E.164 des numéros (SMS)

@@ -421,7 +421,8 @@ class PlugNmeetWebhookView(APIView):
             logging.getLogger("apps").warning("Webhook plugNmeet refusé : %s", exc)
             return Response({"detail": "Signature invalide."}, status=status.HTTP_401_UNAUTHORIZED)
         record, created = handle_webhook(event)
-        return Response({"received": True, "duplicate": not created and record is not None})
+        return Response({"received": True, "stored": record is not None,
+                         "duplicate": not created and record is not None})
 
 
 class JitsiHealthView(APIView):

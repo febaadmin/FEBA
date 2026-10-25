@@ -429,6 +429,9 @@ class TrackingBackendTests(PrivateMediaMixin, TestCase):
         self.assertTrue(all(r.status == "sent" for r in rows))
         self.assertNotIn("abc-123", rows[0].content.text_body)
         self.assertIn("abc-123", mail.outbox[0].body)
+        # Envoi direct avec l'adresse RETIRÉE : il part depuis l'adresse officielle.
+        self.assertEqual(mail.outbox[0].from_email, "noreply@globalfeba.com")
+        self.assertEqual({r.from_email for r in rows}, {"noreply@globalfeba.com"})
 
     @override_settings(EMAIL_BACKEND=TRACKING,
                        EMAIL_TRANSPORT_BACKEND="django.core.mail.backends.locmem.EmailBackend")
@@ -440,11 +443,11 @@ class TrackingBackendTests(PrivateMediaMixin, TestCase):
 
 class EmailConfigApiTests(OutboxBase):
     @override_settings(EMAIL_BACKEND="django.core.mail.backends.smtp.EmailBackend", EMAIL_HOST="mailpit",
-                       EMAIL_HOST_USER="noreply@feba.bj", EMAIL_HOST_PASSWORD="secret-value-123")
+                       EMAIL_HOST_USER="noreply@globalfeba.com", EMAIL_HOST_PASSWORD="secret-value-123")
     def test_config_masks_secrets_and_explains_capture(self):
         data = self.api(self.admin_a).get("/api/notifications/email-config/").json()
         self.assertEqual(data["transport"], "capture")
-        self.assertEqual(data["user"], "n***@feba.bj")
+        self.assertEqual(data["user"], "n***@globalfeba.com")
         self.assertTrue(data["password_set"])
         self.assertNotIn("secret-value-123", json.dumps(data))
         self.assertIn("Mailpit", data["explanation"])

@@ -110,14 +110,46 @@ def provider_is_configured():
     return current_transport() in EmailDelivery.REAL_TRANSPORTS
 
 
+#: Adresse d'expédition RETIRÉE (domaine feba.bj) et sa remplaçante. Une
+#: configuration existante sur un serveur (.env.prod) peut encore la
+#: contenir : elle n'est plus jamais utilisée (voir `sender_for`).
+OBSOLETE_SENDERS = {"noreply@feba.bj"}
+OFFICIAL_NOREPLY = "noreply@globalfeba.com"
+
+
+def _address_of(value):
+    from email.utils import parseaddr
+
+    return (parseaddr(value or "")[1] or "").strip().lower()
+
+
+def normalize_sender(value):
+    """
+    Remplace une adresse d'expédition obsolète par l'adresse officielle,
+    en conservant un éventuel nom affiché (« FEBA <…> »).
+    """
+    address = _address_of(value)
+    if address in OBSOLETE_SENDERS:
+        logger.warning("Adresse d'expédition obsolète « %s » remplacée par « %s » : corrigez "
+                       "DEFAULT_FROM_EMAIL / FEBA_FROM_EMAIL / FHA_FROM_EMAIL.", address, OFFICIAL_NOREPLY)
+        from email.utils import formataddr, parseaddr
+        name = parseaddr(value)[0]
+        return formataddr((name, OFFICIAL_NOREPLY)) if name else OFFICIAL_NOREPLY
+    return value
+
+
 def sender_for(entity):
-    """Adresse d'expédition propre à l'académie (sinon DEFAULT_FROM_EMAIL)."""
+    """
+    SEULE source de l'adresse d'expédition de FEBA : propre à l'académie
+    (FEBA_FROM_EMAIL / FHA_FROM_EMAIL), sinon DEFAULT_FROM_EMAIL
+    (noreply@globalfeba.com). Tous les envois passent par ici.
+    """
     code = getattr(entity, "code", "") or ""
     specific = {
         "FEBA": getattr(settings, "FEBA_FROM_EMAIL", ""),
         "FEBA_FHA": getattr(settings, "FHA_FROM_EMAIL", ""),
     }.get(code, "")
-    return specific or getattr(settings, "DEFAULT_FROM_EMAIL", "") or ""
+    return normalize_sender(specific or getattr(settings, "DEFAULT_FROM_EMAIL", "") or OFFICIAL_NOREPLY)
 
 
 # ── Expurgation des secrets ───────────────────────────────────────────
@@ -185,12 +217,21 @@ def store_attachment(content, name, data, mimetype):
 def create_delivery(*, purpose, to_email, subject, text_body="", html_body=None, entity=None,
                     reference="", language="", cc=None, attachments=None, reply_to=None,
                     content=None, initiated_by=None, sensitive=False,
-                    status=EmailDelivery.QUEUED):
-    """Enregistre un envoi (et son contenu) SANS le tenter."""
+                    status=EmailDelivery.QUEUED, sms=True, sms_user=None, sms_phone=None,
+                    sms_key=None, sms_precheck=None):
+    """
+    Enregistre un envoi (et son contenu) SANS le tenter — et met en file la
+    copie SMS de ce message pour ce destinataire (apps/notifications/sms.py).
+
+    `sms_user` / `sms_phone` : destinataire connu de l'appelant (sinon le
+    compte est retrouvé par l'adresse e-mail, dans la même académie).
+    `sms_key` : clé de l'ÉVÉNEMENT métier (une relance publiée sur deux
+    canaux ne produit qu'un SMS). `sms=False` : pas de copie (renvoi).
+    """
     if content is None:
         content = create_content(subject=subject, text_body=text_body, html_body=html_body,
                                  attachments=attachments, sensitive=sensitive)
-    return EmailDelivery.objects.create(
+    delivery = EmailDelivery.objects.create(
         entity=entity, purpose=purpose, subject_reference=(reference or "")[:64],
         to_email=to_email, cc_emails=list(cc or []), from_email=sender_for(entity),
         reply_to=reply_to or getattr(settings, "EMAIL_REPLY_TO", "") or "",
@@ -198,13 +239,24 @@ def create_delivery(*, purpose, to_email, subject, text_body="", html_body=None,
         backend=transport_backend(), transport=current_transport(), smtp_host=smtp_target(),
         content=content, initiated_by=initiated_by, status=status,
     )
+    if sms:
+        from .sms import schedule_for_email
+        try:
+            schedule_for_email(
+                delivery, user=sms_user, phone=sms_phone, key=sms_key, precheck=sms_precheck,
+                text_body=text_body or None, html_body=html_body, sensitive=sensitive and content.is_redacted,
+            )
+        except Exception:  # le SMS ne doit jamais empêcher l'e-mail
+            logger.exception("SMS miroir de l'envoi %s non enregistré.", delivery.pk)
+    return delivery
 
 
 # ── Envoi ─────────────────────────────────────────────────────────────
 
 def send_tracked_email(*, purpose, to_email, subject, text_body, html_body=None, entity=None,
                        reference="", language="", cc=None, attachments=None, reply_to=None,
-                       initiated_by=None, sensitive=False):
+                       initiated_by=None, sensitive=False, sms=True, sms_user=None, sms_phone=None,
+                       sms_key=None, sms_precheck=None):
     """
     Enregistre ET tente l'envoi. Ne lève JAMAIS : un échec d'envoi ne doit
     pas annuler l'opération métier qui l'a déclenché ; il est enregistré,
@@ -216,7 +268,8 @@ def send_tracked_email(*, purpose, to_email, subject, text_body, html_body=None,
         purpose=purpose, to_email=to_email, subject=subject, text_body=text_body,
         html_body=html_body, entity=entity, reference=reference, language=language, cc=cc,
         attachments=attachments, reply_to=reply_to, initiated_by=initiated_by,
-        sensitive=sensitive, status=EmailDelivery.PENDING,
+        sensitive=sensitive, status=EmailDelivery.PENDING, sms=sms, sms_user=sms_user,
+        sms_phone=sms_phone, sms_key=sms_key, sms_precheck=sms_precheck,
     )
     live = (text_body, html_body) if sensitive else None
     return _attempt(delivery, live_bodies=live)
@@ -247,6 +300,9 @@ def resend(delivery, text_body=None, html_body=None, attachments=None, initiated
         entity=delivery.entity, reference=delivery.subject_reference, language=delivery.language,
         cc=delivery.cc_emails, reply_to=delivery.reply_to or None, content=content,
         initiated_by=initiated_by, status=EmailDelivery.PENDING,
+        # Le SMS de cet événement existe déjà (envoi d'origine) : un renvoi
+        # manuel de l'e-mail n'en produit pas un second.
+        sms=False,
     )
     return _attempt(new, manual=True)
 
@@ -279,7 +335,9 @@ def build_message(delivery, live_bodies=None):
     message = EmailMultiAlternatives(
         subject=delivery.subject,
         body=text_body or "",
-        from_email=delivery.from_email or None,
+        # Un envoi créé avant le changement d'adresse est rejoué avec
+        # l'adresse officielle, jamais avec l'adresse retirée.
+        from_email=normalize_sender(delivery.from_email) or None,
         to=[delivery.to_email],
         cc=list(delivery.cc_emails or []) or None,
         reply_to=[delivery.reply_to] if delivery.reply_to else None,

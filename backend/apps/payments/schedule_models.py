@@ -291,6 +291,11 @@ class PaymentReminder(models.Model):
         related_name="payment_reminders",
     )
     email_to = models.CharField(max_length=254, blank=True)
+    # SMS de cet événement de relance (un seul, même si plusieurs canaux).
+    sms_message = models.ForeignKey(
+        "notifications.SmsMessage", on_delete=models.SET_NULL, null=True, blank=True,
+        related_name="payment_reminders",
+    )
     error = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

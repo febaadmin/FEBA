@@ -307,6 +307,7 @@ def create_campaign(*, academy, user, subject, body, audience, client_token,
                     purpose=PURPOSE_CAMPAIGN, to_email=recipient.email, subject=subject,
                     entity=academy, reference=recipient.tracking_reference,
                     content=campaign.content, initiated_by=user, status=EmailDelivery.QUEUED,
+                    sms_user=recipient.user, sms_key=f"campaign:{campaign.pk}:{recipient.pk}",
                 )
                 recipient.save(update_fields=["delivery"])
     except IntegrityError:
@@ -401,6 +402,7 @@ def _ensure_delivery(recipient):
         purpose=PURPOSE_CAMPAIGN, to_email=recipient.email, subject=campaign.subject,
         entity=campaign.academy, reference=recipient.tracking_reference,
         content=campaign.content, status=EmailDelivery.QUEUED,
+        sms_user=recipient.user, sms_key=f"campaign:{campaign.pk}:{recipient.pk}",
     )
     return recipient.delivery
 

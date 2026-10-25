@@ -417,6 +417,17 @@ class TestEnvoi:
         assert mimetype == "application/pdf"
         assert contenu[:5] == b"%PDF-"
 
+    def test_expediteur_officiel_globalfeba(self, eleve_fha, settings):
+        """noreply@feba.bj est retiré : le rapport part de noreply@globalfeba.com."""
+        settings.EMAIL_BACKEND = "django.core.mail.backends.locmem.EmailBackend"
+        settings.DEFAULT_FROM_EMAIL = "noreply@feba.bj"   # ancienne valeur restée en place
+        settings.FHA_FROM_EMAIL = ""
+        settings.FEBA_FROM_EMAIL = ""
+        self._avec_parent(eleve_fha)
+        report, _ = generate_report(eleve_fha, ANNEE, MOIS)
+        send_report(report)
+        assert [m.from_email for m in mail.outbox] == ["noreply@globalfeba.com"]
+
     def test_la_langue_du_parent_est_respectee(self, eleve_fha, settings):
         settings.EMAIL_BACKEND = "django.core.mail.backends.locmem.EmailBackend"
         self._avec_parent(eleve_fha, langue="en")

@@ -57,7 +57,9 @@ class MeView(generics.RetrieveUpdateAPIView):
         partial = kwargs.pop("partial", True)
         instance = self.get_object()
         # Only allow safe fields (not role, not email uniqueness issues without careful handling)
-        allowed = ["first_name", "last_name", "phone", "avatar", "preferred_language"]
+        # sms_consent : choix PERSONNEL (accepter / refuser les SMS) ; son
+        # horodatage est posé par le serveur (UserSerializer.update).
+        allowed = ["first_name", "last_name", "phone", "avatar", "preferred_language", "sms_consent"]
         data = {k: v for k, v in request.data.items() if k in allowed}
         serializer = self.get_serializer(instance, data=data, partial=partial)
         serializer.is_valid(raise_exception=True)

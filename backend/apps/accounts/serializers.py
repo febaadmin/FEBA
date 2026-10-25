@@ -83,6 +83,21 @@ class UserSerializer(AcademyMetadataMixin, serializers.ModelSerializer):
     # par le navigateur (ERR_NAME_NOT_RESOLVED). On renvoie un chemin RELATIF
     # (« /media/... ») qui se résout via le proxy Vite (dev) ou Nginx (prod).
     avatar = serializers.SerializerMethodField()
+    # Numéro tel que les SMS l'utiliseront (E.164) — ou la raison du refus,
+    # pour que l'erreur se corrige dans le dossier, pas à l'envoi.
+    sms_phone = serializers.SerializerMethodField()
+
+    def get_sms_phone(self, obj):
+        from apps.notifications.sms import normalize_phone
+        number, reason = normalize_phone(obj.phone, obj.school)
+        return {"e164": number, "problem": reason}
+
+    def update(self, instance, validated_data):
+        from django.utils import timezone
+        if "sms_consent" in validated_data and validated_data["sms_consent"] != instance.sms_consent:
+            # Horodaté par le SERVEUR : preuve du moment du choix.
+            validated_data["sms_consent_at"] = timezone.now()
+        return super().update(instance, validated_data)
 
     def get_avatar(self, obj):
         try:
@@ -96,9 +111,11 @@ class UserSerializer(AcademyMetadataMixin, serializers.ModelSerializer):
             "id", "email", "username", "first_name", "last_name",
             "full_name", "role", "role_level", "phone", "avatar",
             "school", "school_name", "preferred_language",
+            "sms_consent", "sms_consent_at", "sms_phone",
             "is_active", "must_change_password", "created_at", "updated_at",
         ] + ACADEMY_FIELDS
-        read_only_fields = ["id", "role_level", "must_change_password", "created_at", "updated_at"]
+        read_only_fields = ["id", "role_level", "must_change_password", "created_at", "updated_at",
+                            "sms_consent_at"]
 
     def get_full_name(self, obj):
         return obj.get_full_name()

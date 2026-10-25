@@ -10,6 +10,7 @@ import { extractApiError } from "../../utils/errors";
 import { t } from "../../i18n";
 
 import { ageText } from "../../utils/age";
+import SmsPreferencesCard from "../../components/SmsPreferencesCard";
 export default function ParentProfile() {
   const qc = useQueryClient();
   const { data, isLoading } = useQuery({ queryKey: ["me"], queryFn: authAPI.me });
@@ -53,6 +54,7 @@ export default function ParentProfile() {
   return (
     <div className="space-y-6">
       <PageHeader title={t("Mon Profil")} subtitle={t("Année scolaire {y}", { y: currentYear?.name || "" })} />
+      <SmsPreferencesCard />
 
       {/* Avatar */}
       <div className="card flex flex-col items-center gap-3 py-6">

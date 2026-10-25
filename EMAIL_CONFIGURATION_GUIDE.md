@@ -92,6 +92,35 @@ Les valeurs exactes (hôte, port, chiffrement) sont celles **indiquées par le
 fournisseur** ; aucune n'est écrite dans le code. Les secrets ne sont jamais
 affichés (ni par `email_check`, ni par l'API, ni dans le journal).
 
+### Adresse d'expédition : `noreply@globalfeba.com`
+
+L'ancienne adresse `noreply@feba.bj` est **retirée**. L'adresse officielle est
+`noreply@globalfeba.com` (défaut du code, des trois `.env.*.example`, et
+`SERVER_EMAIL` pour les alertes d'erreur de Django). Une seule fonction fixe
+l'expéditeur de TOUS les envois (`apps.notifications.mailer.sender_for`) ;
+si un environnement contient encore `noreply@feba.bj`, elle est remplacée à
+l'envoi (journal d'avertissement) et `manage.py check` le signale
+(`notifications.W001`). `notifications.W002` signale un expéditeur qui
+n'appartient pas au domaine du compte SMTP — Hostinger le refuse.
+
+Relevés DNS publics de `globalfeba.com` (25/10/2026, DNS-over-HTTPS) :
+
+| Enregistrement | Valeur | Constat |
+|---|---|---|
+| MX | `mx1.hostinger.com`, `mx2.hostinger.com` | messagerie chez Hostinger |
+| SPF | `v=spf1 include:_spf.mail.hostinger.com ~all` | autorise le SMTP Hostinger |
+| DKIM `hostingermail-a._domainkey` | clé RSA publiée | signature possible |
+| DKIM `hostingermail-b._domainkey` | `p=` vide | clé révoquée/inutilisée |
+| DMARC | `v=DMARC1; p=none` | observation seule |
+
+Reste à faire chez Hostinger (non vérifiable d'ici) : créer la boîte (ou
+l'alias autorisé) `noreply@globalfeba.com`, renseigner son mot de passe dans
+`EMAIL_HOST_PASSWORD`, vérifier que la signature DKIM est **activée** pour
+le domaine, puis envoyer le test de la section 4 et lire les en-têtes reçus
+(`spf=pass`, `dkim=pass`, `dmarc=pass`). Paramètres Hostinger :
+`smtp.hostinger.com`, port 465 SSL (ou 587 STARTTLS). Passer DMARC à
+`p=quarantine` une fois les envois validés.
+
 DNS (chez Hostinger pour `globalfeba.com`) — selon le fournisseur :
 
 - **SPF** : enregistrement TXT `v=spf1 include:<domaine fourni par le fournisseur> ~all`

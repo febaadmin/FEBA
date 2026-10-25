@@ -341,6 +341,12 @@ CELERY_BEAT_SCHEDULE = {
     },
     # Filet de sécurité de la visioconférence : une salle « en cours » dont
     # la réunion n'existe plus côté plugNmeet (webhook perdu) est close.
+    # SMS : nouvelles tentatives et reprise après arrêt d'un worker.
+    'sms-nouvelles-tentatives': {
+        'task': 'notifications.retry_due_sms',
+        'schedule': crontab(minute='*/5'),
+        'options': {'expires': 240},
+    },
     'visio-reconciliation-salles': {
         'task': 'virtualclass.reconcile_live_rooms',
         'schedule': crontab(minute='*/10'),
@@ -394,7 +400,14 @@ EMAIL_USE_SSL = config('EMAIL_USE_SSL', default=False, cast=bool)
 # défaut du système. Une famille qui envoie une fiche d'inscription
 # attendait alors la page de confirmation pendant des minutes.
 EMAIL_TIMEOUT = config('EMAIL_TIMEOUT', default=10, cast=int)
-DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='noreply@feba.bj')
+# Adresse d'expédition officielle : noreply@globalfeba.com (domaine dont le
+# SPF autorise le serveur SMTP Hostinger, DKIM « hostingermail-a »). L'ancienne
+# adresse noreply@feba.bj est retirée : si un environnement la contient
+# encore, apps.notifications.mailer la remplace et `manage.py check` le signale.
+DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='noreply@globalfeba.com')
+# Expéditeur des alertes d'erreur de Django (mail_admins). Sans lui, Django
+# écrit depuis « root@localhost », refusé par tout serveur SMTP sérieux.
+SERVER_EMAIL = config('SERVER_EMAIL', default=DEFAULT_FROM_EMAIL)
 
 # Expéditeur PROPRE À CHAQUE ACADÉMIE. Un parent de l'académie en ligne ne
 # doit pas recevoir un message venant de l'adresse de l'école de Cotonou :
@@ -402,6 +415,38 @@ DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='noreply@feba.bj')
 FEBA_FROM_EMAIL = config('FEBA_FROM_EMAIL', default='')
 FHA_FROM_EMAIL = config('FHA_FROM_EMAIL', default='')
 EMAIL_REPLY_TO = config('EMAIL_REPLY_TO', default='')
+
+# ── SMS : copie textuelle des e-mails et des relances ─────────────────
+# Voir SMS_CONFIGURATION_GUIDE.md. Désactivé par défaut : aucun SMS ne part
+# tant que SMS_ENABLED n'est pas vrai ET que le fournisseur n'est pas
+# configuré. Les secrets (jeton Twilio) ne sont lus QUE dans l'environnement.
+SMS_ENABLED = config('SMS_ENABLED', default=False, cast=bool)
+# twilio : envoi réel ; capture : enregistré dans FEBA, jamais envoyé
+# (développement et tests) ; console : écrit dans le journal, jamais envoyé.
+SMS_PROVIDER = config('SMS_PROVIDER', default='capture').strip().lower()
+# Numéro d'expédition au format E.164. Il doit appartenir au compte du
+# fournisseur et être autorisé pour l'envoi de SMS (`manage.py sms_check`).
+SMS_FROM_NUMBER = config('SMS_FROM_NUMBER', default='')
+TWILIO_ACCOUNT_SID = config('TWILIO_ACCOUNT_SID', default='')
+TWILIO_AUTH_TOKEN = config('TWILIO_AUTH_TOKEN', default='')
+# Adresse publique de FEBA à laquelle Twilio notifie la remise (delivered,
+# undelivered…). Vide = pas de suivi de remise : le statut s'arrête à
+# « accepté par le fournisseur ».
+SMS_STATUS_CALLBACK_URL = config('SMS_STATUS_CALLBACK_URL', default='')
+# Consentement : True = seuls les destinataires ayant ACCEPTÉ les SMS en
+# reçoivent (valeur prudente). False = tous sauf ceux qui ont REFUSÉ —
+# à n'activer qu'après validation juridique (clause du contrat de
+# scolarité, par exemple).
+SMS_REQUIRE_EXPLICIT_CONSENT = config('SMS_REQUIRE_EXPLICIT_CONSENT', default=True, cast=bool)
+# Indicatif présumé d'un numéro saisi SANS « + », par académie
+# (« CODE:PAYS,… »). Une académie absente de la liste : le numéro sans
+# indicatif est refusé plutôt que deviné.
+SMS_DEFAULT_REGIONS = config('SMS_DEFAULT_REGIONS', default='FEBA:BJ')
+# Un message trop long pour un seul SMS concaténé (1 600 caractères chez
+# Twilio) est découpé en plusieurs SMS numérotés, sans rien retrancher ;
+# au-delà de ce nombre de SMS, l'envoi échoue explicitement.
+SMS_MAX_MESSAGES_PER_NOTIFICATION = config('SMS_MAX_MESSAGES_PER_NOTIFICATION', default=5, cast=int)
+SMS_TIMEOUT = config('SMS_TIMEOUT', default=15, cast=int)
 
 # File upload
 FILE_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024  # 10MB

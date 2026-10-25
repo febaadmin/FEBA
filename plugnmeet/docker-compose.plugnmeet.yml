@@ -130,6 +130,30 @@ services:
       retries: 10
     logging: *logging
 
+  # Proxy HTTPS (profil « edge ») : sur le serveur seulement, pas pour la
+  # pile locale de test. Certificats Let's Encrypt de l'hôte (/etc/letsencrypt),
+  # obtenus par certbot en mode webroot (voir PLUGNMEET_DEPLOYMENT_GUIDE.md).
+  pnm-web:
+    image: nginx:1.27.5-alpine
+    profiles: ["edge"]
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./runtime/pnm-web.conf:/etc/nginx/conf.d/default.conf:ro
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+      - /var/www/certbot:/var/www/certbot:ro
+    depends_on:
+      plugnmeet:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider --no-check-certificate https://127.0.0.1/healthCheck || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+    logging: *logging
+
 volumes:
   pnm_redis:
   pnm_db:

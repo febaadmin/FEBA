@@ -255,6 +255,10 @@ def process_submission(application):
 
     # ── Accusé de réception au parent ─────────────────────────────────
     subject, text, html_body = parent_ack_bodies(application)
+    # SMS : le compte FEBA du parent s'il existe (son consentement fait foi),
+    # sinon le numéro saisi dans la fiche — jamais un autre.
+    from apps.notifications.sms import resolve_user
+    parent_account = resolve_user(application.parent1_email, application.entity)
     parent_delivery = send_tracked_email(
         purpose=PURPOSE_PARENT_ACK,
         to_email=application.parent1_email,
@@ -265,6 +269,8 @@ def process_submission(application):
         reference=application.reference,
         language=application.parent1_preferred_language,
         attachments=attachments,
+        sms_user=parent_account,
+        sms_phone=None if parent_account else application.parent1_phone,
     )
 
     # ── Notification interne : admins de l'académie + super admins ────

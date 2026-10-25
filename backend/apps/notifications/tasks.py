@@ -134,3 +134,17 @@ def retry_due_deliveries(limit=200):
             delivery.next_retry_at = timezone.now() + timedelta(minutes=30)
             delivery.save(update_fields=["status", "next_retry_at", "updated_at"])
     return handled
+
+
+@shared_task(name="notifications.send_sms", ignore_result=True)
+def send_sms(sms_id):
+    """Une tentative pour un SMS (idempotent : voir sms.deliver)."""
+    from .sms import deliver
+    deliver(sms_id)
+
+
+@shared_task(name="notifications.retry_due_sms", ignore_result=True)
+def retry_due_sms():
+    """Reprise des SMS en nouvel essai, restés en file ou interrompus."""
+    from .sms import retry_due
+    return retry_due()

@@ -397,6 +397,21 @@ class AttendanceFromEventsTests(PlugNmeetBase):
         self.assertEqual(a.duration_seconds, 30 * 60)
         self.assertEqual(a.reconnections, 1)
 
+    def test_entree_perdue_presence_depuis_l_adhesion_feba(self):
+        """Constaté en réel : l'entrée refusée (400), seule la sortie arrive."""
+        VirtualRoomAttendance.objects.create(room=self.salle_classe, user=self.eleve_membre,
+                                             session_sid="sid-1", joined_at=self.at(0))
+        self.post_webhook(event("participant_left", self.salle_classe, self.ident, self.at(25)))
+        a = self.att()
+        self.assertEqual((a.duration_seconds, a.left_at, a.joined_at), (25 * 60, self.at(25), self.at(0)))
+        self.post_webhook(event("participant_left", self.salle_classe, self.ident, self.at(25)))
+        self.assertEqual(self.att().duration_seconds, 25 * 60)
+
+    def test_evenements_secondaires_non_archives(self):
+        r = self.post_webhook(event("track_published", self.salle_classe, self.ident, self.at(1)))
+        self.assertEqual(r.json()["stored"], False)
+        self.assertFalse(VirtualRoomEvent.objects.exists())
+
     def test_lie_a_l_inscription_annuelle(self):
         from apps.students.models import StudentEnrollment
         student = self.eleve_membre.student_profile
@@ -486,3 +501,17 @@ class PlugNmeetLiveTests(base.BaseSalles):
 
     def test_diagnostic_operationnel(self):
         self.assertEqual(plugnmeet.health()["status"], "operational")
+
+
+class ConfigurationCheckTests(TestCase):
+    @override_settings(VIDEO_PROVIDER="plugnmeet", ALLOWED_HOSTS=["globalfeba.com"],
+                       PLUGNMEET_WEBHOOK_URL="http://host.docker.internal:18000/api/virtual-rooms/webhook/")
+    def test_hote_du_webhook_absent_d_allowed_hosts_signale(self):
+        from apps.virtualclass.checks import plugnmeet_configuration
+        self.assertEqual([w.id for w in plugnmeet_configuration(None)], ["virtualclass.W001"])
+
+    @override_settings(VIDEO_PROVIDER="plugnmeet", ALLOWED_HOSTS=[".globalfeba.com"],
+                       PLUGNMEET_WEBHOOK_URL="https://globalfeba.com/api/virtual-rooms/webhook/")
+    def test_hote_autorise_aucun_avertissement(self):
+        from apps.virtualclass.checks import plugnmeet_configuration
+        self.assertEqual(plugnmeet_configuration(None), [])

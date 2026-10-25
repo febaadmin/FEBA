@@ -30,7 +30,7 @@ const ROW = {
   transport_display: "Serveur de test (Mailpit) — capturé, non distribué", attempts: 1,
 };
 const DETAIL = {
-  ...ROW, from_email: "noreply@feba.bj", text_body: "Bonjour,\nVoir le programme.",
+  ...ROW, from_email: "noreply@globalfeba.com", text_body: "Bonjour,\nVoir le programme.",
   html_body: "<p>Bonjour</p><script>alert(1)</script>", attachments: [
     { id: 3, name: "programme.pdf", content_type: "application/pdf", size: 2048, available: true, previewable: true },
   ], attempt_log: [{ at: "2026-10-10T09:15:00Z", outcome: "retry", error: "SMTPServerDisconnected", manual: false }],
@@ -105,6 +105,17 @@ describe("Boîte d'envoi", () => {
     const dialog = await screen.findByRole("dialog");
     expect(await within(dialog).findByText(/Demander un nouveau lien/)).toBeTruthy();
     expect(within(dialog).queryByRole("button", { name: /Relancer cet envoi/ })).toBeNull();
+  });
+});
+
+describe("Statut SMS distinct de l'e-mail", () => {
+  it("affiche le motif d'un SMS non envoyé à côté du statut de l'e-mail", async () => {
+    outboxAPI.list.mockResolvedValue({ data: { count: 1, page: 1, page_size: 25, purposes: [], results: [{
+      ...ROW, sms: { status: "skipped", status_display: "Non envoyé",
+                     skip_reason_display: "Consentement aux SMS non recueilli" } }] } });
+    renderPage();
+    expect(await screen.findByText(/SMS non envoyé — Consentement aux SMS non recueilli/)).toBeTruthy();
+    expect(screen.getAllByText(/Accepté par le serveur de messagerie/).length).toBeGreaterThan(0);
   });
 });
 

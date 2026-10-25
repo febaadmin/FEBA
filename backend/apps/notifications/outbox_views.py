@@ -118,7 +118,16 @@ def _row(d):
         "has_content": d.content_id is not None,
         "attachments_count": len(attachments),
         "reference": d.subject_reference,
+        # Copie SMS de cet e-mail : statut DISTINCT de celui de l'e-mail.
+        "sms": _sms_summary(d),
     }
+
+
+def _sms_summary(d):
+    from .sms_views import sms_row
+
+    sms = d.sms_messages.order_by("created_at").first()
+    return sms_row(sms) if sms is not None else None
 
 
 def _attachment(a, delivery):

@@ -45,16 +45,6 @@ def provider_is_external():
     return provider_is_configured()
 
 
-def sender_for(academy):
-    """Expéditeur PROPRE à l'académie : un parent doit pouvoir répondre."""
-    code = getattr(academy, "code", "")
-    if code == "FEBA_FHA":
-        return (getattr(settings, "FHA_FROM_EMAIL", "")
-                or settings.DEFAULT_FROM_EMAIL)
-    return (getattr(settings, "FEBA_FROM_EMAIL", "")
-            or settings.DEFAULT_FROM_EMAIL)
-
-
 def build_bodies(report, language):
     """Corps du message, en texte et en HTML, dans la langue du parent."""
     brand = get_branding(report.academy)

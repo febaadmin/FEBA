@@ -54,8 +54,24 @@ function StatusCell({ row }) {
       {["sent", "accepted"].includes(row.status) && !row.used_real_provider && (
         <div><Badge tone="bg-amber-50 text-amber-700">{t(row.delivery_summary)}</Badge></div>
       )}
+      {row.sms && <SmsBadge sms={row.sms} />}
     </div>
   );
+}
+
+const SMS_TONE = {
+  sent: "bg-emerald-50 text-emerald-700", delivered: "bg-emerald-50 text-emerald-700",
+  failed: "bg-red-50 text-red-700", retry: "bg-amber-50 text-amber-700",
+  skipped: "bg-slate-100 text-slate-600", captured: "bg-amber-50 text-amber-700",
+  pending: "bg-blue-50 text-blue-700", sending: "bg-blue-50 text-blue-700",
+};
+
+/** Statut du SMS miroir : DISTINCT de celui de l'e-mail. */
+function SmsBadge({ sms }) {
+  const label = sms.status === "skipped" && sms.skip_reason_display
+    ? `${t("SMS non envoyé")} — ${t(sms.skip_reason_display)}`
+    : `SMS : ${t(sms.status_display)}`;
+  return <div><Badge tone={SMS_TONE[sms.status] || ""}>{label}</Badge></div>;
 }
 
 export default function Outbox() {
@@ -210,6 +226,18 @@ function OutboxDetail({ id, onClose }) {
               <dt className="text-slate-500">{t("Origine")}</dt><dd>{t(d.purpose_label)} {d.reference && <span className="text-slate-400">· {d.reference}</span>}</dd>
               <dt className="text-slate-500">{t("Statut")}</dt><dd><StatusCell row={d} /></dd>
               <dt className="text-slate-500">{t("Transport")}</dt><dd>{t(d.transport_display)} {d.smtp_host && <span className="text-slate-400">({d.smtp_host})</span>}</dd>
+              {d.sms && (
+                <>
+                  <dt className="text-slate-500">SMS</dt>
+                  <dd>
+                    <SmsBadge sms={d.sms} />
+                    <span className="text-xs text-slate-500">
+                      {d.sms.to_number} · {d.sms.encoding} · {d.sms.segments} {t("segment(s)")}
+                      {d.sms.last_error && ` · ${d.sms.last_error}`}
+                    </span>
+                  </dd>
+                </>
+              )}
               <dt className="text-slate-500">{t("Tentatives")}</dt><dd>{d.attempts}{d.next_retry_at && ` · ${t("prochain essai")} ${formatDateTime(d.next_retry_at)}`}</dd>
               <dt className="text-slate-500">{t("Suivi")}</dt><dd className="break-all text-xs text-slate-500">{d.tracking_id} {d.message_id}</dd>
             </dl>
