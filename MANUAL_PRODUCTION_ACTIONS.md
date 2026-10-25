@@ -13,6 +13,26 @@
 
 ---
 
+
+## 0. Version plugNmeet / SMS / expéditeur (25/10/2026) — actions hors dépôt
+
+Ordre conseillé ; chaque étape est réversible et n'arrête pas Jitsi.
+
+1. **E-mail** — chez Hostinger : boîte `noreply@globalfeba.com`, DKIM actif.
+   `.env.prod` : bloc SMTP de `.env.prod.example`. Puis
+   `manage.py check` (aucun `notifications.W00x`) et
+   `manage.py email_check --to <votre adresse>` ; lire les en-têtes reçus.
+2. **SMS** — compte Twilio propriétaire du +1 215 715 5406, Geo permissions
+   (Bénin), A2P 10DLC si destinataires américains. `.env.prod` : bloc SMS
+   (`SMS_ENABLED=False`), `manage.py sms_check`, puis `sms_check --to
+   <votre numéro>`, puis `SMS_ENABLED=True`. Recueillir les consentements
+   (Mon profil) ou décision juridique sur `SMS_REQUIRE_EXPLICIT_CONSENT`.
+3. **plugNmeet** — `PLUGNMEET_DEPLOYMENT_GUIDE.md` §§ 1-7 (serveur, DNS
+   `pnm.globalfeba.com`, pare-feu Hetzner Cloud, certificat, recette, bascule).
+4. **Migrations FEBA** (additives) : `manage.py migrate` — accounts 0007,
+   notifications 0007, payments 0014, virtualclass 0004. Sauvegarde de la
+   base AVANT (`RESTORE_GUIDE.md`).
+
 ## État constaté au moment de la livraison
 
 Mesuré, pas supposé :

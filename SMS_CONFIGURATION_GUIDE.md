@@ -25,6 +25,7 @@ l'oublier. Chemins couverts :
 | Rapports mensuels | oui | compte du parent |
 | Envoi direct d'un autre module (`send_mail`) | oui (sauf lien de sécurité) | compte retrouvé par l'adresse |
 | Test SMTP, `email_check` | **non** (diagnostics) | — |
+| Alertes d'erreur de Django (`mail_admins`, objet « [Django] ») | **non** (traces techniques) | — |
 | Renvoi manuel d'un e-mail (boîte d'envoi) | **non** : le SMS de l'événement existe déjà | — |
 
 ## 2. Contenu

@@ -231,6 +231,17 @@ class EmailMirrorTests(SmsBaseMixin, outbox.OutboxBase):
         self.assertEqual(self.twilio.sent, [])
         self.assertEqual(SmsMessage.objects.get().skip_reason, "sensitive_content")
 
+    @override_settings(ADMINS=[("Ops", "ob.a@test.io")])
+    def test_alerte_d_erreur_django_jamais_copiee(self):
+        from django.core.mail import mail_admins
+        self.consent(self.admin_a)
+        with override_settings(EMAIL_BACKEND=outbox.TRACKING,
+                               EMAIL_TRANSPORT_BACKEND="django.core.mail.backends.locmem.EmailBackend"):
+            with self.captureOnCommitCallbacks(execute=True):
+                mail_admins("Erreur 500", "Traceback (most recent call last): …")
+        self.assertEqual(self.twilio.sent, [])
+        self.assertFalse(SmsMessage.objects.exists())
+
     def test_test_smtp_jamais_copie(self):
         from django.core.cache import cache
         cache.clear()

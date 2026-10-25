@@ -78,7 +78,10 @@ class TrackingEmailBackend(BaseEmailBackend):
         # Copie SMS, comme pour tout autre e-mail (le contenu archivé est
         # expurgé s'il porte un lien de sécurité : le SMS est alors exclu).
         from .sms import schedule_for_email
-        for delivery in deliveries:
+        # Alertes techniques de Django (mail_admins / mail_managers : objet
+        # préfixé « [Django] », traces d'erreur) : jamais copiées par SMS.
+        technical = (message.subject or "").startswith(settings.EMAIL_SUBJECT_PREFIX)
+        for delivery in ([] if technical else deliveries):
             try:
                 schedule_for_email(delivery)
             except Exception:
