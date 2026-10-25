@@ -18,7 +18,7 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-NOM="${1:-FEBA_VERSION_EMAILS_CORRIGEE_AUDIT_COMPLET}"
+NOM="${1:-FEBA_VERSION_PLUGNMEET_SMS_AUDIT_COMPLET}"
 SORTIE="${2:-$(dirname "$ROOT")}"
 STAGE="$(mktemp -d)"
 # Le dossier racine porte le MÊME nom que l'archive. En V8 il était
@@ -71,6 +71,7 @@ tar -C "$ROOT" \
     --exclude='./.env.jitsi' \
     --exclude='./.env.local' \
     --exclude='./backend/.env' \
+    --exclude='./plugnmeet/runtime' \
     --exclude='.DS_Store' \
     -cf - . | tar -xf - -C "$CIBLE"
 fi
@@ -84,6 +85,11 @@ if [ -n "$fautifs" ]; then
   echo "  ÉCHEC : fichiers de configuration réels présents :"; echo "$fautifs"; exit 1
 fi
 echo "  OK    aucun fichier .env réel"
+
+if [ -e "$CIBLE/plugnmeet/runtime" ]; then
+  echo "  ÉCHEC : plugnmeet/runtime (secrets plugNmeet générés) présent dans l'archive"; exit 1
+fi
+echo "  OK    aucun secret plugNmeet (plugnmeet/runtime absent)"
 
 for interdit in node_modules __pycache__ .pytest_cache venv; do
   if find "$CIBLE" -name "$interdit" -print -quit | grep -q .; then
@@ -174,7 +180,29 @@ for requis in backend/manage.py frontend/package.json Makefile \
               backend/tests/test_email_single_path.py \
               frontend/src/pages/admin/Outbox.jsx \
               frontend/src/pages/admin/Outbox.test.jsx \
-              frontend/src/router/restoreUser.test.jsx; do
+              frontend/src/router/restoreUser.test.jsx \
+              PLUGNMEET_DEPLOYMENT_GUIDE.md SMS_CONFIGURATION_GUIDE.md \
+              FEBA_P0_AUDIT_REPORT.md \
+              plugnmeet/docker-compose.plugnmeet.yml plugnmeet/sql/install.sql \
+              plugnmeet/templates/config.yaml.tpl plugnmeet/templates/livekit.yaml.tpl \
+              plugnmeet/templates/nats-server.conf.tpl plugnmeet/templates/pnm-web.conf.tpl \
+              scripts/plugnmeet_setup.sh \
+              backend/apps/virtualclass/plugnmeet.py backend/apps/virtualclass/meetings.py \
+              backend/apps/virtualclass/checks.py backend/apps/virtualclass/tasks.py \
+              backend/apps/virtualclass/migrations/0004_plugnmeet_meetings_events.py \
+              backend/apps/notifications/sms.py backend/apps/notifications/sms_models.py \
+              backend/apps/notifications/sms_providers.py backend/apps/notifications/sms_views.py \
+              backend/apps/notifications/checks.py \
+              backend/apps/notifications/management/commands/sms_check.py \
+              backend/apps/notifications/migrations/0007_sms_messages.py \
+              backend/apps/accounts/migrations/0007_customuser_sms_consent_customuser_sms_consent_at.py \
+              backend/apps/payments/migrations/0014_paymentreminder_sms_message.py \
+              backend/tests/test_plugnmeet_integration.py backend/tests/test_sms_mirror.py \
+              backend/tests/test_email_sender_globalfeba.py \
+              frontend/src/api/tokenRefresh.js frontend/src/api/tokenRefresh.test.js \
+              frontend/src/api/sessionInterceptor.test.js frontend/src/hooks/useSessionKeepAlive.js \
+              frontend/src/pages/shared/VirtualRoomEnded.jsx \
+              frontend/src/components/SmsPreferencesCard.jsx; do
   [ -e "$CIBLE/$requis" ] || { echo "  ÉCHEC : « $requis » manquant"; exit 1; }
 done
 echo "  OK    tous les fichiers attendus sont présents"

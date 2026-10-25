@@ -5,6 +5,66 @@ Rien ici n'est présenté comme fonctionnel sans preuve.
 
 ---
 
+## 00. Version « plugNmeet, SMS, expéditeur » (25 octobre 2026)
+
+### 00.1 Serveur Hetzner — BLOCAGE EXTERNE
+L'accès SSH à `root@89.167.63.1` a été refusé (clé `feba_jitsi_prod` :
+« Permission denied (publickey) »). plugNmeet n'est donc **pas déployé** ;
+ni le serveur, ni le pare-feu Hetzner, ni le DNS n'ont été inspectés ou
+modifiés. Jitsi est intact. Procédure : `PLUGNMEET_DEPLOYMENT_GUIDE.md`.
+
+### 00.2 plugNmeet — ce qui a été vérifié, ce qui ne l'a pas été
+Vérifié contre une instance RÉELLE (v2.5.3, locale, Docker) : API signée,
+création/fermeture de réunion, refus de signature, webhooks signés reçus
+par FEBA, deux participants dans un navigateur, salle d'attente, notes
+partagées synchronisées, chat, tableau blanc, présences et reconnexion.
+**Non vérifié** : média réel entre deux postes distincts (caméra et micro
+non disponibles dans le navigateur de test ; des pistes publiées par un
+autre participant ont cependant été reçues), TURN derrière un réseau
+filtrant, charge de plusieurs classes simultanées, sous-groupes et
+sondages en conditions réelles, PDF sur le tableau blanc.
+
+### 00.3 Fonctions plugNmeet dépendant d'un service non déployé
+Enregistrement, diffusion RTMP, flux entrant, sous-titres/transcription/
+traduction/résumés IA, appel téléphonique : **désactivés** et déclarés
+comme tels (aucune simulation). Voir la matrice du guide plugNmeet, § 10.
+
+### 00.4 SMS — BLOCAGE EXTERNE
+Aucun compte Twilio ni jeton disponible : **aucun SMS réel envoyé**, et le
+numéro +1 (215) 715-5406 n'a pas pu être vérifié (propriété, capacité
+SMS, autorisation vers le Bénin, enregistrement A2P 10DLC pour les
+destinataires américains). Le fonctionnement est démontré par des tests
+qui simulent Twilio au niveau HTTP, ce qui ne prouve pas la réception.
+Commande à exécuter : `SMS_CONFIGURATION_GUIDE.md` § 7.
+
+### 00.5 SMS — limites assumées
+- Consentement explicite requis par défaut : tant que les familles n'ont
+  pas accepté (Mon profil), aucun SMS ne part. Décision juridique à
+  prendre pour `SMS_REQUIRE_EXPLICIT_CONSENT=False`.
+- Fiche d'inscription FHA : aucun consentement SMS n'y est recueilli ; un
+  parent sans compte FEBA ne reçoit donc pas de SMS (raison enregistrée).
+- Les messages de sécurité (réinitialisation de mot de passe) ne sont
+  jamais copiés par SMS (choix de sécurité).
+- Pas de vérification du numéro par code envoyé (OTP) : le numéro est
+  validé (format, mobile) mais sa possession n'est pas prouvée.
+- Twilio n'offre pas de clé d'idempotence : un arrêt du serveur dans les
+  millisecondes entre l'acceptation d'une partie et son enregistrement
+  peut la faire renvoyer.
+- Coût : un SMS en UCS-2 (accents « ê », « ç », tirets « — ») compte
+  70 caractères par segment ; une relance détaillée = plusieurs segments.
+
+### 00.6 Expéditeur noreply@globalfeba.com — À TESTER EN ENVIRONNEMENT RÉEL
+Le code n'utilise plus `noreply@feba.bj` (tests sur chaque chemin). La
+boîte `noreply@globalfeba.com` chez Hostinger, son mot de passe SMTP et
+l'activation DKIM n'ont pas pu être vérifiés ; aucun e-mail réel n'a été
+envoyé. DNS relevé : SPF Hostinger, DKIM `hostingermail-a`, DMARC `p=none`.
+
+### 00.7 Session pendant les visioconférences
+Corrigé et testé (rotation concurrente, onglets multiples, coupure
+réseau, renouvellement préventif). Le jeton de renouvellement garde sa
+durée serveur (7 jours) : une session inactive plus longtemps se termine,
+volontairement.
+
 ## 0. Version « audit complet » (octobre 2026) — points ouverts
 
 ### 0.1 Jours d'échéance de la grille 2026-2027 — DÉCISION MÉTIER

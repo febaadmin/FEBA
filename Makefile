@@ -17,7 +17,7 @@
 #   make diagnose                        → diagnostic en cas de problème
 #   make prod                              → démarre l'environnement de production
 
-.PHONY: install bootstrap dev migrate migrations-plan superuser seed seed-reset seed-check init-academies \
+.PHONY: plugnmeet-setup-local plugnmeet-up plugnmeet-down plugnmeet-logs plugnmeet-health install bootstrap dev migrate migrations-plan superuser seed seed-reset seed-check init-academies \
         test-sqlite test-postgres test-frontend test-e2e test-install \
         payments-setup payments-check payments-test payments-webhook-check \
         documents-check documents-install documents-ready documents-calibrate documents-compare \
@@ -123,6 +123,29 @@ bootstrap:
 # Démarre l'instance Jitsi AUTO-HÉBERGÉE. Les secrets manquants sont
 # générés automatiquement : plus aucune étape manuelle, et surtout aucun
 # repli vers une instance publique.
+# ── plugNmeet (remplace Jitsi) — voir PLUGNMEET_DEPLOYMENT_GUIDE.md ──────
+PNM_COMPOSE = docker compose -p feba-pnm-local -f plugnmeet/docker-compose.plugnmeet.yml --env-file plugnmeet/runtime/plugnmeet.env
+
+plugnmeet-setup-local:
+	@bash scripts/plugnmeet_setup.sh --local
+
+plugnmeet-up:
+	@test -f plugnmeet/runtime/plugnmeet.env || bash scripts/plugnmeet_setup.sh --local
+	$(PNM_COMPOSE) up -d
+
+plugnmeet-down:
+	$(PNM_COMPOSE) down
+
+plugnmeet-logs:
+	$(PNM_COMPOSE) logs -f plugnmeet pnm-livekit
+
+plugnmeet-health:
+	@if docker compose ps --status running backend-dev 2>/dev/null | grep -q backend-dev; then \
+		docker compose exec -T backend-dev python manage.py plugnmeet_health; \
+	else \
+		cd backend && python3 manage.py plugnmeet_health; \
+	fi
+
 jitsi-up:
 	@bash scripts/jitsi_up.sh
 

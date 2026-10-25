@@ -91,6 +91,7 @@ verifier "production"               -f docker-compose.prod.yml
 verifier "Jitsi (base)"             --env-file "$JITSI_ENV" -f docker-compose.jitsi.yml
 verifier "Jitsi + serveur dédié"    --env-file "$JITSI_ENV" -f docker-compose.jitsi.yml -f docker-compose.jitsi.prod.yml
 verifier "Jitsi + derrière le proxy" --env-file "$JITSI_ENV" -f docker-compose.jitsi.yml -f docker-compose.jitsi.behind-proxy.yml
+verifier "plugNmeet (+ proxy edge)"  --env-file plugnmeet/plugnmeet.env.example -f plugnmeet/docker-compose.plugnmeet.yml --profile edge
 
 printf '\n'
 if [ "$FAILURES" -gt 0 ]; then
