@@ -20,7 +20,7 @@ d'accès que je n'ai pas (serveur Hetzner, compte SMS). Tout ce qui pouvait
 | Exigence | Code | Vérification réelle | Statut |
 |---|---|---|---|
 | P0-1 plugNmeet remplace Jitsi | intégration complète | instance plugNmeet **réelle** (v2.5.3, Docker local) + navigateur, 2 participants | PASS VÉRIFIÉ en local · **BLOCAGE EXTERNE** pour Hetzner |
-| P0-2 pas de déconnexion FEBA en réunion | cause trouvée et corrigée | essai réel ≥ 60 min (voir § 3) | CORRIGÉ |
+| P0-2 pas de déconnexion FEBA en réunion | cause trouvée et corrigée | essai réel de 62 min, coupure serveur comprise (§ 3) | CORRIGÉ · PASS VÉRIFIÉ |
 | P0-3 `noreply@globalfeba.com` | tous les chemins | en-tête From lu dans Mailpit | CORRIGÉ · délivrabilité réelle À TESTER |
 | P0-4 SMS (e-mails) | mécanisme central complet | Celery réel, transport « capture » | SIMULÉ · **BLOCAGE EXTERNE** (aucun compte SMS) |
 | P0-4 SMS (relances) | 10 scénarios | tests automatisés | SIMULÉ · **BLOCAGE EXTERNE** |
@@ -81,7 +81,9 @@ audio/vidéo reçues par plugNmeet.
 
 **Déploiement Hetzner** : BLOCAGE EXTERNE (clé SSH refusée). Livré :
 Compose isolé, versions figées, secrets générés hors dépôt, proxy HTTPS
-(`nginx -t` validé), pare-feu, DNS, recette, bascule, retour arrière.
+(`nginx -t` validé ; acheminement WebSocket à travers ce proxy NON EXÉCUTÉ
+en local : il exige que plugNmeet joigne sa propre URL publique en TLS),
+pare-feu, DNS, recette, bascule, retour arrière.
 
 ## 3. P0-2 — Session FEBA pendant les réunions
 
@@ -100,8 +102,21 @@ explicite du serveur, renouvellement préventif 5 min avant expiration,
 synchronisation des onglets, fermeture de l'onglet de réunion sans effet
 sur la session. Aucune prolongation au-delà de la durée serveur.
 
-**Vérification réelle** : voir § 6 (essai de 60 minutes, coupure
-backend/serveur de développement de ~2 min pendant l'essai).
+**Vérification réelle — essai de 62 minutes** (pile FEBA isolée sur
+PostgreSQL + plugNmeet réel, navigateur, jeton d'accès de 60 min) :
+
+| Mesure | Résultat |
+|---|---|
+| Réunion | 01:43:14 → 02:46:04 UTC (62,8 min), 2 participants |
+| Présences (webhooks réels) | administratrice 62,6 min, élève 62,1 min |
+| Onglet FEBA ouvert pendant tout l'essai (liste des salles rafraîchie toutes les 30 s) | jamais déconnecté |
+| Renouvellement | UNE rotation, préventive, ~4 min avant l'expiration (jeton suivant valable jusqu'à 03:30:58) ; côté serveur, un seul jeton mis en liste noire, aucun refus |
+| Coupure à 02:10-02:12 (backend et serveur de développement reconstruits) | session conservée, mêmes jetons |
+| Fin de réunion depuis FEBA | les deux onglets de réunion reviennent sur « Votre session FEBA est toujours ouverte » ; « Retour à FEBA » → tableau de bord, même utilisateur |
+
+Observation réelle : un participant a quitté la réunion pendant la
+coupure de 02:10 ; son événement de sortie n'a pas été reçu. Sa présence
+a été close par la fin de réunion (comportement prévu, § 2).
 
 ## 4. P0-3 — Expéditeur
 
