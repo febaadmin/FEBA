@@ -5,7 +5,9 @@ services:
     environment:
       POSTGRES_DB: feba_prod
       POSTGRES_USER: feba_user
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      # Lu dans .env.prod : TOUJOURS lancer avec « --env-file .env.prod »
+      # (scripts/deploy_feba.sh le fait). Sans lui : arrêt explicite.
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD manquant - lancez docker compose avec --env-file .env.prod}
     volumes:
       - postgres_prod_data:/var/lib/postgresql/data
     restart: unless-stopped
@@ -29,6 +31,10 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile.prod
+    # UNE image pour le backend, le worker et Beat : les trois exécutent
+    # exactement le même code (elles étaient construites séparément).
+    # FEBA_IMAGE_TAG permet le retour arrière vers l'image précédente.
+    image: feba-backend:${FEBA_IMAGE_TAG:-current}
     container_name: feba_backend_prod
     env_file: .env.prod
     volumes:
@@ -56,9 +62,8 @@ services:
       start_period: 30s
 
   celery-prod:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile.prod
+    image: feba-backend:${FEBA_IMAGE_TAG:-current}
+    pull_policy: never
     container_name: feba_celery_prod
     env_file: .env.prod
     volumes:
@@ -80,9 +85,8 @@ services:
       start_period: 60s
 
   celery-beat:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile.prod
+    image: feba-backend:${FEBA_IMAGE_TAG:-current}
+    pull_policy: never
     container_name: feba_celery_beat
     env_file: .env.prod
     depends_on:
@@ -104,6 +108,7 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile.prod
+    image: feba-frontend:${FEBA_IMAGE_TAG:-current}
     container_name: feba_frontend_prod
     restart: unless-stopped
     expose:

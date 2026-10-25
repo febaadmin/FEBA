@@ -97,3 +97,20 @@ class PreflightTests(SimpleTestCase):
             call_command("production_preflight", stdout=out)
         self.assertNotIn("mot-de-passe-test", out.getvalue())
         self.assertNotIn("s" * 40, out.getvalue())
+
+
+class HealthBehindTlsRedirectTests(SimpleTestCase):
+    """La route de santé répond en HTTP direct malgré SECURE_SSL_REDIRECT."""
+
+    def test_route_de_sante_exemptee_de_la_redirection_https(self):
+        from tests.repo_root import read_repo_file
+        prod = read_repo_file("backend", "feba_project", "settings", "prod.py")
+        self.assertIn("SECURE_REDIRECT_EXEMPT = [r'^api/health/$']", prod)
+        from django.test import Client
+        # Un client NEUF par réglage : le middleware lit les réglages à son chargement.
+        with override_settings(SECURE_SSL_REDIRECT=True, SECURE_REDIRECT_EXEMPT=[r'^api/health/$']):
+            client = Client()
+            self.assertNotIn(client.get("/api/health/").status_code, (301, 302))
+            self.assertEqual(client.get("/api/auth/me/").status_code, 301)   # le reste reste protégé
+        with override_settings(SECURE_SSL_REDIRECT=True, SECURE_REDIRECT_EXEMPT=[]):
+            self.assertEqual(Client().get("/api/health/").status_code, 301)  # défaut d'origine
