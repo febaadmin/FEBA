@@ -256,14 +256,16 @@ export default function OnlineSchedule() {
                   </div>
                 ))}
                 {gridTimeSlots.map((slot) => {
-                  const [start] = slot.split("-");
+                  const [start, end] = slot.split("-");
                   return [
                     <div key={`label-${slot}`} className="bg-slate-50 border border-slate-100 p-2 text-xs text-slate-500 text-center font-mono">
-                      {start}
+                      {start}<br />{end}
                     </div>,
                     ...DAYS.map((_, di) => {
                       const items = sessions.filter(
-                        (s) => s.day_of_week === di && s.start_time_utc?.slice(0, 5) === start,
+                        // Créneau COMPLET : voir CampusSchedule (doublons à la même heure).
+                        (s) => s.day_of_week === di && s.start_time_utc?.slice(0, 5) === start
+                          && String(s.end_time_utc) === end,
                       );
                       return (
                         <div key={`${slot}-${di}`} className="border border-slate-100 p-1 min-h-[64px]">

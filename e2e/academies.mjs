@@ -135,7 +135,13 @@ const nAll = (await servedRows('/api/students/')).length;
 const badgesAll = await visibleAcademies();
 
 const msFeba = await switchAcademy('Faith & Excellence');
-const nFeba = (await servedRows('/api/students/')).length;
+// Effectif AFFICHÉ (compteur de la page) : au retour sur une académie déjà
+// visitée, l'écran peut être servi par le cache (aucune nouvelle réponse
+// réseau) — juger sur la « dernière réponse réseau » rendait ce contrôle
+// instable (succès / échec selon le moment), alors que l'écran était juste.
+const shownCount = async () => Number(((await page.innerText('main')).match(/(\d+)\s+(élève|student)/i) || [])[1]);
+const nFeba = await shownCount();
+const badgesBack = await visibleAcademies();
 
 log(`  Élèves servis : FEBA=${nFeba0} → FHA=${nFha} (${msFha} ms) → TOUTES=${nAll} (${msAll} ms) → FEBA=${nFeba} (${msFeba} ms)`);
 log(`  Badges affichés : FEBA=${JSON.stringify(badgesFeba)} · FHA=${JSON.stringify(badgesFha)} · TOUTES=${JSON.stringify(badgesAll)}`);
@@ -154,8 +160,8 @@ const mismatched = netlog.filter((r) => r.sent && r.served && r.sent !== r.serve
                                        && !r.url.includes('entity-context/switch'));
 check(mismatched.length === 0, 'aucune réponse servie sous une portée périmée',
       mismatched.length ? JSON.stringify(mismatched.slice(0, 3)) : '');
-const lastScope = netlog.filter(r => r.served && r.url.includes('/students/')).slice(-1)[0]?.served;
-check(lastScope === 'FEBA', 'dernières données élèves servies sous la bonne académie', `portée=${lastScope}`);
+check(badgesBack.length === 0, "retour sur FEBA : aucune ligne d'une autre académie affichée",
+      JSON.stringify(badgesBack));
 
 /* ═══ 2. Mode consolidé : badges partout ═════════════════════════════ */
 log('\n═══ 2. MODE « TOUTES LES ACADÉMIES » — IDENTIFICATION ═══');
@@ -210,6 +216,10 @@ await page.screenshot({ path: `${SHOTS}/v7-03-seances-refusees-feba.png` });
 await login('admin@febafha.org', 'Admin@2024');
 await page.goto(BASE + '/admin/schedule', { waitUntil: 'networkidle' });
 await page.waitForTimeout(1400);
+// La vue par défaut est désormais la GRILLE (parité avec FEBA) ; les
+// colonnes métier (UTC, heure locale, salle, rappel) sont dans la LISTE.
+await page.locator('button:text-matches("^(Liste|List)$")').first().click();
+await page.waitForTimeout(600);
 const fhaHeaders = await page.locator('table thead th').allInnerTexts();
 check(fhaHeaders.some(h => /UTC/i.test(h)), 'colonne heure UTC sur les séances FEBA FHA', JSON.stringify(fhaHeaders));
 check(fhaHeaders.some(h => /locale|local/i.test(h)), 'colonne heure locale');

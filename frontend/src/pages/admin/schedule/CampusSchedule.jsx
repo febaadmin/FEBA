@@ -136,7 +136,11 @@ export default function CampusSchedule() {
                   return [
                     <div key={`label-${slot}`} className="bg-slate-50 border border-slate-100 p-2 text-xs text-slate-500 text-center font-mono">{start}<br/>{end}</div>,
                     ...DAYS.map((_, di) => {
-                      const items = schedules.filter(s => s.day_of_week === di && s.start_time?.slice(0,5) === start);
+                      // Créneau COMPLET (début ET fin) : les lignes sont des couples
+                      // début-fin ; filtrer sur le seul début affichait deux fois
+                      // un cours quand un autre commençait à la même heure.
+                      const items = schedules.filter(s => s.day_of_week === di && s.start_time?.slice(0,5) === start
+                        && s.end_time?.slice(0,5) === end);
                       return (
                         <div key={`${slot}-${di}`} className="border border-slate-100 p-1 min-h-[60px]">
                           {items.map((item, ii) => {
