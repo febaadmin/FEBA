@@ -1,5 +1,8 @@
 # FEBA — Règles métier des types de classe
 
+> **DOCUMENT HISTORIQUE** — il décrit une version antérieure de FEBA ; ses résultats n'ont pas été
+> rejoués tels quels sur cette version. Références à jour : `DOCUMENTATION_INDEX.md`, `FINAL_REPORT.md`.
+
 Source de vérité : `backend/apps/classes/subject_rules.py`.
 Reflet navigateur : `frontend/src/utils/classLanguage.js`.
 

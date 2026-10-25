@@ -1,5 +1,9 @@
 # FEBA — Guide de déploiement TURN / Coturn
 
+> **RETOUR ARRIÈRE UNIQUEMENT** — la visioconférence de production est plugNmeet
+> (`PLUGNMEET_DEPLOYMENT_GUIDE.md`). Ce document ne sert qu'à maintenir ou rétablir Jitsi
+> (`VIDEO_PROVIDER=jitsi`) ; ne jamais activer les deux moteurs à la fois.
+
 **TURN n'est PAS déployé.** Ce document est un guide de préparation, pas
 la description d'une installation existante. Aucune configuration TURN
 n'est incluse dans la livraison : livrer un `docker-compose.turn.yml` non

@@ -5,9 +5,12 @@ services:
     environment:
       POSTGRES_DB: feba_prod
       POSTGRES_USER: feba_user
-      # Lu dans .env.prod : TOUJOURS lancer avec « --env-file .env.prod »
-      # (scripts/deploy_feba.sh le fait). Sans lui : arrêt explicite.
-      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD manquant - lancez docker compose avec --env-file .env.prod}
+      # Lu dans .env.prod (« --env-file .env.prod », ce que fait
+      # scripts/deploy_feba.sh). Ne sert qu'à INITIALISER un volume vide :
+      # PostgreSQL refuse alors de démarrer sans lui (message explicite).
+      # Sur une base existante, il est ignoré — d'où une interpolation
+      # tolérante, qui laisse fonctionner « exec » et « logs ».
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-}
     volumes:
       - postgres_prod_data:/var/lib/postgresql/data
     restart: unless-stopped

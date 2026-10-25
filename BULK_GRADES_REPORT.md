@@ -1,5 +1,8 @@
 # BULK_GRADES_REPORT.md — Saisie groupée de notes (V6, 20/07/2026)
 
+> **DOCUMENT HISTORIQUE** — il décrit une version antérieure de FEBA ; ses résultats n'ont pas été
+> rejoués tels quels sur cette version. Références à jour : `DOCUMENTATION_INDEX.md`, `FINAL_REPORT.md`.
+
 Saisir plusieurs notes (plusieurs matières) pour **un même élève** en **une
 seule opération atomique**, sans jamais modifier la saisie simple existante.
 

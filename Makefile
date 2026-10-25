@@ -17,7 +17,7 @@
 #   make diagnose                        → diagnostic en cas de problème
 #   make prod                              → démarre l'environnement de production
 
-.PHONY: plugnmeet-setup-local plugnmeet-up plugnmeet-down plugnmeet-logs plugnmeet-health install bootstrap dev migrate migrations-plan superuser seed seed-reset seed-check init-academies \
+.PHONY: prod prod-rollback prod-preflight prod-logs prod-down plugnmeet-setup-local plugnmeet-up plugnmeet-down plugnmeet-logs plugnmeet-health install bootstrap dev migrate migrations-plan superuser seed seed-reset seed-check init-academies \
         test-sqlite test-postgres test-frontend test-e2e test-install \
         payments-setup payments-check payments-test payments-webhook-check \
         documents-check documents-install documents-ready documents-calibrate documents-compare \
@@ -405,11 +405,19 @@ install-check:
 repair:
 	bash scripts/repair.sh
 
+# Déploiement vérifié (sauvegarde, contrôle de pré-démarrage, fumée,
+# retour arrière automatique) — voir scripts/deploy_feba.sh.
 prod:
-	docker compose -f docker-compose.prod.yml up --build -d
+	bash scripts/deploy_feba.sh
+
+prod-rollback:
+	bash scripts/deploy_feba.sh --rollback
+
+prod-preflight:
+	docker compose --env-file .env.prod -f docker-compose.prod.yml run --rm --no-deps -T backend-prod python manage.py production_preflight
 
 prod-logs:
-	docker compose -f docker-compose.prod.yml logs -f backend-prod
+	docker compose --env-file .env.prod -f docker-compose.prod.yml logs -f backend-prod celery-prod celery-beat
 
 prod-down:
-	docker compose -f docker-compose.prod.yml down
+	docker compose --env-file .env.prod -f docker-compose.prod.yml down

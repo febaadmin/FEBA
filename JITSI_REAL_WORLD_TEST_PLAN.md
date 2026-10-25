@@ -1,5 +1,9 @@
 # FEBA — Plan de test réel de la classe virtuelle
 
+> **RETOUR ARRIÈRE UNIQUEMENT** — la visioconférence de production est plugNmeet
+> (`PLUGNMEET_DEPLOYMENT_GUIDE.md`). Ce document ne sert qu'à maintenir ou rétablir Jitsi
+> (`VIDEO_PROVIDER=jitsi`) ; ne jamais activer les deux moteurs à la fois.
+
 Ces tests **ne peuvent pas** être exécutés depuis l'environnement de
 développement : il n'a aucun accès sortant depuis un navigateur, et son
 mandataire ne relaie aucune mise à niveau WebSocket. Ils sont donc à

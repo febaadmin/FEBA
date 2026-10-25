@@ -1,5 +1,9 @@
 # FEBA — TURN / Coturn : décision technique
 
+> **RETOUR ARRIÈRE UNIQUEMENT** — la visioconférence de production est plugNmeet
+> (`PLUGNMEET_DEPLOYMENT_GUIDE.md`). Ce document ne sert qu'à maintenir ou rétablir Jitsi
+> (`VIDEO_PROVIDER=jitsi`) ; ne jamais activer les deux moteurs à la fois.
+
 **Décision : OUI, TURN est nécessaire pour FEBA French Heritage Academy.**
 Il n'est **pas** déployé à ce jour.
 

@@ -1,5 +1,8 @@
 # FEBA — Rapport de tests V10
 
+> **DOCUMENT HISTORIQUE** — il décrit une version antérieure de FEBA ; ses résultats n'ont pas été
+> rejoués tels quels sur cette version. Références à jour : `DOCUMENTATION_INDEX.md`, `FINAL_REPORT.md`.
+
 Exécuté le 2026-09-04.
 
 ---

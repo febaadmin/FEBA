@@ -1,5 +1,8 @@
 # FEBA — Audit de la visioconférence (V10)
 
+> **DOCUMENT HISTORIQUE** — il décrit une version antérieure de FEBA ; ses résultats n'ont pas été
+> rejoués tels quels sur cette version. Références à jour : `DOCUMENTATION_INDEX.md`, `FINAL_REPORT.md`.
+
 Instance auto-hébergée `meet.globalfeba.com`. **Aucun repli vers
 `meet.jit.si` n'existe dans le code** — vérifié dans les sources, dans le
 bundle construit et dans le navigateur.

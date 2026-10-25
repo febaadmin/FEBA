@@ -1,5 +1,8 @@
 # Limitations connues — V5 (correctifs P0 à P7)
 
+> **DOCUMENT HISTORIQUE** — il décrit une version antérieure de FEBA ; ses résultats n'ont pas été
+> rejoués tels quels sur cette version. Références à jour : `DOCUMENTATION_INDEX.md`, `FINAL_REPORT.md`.
+
 ## 1. Les huit anomalies : état réel
 
 | | Anomalie | État | Vérification |

@@ -1,5 +1,8 @@
 # PREVIOUS_USAGE_MODELS_AUDIT — classement des modèles
 
+> **DOCUMENT HISTORIQUE** — il décrit une version antérieure de FEBA ; ses résultats n'ont pas été
+> rejoués tels quels sur cette version. Références à jour : `DOCUMENTATION_INDEX.md`, `FINAL_REPORT.md`.
+
 Audit conduit sur les modèles réellement présents dans l'archive source, via
 introspection Django (`apps.get_model`), et non d'après une liste supposée.
 Chaque chemin d'académie a été validé en construisant la requête ORM

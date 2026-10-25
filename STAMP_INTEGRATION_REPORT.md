@@ -1,5 +1,8 @@
 # STAMP_INTEGRATION_REPORT.md — Cachets officiels (V7 + V8)
 
+> **DOCUMENT HISTORIQUE** — il décrit une version antérieure de FEBA ; ses résultats n'ont pas été
+> rejoués tels quels sur cette version. Références à jour : `DOCUMENTATION_INDEX.md`, `FINAL_REPORT.md`.
+
 ## V8 — Deux cachets, deux autorités (26/07/2026)
 
 | Document | Cachet | Fichiers |

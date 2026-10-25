@@ -1,5 +1,8 @@
 # FEBA — Rapport de validation : e-mails, pièces jointes, boîte d'envoi
 
+> **DOCUMENT HISTORIQUE** — il décrit une version antérieure de FEBA ; ses résultats n'ont pas été
+> rejoués tels quels sur cette version. Références à jour : `DOCUMENTATION_INDEX.md`, `FINAL_REPORT.md`.
+
 Chaque statut renvoie à une commande exécutée. Statuts possibles :
 PASS VÉRIFIÉ · CORRIGÉ · FAIL · À TESTER EN ENVIRONNEMENT RÉEL ·
 BLOCAGE EXTERNE · LIMITATION CONNUE.

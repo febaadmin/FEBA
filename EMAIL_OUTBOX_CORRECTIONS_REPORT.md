@@ -1,5 +1,8 @@
 # FEBA — Rapport de corrections : e-mails, pièces jointes, boîte d'envoi
 
+> **DOCUMENT HISTORIQUE** — il décrit une version antérieure de FEBA ; ses résultats n'ont pas été
+> rejoués tels quels sur cette version. Références à jour : `DOCUMENTATION_INDEX.md`, `FINAL_REPORT.md`.
+
 Branche `fix/feba-email-outbox`, partie de la version de référence
 `FEBA_VERSION_CORRIGEE_AUDIT_COMPLET` (commit `04595a7`, toutes ses
 corrections conservées). Résultats chiffrés : `EMAIL_OUTBOX_VALIDATION_REPORT.md`.

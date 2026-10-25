@@ -1,5 +1,9 @@
 # FEBA — Actions à exécuter sur le serveur Jitsi
 
+> **RETOUR ARRIÈRE UNIQUEMENT** — la visioconférence de production est plugNmeet
+> (`PLUGNMEET_DEPLOYMENT_GUIDE.md`). Ce document ne sert qu'à maintenir ou rétablir Jitsi
+> (`VIDEO_PROVIDER=jitsi`) ; ne jamais activer les deux moteurs à la fois.
+
 **EXTERNAL ACTION REQUIRED.** Cet environnement n'a pas d'accès SSH au
 serveur Jitsi. Rien de ce qui suit n'a été exécuté ; ce sont les commandes
 exactes à copier-coller.

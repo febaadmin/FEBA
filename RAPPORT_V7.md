@@ -1,5 +1,8 @@
 # Itération V7 — quatre priorités, et ce qu'elles cachaient
 
+> **DOCUMENT HISTORIQUE** — il décrit une version antérieure de FEBA ; ses résultats n'ont pas été
+> rejoués tels quels sur cette version. Références à jour : `DOCUMENTATION_INDEX.md`, `FINAL_REPORT.md`.
+
 Ce rapport décrit ce qui a été corrigé, **pourquoi le défaut existait**, et
 comment la correction est vérifiée. Les chiffres cités proviennent des
 exécutions réelles reproduites dans `VERIFICATION_V7.md`.

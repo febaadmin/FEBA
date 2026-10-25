@@ -1,5 +1,8 @@
 # FEBA — Actions humaines requises (V10)
 
+> **DOCUMENT HISTORIQUE** — il décrit une version antérieure de FEBA ; ses résultats n'ont pas été
+> rejoués tels quels sur cette version. Références à jour : `DOCUMENTATION_INDEX.md`, `FINAL_REPORT.md`.
+
 Ce que le code ne peut pas faire seul. Aucune de ces actions n'a été
 exécutée : conformément aux consignes, **rien n'a été déployé**.
 

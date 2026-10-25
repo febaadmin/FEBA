@@ -1,5 +1,8 @@
 # FEBA — Rapport de validation (audit complet, octobre 2026)
 
+> **DOCUMENT HISTORIQUE** — il décrit une version antérieure de FEBA ; ses résultats n'ont pas été
+> rejoués tels quels sur cette version. Références à jour : `DOCUMENTATION_INDEX.md`, `FINAL_REPORT.md`.
+
 Environnement : macOS, Python 3.11 (venv), Node 20.20.2, Docker 29.4.1 /
 Compose 5.1.3. Services de test jetables : PostgreSQL 16-alpine, Redis 7,
 **Mailpit** (SMTP de test). Aucun service de production n'a été contacté.

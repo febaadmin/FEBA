@@ -1,5 +1,8 @@
 # FEBA — Rapport : plugNmeet, session, expéditeur, SMS, audit
 
+> **DOCUMENT HISTORIQUE** — il décrit une version antérieure de FEBA ; ses résultats n'ont pas été
+> rejoués tels quels sur cette version. Références à jour : `DOCUMENTATION_INDEX.md`, `FINAL_REPORT.md`.
+
 Branche `fix/feba-plugnmeet-sms-p0`, partie de la version
 `FEBA_VERSION_EMAILS_CORRIGEE_AUDIT_COMPLET` (SHA-256
 `e20c8989…6261`, commit `d9aac53`, toutes ses corrections conservées).

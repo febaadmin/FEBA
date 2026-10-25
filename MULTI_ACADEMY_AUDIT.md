@@ -1,5 +1,8 @@
 # FEBA — Audit de la portée académique (V10)
 
+> **DOCUMENT HISTORIQUE** — il décrit une version antérieure de FEBA ; ses résultats n'ont pas été
+> rejoués tels quels sur cette version. Références à jour : `DOCUMENTATION_INDEX.md`, `FINAL_REPORT.md`.
+
 §6 et §44 : ne pas réparer quatre menus déroulants séparément, mais
 chercher si l'abstraction de portée est cassée.
 

@@ -1,5 +1,8 @@
 # GRADE_PRECISION_REPORT.md — Note 10 conservée exactement (V7-P4, 25/07/2026)
 
+> **DOCUMENT HISTORIQUE** — il décrit une version antérieure de FEBA ; ses résultats n'ont pas été
+> rejoués tels quels sur cette version. Références à jour : `DOCUMENTATION_INDEX.md`, `FINAL_REPORT.md`.
+
 ## 1. Symptôme
 
 En saisissant **10**, l'application enregistrait/affichait parfois **9,5** ou

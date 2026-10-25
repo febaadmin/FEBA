@@ -1,5 +1,8 @@
 # MEDIA_CROP_AUDIT.md — Audit de cadrage des médias (V5 + V6 + V6.1)
 
+> **DOCUMENT HISTORIQUE** — il décrit une version antérieure de FEBA ; ses résultats n'ont pas été
+> rejoués tels quels sur cette version. Références à jour : `DOCUMENTATION_INDEX.md`, `FINAL_REPORT.md`.
+
 ## Recadrages V6.1 (20/07/2026) — vignettes galerie annotées « mal cadrée »
 
 Chaque vignette signalée a été inspectée individuellement (fichier source

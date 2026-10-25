@@ -1,5 +1,8 @@
 # Envoi des e-mails — ce qui est vrai, et ce qui ne l'est pas
 
+> **DOCUMENT HISTORIQUE** — il décrit une version antérieure de FEBA ; ses résultats n'ont pas été
+> rejoués tels quels sur cette version. Références à jour : `DOCUMENTATION_INDEX.md`, `FINAL_REPORT.md`.
+
 ## La réserve, d'abord
 
 **Aucun e-mail n'est parti sur Internet pendant ces vérifications.** Le

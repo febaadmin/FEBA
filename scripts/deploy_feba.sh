@@ -21,7 +21,7 @@
 # migrations sont celles de la version (additives dans cette livraison).
 #
 # Variables facultatives (essais, préproduction) :
-#   FEBA_ENV_FILE (.env.prod) · FEBA_PROJECT (nom Compose) ·
+#   FEBA_ENV_FILE (.env.prod) · FEBA_PROJECT (nom Compose, pile d'essai seulement) ·
 #   FEBA_COMPOSE_FILES (« -f docker-compose.prod.yml ») · FEBA_HTTPS_PORT (443) ·
 #   FEBA_LETSENCRYPT_DIR (/etc/letsencrypt) · FEBA_BACKUP_DIR (./backups)
 # ══════════════════════════════════════════════════════════════════════
@@ -31,7 +31,10 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
 ENV_FILE="${FEBA_ENV_FILE:-.env.prod}"
-PROJECT="${FEBA_PROJECT:-feba}"
+# Nom de projet Compose : celui par défaut (dossier), comme le workflow
+# .github/workflows/deploy.yml — en imposer un autre créerait une SECONDE pile
+# avec des volumes vides. FEBA_PROJECT seulement pour une pile d'essai.
+PROJECT="${FEBA_PROJECT:-}"
 COMPOSE_FILES="${FEBA_COMPOSE_FILES:--f docker-compose.prod.yml}"
 HTTPS_PORT="${FEBA_HTTPS_PORT:-443}"
 LE_DIR="${FEBA_LETSENCRYPT_DIR:-/etc/letsencrypt}"
@@ -40,7 +43,7 @@ ROLLBACK=0
 [ "${1:-}" = "--rollback" ] && ROLLBACK=1
 
 # shellcheck disable=SC2086
-dc() { docker compose -p "$PROJECT" --env-file "$ENV_FILE" $COMPOSE_FILES "$@"; }
+dc() { docker compose ${PROJECT:+-p "$PROJECT"} --env-file "$ENV_FILE" $COMPOSE_FILES "$@"; }
 ok()   { printf '  \033[32mOK\033[0m    %s\n' "$*"; }
 step() { printf '\n\033[1m[%s] %s\033[0m\n' "$1" "$2"; }
 fail() { printf '  \033[31mÉCHEC\033[0m %s\n' "$*"; exit 1; }

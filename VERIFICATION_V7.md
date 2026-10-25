@@ -1,5 +1,8 @@
 # Vérification V7 — sorties brutes
 
+> **DOCUMENT HISTORIQUE** — il décrit une version antérieure de FEBA ; ses résultats n'ont pas été
+> rejoués tels quels sur cette version. Références à jour : `DOCUMENTATION_INDEX.md`, `FINAL_REPORT.md`.
+
 Toutes les commandes ci-dessous ont été exécutées sur le commit livré.
 Aucune sortie n'est reconstituée : ce sont les journaux réels.
 

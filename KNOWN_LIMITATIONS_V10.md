@@ -1,5 +1,8 @@
 # FEBA — Limites connues V10
 
+> **DOCUMENT HISTORIQUE** — il décrit une version antérieure de FEBA ; ses résultats n'ont pas été
+> rejoués tels quels sur cette version. Références à jour : `DOCUMENTATION_INDEX.md`, `FINAL_REPORT.md`.
+
 Ce qui n'a **pas** pu être vérifié dans l'environnement de développement,
 et pourquoi. Rien ici n'est présenté comme fonctionnel sans preuve.
 

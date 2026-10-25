@@ -1,4 +1,7 @@
 # AUDIT_REPORT.md — Missions V4 → V8
+
+> **DOCUMENT HISTORIQUE** — il décrit une version antérieure de FEBA ; ses résultats n'ont pas été
+> rejoués tels quels sur cette version. Références à jour : `DOCUMENTATION_INDEX.md`, `FINAL_REPORT.md`.
 ## Audit V9-bis — ce que la mesure a trouvé
 
 Trois écarts de calibrage, invisibles au code, tous du même type : les

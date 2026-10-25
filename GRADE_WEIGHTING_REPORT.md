@@ -1,5 +1,8 @@
 # GRADE_WEIGHTING_REPORT.md — Poids des évaluations (V8-P4, 26/07/2026)
 
+> **DOCUMENT HISTORIQUE** — il décrit une version antérieure de FEBA ; ses résultats n'ont pas été
+> rejoués tels quels sur cette version. Références à jour : `DOCUMENTATION_INDEX.md`, `FINAL_REPORT.md`.
+
 ## 1. Règle métier
 
 **Toutes les évaluations d'une même matière pèsent 1**, quel que soit leur type

@@ -1,5 +1,8 @@
 # PROFILE_CREATION_REPORT.md — Création des profils (V8-P1/P2, 26/07/2026)
 
+> **DOCUMENT HISTORIQUE** — il décrit une version antérieure de FEBA ; ses résultats n'ont pas été
+> rejoués tels quels sur cette version. Références à jour : `DOCUMENTATION_INDEX.md`, `FINAL_REPORT.md`.
+
 ## 1. Reproduction du bug (Priorité 1)
 
 Scénario exact : Super administrateur → `/superadmin/teachers` → « Nouvel

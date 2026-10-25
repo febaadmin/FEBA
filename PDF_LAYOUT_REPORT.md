@@ -1,5 +1,8 @@
 # PDF_LAYOUT_REPORT.md — Mise en page des documents (V8-P6/P7, 26/07/2026)
 
+> **DOCUMENT HISTORIQUE** — il décrit une version antérieure de FEBA ; ses résultats n'ont pas été
+> rejoués tels quels sur cette version. Références à jour : `DOCUMENTATION_INDEX.md`, `FINAL_REPORT.md`.
+
 ## 1. Reçu de paiement — zone de validation unique
 
 ### Avant
