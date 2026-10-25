@@ -3,9 +3,10 @@
  * Produit un rapport texte + des captures, et sort en échec si un point
  * du cahier des charges n'est pas satisfait.
  */
+import { fileURLToPath } from 'node:url';  // chemins avec espaces (« New Version »)
 import { chromium } from './playwright.mjs';
 const BASE = process.env.E2E_BASE_URL || 'http://127.0.0.1:5173';
-const SHOTS = process.env.E2E_SHOTS || new URL('./captures', import.meta.url).pathname;
+const SHOTS = process.env.E2E_SHOTS || fileURLToPath(new URL('./captures', import.meta.url));
 import fs from 'node:fs';
 fs.mkdirSync(SHOTS, { recursive: true });
 const OUT = [];

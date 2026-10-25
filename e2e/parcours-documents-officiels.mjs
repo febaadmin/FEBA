@@ -26,6 +26,7 @@
  * compte précédent — un contrôle d'isolation passerait alors pour de
  * mauvaises raisons.
  */
+import { fileURLToPath } from 'node:url';  // chemins avec espaces (« New Version »)
 import fs from 'node:fs';
 import { chromium } from './playwright.mjs';
 
@@ -35,7 +36,7 @@ const BASE = process.env.E2E_BASE_URL || 'http://127.0.0.1:5173';
 // ferait échouer chaque appel sur la politique d'origine du navigateur —
 // ce qui ne prouverait rien sur l'application, seulement sur le scénario.
 const API = process.env.E2E_API_URL || BASE + '/api';
-const SHOTS = process.env.E2E_SHOTS || new URL('./captures', import.meta.url).pathname;
+const SHOTS = process.env.E2E_SHOTS || fileURLToPath(new URL('./captures', import.meta.url));
 fs.mkdirSync(SHOTS, { recursive: true });
 
 const OUT = [];
@@ -608,6 +609,6 @@ const total = OUT.filter((l) => /^\s+(OK|ÉCHEC)/.test(l)).length;
 log(`\n${total - FAIL}/${total} contrôles passés.`);
 log(`Captures : ${SHOTS}`);
 
-fs.writeFileSync(new URL('./rapport-documents-officiels.txt', import.meta.url).pathname,
+fs.writeFileSync(fileURLToPath(new URL('./rapport-documents-officiels.txt', import.meta.url)),
                  OUT.join('\n') + '\n');
 process.exit(FAIL === 0 ? 0 : 1);
