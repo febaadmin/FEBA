@@ -521,6 +521,9 @@ STRIPE_WEBHOOK_SECRET = config('STRIPE_WEBHOOK_SECRET', default='')
 # d'envoyer des événements en clair, et une redirection non chiffrée
 # exposerait l'identifiant de session.
 PUBLIC_BASE_URL = config('PUBLIC_BASE_URL', default='http://localhost:5173')
+# production : transports de test refusés au démarrage ; staging :
+# préproduction, tolérés en avertissement (apps/core/preflight.py).
+DEPLOYMENT_STAGE = config('DEPLOYMENT_STAGE', default='production')
 STRIPE_SUCCESS_URL = config(
     'STRIPE_SUCCESS_URL', default=f'{PUBLIC_BASE_URL}/parent/payments?paiement=succes',
 )

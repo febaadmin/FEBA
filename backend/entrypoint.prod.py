@@ -8,7 +8,8 @@ multi-workers) plutôt que le serveur de développement Django.
 
 Ordonnance :
   1. Attendre PostgreSQL
-  2. `manage.py check --deploy` — vérifications Django standards +
+  2. `production_preflight --network` puis `manage.py check --deploy` —
+     configuration de production effective, vérifications Django standards +
      vérifications spécifiques production (cookies sécurisés, DEBUG,
      etc.). Les avertissements de `--deploy` n'arrêtent PAS le
      démarrage (ce sont des recommandations, pas des erreurs) ; seule
@@ -67,9 +68,20 @@ try:
 except ImportError as e:
     print(f"    Avertissement : impossible de vérifier PostgreSQL ({e}) — on continue.")
 
-# ── 2. Vérification de la configuration Django ───────────────────────────────
-banner("[2/5] Vérification de la configuration Django (manage.py check)")
-result = subprocess.run([sys.executable, "manage.py", "check"], capture_output=False)
+# ── 2. Vérification de la configuration ─────────────────────────────────────
+# 2a. Configuration de PRODUCTION effective (apps/core/preflight.py) : un
+#     transport e-mail de test, un secret manquant, une URL publique en
+#     localhost ou un webhook hors ALLOWED_HOSTS REFUSENT le démarrage.
+banner("[2/5] Contrôle de la configuration de production (production_preflight)")
+result = subprocess.run([sys.executable, "manage.py", "production_preflight", "--network"],
+                        capture_output=False)
+if result.returncode != 0:
+    banner("ERREUR FATALE — configuration de production refusée")
+    sys.exit(result.returncode)
+
+# 2b. Contrôles Django, y compris ceux de --deploy (les avertissements de
+#     --deploy n'arrêtent pas le démarrage ; une ERREUR, si).
+result = subprocess.run([sys.executable, "manage.py", "check", "--deploy"], capture_output=False)
 if result.returncode != 0:
     banner("ERREUR FATALE — 'manage.py check' a échoué")
     print(f"Code de sortie : {result.returncode}")

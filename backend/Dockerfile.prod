@@ -3,6 +3,9 @@ FROM python:3.12-slim
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONFAULTHANDLER=1
+# Une image de PRODUCTION ne charge jamais les réglages de développement,
+# même si DJANGO_ENV manque dans l'environnement (settings/__init__.py).
+ENV DJANGO_ENV=prod
 
 RUN apt-get update && apt-get install -y \
     gcc libpq-dev \
