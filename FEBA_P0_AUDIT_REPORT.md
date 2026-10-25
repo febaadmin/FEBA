@@ -168,7 +168,7 @@ l'ordre des relances (une reprise aurait produit un second SMS).
 | Build Vite + recherche de secrets dans le bundle | OK, aucun secret ni numéro |
 | Assemblages Compose | 6 / 6 valides (dont plugNmeet + proxy) |
 
-Nouveaux tests : `test_plugnmeet_integration` (37, dont 3 contre l'instance
+Nouveaux tests : `test_plugnmeet_integration` (39, dont 3 contre l'instance
 réelle), `test_sms_mirror` (40), `test_email_sender_globalfeba` (16),
 `test_ratelimit_client_ip` (5), `tokenRefresh.test` (8),
 `sessionInterceptor.test` (3), `VirtualRoomEnded.test`,
