@@ -17,7 +17,7 @@ Un test **ignoré** n'est jamais compté comme réussi.
 
 | Suite | Résultat | Statut |
 |---|---|---|
-| Backend PostgreSQL 16 + Mailpit SMTP + plugNmeet v2.5.3 réel | __PG__ | __PG_STATUT__ |
+| Backend PostgreSQL 16 + Mailpit SMTP + plugNmeet v2.5.3 réel | **1643 réussis, 0 ignoré, 0 échec** (607 sous-tests), dont les tests plugNmeet et SMTP réels | PASS |
 | Backend SQLite | 1634 réussis, **9 ignorés** (concurrence : PostgreSQL requis ; tests plugNmeet/Mailpit réels sans service), 0 échec | PASS |
 | Frontend Vitest | 308 / 308 (37 fichiers) | PASS |
 | ESLint | 0 erreur (80 avertissements préexistants) | PASS |
@@ -55,7 +55,7 @@ Tests ajoutés par cette version (ils échouent sur l'ancien code) :
 
 | Contrôle | Résultat | Statut |
 |---|---|---|
-| Réunion 1 enseignant + 2 élèves, caméra et micro simulés (vrais flux WebRTC), salle d'attente, admission par l'enseignant | __LONG__ | __LONG_STATUT__ |
+| Réunion 1 enseignant + 2 élèves, caméra et micro simulés (vrais flux WebRTC), salle d'attente, admission par l'enseignant | 15:22 → 16:28 UTC : présences serveur 65,5 / 65,2 / 65,1 min, 0 reconnexion, 3 entrées et 3 sorties seulement ; contrôle toutes les 5 min (salle, `/auth/me`) : 0 échec ; fin par l'enseignant depuis FEBA (HTTP 200) → les 3 participants redirigés vers `/virtual-room/2/ended`. Les 3 participants tournaient sur la même machine | PASS |
 | Premier essai long (13:09–14:04 UTC) | ~55 min continues, puis veille de la machine hôte (fermeture du capot, journal `pmset`) : **interrompu**, non compté | FAIL (environnement) |
 | Coupure réseau de 10 s | participant conservé | PASS |
 | Coupure réseau de 45 s | plugNmeet retire l'élève après ~35 s ; retour via FEBA possible, reconnexion comptée ; session FEBA ouverte | PASS (limite plugNmeet documentée) |
@@ -68,7 +68,7 @@ Tests ajoutés par cette version (ils échouent sur l'ancien code) :
 | Contrôle | Résultat | Statut |
 |---|---|---|
 | Renouvellement après expiration du jeton d'accès (onglet resté ouvert pendant la veille de la machine) | à la reprise, rotation du jeton de renouvellement, nouvel accès valide, `/auth/me` 200, aucune déconnexion | PASS |
-| Renouvellement préventif pendant la réunion longue | __REFRESH__ | __REFRESH_STATUT__ |
+| Renouvellement préventif pendant la réunion longue | jetons d'accès échus à 16:22 ; entre 16:13 et 16:18, rotation des 3 jetons de renouvellement et nouveaux jetons d'accès (échéance 17:17), sans rechargement des onglets FEBA, participants restés dans la salle, `/auth/me` 200 | PASS |
 | Compte désactivé | renouvellement refusé (401 `user_inactive`), jeton mis en liste noire | PASS (test auto) |
 | Déconnexion, rotation, expiration | `test_session_revocation.py` | PASS (test auto) |
 | Plusieurs onglets, coupure réseau | session conservée (réunion longue, onglets FEBA séparés) | PASS |
@@ -88,7 +88,7 @@ ports locaux, certificat auto-signé, Mailpit à la place du SMTP réel) :
 | `deploy_feba.sh` : configuration invalide | refus avant toute modification (conteneur inchangé) | PASS |
 | `deploy_feba.sh` : échecs volontaires de vérification | retour automatique à la version précédente | PASS |
 | `deploy_feba.sh --rollback` | version précédente rétablie, santé 200 | PASS |
-| `deploy_feba.sh` depuis l'archive finale extraite | __DEPLOY__ | __DEPLOY_STATUT__ |
+| `deploy_feba.sh` sur l'arbre exact du commit final (`git archive`), par-dessus la pile existante | préflight sur l'image candidate, sauvegarde vérifiée, `previous`, santé HTTPS, accueil, 401, empreinte commune, ping Celery : réussi ; données conservées ; puis `--rollback` réussi et nouveau déploiement réussi (idempotent), santé 200 | PASS |
 | Certificat Let's Encrypt réel | non exécuté (pas de serveur public) | NOT RUN |
 
 ## 6. E-mail et SMS

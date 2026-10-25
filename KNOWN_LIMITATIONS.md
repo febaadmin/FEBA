@@ -35,6 +35,11 @@ Mesuré sur une instance plugNmeet v2.5.3 réelle (locale) :
 Ce comportement appartient à plugNmeet/LiveKit ; il n'est pas corrigeable
 dans FEBA sans modifier le client plugNmeet.
 
+Réunion longue (PASS) : 1 enseignant + 2 élèves pendant 65 min sur
+l'instance réelle, renouvellement préventif des jetons sans coupure — mais
+les trois navigateurs tournaient sur une seule machine (caméra et micro
+simulés).
+
 ### 000.3 Non vérifié en conditions réelles — NOT RUN
 - partage d'écran (le navigateur automatisé ne fournit pas de source
   d'écran) ;
