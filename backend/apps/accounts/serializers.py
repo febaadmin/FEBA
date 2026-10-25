@@ -18,7 +18,7 @@ import logging
 import re
 from rest_framework import serializers
 from django.contrib.auth.password_validation import validate_password
-from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer, TokenRefreshSerializer
 from django.contrib.auth import authenticate
 from .models import CustomUser
 from apps.core.academy_serializers import ACADEMY_FIELDS, AcademyMetadataMixin
@@ -414,3 +414,32 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
                     "Profil parent absent pour user %s lors du login : %s",
                     user.email, exc,
                 )
+
+
+# ── Renouvellement du jeton : la révocation fait foi ───────────────────────────
+
+class ActiveUserTokenRefreshSerializer(TokenRefreshSerializer):
+    """
+    DÉFAUT CORRIGÉ : le renouvellement standard ne vérifie pas le compte.
+    Un compte DÉSACTIVÉ (ou supprimé) obtenait encore de nouveaux jetons ;
+    ses requêtes étaient refusées une à une, mais le frontend, qui
+    renouvelle la session automatiquement, ne le renvoyait jamais à la
+    connexion. Désormais : 401, et le jeton présenté est mis en liste noire.
+    """
+
+    def validate(self, attrs):
+        from django.contrib.auth import get_user_model
+        from rest_framework_simplejwt.exceptions import AuthenticationFailed
+        from rest_framework_simplejwt.settings import api_settings
+        from rest_framework_simplejwt.tokens import RefreshToken
+
+        refresh = RefreshToken(attrs["refresh"])
+        user_id = refresh.payload.get(api_settings.USER_ID_CLAIM)
+        user = get_user_model().objects.filter(**{api_settings.USER_ID_FIELD: user_id}).first()
+        if user is None or not user.is_active:
+            try:
+                refresh.blacklist()
+            except Exception:  # liste noire indisponible : le refus reste
+                pass
+            raise AuthenticationFailed("Compte désactivé ou supprimé.", code="user_inactive")
+        return super().validate(attrs)
