@@ -157,6 +157,37 @@ l'ordre des relances (une reprise aurait produit un second SMS).
 | Routes accessibles sans authentification : seules les publiques par conception | PASS VÉRIFIÉ | sonde (556 routes) |
 | Gestionnaires d'exception muets : 4, tous bénins | PASS VÉRIFIÉ | analyse AST |
 
+## 6 bis. Tests
+
+| Suite | Résultat (dépôt) |
+|---|---|
+| Backend PostgreSQL 16 + Mailpit SMTP réel + plugNmeet réel | 1629 réussis, 0 échec, 0 ignoré |
+| Backend SQLite | 1615 réussis, 9 ignorés (services réels absents), 0 échec |
+| Frontend Vitest | 306 / 306 |
+| ESLint | 0 erreur (80 avertissements préexistants) |
+| Build Vite + recherche de secrets dans le bundle | OK, aucun secret ni numéro |
+| Assemblages Compose | 6 / 6 valides (dont plugNmeet + proxy) |
+
+Nouveaux tests : `test_plugnmeet_integration` (37, dont 3 contre l'instance
+réelle), `test_sms_mirror` (40), `test_email_sender_globalfeba` (16),
+`test_ratelimit_client_ip` (5), `tokenRefresh.test` (8),
+`sessionInterceptor.test` (3), `VirtualRoomEnded.test`,
+`SmsPreferencesCard.test`, et les cas plugNmeet de
+`VirtualRoomSession.test`. Tests modifiés (sans affaiblir une assertion) :
+4 classes Jitsi rattachées explicitement au moteur de retour arrière ;
+`restoreUser.test` (le cas « erreur sans réponse HTTP » figeait le défaut
+réseau ; un cas 401 et un cas réseau le remplacent) ; fixtures
+d'expéditeur passées à `noreply@globalfeba.com` (deux tests vérifient
+désormais que l'ancienne adresse est corrigée).
+
+**Démontrés en échec sur l'ancien code** : `sessionInterceptor.test` (2/3) ;
+expéditeur (From réel `noreply@feba.bj`, `SERVER_EMAIL=root@localhost`) ;
+limites de débit (même compteur pour tous, dans le test lui-même).
+
+Vérification de l'archive livrée (extraction neuve, dépendances
+réinstallées, suites complètes) : `DELIVERY_VERIFICATION.txt`, à côté de
+l'archive.
+
 ## 7. Ce qui reste à faire (accès requis)
 
 1. **Hetzner** : donner un accès SSH (ou exécuter) `PLUGNMEET_DEPLOYMENT_GUIDE.md`
