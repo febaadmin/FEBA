@@ -14,6 +14,37 @@
 ---
 
 
+## 00. Version finale validée (25/10/2026) — à faire par l'exploitant
+
+Rien de ce qui suit n'a été exécuté sur le serveur de production (accès
+SSH refusé, et déploiement direct interdit par la mission). Aucune
+migration nouvelle depuis la version plugNmeet/SMS.
+
+1. **Sur le serveur, AVANT tout déploiement** : vérifier l'identité de la
+   machine (`hostname`, `ip -4 addr`, `docker ps`) et faire une sauvegarde
+   vérifiée de la base (`RESTORE_GUIDE.md`). `deploy_feba.sh` en refait
+   une, contrôlée (`gzip -t`), à chaque déploiement.
+2. **`.env.prod`** à partir de `.env.prod.example`, `chmod 600`. Ajouter
+   les nouvelles variables `DEPLOYMENT_STAGE=production` et
+   `PUBLIC_BASE_URL=https://globalfeba.com`. Puis :
+   `make prod-preflight` — il doit afficher 0 erreur. Le backend, le
+   worker et Beat **refusent de démarrer** sinon (secret faible, DEBUG,
+   SMTP de test, plugNmeet ou SMS incomplet…).
+3. **Certificat** : `bash scripts/tls_bootstrap.sh` (une fois ; passe le
+   renouvellement en mode webroot et teste `renew --dry-run`).
+4. **Déploiement** : `make prod` (= `scripts/deploy_feba.sh`). Le script
+   construit, contrôle l'image candidate, sauvegarde, étiquette l'image
+   précédente `previous`, démarre, vérifie (santé HTTPS, page d'accueil,
+   401 sans jeton, configuration identique backend/worker/Beat, ping
+   Celery) et **revient automatiquement** à la version précédente en cas
+   d'échec. Retour manuel : `make prod-rollback`.
+5. **Recette plugNmeet en production** avant de désactiver Jitsi
+   (`PLUGNMEET_DEPLOYMENT_GUIDE.md` §§ 6-7) : 1 enseignant + 2 élèves sur
+   des réseaux différents, partage d'écran compris. Ne basculer
+   `VIDEO_PROVIDER=plugnmeet` et le DNS qu'après cette recette.
+6. **SMTP réel et SMS réel** : actions du § 0 ci-dessous, un seul
+   destinataire de test à chaque fois (jamais d'envoi groupé de test).
+
 ## 0. Version plugNmeet / SMS / expéditeur (25/10/2026) — actions hors dépôt
 
 Ordre conseillé ; chaque étape est réversible et n'arrête pas Jitsi.

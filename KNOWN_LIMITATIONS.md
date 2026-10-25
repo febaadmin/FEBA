@@ -5,6 +5,64 @@ Rien ici n'est présenté comme fonctionnel sans preuve.
 
 ---
 
+## 000. Version finale validée (25 octobre 2026) — état de référence
+
+Cette section prévaut sur les suivantes, qui décrivent les versions
+précédentes. Statuts : PASS · FAIL · BLOCKED · NOT RUN · SIMULATED.
+
+### 000.1 Accès aux systèmes réels — BLOCKED
+- **Hetzner** : SSH refusé sur `root@89.167.63.1` et `root@62.238.38.111`
+  avec la seule clé fournie (`feba_jitsi_prod`, « Permission denied
+  (publickey) »). Aucune autre clé n'a été essayée. Ni le serveur, ni le
+  pare-feu, ni le DNS, ni la base de production n'ont été lus ou modifiés.
+  plugNmeet n'est **pas déployé** ; Jitsi reste en place.
+- **SMTP Hostinger** (`noreply@globalfeba.com`) : aucun mot de passe
+  fourni ; aucun e-mail réel envoyé. L'expéditeur est vérifié dans les
+  messages capturés par Mailpit (SIMULATED pour la remise réelle).
+- **Twilio** (+1 215 715 5406) : aucun identifiant fourni ; aucun SMS réel
+  envoyé. Chaîne vérifiée jusqu'au fournisseur simulé (SIMULATED).
+
+### 000.2 Réunion plugNmeet — comportement après une coupure longue
+Mesuré sur une instance plugNmeet v2.5.3 réelle (locale) :
+- coupure réseau de **10 s** : le participant reste dans la réunion ;
+- coupure de **45 s** : plugNmeet retire le participant au bout d'environ
+  35 s (`participant_left`). Le client plugNmeet **ne rejoint pas
+  automatiquement** la salle au retour du réseau, même si ses contrôles
+  restent affichés. L'élève doit cliquer à nouveau sur « Rejoindre »
+  dans FEBA ; ce parcours fonctionne (nouveau jeton à usage unique,
+  reconnexion comptée dans les présences). La session FEBA, elle, reste
+  ouverte pendant et après la coupure.
+Ce comportement appartient à plugNmeet/LiveKit ; il n'est pas corrigeable
+dans FEBA sans modifier le client plugNmeet.
+
+### 000.3 Non vérifié en conditions réelles — NOT RUN
+- partage d'écran (le navigateur automatisé ne fournit pas de source
+  d'écran) ;
+- média entre deux réseaux distincts et TURN derrière un pare-feu filtrant
+  (tous les participants étaient sur la même machine) ;
+- charge de plusieurs classes simultanées ;
+- certificat Let's Encrypt réel (le certificat de la pile de recette est
+  auto-signé ; `scripts/tls_bootstrap.sh` n'a pas été exécuté contre
+  l'ACME réel) ;
+- déploiement sur le serveur de production (interdit par la mission et,
+  de toute façon, inaccessible).
+
+### 000.4 Environnement des scénarios e2e
+Les scénarios `e2e/*.mjs` utilisent Playwright et un Chromium. Hors du
+conteneur prévu, indiquer `CHROMIUM_PATH` (Chrome installé) et les URL de
+la pile : `FRONT_URL`/`API_URL`/`MAILPIT_URL` (préinscription, rapports
+mensuels), `E2E_BASE_URL`/`E2E_API_URL` (v9 ; l'API doit être de même
+origine que le frontend, par exemple via le proxy Vite). Les noms de
+variables diffèrent d'un script à l'autre (héritage des versions
+successives).
+
+### 000.5 Code mort signalé, non supprimé
+`frontend/src/hooks/useWebSocket.js` n'est importé nulle part ; la
+section `/ws` de nginx est donc sans effet. Laissé en place (aucun
+risque, suppression hors périmètre).
+
+---
+
 ## 00. Version « plugNmeet, SMS, expéditeur » (25 octobre 2026)
 
 ### 00.1 Serveur Hetzner — BLOCAGE EXTERNE

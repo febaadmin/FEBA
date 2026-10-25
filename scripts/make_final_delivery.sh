@@ -18,7 +18,7 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-NOM="${1:-FEBA_VERSION_PLUGNMEET_SMS_AUDIT_COMPLET}"
+NOM="${1:-FEBA_VERSION_FINALE_VALIDEE_PRODUCTION}"
 SORTIE="${2:-$(dirname "$ROOT")}"
 STAGE="$(mktemp -d)"
 # Le dossier racine porte le MÊME nom que l'archive. En V8 il était
@@ -202,7 +202,14 @@ for requis in backend/manage.py frontend/package.json Makefile \
               frontend/src/api/tokenRefresh.js frontend/src/api/tokenRefresh.test.js \
               frontend/src/api/sessionInterceptor.test.js frontend/src/hooks/useSessionKeepAlive.js \
               frontend/src/pages/shared/VirtualRoomEnded.jsx \
-              frontend/src/components/SmsPreferencesCard.jsx; do
+              frontend/src/components/SmsPreferencesCard.jsx \
+              DOCUMENTATION_INDEX.md docs/historique/FINAL_REPORT_V13.md \
+              scripts/deploy_feba.sh scripts/tls_bootstrap.sh \
+              backend/apps/core/preflight.py \
+              backend/apps/core/management/commands/production_preflight.py \
+              backend/tests/test_production_preflight.py \
+              backend/tests/test_session_revocation.py \
+              frontend/src/pages/admin/schedule/ScheduleGrid.test.jsx; do
   [ -e "$CIBLE/$requis" ] || { echo "  ÉCHEC : « $requis » manquant"; exit 1; }
 done
 echo "  OK    tous les fichiers attendus sont présents"
@@ -230,7 +237,11 @@ echo "  OK    tous les scripts .sh sont exécutables"
 echo "  OK    SHA256SUMS.txt ($(wc -l < "$CIBLE/SHA256SUMS.txt") fichiers)"
 
 ARCHIVE="$SORTIE/${NOM}.zip"
-rm -f "$ARCHIVE"
+# Une livraison existante n'est jamais écrasée : elle a pu être
+# transmise, et son empreinte publiée.
+if [ -e "$ARCHIVE" ]; then
+  echo "ÉCHEC : $ARCHIVE existe déjà — choisissez un autre nom (1er argument)."; exit 1
+fi
 (cd "$STAGE" && zip -qr "$ARCHIVE" "$NOM")
 
 # Empreinte déposée À CÔTÉ de l'archive : un fichier ne peut pas contenir
