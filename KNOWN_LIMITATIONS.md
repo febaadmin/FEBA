@@ -5,6 +5,47 @@ Rien ici n'est présenté comme fonctionnel sans preuve.
 
 ---
 
+## 0000. Commentaires des bulletins et visio multi-académies (26 octobre 2026)
+
+Cette section prévaut sur les suivantes.
+
+### 0000.1 Validé en local uniquement
+Les parcours réels (commentaires dans Chrome avec le vrai worker Celery ;
+réunion plugNmeet dans l'académie FEBA) ont été exécutés sur des piles
+Docker isolées du poste de travail. Rien n'a été vérifié sur Hetzner (accès
+SSH refusé) ni en préproduction.
+
+### 0000.2 Commentaires — limites assumées
+- 1 200 caractères au maximum par commentaire (au-delà, refus explicite :
+  la case partage la largeur du bulletin avec le cachet). Un commentaire
+  plus long déjà en base (données anciennes) est imprimé intégralement
+  dans un bloc pleine largeur, qui peut passer sur une seconde page.
+- Une seule opération groupée à la fois par académie (409 sinon).
+- Les opérations groupées exigent le worker Celery ; s'il est arrêté,
+  l'opération reste « En file d'attente » jusqu'à son retour (et la file
+  Redis indisponible renvoie 503, rien n'est annoncé comme lancé).
+- Un bulletin absent n'est créé que sur demande explicite, et jamais pour
+  un élève sans aucune note sur la période.
+- Les PDF générés avant cette version gardent leur nom ; le premier
+  nouvel enregistrement leur donne un nom unique.
+
+### 0000.3 Visio — règles de gestion
+- Un enseignant ne modifie, ne supprime et ne ferme que ses salles et
+  celles des classes qui lui sont affectées (il pouvait auparavant agir sur
+  toute salle de l'académie).
+- La visioconférence peut toujours être désactivée explicitement pour une
+  académie (`settings.features`) : le contrôle serveur reste actif.
+- Retour arrière de la migration `schools.0017` : il restaure les
+  désactivations explicites, mais FEBA ne perd la visio que si le code
+  précédent est aussi redéployé (la valeur par défaut est dans le code).
+
+### 0000.4 Non vérifié
+Partage d'écran, réunion entre réseaux distincts (TURN), charge de
+plusieurs classes simultanées, SMTP réel, SMS réel, certificat
+Let's Encrypt réel : NOT RUN ou BLOCKED (voir § 000).
+
+---
+
 ## 000. Version finale validée (25 octobre 2026) — état de référence
 
 Cette section prévaut sur les suivantes, qui décrivent les versions

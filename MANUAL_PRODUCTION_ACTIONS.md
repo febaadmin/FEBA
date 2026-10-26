@@ -14,6 +14,30 @@
 ---
 
 
+## 000. Commentaires des bulletins et visio multi-académies (26/10/2026)
+
+Rien n'a été déployé ni migré en production. Ordre conseillé :
+
+1. Sauvegarde vérifiée de la base (`deploy_feba.sh` en fait une à chaque
+   déploiement) ; vérifier l'identité du serveur.
+2. `make prod` — applique deux migrations :
+   - `bulletins.0006_comments_operations` : additive (deux colonnes
+     nullables, une table) ;
+   - `schools.0017_enable_video_for_all_academies` : active la visio pour
+     toutes les académies, FEBA comprise ; les valeurs d'origine sont
+     conservées dans `settings.features_before_0017`.
+3. Le worker Celery doit tourner (il exécute les opérations groupées sur
+   les bulletins) : `deploy_feba.sh` vérifie déjà qu'il répond.
+4. Contrôle : un administrateur FEBA ouvre « Salles virtuelles », crée une
+   salle, la rejoint avec un enseignant et un élève ; puis, dans
+   « Bulletins », ajoute un commentaire à un élève et ouvre le PDF.
+5. Retour arrière : `make prod-rollback` (images précédentes). Les
+   migrations peuvent être défaites :
+   `python manage.py migrate schools 0016` puis
+   `python manage.py migrate bulletins 0005` (supprime l'historique des
+   opérations et les dates de modification des commentaires ; les
+   commentaires eux-mêmes restent).
+
 ## 00. Version finale validée (25/10/2026) — à faire par l'exploitant
 
 Rien de ce qui suit n'a été exécuté sur le serveur de production (accès

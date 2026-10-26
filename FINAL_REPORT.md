@@ -1,77 +1,149 @@
-# FEBA — Rapport final : version validée pour la production
+# FEBA — Rapport final : commentaires des bulletins et visioconférence multi-académies
 
-25 octobre 2026 · branche `fix/feba-validation-finale` · base : archive
-`FEBA_VERSION_PLUGNMEET_SMS_AUDIT_COMPLET.zip` (commit `6cf9dcb`, empreinte
+26 octobre 2026 · branche `fix/feba-commentaires-visio` · base : archive
+`FEBA_VERSION_FINALE_VALIDEE_PRODUCTION.zip` (commit `25b4c57`, empreinte
 vérifiée). Commit livré : `SOURCE_COMMIT.txt` dans l'archive.
 
 Statuts : **PASS** · **FAIL** · **BLOCKED** · **NOT RUN** · **SIMULATED**.
-Détail des tests : `TEST_REPORT.md`. Limites : `KNOWN_LIMITATIONS.md` § 000.
-Actions de l'exploitant : `MANUAL_PRODUCTION_ACTIONS.md` § 00.
+Détail des tests : `TEST_REPORT.md`. Limites : `KNOWN_LIMITATIONS.md` § 0000.
+Actions de l'exploitant : `MANUAL_PRODUCTION_ACTIONS.md` § 000.
+Version précédente : `docs/historique/FINAL_REPORT_2026-10-25.md`.
+
+**Où la validation a eu lieu : uniquement en local** (piles Docker isolées
+sur le poste de travail, plugNmeet v2.5.3 local, navigateur Chrome réel).
+Ni préproduction ni serveur Hetzner : accès SSH refusé (BLOCKED). Rien n'a
+été déployé, migré ni envoyé en production.
 
 ---
 
-## 1. En bref
+## 1. P0 n° 1 — Commentaire du Directeur / Principal's Comment
 
-- **Code** : prêt à déployer, toutes les suites automatisées vertes, aucun
-  test ignoré compté comme réussi.
-- **Déploiement** : automatisé (`make prod` → `scripts/deploy_feba.sh`),
-  avec contrôle de pré-démarrage, sauvegarde vérifiée, vérifications après
-  démarrage et retour arrière automatique. Validé sur une pile identique à
-  la production (hors certificat et fournisseurs réels).
-- **Non validé en réel** : serveur Hetzner, SMTP Hostinger, Twilio
-  (BLOCKED : aucun accès ni identifiant). Rien n'a été déployé, migré ni
-  envoyé en production.
+### Cause racine (reproduite sur le code livré)
+1. **Aucun parcours de gestion** : le champ `Bulletin.general_comment`
+   existait et le générateur l'imprimait, mais aucune page ne permettait de
+   le saisir ; un PATCH sur l'API changeait la base sans changer le PDF.
+2. **La régénération effaçait le commentaire** : `generate`,
+   `generate-class` et `generate-all` SUPPRIMAIENT le bulletin avant de le
+   recréer (reproduit : commentaire `''` après régénération, identifiant
+   du bulletin changé).
+3. **Un échec détruisait le PDF** : `generate_bulletin` effaçait l'ancien
+   fichier AVANT de construire le nouveau (reproduit : élève sans PDF après
+   une génération échouée).
+4. Case du commentaire de hauteur fixe (2,4 cm) : un texte long débordait
+   sur la signature du parent.
+5. `generate-all` d'un super administrateur sans académie sélectionnée
+   générait pour TOUTES les académies (le commentaire du code affirmait le
+   contraire) ; et la génération groupée synchrone dépassait le délai de
+   60 s du proxy sur une académie entière.
 
-## 2. Défauts trouvés et corrigés pendant cette validation
+### Correction
+- **Génération sans perte** (`pdf_generator.generate_bulletin`) : bulletin
+  existant réutilisé (jamais supprimé), commentaire conservé, PDF construit
+  en mémoire puis enregistré sous un **nom unique** (nouvelle URL : pas de
+  cache navigateur) ; ancien fichier supprimé seulement après succès ; en
+  cas d'échec, rien n'est écrit et un bulletin absent n'est pas créé ;
+  `generated_at` = dernière génération réussie.
+- **API** (administrateur / super administrateur uniquement, contrôle côté
+  serveur) :
+  - `POST /api/bulletins/{id}/comment/` — ajouter, modifier, supprimer
+    (texte vide) + régénération ; validation (1 200 caractères max., pas de
+    troncature silencieuse, retours à la ligne normalisés) ; `409` si un
+    autre administrateur a modifié entre-temps (`expected_comment`) ;
+  - `POST /api/bulletins/comment-preview/` — portée vérifiée avant
+    confirmation (élèves, bulletins existants, avec commentaire, absents
+    avec ou sans notes) ;
+  - `GET|POST /api/bulletins/operations/`, `GET /api/bulletins/operations/{id}/`
+    — opération pour un élève, une classe ou toute l'académie, exécutée par
+    le **worker Celery** (tâche `bulletins.run_operation`), bilan détaillé,
+    une seule opération à la fois par académie, `503` honnête si la file
+    est indisponible ;
+  - `generate-class` / `generate-all` passent par ces opérations (`202`) ;
+  - les écritures génériques `PUT/PATCH/POST /bulletins/` sont fermées
+    (`405`) : elles contournaient la validation et le PDF.
+- **Journal d'audit** : modèle `BulletinOperation` (utilisateur, académie,
+  portée, période, année, nombre de bulletins, résultat).
+- **Interface** : composant `BulletinCommentManager`, ouvert depuis
+  **Notes** (« Commentaires des bulletins ») et **Bulletins** (« Commentaires
+  du directeur », et « Commentaire » sur chaque ligne). Colonne
+  « Commentaire du directeur » et mention « PDF à régénérer » dans la liste.
+- **PDF** : case extensible ; texte exceptionnellement long (données
+  anciennes) imprimé pleine largeur dans un bloc sécable, jamais tronqué ;
+  texte toujours échappé (pas de balisage injectable).
+- Correctif voisin : le détail d'un bulletin d'une **année passée** n'est
+  plus un 404 (le filtre « année active » ne vaut que pour la liste).
 
-| # | Défaut (reproduit) | Cause racine | Correction | Test de non-régression |
-|---|---|---|---|---|
-| 1 | Pile de production jamais saine : backend « unhealthy », nginx, worker et Beat jamais démarrés | le contrôle de santé suivait la redirection HTTPS vers `https://localhost:8000` | `SECURE_REDIRECT_EXEMPT` pour `/api/health/` | `test_production_preflight.HealthBehindTlsRedirectTests` |
-| 2 | Une configuration de développement ou incomplète démarrait en production sans alerte | aucun contrôle bloquant au démarrage | `apps/core/preflight.py` + `manage.py production_preflight` lancés par le backend, le worker et Beat ; empreinte de configuration comparée | `test_production_preflight.py` (8) |
-| 3 | 502 après la recréation du backend | nginx gardait l'ancienne adresse IP du conteneur | résolveur Docker + variables d'amont + rechargement | essai de déploiement |
-| 4 | Renouvellement du certificat impossible (ACME) | port 80 redirigé sans exception, webroot non monté | `/.well-known/acme-challenge/` servi depuis `/var/www/certbot` ; `scripts/tls_bootstrap.sh` | ACME 200 sur la pile de recette |
-| 5 | Images non reproductibles ; worker et Beat potentiellement d'une autre version que le backend | `npm install`, images construites séparément | `npm ci` ; une image backend unique étiquetée (`current`/`previous`) | essai de déploiement |
-| 6 | **Sécurité** : un compte désactivé pouvait encore renouveler son jeton (HTTP 200) | le sérialiseur de renouvellement ne relisait pas l'utilisateur | `ActiveUserTokenRefreshSerializer` : refus 401 et mise en liste noire | `test_session_revocation.py` (5) |
-| 7 | Emplois du temps : un cours affiché deux fois (3 séances → 5 cartes) | la grille ne comparait que l'heure de début | comparaison du créneau complet | `ScheduleGrid.test.jsx` (2) |
-| 8 | Déploiement : `POSTGRES_PASSWORD` en `:?` cassait `exec` et `logs` ; projet Compose par défaut « feba » risquait une seconde pile à volumes vides | — | interpolation tolérante, projet Compose par défaut | essai de déploiement |
-| 9 | Scénarios e2e cassés hors du conteneur prévu (chemin avec espace, navigateur codé en dur, vérification fondée sur le réseau et non l'interface) | — | `fileURLToPath`, `CHROMIUM_PATH`, assertions sur l'interface | 8 scénarios verts |
-| 10 | Documentation contradictoire (ancien `FINAL_REPORT.md` V13 « à déployer », rapports Jitsi présentés comme actuels) | — | anciens rapports déplacés ou marqués « DOCUMENT HISTORIQUE » ; `DOCUMENTATION_INDEX.md` ; `DEPLOYMENT_PRODUCTION.md` réécrit | — |
+## 2. P0 n° 2 — Visioconférence pour toutes les académies
 
-## 3. Résultats
+### Cause racine
+`School.DEFAULT_FEATURES["campus"]` désactivait `virtual_classrooms` et
+`video_conferencing` : l'académie FEBA (type « campus ») recevait `403` sur
+toute l'API des salles et le menu était masqué.
+
+### Correction
+- Valeurs par défaut corrigées (toutes les académies, et toute nouvelle
+  académie) ; **migration `schools.0017`** : réactive les désactivations
+  explicites, ne touche aucun autre drapeau, conserve les valeurs d'origine
+  (réversible). `HasEntityFeature` est conservé : une désactivation
+  explicite reste appliquée.
+- **Isolation renforcée** (défauts trouvés en testant) :
+  - une salle pouvait viser la **classe, la matière ou l'année d'une autre
+    académie** (reproduit : HTTP 201) → `TenantRelationsMixin` ; classe et
+    année doivent concorder ;
+  - un **enseignant pouvait supprimer la salle de l'administration**
+    (reproduit : HTTP 204) → il ne gère que ses salles et celles de ses
+    classes ; champ `can_manage` pour l'interface ;
+  - super administrateur sans académie sélectionnée : création refusée.
+
+## 3. Audit global — défauts confirmés et corrigés
+
+| Défaut (reproduit) | Correction | Test |
+|---|---|---|
+| L'administrateur d'une académie changeait `entity_type` (campus → online) et s'ouvrait toutes les fonctions en ligne | champ réservé au super administrateur | `test_audit_2026_10_26` |
+| Un PATCH `{school: autre}` déplaçait un **niveau** ou une **salle physique** dans une autre académie ; type de salle d'une autre académie accepté | `TenantRelationsMixin` (niveaux, types de salle, salles, logos) | idem |
+| Un PATCH `{entity: autre}` transférait un **dossier d'admission FHA** ou un **test de placement** dans une autre académie | `entity`, `application`, `meeting_room` en lecture seule (préinscriptions : `entity`) | idem |
+
+Sondes exécutées sur la pile de démonstration (deux académies, 6 rôles) :
+- **lecture** : 229 routes de liste et 194 routes de détail, 4 632
+  requêtes → **0 fuite inter-académies, 0 erreur serveur** ;
+- **écriture par rôle** (parent, élève, enseignant ; 130 routes, POST /
+  PATCH / DELETE) → aucune écriture illégitime (les seules acceptées
+  concernent les classes de l'enseignant) ;
+- **frontend → backend** : 230 appels API, 0 route orpheline ;
+- **navigateur** : 119 pages de menu visitées (6 comptes) → aucune erreur
+  JavaScript ; seules erreurs HTTP : 400 « Choisissez l'académie
+  destinataire » du super administrateur en vue « toutes les académies »,
+  comportement voulu et affiché à l'écran ;
+- tâches planifiées Celery : les 6 sont enregistrées dans le worker.
+
+## 4. Résultats
 
 | Domaine | Résultat | Statut |
 |---|---|---|
-| Backend PostgreSQL + Mailpit + plugNmeet réel | **1643 réussis, 0 ignoré, 0 échec** (607 sous-tests), dont les tests plugNmeet et SMTP réels | PASS |
-| Backend SQLite | 1634 réussis, 9 ignorés, 0 échec | PASS |
-| Frontend (Vitest, ESLint, build) | 308/308, 0 erreur, build OK | PASS |
-| Migrations, `check`, Compose, sûreté du dépôt | aucun écart | PASS |
+| Backend PostgreSQL 16 + Mailpit + plugNmeet réel | voir `TEST_REPORT.md` § 1 | PASS |
+| Backend SQLite | voir `TEST_REPORT.md` § 1 | PASS |
+| Frontend (Vitest, ESLint, build) | 313/313, 0 erreur (aucun avertissement ajouté), build OK | PASS |
+| Migrations : base EXISTANTE de l'ancienne version migrée, retour arrière, réapplication | commentaire, salles, 120 bulletins conservés | PASS |
+| Commentaires — parcours réel dans Chrome (Notes et Bulletins, ajout, modification, suppression, classe via le vrai worker Celery), texte vérifié dans les PDF produits | 4/4 PDF conformes | PASS (local) |
+| Visio — réunion réelle dans l'académie FEBA (salle créée par l'admin FEBA dans l'interface, enseignant + élève, vidéo reçue, présences par webhook, fin par l'enseignant), FEBA FHA refusée (404) | conforme | PASS (local) |
 | Scénarios e2e (8) | tous verts | PASS |
-| Réunion plugNmeet réelle 1 enseignant + 2 élèves ≥ 60 min | 15:22 → 16:28 UTC : présences serveur 65,5 / 65,2 / 65,1 min, 0 reconnexion, 3 entrées et 3 sorties seulement ; contrôle toutes les 5 min (salle, `/auth/me`) : 0 échec ; fin par l'enseignant depuis FEBA (HTTP 200) → les 3 participants redirigés vers `/virtual-room/2/ended`. Les 3 participants tournaient sur la même machine | PASS |
-| Session : renouvellement après expiration, compte désactivé, onglets, coupure | voir `TEST_REPORT.md` § 4 | PASS |
-| Renouvellement préventif du jeton pendant la réunion | jetons d'accès échus à 16:22 ; entre 16:13 et 16:18, rotation des 3 jetons de renouvellement et nouveaux jetons d'accès (échéance 17:17), sans rechargement des onglets FEBA, participants restés dans la salle, `/auth/me` 200 | PASS |
-| Déploiement automatisé, refus, retour arrière, idempotence | voir `TEST_REPORT.md` § 5 | PASS |
-| E-mail : expéditeur `noreply@globalfeba.com` | Mailpit | SIMULATED |
-| SMS miroir et relances | fournisseur de test, vrai worker | SIMULATED |
+| Plusieurs académies sur le même plugNmeet | identifiants de salle distincts, événements rattachés à la seule académie de la salle | PASS (tests + réel local) |
 | SMTP Hostinger, Twilio, serveur Hetzner | aucun accès | BLOCKED |
-| Partage d'écran, TURN entre réseaux, certificat Let's Encrypt réel | — | NOT RUN |
+| Partage d'écran, TURN entre réseaux, recette en production | — | NOT RUN |
 
-## 4. Ce qui reste à faire hors du dépôt
+## 5. Fichiers, migrations, API
 
-1. Donner un accès SSH valide au serveur, puis suivre
-   `MANUAL_PRODUCTION_ACTIONS.md` § 00 (sauvegarde, `.env.prod`,
-   `make prod-preflight`, `tls_bootstrap.sh`, `make prod`).
-2. Recette plugNmeet en production avec de vrais postes sur des réseaux
-   différents, partage d'écran compris, **avant** de désactiver Jitsi et
-   de basculer le DNS.
-3. Renseigner les identifiants SMTP Hostinger et Twilio, puis un envoi de
-   test vers **une seule** adresse et **un seul** numéro autorisés.
-
-## 5. Garanties de l'archive
-
-- construite depuis le commit (`git archive`), arbre de travail propre ;
-- aucun `.env` réel, aucun secret plugNmeet (`plugnmeet/runtime` absent),
-  aucune dépendance ni cache ;
-- `SHA256SUMS.txt` interne ; empreinte de l'archive dans un fichier
-  `.sha256` à côté ;
-- vérifiée depuis une extraction neuve (voir `DELIVERY_VERIFICATION_*.txt`
-  livré à côté de l'archive).
+- **Migrations ajoutées** : `bulletins.0006_comments_operations` (champs
+  `comment_updated_at`, `comment_updated_by`, `generated_at` sans
+  `auto_now_add`, modèle `BulletinOperation` — additive) ;
+  `schools.0017_enable_video_for_all_academies` (données, réversible).
+- **Backend** : `bulletins/{models,operations (nouveau),pdf_generator,serializers,tasks,views}.py` ;
+  `schools/{models,serializers}.py` ; `core/features.py` ;
+  `virtualclass/{serializers,views}.py` ; `website/{serializers,fha_serializers}.py`.
+- **Frontend** : `components/bulletins/BulletinCommentManager.jsx` (nouveau) ;
+  `pages/admin/{Bulletins,Grades}.jsx` ; `pages/shared/VirtualRooms.jsx` ;
+  `api/index.js` ; `i18n/translations.js`.
+- **Tests ajoutés** : `test_bulletin_comments.py` (26),
+  `test_visio_multi_academies.py` (16), `test_audit_2026_10_26.py` (7),
+  `BulletinCommentManager.test.jsx` (5). Tests de l'ancienne règle « FEBA
+  sans visio » adaptés à la nouvelle règle, sans affaiblir le contrôle (la
+  désactivation explicite reste testée).

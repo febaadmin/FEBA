@@ -18,7 +18,7 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-NOM="${1:-FEBA_VERSION_FINALE_VALIDEE_PRODUCTION}"
+NOM="${1:-FEBA_VERSION_COMMENTAIRES_BULLETINS_VISIO_MULTI_ACADEMIES}"
 SORTIE="${2:-$(dirname "$ROOT")}"
 STAGE="$(mktemp -d)"
 # Le dossier racine porte le MÊME nom que l'archive. En V8 il était
@@ -209,7 +209,15 @@ for requis in backend/manage.py frontend/package.json Makefile \
               backend/apps/core/management/commands/production_preflight.py \
               backend/tests/test_production_preflight.py \
               backend/tests/test_session_revocation.py \
-              frontend/src/pages/admin/schedule/ScheduleGrid.test.jsx; do
+              frontend/src/pages/admin/schedule/ScheduleGrid.test.jsx \
+              docs/historique/FINAL_REPORT_2026-10-25.md docs/historique/TEST_REPORT_2026-10-25.md \
+              backend/apps/bulletins/operations.py \
+              backend/apps/bulletins/migrations/0006_comments_operations.py \
+              backend/apps/schools/migrations/0017_enable_video_for_all_academies.py \
+              backend/tests/test_bulletin_comments.py backend/tests/test_visio_multi_academies.py \
+              backend/tests/test_audit_2026_10_26.py \
+              frontend/src/components/bulletins/BulletinCommentManager.jsx \
+              frontend/src/components/bulletins/BulletinCommentManager.test.jsx; do
   [ -e "$CIBLE/$requis" ] || { echo "  ÉCHEC : « $requis » manquant"; exit 1; }
 done
 echo "  OK    tous les fichiers attendus sont présents"

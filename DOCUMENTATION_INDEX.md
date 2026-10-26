@@ -1,4 +1,4 @@
-# FEBA — Documents de référence (version validée le 25/10/2026)
+# FEBA — Documents de référence (version du 26/10/2026 : commentaires des bulletins, visio multi-académies)
 
 Les documents marqués **« DOCUMENT HISTORIQUE »** en tête décrivent des
 versions antérieures : leurs résultats ne valent pas pour cette version.
@@ -18,4 +18,4 @@ versions antérieures : leurs résultats ne valent pas pour cette version.
 | Retour arrière, restauration | `ROLLBACK_GUIDE.md`, `RESTORE_GUIDE.md` |
 | Installation de développement | `INSTALLATION_GUIDE.md`, `README.md` |
 | Jitsi (retour arrière uniquement) | `JITSI_PRODUCTION_GUIDE.md` |
-| Rapports des versions antérieures | racine (bandeau « historique ») et `docs/historique/` |
+| Rapports des versions antérieures | racine (bandeau « historique ») et `docs/historique/` (dont `FINAL_REPORT_2026-10-25.md`) |
