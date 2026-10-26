@@ -243,7 +243,7 @@ export default function VirtualRooms() {
                             <Film className="w-4 h-4" />
                           </button>
                         )}
-                        {canManage && r.status === "live" && (
+                        {canManage && r.can_manage !== false && r.status === "live" && (
                           <button
                             onClick={() => endMut.mutate(r.id)}
                             title={t("Clôturer la réunion")}
@@ -252,7 +252,7 @@ export default function VirtualRooms() {
                             <StopCircle className="w-4 h-4" />
                           </button>
                         )}
-                        {canManage && (
+                        {canManage && r.can_manage !== false && (
                           <>
                             <button onClick={() => openEdit(r)} className="p-1.5 rounded-lg hover:bg-primary-50 text-slate-400 hover:text-primary">
                               <Pencil className="w-4 h-4" />

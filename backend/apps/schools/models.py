@@ -161,12 +161,16 @@ class School(models.Model):
     ]
 
     # Valeurs par défaut selon le type d'entité.
-    # « campus » (FEBA Cotonou) : école présentielle — pas de salle virtuelle,
-    # pas de visioconférence, pas de test de placement en ligne.
+    # « campus » (FEBA, Cotonou) : école présentielle — pas de test de
+    # placement ni de cours en ligne. La VISIOCONFÉRENCE et les salles
+    # virtuelles sont en revanche ouvertes à TOUTES les académies (décision
+    # du 26/10/2026 : FEBA organise ses propres réunions, comme FEBA FHA).
+    # Chaque académie ne voit et ne rejoint que ses salles : l'isolation
+    # est assurée par la portée d'académie, pas par ce drapeau.
     DEFAULT_FEATURES = {
         "campus": {
-            "virtual_classrooms": False,
-            "video_conferencing": False,
+            "virtual_classrooms": True,
+            "video_conferencing": True,
             "placement_tests": False,
             "online_lessons": False,
             "online_assignments": False,

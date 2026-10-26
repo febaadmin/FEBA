@@ -16,7 +16,7 @@ from .serializers import VirtualRoomSerializer, VirtualRoomAttendanceSerializer
 
 class VirtualRoomViewSet(BulkDeleteMixin, viewsets.ModelViewSet):
     """
-    Salles virtuelles (visioconférence Jitsi Meet).
+    Salles virtuelles (visioconférence plugNmeet ; Jitsi en retour arrière).
 
     Visibilité :
       - superadmin / admin : toutes les salles de l'établissement ;
@@ -31,10 +31,9 @@ class VirtualRoomViewSet(BulkDeleteMixin, viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated, HasEntityFeature, IsSameTenant]
     search_fields = ["name", "description", "room_code"]
     tenant_lookup = "school"
-    # Fonctionnalité conditionnelle : FEBA (école présentielle) n'a pas de
-    # salles virtuelles — l'API REFUSE, elle ne se contente pas d'un menu
-    # masqué côté React. FEBA French Heritage Academy, académie en ligne,
-    # les a activées.
+    # Fonctionnalité activée pour toutes les académies (FEBA comprise depuis
+    # le 26/10/2026) ; elle reste vérifiée côté API : une entité pour
+    # laquelle l'administration la désactive explicitement reçoit 403.
     required_feature = "virtual_classrooms"
 
     def get_queryset(self):
@@ -103,13 +102,67 @@ class VirtualRoomViewSet(BulkDeleteMixin, viewsets.ModelViewSet):
         return [IsAuthenticated(), HasEntityFeature(), IsSameTenant()]
 
     def perform_create(self, serializer):
+        from rest_framework.exceptions import ValidationError
         from apps.schools.models import SchoolYear
 
         school = get_request_school(self.request)
+        if school is None:
+            # Super administrateur en mode « toutes les académies » : une salle
+            # appartient toujours à UNE académie, choisie explicitement.
+            raise ValidationError({"school": "Sélectionnez d'abord l'académie de la salle."})
         school_year = serializer.validated_data.get("school_year")
-        if not school_year and school is not None:
+        if not school_year:
             school_year = SchoolYear.objects.filter(school=school, is_current=True).first()
+        class_obj = serializer.validated_data.get("class_obj")
+        if class_obj is not None and school_year is not None and class_obj.school_year_id != school_year.id:
+            raise ValidationError({"class_obj": "Cette classe n'appartient pas à l'année scolaire choisie."})
+        self._assert_can_manage_class(class_obj)
         serializer.save(created_by=self.request.user, school=school, school_year=school_year)
+
+    # ── Gestion par un enseignant ───────────────────────────────────────
+    #
+    # Un enseignant gère SES salles et celles des classes qui lui sont
+    # confiées. Avant, il pouvait modifier, supprimer ou fermer n'importe
+    # quelle salle visible — y compris la salle générale de l'académie
+    # créée par l'administration, ou le cours d'un collègue.
+
+    def _teacher_class_ids(self):
+        teacher = getattr(self.request.user, "teacher_profile", None)
+        return set(teacher.classes.values_list("pk", flat=True)) if teacher else set()
+
+    def _assert_can_manage_class(self, class_obj):
+        from rest_framework.exceptions import PermissionDenied
+        user = self.request.user
+        if user.role_level >= 80 or class_obj is None:
+            return
+        if class_obj.pk not in self._teacher_class_ids():
+            raise PermissionDenied("Cette classe ne vous est pas affectée.")
+
+    def _assert_can_manage(self, room):
+        from rest_framework.exceptions import PermissionDenied
+        user = self.request.user
+        if user.role_level >= 80 or room.created_by_id == user.id:
+            return
+        if room.class_obj_id and room.class_obj_id in self._teacher_class_ids():
+            return
+        raise PermissionDenied("Vous ne pouvez gérer que vos salles et celles de vos classes.")
+
+    def perform_update(self, serializer):
+        self._assert_can_manage(serializer.instance)
+        if "class_obj" in serializer.validated_data:
+            self._assert_can_manage_class(serializer.validated_data["class_obj"])
+        serializer.save()
+
+    def perform_destroy(self, instance):
+        self._assert_can_manage(instance)
+        instance.delete()
+
+    def get_bulk_delete_queryset(self, ids):
+        qs = self.get_queryset().filter(pk__in=ids)
+        user = self.request.user
+        if user.role_level >= 80:
+            return qs
+        return qs.filter(Q(created_by=user) | Q(class_obj_id__in=self._teacher_class_ids()))
 
     def _salle_a_rejoindre(self):
         """
@@ -289,6 +342,7 @@ class VirtualRoomViewSet(BulkDeleteMixin, viewsets.ModelViewSet):
         from .meetings import end_meeting
 
         room = self.get_object()
+        self._assert_can_manage(room)
         try:
             end_meeting(room)
         except plugnmeet.PlugNmeetUnavailable:

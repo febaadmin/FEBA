@@ -3,11 +3,19 @@ from rest_framework import serializers
 
 from .models import VirtualRoom, VirtualRoomAttendance
 from apps.core.academy_serializers import ACADEMY_FIELDS, AcademyMetadataMixin
+from apps.core.tenancy import TenantRelationsMixin
+
+ROLES = ("admin", "teacher", "student", "parent")
 
 
-class VirtualRoomSerializer(AcademyMetadataMixin, serializers.ModelSerializer):
+class VirtualRoomSerializer(TenantRelationsMixin, AcademyMetadataMixin, serializers.ModelSerializer):
     #: Chemin ORM vers l'académie propriétaire de l'objet.
     academy_source = "school"
+    #: Isolation des relations écrites : une salle FEBA ne peut pas viser la
+    #: classe, la matière ou l'année d'une autre académie. Ce contrôle
+    #: manquait — la création acceptait n'importe quel identifiant.
+    tenant_relations = {"class_obj": "school_year.school", "subject": "school",
+                        "school_year": "school"}
 
     class_name = serializers.CharField(source="class_obj.name", read_only=True, default=None)
     subject_name = serializers.CharField(source="subject.name", read_only=True, default=None)
@@ -16,6 +24,7 @@ class VirtualRoomSerializer(AcademyMetadataMixin, serializers.ModelSerializer):
     participants_count = serializers.SerializerMethodField()
     video_provider = serializers.SerializerMethodField()
     capabilities = serializers.SerializerMethodField()
+    can_manage = serializers.SerializerMethodField()
 
     class Meta:
         model = VirtualRoom
@@ -27,10 +36,42 @@ class VirtualRoomSerializer(AcademyMetadataMixin, serializers.ModelSerializer):
             "created_by", "created_by_name", "created_at",
             "join_domain", "participants_count", "target_roles",
             "allow_recording", "meeting_started_at", "meeting_ended_at",
-            "video_provider", "capabilities",
+            "video_provider", "capabilities", "can_manage",
         ] + ACADEMY_FIELDS
         read_only_fields = ["room_code", "created_by", "school", "created_at",
                             "meeting_started_at", "meeting_ended_at"]
+
+    def validate_target_roles(self, value):
+        if value in (None, ""):
+            return []
+        if not isinstance(value, list) or any(r not in ROLES for r in value):
+            raise serializers.ValidationError(f"Rôles autorisés : {', '.join(ROLES)}.")
+        return sorted(set(value))
+
+    def validate(self, attrs):
+        attrs = super().validate(attrs)
+        # La classe et l'année doivent concorder (une classe 2025-2026 dans une
+        # salle 2026-2027 donnerait une liste d'élèves incohérente).
+        class_obj = attrs.get("class_obj", getattr(self.instance, "class_obj", None))
+        year = attrs.get("school_year", getattr(self.instance, "school_year", None))
+        if class_obj is not None and year is not None and class_obj.school_year_id != year.id:
+            raise serializers.ValidationError(
+                {"class_obj": "Cette classe n'appartient pas à l'année scolaire choisie."})
+        return attrs
+
+    def get_can_manage(self, obj):
+        """Mêmes règles que VirtualRoomViewSet._assert_can_manage."""
+        request = self.context.get("request")
+        user = getattr(request, "user", None)
+        if user is None or not user.is_authenticated or user.role_level < 50:
+            return False
+        if user.role_level >= 80 or obj.created_by_id == user.id:
+            return True
+        if "_teacher_class_ids" not in self.context:
+            teacher = getattr(user, "teacher_profile", None)
+            self.context["_teacher_class_ids"] = set(
+                teacher.classes.values_list("pk", flat=True)) if teacher else set()
+        return obj.class_obj_id in self.context["_teacher_class_ids"]
 
     def get_created_by_name(self, obj):
         if obj.created_by:
