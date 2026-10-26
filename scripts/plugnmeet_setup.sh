@@ -228,6 +228,11 @@ if n != 1:
 open(p, "w").write(s)
 PY
 echo "Identité FEBA de l'onglet installée (API : $FEBA_URL)."
+# Le serveur plugNmeet garde index.html en mémoire depuis son démarrage : un
+# conteneur déjà lancé doit être redémarré pour servir le client modifié.
+for c in $(docker ps --format '{{.Names}}' 2>/dev/null | grep -E 'plugnmeet-1$|pnm-plugnmeet' || true); do
+  docker restart "$c" >/dev/null && echo "Conteneur $c redémarré (client personnalisé servi)."
+done
 
 cat <<EOF
 
