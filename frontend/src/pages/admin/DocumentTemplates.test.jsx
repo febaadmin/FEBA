@@ -39,6 +39,12 @@ const payload = (kinds) => ({
     kinds: { diploma: kindSummary("diploma"), certificate: kindSummary("certificate"), ...kinds },
     catalog: [{ name: "student_name", label: "Nom complet de l'élève", kinds: ["diploma", "certificate"] }],
     eligibility_rules: { diploma: ["admin_decision", "annual_average"], certificate: ["enrolled", "admin_decision"] },
+    formats: [
+      { format: "pdf", label: "PDF", extensions: [".pdf"], available: true },
+      { format: "docx", label: "Word (DOCX)", extensions: [".docx"], available: true },
+      { format: "odt", label: "OpenDocument texte (ODT)", extensions: [".odt"], available: true },
+    ],
+    limits: { max_bytes: 20971520, conversion_timeout_s: 90 },
   },
 });
 
@@ -145,5 +151,42 @@ describe("Gabarits des documents", () => {
     expect(card.queryByRole("button", { name: /Supprimer/ })).not.toBeInTheDocument();
     expect(card.getByRole("button", { name: /Désactiver/ })).toBeInTheDocument();
     expect(card.getByRole("button", { name: /Voir la configuration/ })).toBeInTheDocument();
+  });
+
+  it("annonce les formats acceptés donnés par le serveur et les propose au sélecteur", async () => {
+    renderPage();
+    await waitFor(() => expect(screen.getByTestId("accepted-formats")).toHaveTextContent("Word (DOCX)"));
+    fireEvent.click(within(screen.getByTestId("kind-diploma")).getByRole("button", { name: /Téléverser/ }));
+    expect(await screen.findByTestId("template-file")).toHaveAttribute("accept", ".pdf,.docx,.odt");
+  });
+
+  it("un Word se téléverse directement ; la conversion est annoncée", async () => {
+    let finish;
+    documentTemplatesAPI.upload.mockReturnValue(new Promise((resolve) => { finish = resolve; }));
+    renderPage();
+    fireEvent.click(within(await screen.findByTestId("kind-diploma")).getByRole("button", { name: /Téléverser/ }));
+    const file = new File(["PK"], "diplôme officiel.docx",
+      { type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" });
+    fireEvent.change(await screen.findByTestId("template-file"), { target: { files: [file] } });
+    expect(screen.getByText(/converti en PDF par le serveur/)).toBeInTheDocument();
+    const dialog = screen.getByText("Téléverser le gabarit du diplôme").closest("div.relative");
+    fireEvent.click(within(dialog).getByRole("button", { name: "Téléverser" }));
+    expect(await within(dialog).findByRole("button", { name: "Conversion en cours…" })).toBeDisabled();
+    expect(documentTemplatesAPI.upload.mock.calls[0][0].get("file").name).toBe("diplôme officiel.docx");
+    finish({ data: version({ id: 13 }) });
+  });
+
+  it("affiche le format d'origine, le fond normalisé et les marqueurs repérés", async () => {
+    const converted = version({ source_format: "docx", source_format_display: "Word (DOCX)",
+      converted: true, normalized_format: "pdf", conversion: { engine: "libreoffice", seconds: 4.2 },
+      markers: { found: ["student_full_name", "issue_date"], unknown: [], auto_fields: 2 },
+      dimension_warning: "Dimensions différentes de la version 1" });
+    documentTemplatesAPI.list.mockResolvedValue(payload({
+      diploma: kindSummary("diploma", { state: "uploaded", pending: converted, versions: [converted] }),
+    }));
+    renderPage();
+    expect(await screen.findByTestId("format-11")).toHaveTextContent("Word (DOCX) → fond normalisé PDF (conversion 4.2 s)");
+    expect(screen.getByTestId("markers-11")).toHaveTextContent("2 champ(s) placé(s) automatiquement");
+    expect(screen.getByText("Dimensions différentes de la version 1")).toBeInTheDocument();
   });
 });

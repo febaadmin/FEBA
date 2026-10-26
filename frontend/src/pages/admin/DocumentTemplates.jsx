@@ -47,6 +47,9 @@ const PAGE_FORMAT_LABELS = {
   letter_landscape: "Lettre US paysage", letter_portrait: "Lettre US portrait",
 };
 
+/** Extension de l'original téléchargé, par format réel. */
+const SOURCE_EXTENSIONS = { jpeg: "jpg", tiff: "tif" };
+
 const fmtDate = (value) => (value ? new Date(value).toLocaleString() : "—");
 const fmtSize = (bytes) => `${(bytes / 1024 / 1024).toFixed(2)} Mo`;
 
@@ -115,7 +118,7 @@ export default function DocumentTemplates() {
   const original = useMutation({
     mutationFn: (version) => documentTemplatesAPI.original(version.id),
     onSuccess: (response, version) =>
-      openBlob(response.data, `gabarit-${version.kind}-v${version.version}.${version.file_format === "jpeg" ? "jpg" : version.file_format}`),
+      openBlob(response.data, `gabarit-${version.kind}-v${version.version}.${SOURCE_EXTENSIONS[version.source_format] || version.source_format}`),
     onError: (err) => toast.error(extractApiError(err)),
   });
 
@@ -146,8 +149,20 @@ export default function DocumentTemplates() {
       />
 
       <div className="card text-sm text-slate-600 space-y-1">
-        <p>{t("Formats acceptés : PDF (fond vectoriel, une page utilisée), PNG ou JPEG (au moins 600 px). Taille maximale : 10 Mo.")}</p>
-        <p>{t("Les documents Word (DOCX) ne sont pas acceptés : exportez-les en PDF depuis Word.")}</p>
+        <p>
+          {t("Formats acceptés, téléversés tels quels — FEBA les convertit lui-même :")}{" "}
+          <span data-testid="accepted-formats">
+            {(payload?.formats || []).filter((f) => f.available).map((f) => t(f.label)).join(", ")
+              || t("Chargement…")}
+          </span>.
+          {" "}{t("Taille maximale : {n} Mo.", { n: Math.round((payload?.limits?.max_bytes || 20971520) / 1048576) })}
+        </p>
+        {payload && payload.formats?.some((f) => !f.available) && (
+          <p className="text-amber-700">
+            {t("Conversion bureautique indisponible sur ce serveur (LibreOffice absent) : Word, OpenDocument, RTF et PowerPoint sont refusés ici.")}
+          </p>
+        )}
+        <p>{t("Word, OpenDocument, RTF et PowerPoint sont convertis en PDF ; les marqueurs {{ nom_du_champ }} qu'ils contiennent deviennent des champs déjà placés. L'original est conservé.")}</p>
         <p>{t("Étapes : téléverser → placer les champs → vérifier → activer. Une nouvelle version ne remplace l'ancienne qu'à son activation ; les documents déjà délivrés ne changent jamais.")}</p>
       </div>
 
@@ -241,6 +256,7 @@ export default function DocumentTemplates() {
 
       {uploadKind && payload && (
         <UploadModal kind={uploadKind} summary={payload.kinds[uploadKind]}
+                     formats={payload.formats} limits={payload.limits}
                      onClose={() => setUploadKind(null)}
                      onUploaded={(created) => { setUploadKind(null); refresh(); setEditing(created.id); }} />
       )}
@@ -288,8 +304,11 @@ function VersionCard({ version, title, onEdit, onPreview, onOriginal, onAction, 
           <p className="font-medium text-slate-800 truncate">
             v{version.version} · {version.original_filename}
           </p>
-          <p className="text-xs text-slate-500">
-            {t(version.file_format_display)} · {fmtSize(version.file_size)} · {version.page_width_mm} × {version.page_height_mm} mm
+          <p className="text-xs text-slate-500" data-testid={`format-${version.id}`}>
+            {t(version.source_format_display || version.file_format_display)}
+            {version.converted && ` → ${t("fond normalisé {f}", { f: version.normalized_format.toUpperCase() })}`}
+            {version.conversion?.seconds ? ` (${t("conversion {s} s", { s: version.conversion.seconds })})` : ""}
+            {" · "}{fmtSize(version.file_size)} · {version.page_width_mm} × {version.page_height_mm} mm
             {" "}({version.orientation === "landscape" ? t("paysage") : t("portrait")})
             {version.page_count > 1 && ` · ${t("page {n} sur {c}", { n: version.page_index + 1, c: version.page_count })}`}
           </p>
@@ -304,6 +323,18 @@ function VersionCard({ version, title, onEdit, onPreview, onOriginal, onAction, 
         </span>
       </div>
 
+      {version.markers && (
+        <p className="text-xs text-slate-600" data-testid={`markers-${version.id}`}>
+          {t("Marqueurs repérés dans le document : {m}", { m: version.markers.found.join(", ") })}
+          {version.markers.auto_fields > 0
+            && ` · ${t("{n} champ(s) placé(s) automatiquement", { n: version.markers.auto_fields })}`}
+        </p>
+      )}
+      {version.dimension_warning && (
+        <p className="text-xs text-amber-700 flex items-start gap-1">
+          <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" />{version.dimension_warning}
+        </p>
+      )}
       <p className="text-xs text-slate-600">
         {t("{n} champ(s) positionné(s)", { n: version.fields.length })}
         {version.documents_count > 0 && ` · ${t("{n} document(s) produit(s)", { n: version.documents_count })}`}
@@ -377,11 +408,13 @@ function VersionCard({ version, title, onEdit, onPreview, onOriginal, onAction, 
   );
 }
 
-function UploadModal({ kind, summary, onClose, onUploaded }) {
+function UploadModal({ kind, summary, formats, limits, onClose, onUploaded }) {
   const [file, setFile] = useState(null);
   const [pageFormat, setPageFormat] = useState("auto");
   const [copy, setCopy] = useState(Boolean(summary.active));
-  const isImage = file && /\.(png|jpe?g)$/i.test(file.name);
+  const isImage = file && /\.(png|jpe?g|tiff?|webp)$/i.test(file.name);
+  const isOffice = file && /\.(docx?|odt|rtf|pptx?|odp)$/i.test(file.name);
+  const accept = (formats || []).filter((f) => f.available).flatMap((f) => f.extensions).join(",");
   const reference = summary.active || summary.pending;
 
   const upload = useMutation({
@@ -406,8 +439,12 @@ function UploadModal({ kind, summary, onClose, onUploaded }) {
            title={kind === "diploma" ? t("Téléverser le gabarit du diplôme") : t("Téléverser le gabarit du certificat")}>
       <div className="space-y-4">
         <label className="block">
-          <span className="block text-xs text-slate-500 mb-1">{t("Fichier (PDF, PNG ou JPEG — 10 Mo au plus)")}</span>
-          <input type="file" accept=".pdf,.png,.jpg,.jpeg,application/pdf,image/png,image/jpeg"
+          <span className="block text-xs text-slate-500 mb-1">
+            {t("Fichier : {f} — {n} Mo au plus", {
+              f: (formats || []).filter((x) => x.available).map((x) => x.extensions.join(" ")).join(" "),
+              n: Math.round((limits?.max_bytes || 20971520) / 1048576) })}
+          </span>
+          <input type="file" accept={accept || undefined}
                  data-testid="template-file" onChange={(e) => setFile(e.target.files?.[0] || null)} />
         </label>
         {isImage && (
@@ -422,6 +459,12 @@ function UploadModal({ kind, summary, onClose, onUploaded }) {
               {t("L'image est inscrite dans la page sans être déformée.")}
             </span>
           </label>
+        )}
+        {isOffice && (
+          <p className="text-xs text-slate-500">
+            {t("Le document sera converti en PDF par le serveur (jusqu'à {s} s). Si plusieurs pages, vous choisirez celle qui sert de fond.",
+               { s: limits?.conversion_timeout_s || 90 })}
+          </p>
         )}
         {reference && (
           <label className="flex items-start gap-2 text-sm">
@@ -438,7 +481,9 @@ function UploadModal({ kind, summary, onClose, onUploaded }) {
           <button type="button" className="btn-secondary" onClick={onClose}>{t("Annuler")}</button>
           <button type="button" className="btn-primary" disabled={!file || upload.isPending}
                   onClick={() => upload.mutate()}>
-            {upload.isPending ? t("Envoi…") : t("Téléverser")}
+            {upload.isPending
+              ? (isOffice ? t("Conversion en cours…") : t("Envoi…"))
+              : t("Téléverser")}
           </button>
         </div>
       </div>

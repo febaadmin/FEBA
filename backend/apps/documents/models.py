@@ -425,14 +425,23 @@ class AcademyDocumentTemplate(models.Model):
     version = models.PositiveIntegerField()
 
     original_filename = models.CharField(max_length=255)
+    #: Format du fond NORMALISÉ, celui que le moteur de rendu exploite.
     file_format = models.CharField(max_length=10, choices=FORMAT_CHOICES)
+    #: Format RÉEL du fichier téléversé (lu dans son contenu) : docx, odt,
+    #: tiff… Identique à `file_format` quand aucune conversion n'a eu lieu.
+    source_format = models.CharField(max_length=10, blank=True, default="")
+    #: Empreinte du fond normalisé (PDF converti, image redressée) : vérifiée
+    #: avant chaque usage, comme celle de l'original.
+    normalized_sha256 = models.CharField(max_length=64, blank=True, default="")
+    #: Rapport de conversion : moteur, durée, marqueurs effacés.
+    conversion = models.JSONField(default=dict, blank=True)
     file_path = models.CharField(
         max_length=500,
         help_text="Chemin RELATIF dans le stockage privé ; nom aléatoire.",
     )
     render_path = models.CharField(
         max_length=500, blank=True,
-        help_text="Fond normalisé (image redressée selon l'EXIF), si différent.",
+        help_text="Fond normalisé (PDF converti, image redressée), si différent de l'original.",
     )
     file_sha256 = models.CharField(max_length=64)
     file_size = models.PositiveIntegerField()
@@ -517,7 +526,8 @@ class AcademyDocumentTemplate(models.Model):
         import json
 
         payload = json.dumps({
-            "file": self.file_sha256, "page": self.page_index,
+            "file": self.file_sha256, "normalized": self.normalized_sha256,
+            "page": self.page_index,
             "size": [self.page_width_mm, self.page_height_mm],
             "fields": self.fields, "options": self.options,
         }, sort_keys=True, ensure_ascii=False)

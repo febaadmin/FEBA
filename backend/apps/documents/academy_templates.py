@@ -11,15 +11,16 @@ reste « téléversé, non validé ».
 
 FORMATS
 -------
+Le fichier d'origine est conservé tel quel ; le moteur travaille sur un
+fond NORMALISÉ, produit par `apps/documents/conversion.py` :
   - PDF : la page choisie est reprise TELLE QUELLE (vectorielle) ; les
     champs sont dessinés dans un calque fusionné par-dessus. Couleurs,
     bordures, signatures préimprimées ne sont pas rééchantillonnées.
-  - PNG / JPEG : l'image est inscrite dans la page en conservant ses
-    proportions (jamais étirée), centrée.
-  - DOCX : REFUSÉ. Le convertir exigerait LibreOffice dans l'image du
-    serveur (plusieurs centaines de Mo) et sa mise en page varie d'une
-    version à l'autre ; un document officiel ne peut pas en dépendre.
-    Un DOCX s'exporte en PDF depuis Word, puis se téléverse.
+  - PNG, JPEG, TIFF, WEBP : l'image est inscrite dans la page en conservant
+    ses proportions (jamais étirée), centrée.
+  - DOCX, DOC, ODT, RTF, PPTX, PPT, ODP : convertis en PDF par LibreOffice
+    (sans interface, dans l'image Docker), puis traités comme un PDF. Les
+    marqueurs {{ champ }} éventuels deviennent des champs pré-positionnés.
 
 ISOLATION
 ---------
@@ -41,15 +42,18 @@ from reportlab.lib.units import mm
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfgen import canvas
 
+from apps.documents import conversion
+from apps.documents.conversion import ConversionError, TemplateUploadError  # noqa: F401
 from apps.documents.models import (
     AcademyDocumentTemplate,
     AcademyTemplateEvent,
     academy_templates_root,
 )
 
-#: Taille maximale d'un gabarit. Un fond A4 en PDF ou en PNG 300 dpi tient
-#: largement en dessous ; au-delà, c'est un fichier mal exporté.
-MAX_TEMPLATE_BYTES = 10 * 1024 * 1024
+#: Taille maximale d'un gabarit. Un fond A4 (PDF, PNG 300 dpi, Word avec
+#: logos) tient largement en dessous ; au-delà, c'est un fichier mal exporté.
+#: nginx accepte 25 Mo (nginx/nginx.prod.conf).
+MAX_TEMPLATE_BYTES = 20 * 1024 * 1024
 #: Pixels maximaux d'une image (protection contre les « bombes » de
 #: décompression : un PNG de 50 Ko peut déclarer 100 000 × 100 000 px).
 MAX_IMAGE_PIXELS = 40_000_000
@@ -58,21 +62,6 @@ MIN_IMAGE_SIDE_PX = 600
 MAX_PDF_PAGES = 10
 #: Résolution en dessous de laquelle l'impression est signalée médiocre.
 MIN_PRINT_DPI = 150
-
-ACCEPTED_EXTENSIONS = {
-    ".pdf": AcademyDocumentTemplate.FORMAT_PDF,
-    ".png": AcademyDocumentTemplate.FORMAT_PNG,
-    ".jpg": AcademyDocumentTemplate.FORMAT_JPEG,
-    ".jpeg": AcademyDocumentTemplate.FORMAT_JPEG,
-}
-ACCEPTED_MIME = {
-    AcademyDocumentTemplate.FORMAT_PDF: {"application/pdf", "application/x-pdf"},
-    AcademyDocumentTemplate.FORMAT_PNG: {"image/png"},
-    AcademyDocumentTemplate.FORMAT_JPEG: {"image/jpeg", "image/pjpeg"},
-}
-#: Types que le navigateur envoie quand il ne sait pas : on se fie alors
-#: au CONTENU, vérifié de toute façon.
-GENERIC_MIME = {"", "application/octet-stream", "binary/octet-stream"}
 
 #: Formats de page proposés pour un fond image (mm, largeur × hauteur).
 PAGE_FORMATS = {
@@ -212,37 +201,54 @@ HEX_COLOR = re.compile(r"^#[0-9A-Fa-f]{6}$")
 LINE_LEADING = 1.15
 
 
-class TemplateUploadError(ValidationError):
-    """Fichier refusé à l'entrée — avec la raison exacte."""
-
-
 # ── Téléversement ─────────────────────────────────────────────────────
-
-def _clean_filename(name):
-    """Nom d'origine, pour l'affichage uniquement. Jamais un chemin."""
-    base = os.path.basename(str(name or "").replace("\\", "/"))
-    base = "".join(ch for ch in base if ch.isprintable()).strip()
-    return base[:120] or "gabarit"
-
-
-def _detect_format(head):
-    if head.startswith(b"\x89PNG\r\n\x1a\n"):
-        return AcademyDocumentTemplate.FORMAT_PNG
-    if head.startswith(b"\xff\xd8\xff"):
-        return AcademyDocumentTemplate.FORMAT_JPEG
-    # La norme PDF tolère quelques octets avant l'en-tête.
-    if b"%PDF-" in head[:1024]:
-        return AcademyDocumentTemplate.FORMAT_PDF
-    if head.startswith(b"PK\x03\x04"):
-        return "zip"
-    return None
-
+#
+# La détection du format, les contrôles de sécurité et les conversions
+# vivent dans `apps/documents/conversion.py`, point d'entrée unique ; ce
+# module n'en reprend que les résultats.
 
 #: Marqueurs PDF refusés : script, lancement de programme, fichiers joints,
 #: formulaires dynamiques. Aucun n'a sa place dans un fond de diplôme.
 _DANGEROUS_PDF = re.compile(
     rb"/(JavaScript|JS|Launch|EmbeddedFiles?|RichMedia|XFA|SubmitForm|ImportData)(?![A-Za-z])"
 )
+
+#: Format Pillow attendu pour chaque format image.
+_PIL_FORMATS = {"png": "PNG", "jpeg": "JPEG", "tiff": "TIFF", "webp": "WEBP"}
+
+#: Extension canonique de l'original stocké (le nom réel n'est jamais réutilisé).
+_STORED_EXTENSIONS = {
+    "pdf": ".pdf", "png": ".png", "jpeg": ".jpg", "tiff": ".tif", "webp": ".webp",
+    "docx": ".docx", "doc": ".doc", "odt": ".odt", "rtf": ".rtf", "pptx": ".pptx",
+    "ppt": ".ppt", "odp": ".odp",
+}
+
+#: Noms de marqueurs acceptés dans un document bureautique, en plus des noms
+#: du catalogue. Insensibles à la casse.
+MARKER_ALIASES = {
+    "student_full_name": "student_name", "full_name": "student_name", "nom": "student_name",
+    "nom_eleve": "student_name", "nom_complet": "student_name", "eleve": "student_name",
+    "matricule": "student_matricule", "date_naissance": "student_birth_date",
+    "date_de_naissance": "student_birth_date", "academie": "academy_name",
+    "academy": "academy_name", "nom_academie": "academy_name", "ville": "academy_city",
+    "intitule": "document_title", "title": "document_title", "type_certificat": "document_title",
+    "certificate_type": "document_title", "objet": "certificate_purpose",
+    "purpose": "certificate_purpose", "niveau": "level_name", "level": "level_name",
+    "classe": "class_name", "class": "class_name", "annee_scolaire": "school_year",
+    "moyenne": "annual_average", "average": "annual_average", "mention": "result_mention",
+    "resultat": "result_mention", "date_obtention": "award_date",
+    "date_delivrance": "issue_date", "date": "issue_date", "numero": "document_number",
+    "reference": "document_number", "number": "document_number",
+    "signataire": "signatory_name", "fonction_signataire": "signatory_title",
+}
+
+
+def marker_field_name(raw, kind):
+    """Nom de champ du catalogue désigné par un marqueur, ou None."""
+    name = (raw or "").lower()
+    name = MARKER_ALIASES.get(name, name)
+    spec = FIELD_CATALOG.get(name)
+    return name if spec and kind in spec["kinds"] else None
 
 
 def _inspect_pdf(data):
@@ -283,7 +289,7 @@ def _inspect_pdf(data):
         raise TemplateUploadError("Ce PDF ne contient aucune page.")
     if count > MAX_PDF_PAGES:
         raise TemplateUploadError(
-            f"Ce PDF compte {count} pages. Un fond de diplôme ou de certificat en "
+            f"Ce document compte {count} pages. Un fond de diplôme ou de certificat en "
             f"compte une (au plus {MAX_PDF_PAGES} acceptées, dont une seule servira)."
         )
     for width_mm, height_mm in sizes:
@@ -291,7 +297,12 @@ def _inspect_pdf(data):
             raise TemplateUploadError(
                 f"Format de page inattendu ({width_mm:.0f} × {height_mm:.0f} mm)."
             )
-    _render_pdf_page_png(data, 0, 200)  # le moteur d'aperçu doit savoir l'ouvrir
+    try:
+        _render_pdf_page_png(data, 0, 200)  # le moteur d'aperçu doit savoir l'ouvrir
+    except Exception as exc:  # PDFium refuse un fichier que pypdf a toléré
+        raise TemplateUploadError(
+            f"Ce PDF ne peut pas être affiché ({exc.__class__.__name__}) : il est corrompu."
+        ) from exc
     return {"page_count": count, "page_sizes": sizes}
 
 
@@ -310,7 +321,7 @@ def _inspect_image(data, expected_format):
             image.verify()
         with Image.open(io.BytesIO(data)) as image:
             image.load()  # décode réellement : un fichier tronqué échoue ici
-            orientation = image.getexif().get(0x0112, 1) if fmt == "JPEG" else 1
+            orientation = image.getexif().get(0x0112, 1) if fmt in ("JPEG", "TIFF", "WEBP") else 1
     except TemplateUploadError:
         raise
     except (UnidentifiedImageError, OSError, SyntaxError, ValueError,
@@ -319,8 +330,7 @@ def _inspect_image(data, expected_format):
             f"Cette image est illisible ou corrompue ({exc.__class__.__name__})."
         ) from exc
 
-    expected = "PNG" if expected_format == AcademyDocumentTemplate.FORMAT_PNG else "JPEG"
-    if fmt != expected:
+    if fmt != _PIL_FORMATS[expected_format]:
         raise TemplateUploadError(
             f"Le contenu du fichier ({fmt or 'inconnu'}) ne correspond pas à son "
             f"extension."
@@ -337,11 +347,10 @@ def _inspect_image(data, expected_format):
 
 def inspect_upload(uploaded_file):
     """
-    Contrôle complet d'un fichier reçu. Renvoie `(octets, métadonnées)`.
+    Contrôle complet d'un fichier reçu. Renvoie `(octets, informations)`.
 
-    L'extension, le type annoncé par le navigateur ET le contenu réel
-    doivent concorder : un `.png` qui est un PDF, ou un PDF annoncé
-    `image/png`, est refusé.
+    Taille ici ; format réel, concordance extension / type / contenu,
+    macros et structure dans `conversion.inspect`.
     """
     if uploaded_file is None:
         raise TemplateUploadError("Aucun fichier reçu.")
@@ -357,42 +366,40 @@ def inspect_upload(uploaded_file):
             f"Fichier trop volumineux. Taille maximale : "
             f"{MAX_TEMPLATE_BYTES // 1048576} Mo."
         )
-    if not data:
-        raise TemplateUploadError("Le fichier est vide.")
+    info = conversion.inspect(data, getattr(uploaded_file, "name", ""),
+                              getattr(uploaded_file, "content_type", "") or "")
+    return data, info
 
-    name = _clean_filename(getattr(uploaded_file, "name", ""))
-    ext = os.path.splitext(name)[1].lower()
-    if ext in (".docx", ".doc", ".odt"):
-        raise TemplateUploadError(
-            "Les documents Word (DOCX) ne sont pas pris en charge : leur conversion "
-            "exigerait un traitement de texte sur le serveur et la mise en page "
-            "changerait d'une version à l'autre. Exportez le modèle en PDF depuis "
-            "Word (« Enregistrer sous » → PDF) puis téléversez ce PDF."
-        )
-    declared = ACCEPTED_EXTENSIONS.get(ext)
-    if declared is None:
-        raise TemplateUploadError(
-            "Format non pris en charge. Formats acceptés : PDF, PNG, JPEG."
-        )
 
-    detected = _detect_format(data[:2048])
-    if detected != declared:
-        raise TemplateUploadError(
-            f"L'extension « {ext} » ne correspond pas au contenu réel du fichier "
-            f"({detected or 'format inconnu'}). Fichier refusé."
-        )
-    mime = (getattr(uploaded_file, "content_type", "") or "").split(";")[0].strip().lower()
-    if mime not in GENERIC_MIME and mime not in ACCEPTED_MIME[declared]:
-        raise TemplateUploadError(
-            f"Type annoncé « {mime} » incompatible avec un fichier {ext}. Fichier refusé."
-        )
+def normalize(data, info):
+    """
+    Fond exploitable par le moteur à partir du fichier d'origine.
 
-    if declared == AcademyDocumentTemplate.FORMAT_PDF:
-        meta = _inspect_pdf(data)
-    else:
-        meta = _inspect_image(data, declared)
-    meta.update({"format": declared, "filename": name, "extension": ext})
-    return data, meta
+    Renvoie un dict : `engine` (pdf / png / jpeg), `normalized` (octets du
+    fond normalisé, ou None quand l'original sert tel quel), les mesures
+    (pages ou pixels) et le rapport de conversion.
+    """
+    fmt = info["format"]
+    result = {"engine": fmt, "normalized": None, "report": {"engine": "aucune"}}
+    if fmt == "pdf":
+        result.update(_inspect_pdf(data))
+    elif fmt in ("png", "jpeg"):
+        result.update(_inspect_image(data, fmt))
+        if fmt == "jpeg" and result["orientation"] != 1:
+            result["normalized"], result["engine"], _ = conversion.normalize_image(data, fmt)
+            result["report"] = {"engine": "pillow", "target": "png", "reason": "orientation EXIF"}
+    elif fmt in ("tiff", "webp"):
+        result.update(_inspect_image(data, fmt))
+        normalized, engine, extra = conversion.normalize_image(data, fmt)
+        result.update({"normalized": normalized, "engine": engine,
+                       "report": {"engine": "pillow", "target": engine, **extra}})
+        if engine == "pdf":
+            result.update(_inspect_pdf(normalized))
+    else:  # bureautique
+        normalized, report = conversion.convert_office(data, fmt, _STORED_EXTENSIONS[fmt])
+        result.update({"normalized": normalized, "engine": "pdf", "report": report})
+        result.update(_inspect_pdf(normalized))
+    return result
 
 
 def _write_private(relative, content):
@@ -407,17 +414,70 @@ def _write_private(relative, content):
     return absolute
 
 
-def _normalized_image(data, orientation):
-    """Image redressée selon l'EXIF — sinon un JPEG de téléphone sort couché."""
-    from PIL import Image, ImageOps
+def fields_from_markers(markers, kind, page_index, page_w, page_h):
+    """
+    Champs pré-positionnés à l'emplacement des marqueurs `{{ nom }}`.
 
-    with Image.open(io.BytesIO(data)) as image:
-        upright = ImageOps.exif_transpose(image)
-        if upright.mode not in ("RGB", "RGBA", "L"):
-            upright = upright.convert("RGB")
-        out = io.BytesIO()
-        upright.save(out, "PNG", optimize=True)
-        return out.getvalue()
+    La zone part du début du marqueur et s'étend jusqu'au marqueur suivant
+    de la même ligne (ou la marge droite) : la valeur réelle, plus longue
+    qu'un marqueur, a la place de s'écrire. Renvoie `(champs, inconnus)`.
+    """
+    on_page = [m for m in markers if m["page"] == page_index]
+    unknown = sorted({m["name"] for m in markers if marker_field_name(m["name"], kind) is None})
+    fields, seen = [], set()
+    for marker in sorted(on_page, key=lambda m: (m["y_mm"], m["x_mm"])):
+        name = marker_field_name(marker["name"], kind)
+        if name is None or name in seen:
+            continue
+        seen.add(name)
+        same_line = [m for m in on_page if m is not marker
+                     and abs(m["y_mm"] - marker["y_mm"]) < max(marker["height_mm"], 2)
+                     and m["x_mm"] > marker["x_mm"]]
+        alone = not [m for m in on_page if m is not marker
+                     and abs(m["y_mm"] - marker["y_mm"]) < max(marker["height_mm"], 2)]
+        centre = marker["x_mm"] + marker["width_mm"] / 2
+        height = max(marker["height_mm"] * 1.8, 6.0)
+        top = max(marker["y_mm"] - (height - marker["height_mm"]) / 2, 0)
+        size = max(8.0, min(round(marker["size_pt"]), 40.0))
+        if alone and abs(centre - page_w / 2) < 8:
+            # Marqueur centré seul sur sa ligne : la valeur reste centrée,
+            # quelle que soit sa longueur.
+            x, width, align = 20.0, page_w - 40.0, "center"
+        else:
+            right = min([m["x_mm"] - 1.5 for m in same_line] + [page_w - 8])
+            x, width, align = marker["x_mm"], max(right - marker["x_mm"], marker["width_mm"], 10), "left"
+        fields.append({
+            "name": name, "x_mm": round(x, 2), "y_mm": round(top, 2),
+            "width_mm": round(width, 2),
+            "height_mm": round(min(height, page_h - top), 2),
+            "font": "serif", "font_size_pt": size, "min_font_size_pt": min(8.0, size),
+            "align": align, "color": "#000000",
+            "max_lines": 1, "required": name == "student_name",
+        })
+    return _separate(fields), unknown
+
+
+def _separate(fields):
+    """
+    Écarte les zones pré-positionnées qui se chevaucheraient : la zone du
+    dessus s'arrête au-dessus de celle du dessous ; deux zones d'une même
+    ligne se partagent la largeur. Un pré-placement qui échouerait à la
+    vérification n'aiderait personne.
+    """
+    ordered = sorted(fields, key=lambda f: (f["y_mm"], f["x_mm"]))
+    for i, upper in enumerate(ordered):
+        for lower in ordered[i + 1:]:
+            if not _overlap(upper, lower):
+                continue
+            if lower["y_mm"] - upper["y_mm"] >= 3.5:
+                upper["height_mm"] = round(lower["y_mm"] - upper["y_mm"] - 0.5, 2)
+            else:
+                left, right = sorted((upper, lower), key=lambda f: f["x_mm"])
+                if right["x_mm"] - left["x_mm"] > 6:
+                    left["width_mm"] = round(right["x_mm"] - left["x_mm"] - 1, 2)
+                    if left["align"] == "center":
+                        left["align"] = "left"
+    return ordered
 
 
 def create_version(*, academy, kind, uploaded_file, user=None, page_format="auto",
@@ -425,8 +485,10 @@ def create_version(*, academy, kind, uploaded_file, user=None, page_format="auto
     """
     Enregistre un nouveau fichier comme NOUVELLE version, à l'état brouillon.
 
-    Rien n'est activé ici : la version active, s'il y en a une, continue de
-    servir tant que la nouvelle n'a pas été validée puis activée.
+    L'original est conservé tel quel ; le fond normalisé (PDF converti,
+    image redressée) est stocké à côté. Rien n'est activé ici : la version
+    active, s'il y en a une, continue de servir tant que la nouvelle n'a
+    pas été validée puis activée.
     """
     import hashlib
 
@@ -435,14 +497,16 @@ def create_version(*, academy, kind, uploaded_file, user=None, page_format="auto
     if academy is None:
         raise TemplateUploadError("Sélectionnez d'abord une académie.")
 
-    data, meta = inspect_upload(uploaded_file)
-    fmt = meta["format"]
+    data, info = inspect_upload(uploaded_file)
+    fmt = info["format"]
+    norm = normalize(data, info)
+    engine = norm["engine"]
 
-    if fmt == AcademyDocumentTemplate.FORMAT_PDF:
-        width_mm, height_mm = meta["page_sizes"][0]
+    if engine == AcademyDocumentTemplate.FORMAT_PDF:
+        width_mm, height_mm = norm["page_sizes"][0]
         image_w = image_h = 0
     else:
-        image_w, image_h = meta["width"], meta["height"]
+        image_w, image_h = norm["width"], norm["height"]
         if page_format in (None, "", "auto"):
             page_format = "a4_landscape" if image_w >= image_h else "a4_portrait"
         if page_format not in PAGE_FORMATS:
@@ -452,49 +516,102 @@ def create_version(*, academy, kind, uploaded_file, user=None, page_format="auto
             )
         width_mm, height_mm = PAGE_FORMATS[page_format]
 
-    folder = os.path.join(str(academy.pk), kind)
-    token = uuid.uuid4().hex
-    relative = os.path.join(folder, f"{token}{'.pdf' if fmt == 'pdf' else meta['extension']}")
-    render_relative = ""
-    _write_private(relative, data)
-    if fmt == AcademyDocumentTemplate.FORMAT_JPEG and meta.get("orientation", 1) != 1:
-        render_relative = os.path.join(folder, f"{token}.upright.png")
-        _write_private(render_relative, _normalized_image(data, meta["orientation"]))
+    page_index = 0
+    markers = norm["report"].get("markers") or []
+    if markers:
+        # La page qui porte le plus de marqueurs est celle du gabarit.
+        counts = {}
+        for marker in markers:
+            counts[marker["page"]] = counts.get(marker["page"], 0) + 1
+        page_index = max(counts, key=counts.get)
+        width_mm, height_mm = norm["page_sizes"][page_index]
 
     fields, options = [], {}
+    warnings = []
     if copy_from is not None:
         fields, options = list(copy_from.fields or []), dict(copy_from.options or {})
+        options.pop("markers", None)
+        options.pop("dimension_warning", None)
+        if (abs(copy_from.page_width_mm - width_mm) > 1
+                or abs(copy_from.page_height_mm - height_mm) > 1):
+            kept = _drop_outside_page(fields, width_mm, height_mm)
+            warnings.append(
+                f"Dimensions différentes de la version {copy_from.version} "
+                f"({copy_from.page_width_mm:g} × {copy_from.page_height_mm:g} mm → "
+                f"{width_mm:g} × {height_mm:g} mm) : les champs repris doivent être vérifiés"
+                + (f" ; {len(fields) - len(kept)} champ(s) hors de la nouvelle page retiré(s)"
+                   if len(kept) != len(fields) else "") + "."
+            )
+            fields = kept
+    marker_info = None
+    if markers:
+        auto, unknown = fields_from_markers(markers, kind, page_index, width_mm, height_mm)
+        marker_info = {"found": sorted({m["name"] for m in markers}), "unknown": unknown,
+                       "auto_fields": 0}
+        if not fields and auto:
+            fields = auto
+            marker_info["auto_fields"] = len(auto)
     options.setdefault("eligibility", {"rule": DEFAULT_ELIGIBILITY[kind]})
-    options["page_format"] = page_format if fmt != "pdf" else "pdf"
-    if fmt == "pdf":
-        options["page_sizes"] = meta["page_sizes"]
+    options["page_format"] = page_format if engine != "pdf" else "pdf"
+    if engine == "pdf":
+        options["page_sizes"] = norm["page_sizes"]
+    if marker_info:
+        options["markers"] = marker_info
+    if warnings:
+        options["dimension_warning"] = warnings[0]
 
-    for _attempt in range(3):
-        try:
-            with transaction.atomic():
-                last = (AcademyDocumentTemplate.objects.select_for_update()
-                        .filter(academy=academy, kind=kind).order_by("-version").first())
-                template = AcademyDocumentTemplate.objects.create(
-                    academy=academy, kind=kind,
-                    version=(last.version + 1) if last else 1,
-                    original_filename=meta["filename"], file_format=fmt,
-                    file_path=relative, render_path=render_relative,
-                    file_sha256=hashlib.sha256(data).hexdigest(), file_size=len(data),
-                    page_count=meta.get("page_count", 1), page_index=0,
-                    page_width_mm=width_mm, page_height_mm=height_mm,
-                    image_width_px=image_w, image_height_px=image_h,
-                    fields=_drop_outside_page(fields, width_mm, height_mm),
-                    options=options, uploaded_by=user,
-                )
-            break
-        except IntegrityError:  # deux téléversements simultanés : on renumérote
-            continue
-    else:  # pragma: no cover — trois collisions de suite
-        raise TemplateUploadError("Téléversement simultané : réessayez.")
+    folder = os.path.join(str(academy.pk), kind)
+    token = uuid.uuid4().hex
+    relative = os.path.join(folder, f"{token}{_STORED_EXTENSIONS[fmt]}")
+    render_relative = ""
+    normalized_sha = ""
+    _write_private(relative, data)
+    if norm["normalized"] is not None:
+        render_relative = os.path.join(folder, f"{token}.normalise.{engine}")
+        _write_private(render_relative, norm["normalized"])
+        normalized_sha = hashlib.sha256(norm["normalized"]).hexdigest()
+
+    report = {k: v for k, v in norm["report"].items() if k != "markers"}
+    try:
+        for _attempt in range(3):
+            try:
+                with transaction.atomic():
+                    last = (AcademyDocumentTemplate.objects.select_for_update()
+                            .filter(academy=academy, kind=kind).order_by("-version").first())
+                    template = AcademyDocumentTemplate.objects.create(
+                        academy=academy, kind=kind,
+                        version=(last.version + 1) if last else 1,
+                        original_filename=info["filename"], file_format=engine,
+                        source_format=fmt, file_path=relative, render_path=render_relative,
+                        file_sha256=hashlib.sha256(data).hexdigest(), file_size=len(data),
+                        normalized_sha256=normalized_sha, conversion=report,
+                        page_count=norm.get("page_count", 1), page_index=page_index,
+                        page_width_mm=width_mm, page_height_mm=height_mm,
+                        image_width_px=image_w, image_height_px=image_h,
+                        fields=_drop_outside_page(fields, width_mm, height_mm),
+                        options=options, uploaded_by=user,
+                    )
+                break
+            except IntegrityError:  # deux téléversements simultanés : on renumérote
+                continue
+        else:  # pragma: no cover — trois collisions de suite
+            raise TemplateUploadError("Téléversement simultané : réessayez.")
+    except Exception:
+        # Aucune trace d'un téléversement qui n'a pas abouti.
+        for path in (relative, render_relative):
+            if path:
+                try:
+                    os.remove(os.path.join(academy_templates_root(), path))
+                except OSError:
+                    pass
+        raise
 
     log(template, "uploaded", user,
-        f"{template.original_filename} — {fmt.upper()}, {template.file_size} octets, "
-        f"empreinte {template.file_sha256[:16]}…"
+        f"{template.original_filename} — {conversion.FORMATS[fmt]['label']}"
+        + (f" converti en {engine.upper()} ({report.get('engine')}, {report.get('seconds', 0)} s)"
+           if render_relative else "")
+        + f", {template.file_size} octets, empreinte {template.file_sha256[:16]}…"
+        + (f" ; {len(markers)} marqueur(s) repéré(s)" if markers else "")
         + (f" (configuration reprise de la v{copy_from.version})" if copy_from else ""))
     return template
 
@@ -926,7 +1043,7 @@ def background_png(template, target_px=1600):
     from PIL import Image
 
     if template.file_format == AcademyDocumentTemplate.FORMAT_PDF:
-        return _render_pdf_page_png(template.absolute_path, template.page_index, target_px)
+        return _render_pdf_page_png(template.render_absolute_path, template.page_index, target_px)
     with Image.open(template.render_absolute_path) as image:
         image = image.convert("RGB")
         image.thumbnail((target_px, target_px))
@@ -972,6 +1089,22 @@ def validate(template, user=None):
             if hashlib.sha256(handle.read()).hexdigest() != template.file_sha256:
                 errors.append("Le fichier stocké ne correspond plus à son empreinte : "
                               "il a été modifié hors de l'application.")
+    if template.render_path:
+        if not os.path.exists(template.render_absolute_path):
+            errors.append("Le fond normalisé (résultat de la conversion) est absent du stockage.")
+        elif template.normalized_sha256:
+            with open(template.render_absolute_path, "rb") as handle:
+                if hashlib.sha256(handle.read()).hexdigest() != template.normalized_sha256:
+                    errors.append("Le fond normalisé ne correspond plus à son empreinte : "
+                                  "il a été modifié hors de l'application.")
+    markers = (template.options or {}).get("markers") or {}
+    if markers.get("unknown"):
+        errors.append(
+            "Marqueurs inconnus dans le document : "
+            + ", ".join("{{ " + m + " }}" for m in markers["unknown"])
+            + ". Ils ont été effacés du fond mais ne correspondent à aucune donnée de FEBA : "
+              "renommez-les (voir DOCUMENT_TEMPLATES_GUIDE.md) ou placez le champ voulu dans l'éditeur."
+        )
     names = {field["name"] for field in template.fields}
     if "student_name" not in names:
         errors.append("Le nom de l'élève n'est pas placé sur le gabarit.")
@@ -1010,7 +1143,10 @@ def validate(template, user=None):
                     errors.append(f"Rendu d'essai : « {FIELD_CATALOG[field['name']]['label']} » "
                                   f"n'a pas été retrouvé dans le PDF produit.")
             if "{{" in text or "}}" in text:
-                errors.append("Rendu d'essai : un marqueur non remplacé subsiste.")
+                errors.append(
+                    "Rendu d'essai : un marqueur {{ … }} reste visible sur le fond. Un PDF ou "
+                    "une image ne peut pas être nettoyé : téléversez le document source (DOCX, "
+                    "ODT…), dont les marqueurs sont remplacés automatiquement, ou retirez-les.")
             if pages != 1:
                 errors.append(f"Rendu d'essai : {pages} pages produites au lieu d'une.")
         except (RenderError, ValidationError) as exc:

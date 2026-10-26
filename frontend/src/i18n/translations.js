@@ -2706,4 +2706,45 @@ export const EN = {
     "No active template: upload, check and activate it in “Document templates”.",
   "Version {v} en préparation : {s}":
     "Version {v} in preparation: {s}",
+  // Gabarits multiformats — 27/10/2026
+  "Conversion bureautique indisponible sur ce serveur (LibreOffice absent) : Word, OpenDocument, RTF et PowerPoint sont refusés ici.":
+    "Office conversion unavailable on this server (LibreOffice missing): Word, OpenDocument, RTF and PowerPoint are refused here.",
+  "Conversion en cours…":
+    "Converting…",
+  "Fichier : {f} — {n} Mo au plus":
+    "File: {f} — {n} MB max.",
+  "Formats acceptés, téléversés tels quels — FEBA les convertit lui-même :":
+    "Accepted formats, uploaded as they are — FEBA converts them itself:",
+  "Le document sera converti en PDF par le serveur (jusqu'à {s} s). Si plusieurs pages, vous choisirez celle qui sert de fond.":
+    "The document will be converted to PDF by the server (up to {s} s). If it has several pages, you will choose the one used as background.",
+  "Marqueurs repérés dans le document : {m}":
+    "Markers found in the document: {m}",
+  "Taille maximale : {n} Mo.":
+    "Maximum size: {n} MB.",
+  "Word, OpenDocument, RTF et PowerPoint sont convertis en PDF ; les marqueurs {{ nom_du_champ }} qu'ils contiennent deviennent des champs déjà placés. L'original est conservé.":
+    "Word, OpenDocument, RTF and PowerPoint files are converted to PDF; the {{ field_name }} markers they contain become pre-placed fields. The original is kept.",
+  "conversion {s} s":
+    "converted in {s} s",
+  "fond normalisé {f}":
+    "normalised background {f}",
+  "{n} champ(s) placé(s) automatiquement":
+    "{n} field(s) placed automatically",
+  "Image TIFF":
+    "TIFF image",
+  "Image WEBP":
+    "WEBP image",
+  "Word (DOCX)":
+    "Word document (DOCX)",
+  "Word 97-2003 (DOC)":
+    "Word 97-2003 document (DOC)",
+  "OpenDocument texte (ODT)":
+    "OpenDocument text (ODT)",
+  "Texte enrichi (RTF)":
+    "Rich text (RTF)",
+  "PowerPoint (PPTX)":
+    "PowerPoint presentation (PPTX)",
+  "PowerPoint 97-2003 (PPT)":
+    "PowerPoint 97-2003 (PPT) presentation",
+  "OpenDocument présentation (ODP)":
+    "OpenDocument presentation (ODP)",
 };

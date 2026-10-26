@@ -25,6 +25,7 @@ from rest_framework.views import APIView
 
 from apps.core.tenancy import get_request_school
 from apps.documents import academy_templates as uploads
+from apps.documents import conversion
 from apps.documents.models import AcademyDocumentTemplate, GeneratedDocument
 from apps.documents.renderer import RenderError
 from apps.documents.services import (
@@ -89,6 +90,15 @@ def serialize_template(template, *, events=False):
         "original_filename": template.original_filename,
         "file_format": template.file_format,
         "file_format_display": template.get_file_format_display(),
+        # Format RÉEL du fichier téléversé et fond normalisé exploité.
+        "source_format": template.source_format or template.file_format,
+        "source_format_display": conversion.FORMATS.get(
+            template.source_format or template.file_format, {}).get("label", ""),
+        "normalized_format": template.file_format,
+        "converted": bool(template.render_path),
+        "conversion": template.conversion,
+        "markers": (template.options or {}).get("markers"),
+        "dimension_warning": (template.options or {}).get("dimension_warning"),
         "file_size": template.file_size,
         "file_sha256": template.file_sha256,
         "page_count": template.page_count,
@@ -189,10 +199,13 @@ class AcademyTemplateListView(APIView):
             "fonts": list(uploads.FONTS),
             "page_formats": {key: list(size) for key, size in uploads.PAGE_FORMATS.items()},
             "eligibility_rules": {k: list(v) for k, v in uploads.ELIGIBILITY_RULES.items()},
+            "formats": conversion.accepted_formats(),
             "limits": {
                 "max_bytes": uploads.MAX_TEMPLATE_BYTES,
-                "formats": ["pdf", "png", "jpeg"],
-                "extensions": sorted(uploads.ACCEPTED_EXTENSIONS),
+                "formats": list(conversion.FORMATS),
+                "extensions": sorted(conversion.EXTENSIONS),
+                "office_conversion": conversion.office_available(),
+                "conversion_timeout_s": conversion.conversion_timeout(),
                 "max_pdf_pages": uploads.MAX_PDF_PAGES,
                 "min_image_side_px": uploads.MIN_IMAGE_SIDE_PX,
             },
@@ -349,9 +362,9 @@ class AcademyTemplateOriginalView(APIView):
         except OSError:
             return Response({"detail": "Le fichier de ce gabarit est absent du stockage."},
                             status=status.HTTP_410_GONE)
-        content_type = {"pdf": "application/pdf", "png": "image/png",
-                        "jpeg": "image/jpeg"}[template.file_format]
-        ext = {"pdf": "pdf", "png": "png", "jpeg": "jpg"}[template.file_format]
+        source = template.source_format or template.file_format
+        content_type = conversion.CONTENT_TYPES[source]
+        ext = uploads._STORED_EXTENSIONS[source].lstrip(".")
         response = FileResponse(handle, content_type=content_type, as_attachment=True,
                                 filename=f"gabarit-{template.kind}-v{template.version}.{ext}")
         response["Cache-Control"] = "private, no-store"

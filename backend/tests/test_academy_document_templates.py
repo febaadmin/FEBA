@@ -245,13 +245,20 @@ class UploadTests(TemplateTestBase):
         self.assertFalse(AcademyDocumentTemplate.objects.filter(academy=self.A.school).exists())
 
     def test_format_non_pris_en_charge(self):
-        self.assertRefused("fond.gif", b"GIF89a" + b"\0" * 2000, "image/gif", "non pris en charge")
+        # Refus EXPLIQUÉ : la cause est dite, pas un message générique.
+        self.assertRefused("fond.gif", b"GIF89a" + b"\0" * 2000, "image/gif", "utilisez PNG ou JPEG")
         self.assertRefused("fond.txt", b"bonjour", "text/plain", "non pris en charge")
+        self.assertRefused("fond.xlsx", b"PK\x03\x04" + b"\0" * 200, "application/octet-stream",
+                           "classeurs Excel")
+        self.assertRefused("modele.docm", b"PK\x03\x04" + b"\0" * 200, "application/octet-stream",
+                           "macros")
 
-    def test_docx_refuse_avec_explication(self):
+    def test_docx_corrompu_refuse_avec_explication(self):
+        # Les DOCX sont désormais ACCEPTÉS et convertis (test_template_conversion.py) ;
+        # un faux DOCX reste refusé, avec la raison.
         self.assertRefused("modele.docx", b"PK\x03\x04" + b"\0" * 2000,
                            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-                           "Exportez le modèle en PDF")
+                           "corrompu")
 
     def test_fichiers_corrompus(self):
         self.assertRefused("fond.pdf", b"%PDF-1.7\n" + b"\x00garbage" * 300, "application/pdf",
@@ -290,7 +297,9 @@ class UploadTests(TemplateTestBase):
         self.assertEqual((response.data["image_width_px"], response.data["image_height_px"]),
                          (1754, 1240))
         template = AcademyDocumentTemplate.objects.get(pk=response.data["id"])
-        self.assertTrue(template.render_path.endswith(".upright.png"))
+        self.assertTrue(template.render_path.endswith(".normalise.png"))
+        self.assertEqual(template.source_format, "jpeg")
+        self.assertEqual(template.file_format, "png")
         self.assertTrue(os.path.exists(template.render_absolute_path))
 
     def test_stockage_prive_nom_aleatoire_et_range_par_academie(self):
