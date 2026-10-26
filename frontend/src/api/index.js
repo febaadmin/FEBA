@@ -15,6 +15,12 @@ const API_URL = import.meta.env.VITE_API_URL || "/api";
 
 const api = axios.create({ baseURL: API_URL, headers: { "Content-Type": "application/json" } });
 
+// Client des ressources PUBLIQUES (identité visuelle) : ni jeton, ni portée
+// d'académie. Passée par `api`, la réponse du branding était rejetée comme
+// « périmée » pendant l'amorçage de la portée : la barre latérale retombait
+// sur le logo embarqué alors que le serveur avait répondu 200.
+const publicApi = axios.create({ baseURL: API_URL });
+
 // Attach JWT + langue courante (LocaleMiddleware côté Django localise les
 // messages du framework selon cet en-tête)
 api.interceptors.request.use((config) => {
@@ -252,7 +258,7 @@ export const schoolsAPI = {
   listBranding:     (p)      => api.get("/schools/branding/", { params: { ...BIG, ...p } }),
   activeBranding:   (p)      => api.get("/schools/branding/active/", { params: p }),
   // Identité publique (sans authentification) : logo effectif, favicons, titre visio.
-  publicBranding:   (code)   => api.get(`/schools/public-branding/${encodeURIComponent(code)}/`),
+  publicBranding:   (code)   => publicApi.get(`/schools/public-branding/${encodeURIComponent(code)}/`),
   uploadBranding:   (fd)     => api.post("/schools/branding/", fd, { headers: { "Content-Type": "multipart/form-data" } }),
   activateBranding: (id)     => api.post(`/schools/branding/${id}/activate/`),
   deleteBranding:   (id)     => api.delete(`/schools/branding/${id}/`),
