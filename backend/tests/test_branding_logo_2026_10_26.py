@@ -348,3 +348,27 @@ class EmbeddedShieldTests(Base):
             pdf = render_document(tid, self.VALUES, branding=get_branding(school))
             reds = [c for c in self.colors(pdf) if c[0] > 200 and c[1] < 60 and c[2] < 60]
             self.assertTrue(reds, f"logo activé absent de {tid}")
+
+
+class ProvidedAssetsTests(TestCase):
+    """Les fichiers FOURNIS sont ceux servis, à l'octet près ; aucune ancienne icône n'est référencée."""
+
+    def test_favicons_fournis_installes_tels_quels(self):
+        from tests.repo_root import repo_file as repo_path
+        src = repo_path("branding", "source")
+        for name in ("favicon-16x16.png", "favicon-32x32.png"):
+            original = open(f"{src}/{name}", "rb").read()
+            self.assertEqual(open(repo_path("frontend", "public", name), "rb").read(), original, name)
+            self.assertEqual(open(f"{STATIC_FILES_DIR}/{name}", "rb").read(), original, name)
+        logo = Image.open(f"{src}/feba_logo_transparent.png")
+        self.assertEqual((logo.size, logo.mode), ((1280, 1280), "RGBA"))
+
+    def test_index_html_sans_ancienne_icone(self):
+        from tests.repo_root import read_repo_file, repo_file as repo_path
+        import os
+        html = read_repo_file("frontend", "index.html")
+        self.assertNotIn("favicon.svg", html)
+        self.assertIn('href="/favicon-32x32.png"', html)
+        self.assertIn('href="/favicon-16x16.png"', html)
+        self.assertIn('rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png"', html)
+        self.assertFalse(os.path.exists(repo_path("frontend", "public", "favicon.svg")))
