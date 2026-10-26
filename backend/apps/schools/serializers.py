@@ -358,6 +358,13 @@ class AcademyCreateSerializer(serializers.ModelSerializer):
                                         'blank': "Le code interne est obligatoire."}},
             'address': {'error_messages': {'required': "L'adresse est obligatoire.",
                                            'blank': "L'adresse est obligatoire."}},
+            # Ville et pays s'impriment en tête de chaque document : sans
+            # eux, le défaut du modèle (« Cotonou », « Bénin ») apparaissait
+            # sur les bulletins d'une académie installée ailleurs.
+            'city': {'required': True, 'allow_blank': False, 'error_messages': {
+                'required': "La ville est obligatoire.", 'blank': "La ville est obligatoire."}},
+            'country': {'required': True, 'allow_blank': False, 'error_messages': {
+                'required': "Le pays est obligatoire.", 'blank': "Le pays est obligatoire."}},
         }
 
     def validate_code(self, value):

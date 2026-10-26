@@ -273,11 +273,11 @@ export default function SuperAdminAcademies() {
               <Field label={t("Adresse*")} error={errors.address}>
                 <input className="input" value={form.address} onChange={(e) => set("address", e.target.value)} data-testid="academy-address" />
               </Field>
-              <Field label={t("Ville")} error={errors.city}>
-                <input className="input" value={form.city} onChange={(e) => set("city", e.target.value)} />
+              <Field label={t("Ville*")} error={errors.city}>
+                <input className="input" value={form.city} onChange={(e) => set("city", e.target.value)} data-testid="academy-city" />
               </Field>
-              <Field label={t("Pays")} error={errors.country}>
-                <input className="input" value={form.country} onChange={(e) => set("country", e.target.value)} />
+              <Field label={t("Pays*")} error={errors.country}>
+                <input className="input" value={form.country} onChange={(e) => set("country", e.target.value)} data-testid="academy-country" />
               </Field>
               <Field label={t("Téléphone")} error={errors.phone}>
                 <input className="input" value={form.phone} onChange={(e) => set("phone", e.target.value)} />

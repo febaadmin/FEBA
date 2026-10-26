@@ -500,10 +500,13 @@ def get_branding(academy) -> AcademyBranding:
         postal_address=academy.address or "",
         city=academy.city or "",
         country=academy.country or "",
-        # `academy.phone` n'est PAS lu ici. Voir `institution.py` : la
-        # colonne reste une donnée de gestion administrable, elle n'est
-        # plus l'autorité sur ce qui s'imprime.
-        phone=official_phone(),
+        # Académie du GROUPE FEBA (nom de groupe dans son identité) : le
+        # numéro institutionnel unique du groupe (voir `institution.py`), la
+        # colonne `academy.phone` n'étant qu'une donnée de gestion.
+        # Académie INDÉPENDANTE créée sur la plateforme : SON numéro —
+        # imprimer celui du groupe FEBA sur ses reçus et bulletins
+        # renverrait ses familles vers une autre institution.
+        phone=official_phone() if brand.get("group_name") else (academy.phone or ""),
         whatsapp=academy.whatsapp or "",
         email=academy.email or "",
         website=str(brand.get("website") or ""),

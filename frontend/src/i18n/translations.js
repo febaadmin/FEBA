@@ -366,6 +366,8 @@ export const EN = {
   "Lieu de naissance": "Place of birth",
   "Genre": "Gender",
   "Sexe": "Sex",
+  "Pays*": "Country*",
+  "Ville*": "City*",
   "Cette académie applique le barème par défaut de la plateforme.": "This academy applies the platform's default scale.",
   "Personnaliser le barème de cette académie": "Customise this academy's scale",
   "Sélectionnez une académie pour modifier ses informations.": "Select an academy to edit its details.",

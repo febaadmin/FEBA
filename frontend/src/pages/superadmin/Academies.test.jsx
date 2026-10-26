@@ -53,11 +53,13 @@ describe("création", () => {
     fireEvent.change(screen.getByTestId("academy-name"), { target: { value: "Lycée de Parakou" } });
     expect(screen.getByTestId("academy-code").value).toBe("LYCEE_DE_PARAKOU");  // code proposé
     fireEvent.change(screen.getByTestId("academy-address"), { target: { value: "Zongo" } });
+    fireEvent.change(screen.getByTestId("academy-city"), { target: { value: "Parakou" } });
+    fireEvent.change(screen.getByTestId("academy-country"), { target: { value: "Bénin" } });
     fireEvent.click(screen.getByTestId("academy-submit"));
     await waitFor(() => expect(schoolsAPI.createAcademy).toHaveBeenCalledTimes(1));
     expect(schoolsAPI.createAcademy.mock.calls[0][0]).toMatchObject({
       academy_type: "physical_secondary", name: "Lycée de Parakou", code: "LYCEE_DE_PARAKOU",
-      address: "Zongo", currency_code: "XOF", default_language: "fr",
+      address: "Zongo", city: "Parakou", country: "Bénin", currency_code: "XOF", default_language: "fr",
     });
     expect(schoolsAPI.createAcademy.mock.calls[0][0]).not.toHaveProperty("school_year_name");
     expect(toast.success).not.toHaveBeenCalled();

@@ -54,7 +54,8 @@ class NewAcademyDocumentsIdentityTests(TestCase):
             doc = fitz.open(stream=fh.read(), filetype="pdf")
         return " ".join(" ".join(page.get_text() for page in doc).split())
 
-    FOREIGN = ("Faith & Excellence", "French Heritage", "FEBA FHA", "Akpakpa")
+    # Ni nom, ni adresse, ni numéro institutionnel du groupe FEBA.
+    FOREIGN = ("Faith & Excellence", "French Heritage", "FEBA FHA", "Akpakpa", "0160011717")
 
     def test_bulletin_et_recu(self):
         from apps.bulletins.pdf_generator import generate_bulletin

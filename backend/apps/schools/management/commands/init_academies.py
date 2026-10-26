@@ -73,7 +73,10 @@ class Command(BaseCommand):
                     f"  Numéro hors service remplacé sur {academy.name} : "
                     f"{previous} → {academy.phone}"
                 ))
-            elif not (academy.phone or "").strip():
+            elif not (academy.phone or "").strip() and academy.code in ACADEMY_DEFAULTS:
+                # Seules les académies du GROUPE reçoivent le numéro
+                # institutionnel : une académie indépendante garde une
+                # colonne vide plutôt que le numéro d'une autre institution.
                 academy.phone = official_phone()
                 academy.save(update_fields=["phone"])
                 changed = True
