@@ -663,3 +663,89 @@ class ConcurrentCommentTests(BulletinCommentBase):
         self.assertEqual(Bulletin.objects.filter(student=s, period="T2").count(), 1)
         self.assertEqual(sorted(codes), [200, 409])            # le second voit la modification du premier
         self.assertIn(Bulletin.objects.get(student=s, period="T2").general_comment, ("Texte 0", "Texte 1"))
+
+
+class PreviewTests(BulletinCommentBase):
+    """Aperçu : moteur officiel, aucune écriture, commentaire saisi rendu."""
+
+    def preview(self, student, comment=None, client=None, period="T1"):
+        data = {"student_id": student.pk, "school_year_id": self.a.year.pk, "period": period}
+        if comment is not None:
+            data["comment"] = comment
+        return (client or self.client).post("/api/bulletins/preview/", data, format="json")
+
+    @staticmethod
+    def text(content):
+        doc = fitz.open(stream=content, filetype="pdf")
+        try:
+            return flat("".join(p.get_text() for p in doc))
+        finally:
+            doc.close()
+
+    def media_files(self):
+        import os
+        return sorted(os.path.join(d, f) for d, _, fs in os.walk(self.media) for f in fs)
+
+    def test_apercu_avant_generation_sans_aucune_ecriture(self):
+        s = self.a.students[0]
+        before = self.media_files()
+        r = self.preview(s, "Commentaire saisi dans l'aperçu — « é ».\nLigne 2")
+        self.assertEqual(r.status_code, 200, getattr(r, "data", None))
+        self.assertEqual(r["Content-Type"], "application/pdf")
+        self.assertEqual(r["Cache-Control"], "no-store")
+        text = self.text(r.content)
+        self.assertIn("Commentaire saisi dans l'aperçu — « é ». Ligne 2", text)
+        self.assertIn("APERÇU", text)
+        self.assertFalse(Bulletin.objects.exists())                    # rien n'est créé
+        self.assertEqual(self.media_files(), before)                   # aucun fichier écrit
+
+    def test_apercu_d_un_bulletin_existant_ne_touche_pas_au_pdf_officiel(self):
+        s = self.a.students[0]
+        b = self.generate(s)
+        self.client.post("/api/bulletins/comment-target/", {"student_id": s.pk, "school_year_id": self.a.year.pk,
+                         "period": "T1", "comment": "Enregistré."}, format="json")
+        b.refresh_from_db()
+        name, generated, files = b.pdf_file.name, b.generated_at, self.media_files()
+        r = self.preview(s)                                             # commentaire enregistré
+        self.assertIn("Enregistré.", self.text(r.content))
+        r = self.preview(s, "Brouillon non enregistré")                 # commentaire saisi
+        self.assertIn("Brouillon non enregistré", self.text(r.content))
+        b.refresh_from_db()
+        self.assertEqual((b.pdf_file.name, b.generated_at, b.general_comment), (name, generated, "Enregistré."))
+        self.assertEqual(self.media_files(), files)
+        self.assertEqual(Bulletin.objects.count(), 1)
+
+    def test_apercu_et_pdf_officiel_identiques_hormis_le_filigrane(self):
+        s = self.a.students[1]
+        self.client.post("/api/bulletins/comment-target/", {"student_id": s.pk, "school_year_id": self.a.year.pk,
+                         "period": "T1", "comment": "Même texte partout."}, format="json")
+        preview = self.text(self.preview(s).content)
+        official = flat(pdf_text(Bulletin.objects.get(student=s))[0])
+        strip = lambda t: " ".join(  # noqa: E731
+            w for w in t.replace("Document non officiel — Preview, not an official report", "")
+            .replace("APERÇU", "").split() if not w[:2].isdigit())     # dates/heures de génération
+        self.assertEqual(strip(preview), strip(official))
+        self.assertIn("Même texte partout.", official)
+
+    def test_permissions_et_isolation(self):
+        s = self.a.students[0]
+        for user in (self.a.parent_user, s.user, self.a.teacher.user):
+            c = APIClient()
+            c.force_authenticate(user)
+            self.assertEqual(self.preview(s, client=c).status_code, 403, user.role)
+        self.assertEqual(self.preview(self.b.students[0]).status_code, 404)
+        su = CustomUser.objects.create_user(username="su2", email="su2@t.bj", password="Pass1234!",
+                                            role="superadmin", first_name="S", last_name="U")
+        c = APIClient()
+        c.force_authenticate(su)
+        self.assertEqual(self.preview(s, client=c).status_code, 400)       # académie à choisir
+        self.assertEqual(self.preview(s, "x" * 1300).status_code, 400)     # trop long : refusé, pas tronqué
+
+    def test_liste_des_eleves_pour_la_revision_groupee(self):
+        self.generate(self.a.students[0])
+        r = self.client.post("/api/bulletins/comment-preview/", {"scope": "class", "class_id": self.a.cls.pk,
+                             "period": "T1", "school_year_id": self.a.year.pk}, format="json")
+        rows = {x["id"]: x for x in r.data["students_list"]}
+        self.assertEqual(len(rows), 3)
+        self.assertTrue(rows[self.a.students[0].pk]["has_pdf"])
+        self.assertFalse(rows[self.a.students[2].pk]["has_grades"])

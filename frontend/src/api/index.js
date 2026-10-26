@@ -571,6 +571,8 @@ export const bulletinsAPI = {
   // Commentaire du directeur : un bulletin (PDF régénéré) ou une portée.
   comment: (id, d)   => api.post(`/bulletins/${id}/comment/`, d),
   commentTarget: (d) => api.post("/bulletins/comment-target/", d),
+  // Aperçu PDF (moteur officiel, aucune écriture) : renvoyé en mémoire.
+  preview: (d)       => api.post("/bulletins/preview/", d, { responseType: "blob" }),
   commentPreview: (d) => api.post("/bulletins/comment-preview/", d),
   createOperation: (d) => api.post("/bulletins/operations/", d),
   operation: (id)    => api.get(`/bulletins/operations/${id}/`),

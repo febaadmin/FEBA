@@ -95,7 +95,7 @@ class BulletinViewSet(BulkDeleteMixin, viewsets.ModelViewSet):
         # pouvait modifier le bulletin de son enfant) exige un administrateur.
         from rest_framework.permissions import SAFE_METHODS
         if getattr(self, "action", None) in ("operations", "operation_detail", "comment_preview",
-                                             "comment_target"):
+                                             "comment_target", "preview"):
             # Journal et suivi des opérations : administration uniquement.
             return [IsAuthenticated(), IsAdminOrAbove()]
         if self.request is not None and self.request.method not in SAFE_METHODS:
@@ -156,6 +156,47 @@ class BulletinViewSet(BulkDeleteMixin, viewsets.ModelViewSet):
         data = BulletinSerializer(bulletin, context={"request": request}).data
         code = 200 if not result["failed"] and not result["skipped"] else 207
         return Response({"bulletin": data, "result": result}, status=code)
+
+    @action(detail=False, methods=["post"], url_path="preview")
+    def preview(self, request):
+        """
+        POST /api/bulletins/preview/
+        {"student_id", "school_year_id", "period", "comment"?: "…"}
+
+        APERÇU du bulletin : PDF rendu par le moteur officiel à partir des
+        données actuelles (notes, moyennes, classe, identité de l'académie),
+        avec le commentaire saisi s'il est fourni, sinon le commentaire
+        enregistré. Filigrane « APERÇU ».
+
+        AUCUNE écriture : ni bulletin créé ou modifié, ni PDF officiel
+        remplacé, ni fichier temporaire (le PDF est rendu en mémoire et
+        renvoyé tel quel), ni notification.
+        """
+        from django.http import HttpResponse
+        from .operations import ScopeError, clean_comment, resolve_scope
+        from .pdf_generator import UNCHANGED, render_bulletin_pdf
+        try:
+            school = self._operation_school(request)
+            year, student, _cls, _qs = resolve_scope(
+                school, scope=BulletinOperation.SCOPE_STUDENT, period=request.data.get("period"),
+                school_year_id=request.data.get("school_year_id"), student_id=request.data.get("student_id"))
+            raw = request.data.get("comment")
+            comment = UNCHANGED if raw is None else clean_comment(raw)
+        except _ScopeHttpError as exc:
+            return Response({"error": str(exc)}, status=400)
+        except ScopeError as exc:
+            return Response({"error": str(exc)}, status=exc.status)
+        try:
+            pdf, _draft = render_bulletin_pdf(student, request.data.get("period"), year,
+                                              comment=comment, preview=True)
+        except Exception as exc:
+            logger.error("Aperçu impossible %s : %s", student.pk, exc, exc_info=True)
+            return Response({"error": f"Aperçu impossible : {exc}"}, status=500)
+        response = HttpResponse(pdf, content_type="application/pdf")
+        response["Content-Disposition"] = f'inline; filename="apercu_{student.matricule}_{request.data.get("period")}.pdf"'
+        response["Cache-Control"] = "no-store"
+        response["X-Content-Type-Options"] = "nosniff"
+        return response
 
     @action(detail=False, methods=["post"], url_path="comment-target")
     def comment_target(self, request):
@@ -247,6 +288,15 @@ class BulletinViewSet(BulkDeleteMixin, viewsets.ModelViewSet):
             if bulletin else None,
             # Un élève : a-t-il des notes sur la période (PDF possible) ?
             "has_grades": _has_grades(student, year, period) if student else None,
+            # Classe / académie : liste pour la révision avant génération
+            # (aperçu individuel de chaque élève).
+            "students_list": [{
+                "id": s.pk, "name": s.get_full_name(),
+                "has_bulletin": s.pk in existing,
+                "has_pdf": bool(existing.get(s.pk) and existing[s.pk].pdf_file),
+                "comment": existing[s.pk].general_comment if s.pk in existing else "",
+                "has_grades": (s.pk in existing and bool(existing[s.pk].pdf_file)) or _has_grades(s, year, period),
+            } for s in students[:1000]] if not student else None,
         })
 
     @action(detail=False, methods=["get", "post"], url_path="operations")

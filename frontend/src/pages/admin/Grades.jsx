@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Plus, Trash2, BarChart2, BookOpen, Globe, User, Clock, History, Layers, MessageSquare } from "lucide-react";
+import { Plus, Trash2, BarChart2, BookOpen, Globe, User, Clock, History, Layers, MessageSquare, Eye } from "lucide-react";
 import { useForm, Controller } from "react-hook-form";
 import toast from "react-hot-toast";
 import { gradesAPI, studentsAPI, subjectsAPI, schoolsAPI, classesAPI } from "../../api";
@@ -23,6 +23,7 @@ import Modal from "../../components/ui/Modal";
 import SearchableSelect from "../../components/ui/SearchableSelect";
 import BulkGradeModal from "../../components/grades/BulkGradeModal";
 import BulletinCommentManager from "../../components/bulletins/BulletinCommentManager";
+import BulletinPreviewDialog from "../../components/bulletins/BulletinPreviewDialog";
 import { extractApiError } from "../../utils/errors";
 import { isValidGrade, gradePayloadValue } from "../../utils/gradeInput";
 import { t, dateLocale } from "../../i18n";
@@ -72,6 +73,8 @@ export default function AdminGrades() {
   // commentaire d'une note (champ « comment » de la note).
   const [bulletinCommentOpen, setBulletinCommentOpen] = useState(false);
   const [bulletinCommentKey, setBulletinCommentKey] = useState(0);
+  const [bulletinPreviewOpen, setBulletinPreviewOpen] = useState(false);
+  const [bulletinPreviewKey, setBulletinPreviewKey] = useState(0);
   const [bulkOpen, setBulkOpen] = useState(false);
   const [editItem, setEditItem] = useState(null);
   const [histItem, setHistItem] = useState(null);
@@ -334,6 +337,8 @@ export default function AdminGrades() {
                 Excel / CSV ({grades.length})
               </button>
             )}
+            <button onClick={() => { setBulletinPreviewKey((k) => k + 1); setBulletinPreviewOpen(true); }}
+              className="btn-secondary flex items-center gap-2"><Eye className="w-4 h-4" />{t("Aperçu du bulletin")}</button>
             <button onClick={() => { setBulletinCommentKey((k) => k + 1); setBulletinCommentOpen(true); }}
               className="btn-secondary flex items-center gap-2"><MessageSquare className="w-4 h-4" />{t("Commentaires des bulletins")}</button>
             <button onClick={() => setBulkOpen(true)}
@@ -344,6 +349,8 @@ export default function AdminGrades() {
         }
       />
 
+      <BulletinPreviewDialog key={`p${bulletinPreviewKey}`} open={bulletinPreviewOpen}
+        onClose={() => setBulletinPreviewOpen(false)} initial={{ yearId: currentYear?.id }} />
       <BulletinCommentManager key={bulletinCommentKey} open={bulletinCommentOpen} onClose={() => setBulletinCommentOpen(false)}
         initial={{ yearId: currentYear?.id }} />
 

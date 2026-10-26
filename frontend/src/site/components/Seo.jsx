@@ -25,11 +25,27 @@ function upsertCanonical(href) {
   el.setAttribute("href", href);
 }
 
+/**
+ * Titre complet selon l'académie de la page : les pages /feba-fha portent
+ * l'identité de FEBA French Heritage Academy, les autres celle de FEBA.
+ * Avant, toutes les pages — FEBA FHA comprise — finissaient par
+ * « — FEBA | Faith & Excellence Bilingual Academy ».
+ */
+export function fullPageTitle(title, pathname) {
+  if (pathname.startsWith("/feba-fha")) {
+    if (!title) return "FEBA FHA — FEBA French Heritage Academy";
+    return title.includes("FEBA FHA")
+      ? `${title} | FEBA French Heritage Academy`
+      : `${title} — FEBA FHA | FEBA French Heritage Academy`;
+  }
+  return title
+    ? `${title} — FEBA | Faith & Excellence Bilingual Academy`
+    : "FEBA — Faith & Excellence Bilingual Academy | École bilingue à Cotonou";
+}
+
 export default function Seo({ title, description, image, type = "website" }) {
   useEffect(() => {
-    const fullTitle = title
-      ? `${title} — FEBA | Faith & Excellence Bilingual Academy`
-      : "FEBA — Faith & Excellence Bilingual Academy | École bilingue à Cotonou";
+    const fullTitle = fullPageTitle(title, window.location.pathname);
     document.title = fullTitle;
     const url = window.location.origin + window.location.pathname;
     upsertMeta("name", "description", description);

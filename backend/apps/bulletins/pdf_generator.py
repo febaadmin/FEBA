@@ -16,6 +16,7 @@ Présentation du bulletin (modèle de référence fourni par l'établissement) :
 
 Template Maternelle conservé (notation en lettres + conduite), sans rang.
 """
+import contextvars
 import os
 import logging
 from decimal import Decimal
@@ -184,31 +185,37 @@ def C(text, *, align='LEFT', bold=False, size=8, color=None):
 UNCHANGED = object()
 
 
-def generate_bulletin(student, period, school_year, *, comment=UNCHANGED):
+#: Aperçu en cours de rendu : le filigrane « APERÇU » est apposé sur chaque
+#: page (voir _page_marks). ContextVar : sûr entre requêtes concurrentes.
+_PREVIEW = contextvars.ContextVar("bulletin_preview", default=False)
+
+
+def _page_marks(canvas, doc):
+    """Marques de page communes aux deux gabarits : filigrane de l'aperçu."""
+    if not _PREVIEW.get():
+        return
+    canvas.saveState()
+    canvas.setFillColor(colors.Color(0.85, 0.1, 0.1, alpha=0.18))
+    canvas.setFont("Helvetica-Bold", 64)
+    width, height = A4
+    canvas.translate(width / 2, height / 2)
+    canvas.rotate(35)
+    canvas.drawCentredString(0, 20, "APERÇU")
+    canvas.setFont("Helvetica-Bold", 22)
+    canvas.drawCentredString(0, -20, "Document non officiel — Preview, not an official report")
+    canvas.restoreState()
+
+
+def render_bulletin_pdf(student, period, school_year, *, comment=UNCHANGED, preview=False):
     """
-    Génère (ou régénère) le bulletin PDF d'un élève.
-    Template maternelle si le niveau est maternelle, sinon template
-    bilingue standard (parties FR et EN séparées).
+    Rendu PDF d'un bulletin, SANS AUCUNE ÉCRITURE en base ni sur disque.
 
-    Régénération SANS PERTE (P0 commentaires) :
-      - le bulletin existant (élève, année, période) est RÉUTILISÉ — jamais
-        supprimé : son commentaire, son inscription et son identifiant
-        survivent à toutes les régénérations ;
-      - le PDF est construit EN MÉMOIRE d'abord. Si la construction échoue,
-        rien n'est écrit : bulletin, commentaire et ancien PDF restent tels
-        quels, et un bulletin qui n'existait pas n'est pas créé ;
-      - le nouveau fichier porte un nom unique (l'URL change, le navigateur
-        ne peut pas resservir l'ancienne version) ; l'ancien fichier n'est
-        supprimé qu'après l'enregistrement réussi du nouveau.
-
-    `comment` : nouveau commentaire du directeur à imprimer et enregistrer ;
-    par défaut le commentaire enregistré est conservé.
+    Moteur unique de l'aperçu et de la génération officielle : mêmes
+    calculs, même mise en page, même identité d'académie. `comment` :
+    commentaire à imprimer (par défaut, celui qui est enregistré).
+    `preview` : appose le filigrane « APERÇU ».
+    Retourne (octets du PDF, bulletin de travail NON enregistré).
     """
-    from django.db import IntegrityError, transaction
-    from apps.students.services import get_or_create_enrollment
-
-    logger.info(f"Generating bulletin: {student.matricule} {period} {school_year.name}")
-
     # Classe de l'élève POUR L'ANNÉE DEMANDÉE (inscription annuelle),
     # repli sur current_class.
     student_class = Grade._class_for_year(student, school_year)
@@ -251,6 +258,7 @@ def generate_bulletin(student, period, school_year, *, comment=UNCHANGED):
     # et transportée jusqu'au dernier trait de couleur du document.
     palette = Palette(branding_for(student))
     buffer = BytesIO()
+    token = _PREVIEW.set(bool(preview))
     try:
         if is_maternelle:
             _build_maternelle_pdf(buffer, student, period, school_year,
@@ -265,7 +273,38 @@ def generate_bulletin(student, period, school_year, *, comment=UNCHANGED):
         logger.error(f"PDF build failed {student.matricule}/{period}: {e}", exc_info=True)
         raise
     finally:
+        _PREVIEW.reset(token)
         buffer.close()
+
+    return pdf_bytes, draft
+
+
+def generate_bulletin(student, period, school_year, *, comment=UNCHANGED):
+    """
+    Génère (ou régénère) le bulletin PDF d'un élève.
+    Template maternelle si le niveau est maternelle, sinon template
+    bilingue standard (parties FR et EN séparées).
+
+    Régénération SANS PERTE (P0 commentaires) :
+      - le bulletin existant (élève, année, période) est RÉUTILISÉ — jamais
+        supprimé : son commentaire, son inscription et son identifiant
+        survivent à toutes les régénérations ;
+      - le PDF est construit EN MÉMOIRE d'abord. Si la construction échoue,
+        rien n'est écrit : bulletin, commentaire et ancien PDF restent tels
+        quels, et un bulletin qui n'existait pas n'est pas créé ;
+      - le nouveau fichier porte un nom unique (l'URL change, le navigateur
+        ne peut pas resservir l'ancienne version) ; l'ancien fichier n'est
+        supprimé qu'après l'enregistrement réussi du nouveau.
+
+    `comment` : nouveau commentaire du directeur à imprimer et enregistrer ;
+    par défaut le commentaire enregistré est conservé.
+    """
+    from django.db import IntegrityError, transaction
+    from apps.students.services import get_or_create_enrollment
+
+    logger.info(f"Generating bulletin: {student.matricule} {period} {school_year.name}")
+
+    pdf_bytes, draft = render_bulletin_pdf(student, period, school_year, comment=comment)
 
     now = timezone.now()
     filename = (f"bulletin_{student.matricule}_{period}_{school_year.name}_"
@@ -771,7 +810,7 @@ def _build_standard_pdf(buffer, student, period, school_year, subject_data,
                        period, palette, scale, expected_languages=attendues)
     _add_signatures(story, bulletin, palette)
     _add_footer(story, palette)
-    doc.build(story)
+    doc.build(story, onFirstPage=_page_marks, onLaterPages=_page_marks)
 
 
 # ─── MATERNELLE PDF Template ──────────────────────────────────────────────────
@@ -945,7 +984,7 @@ def _build_maternelle_pdf(buffer, student, period, school_year, subject_data,
 
     _add_signatures(story, bulletin, palette)
     _add_footer(story, palette)
-    doc.build(story)
+    doc.build(story, onFirstPage=_page_marks, onLaterPages=_page_marks)
 
 
 # ─── Signatures & pied de page ────────────────────────────────────────────────

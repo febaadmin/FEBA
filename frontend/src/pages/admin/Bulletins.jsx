@@ -9,20 +9,20 @@
  */
 import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { FileText, Download, RefreshCw, Users, MessageSquare } from "lucide-react";
-import { useForm, Controller } from "react-hook-form";
+import { FileText, Download, RefreshCw, Users, MessageSquare, Eye } from "lucide-react";
+import { useForm } from "react-hook-form";
 import toast from "react-hot-toast";
-import { bulletinsAPI, studentsAPI, classesAPI, schoolsAPI } from "../../api";
+import { bulletinsAPI, classesAPI, schoolsAPI } from "../../api";
 import PageHeader from "../../components/ui/PageHeader";
 import DataTable from "../../components/ui/DataTable";
 import Modal from "../../components/ui/Modal";
-import SearchableSelect from "../../components/ui/SearchableSelect";
 import { extractApiError } from "../../utils/errors";
 import { t } from "../../i18n";
 import { useSchoolYearScope } from "../../hooks/useSchoolYearScope";
 import BulletinCommentManager, { OperationReport } from "../../components/bulletins/BulletinCommentManager";
+import BulletinPreviewDialog from "../../components/bulletins/BulletinPreviewDialog";
 
-import { ageColumn, studentOptionLabel } from "../../utils/age";
+import { ageColumn } from "../../utils/age";
 const PERIODS = [
   { value: "T1", label: "Trimestre 1" },
   { value: "T2", label: "Trimestre 2" },
@@ -35,7 +35,7 @@ export default function AdminBulletins() {
   const [genOpen, setGenOpen] = useState(false);
   const [genMode, setGenMode] = useState("student"); // "student" | "class" | "all"
   const [filterYear, setFilterYear] = useState(""); // "" = année active, "all" = toutes
-  const { register, handleSubmit, reset, control } = useForm();
+  const { register, handleSubmit, reset } = useForm();
   const [commentOpen, setCommentOpen] = useState(false);
   const [commentInitial, setCommentInitial] = useState({});
   const [commentKey, setCommentKey] = useState(0);
@@ -43,13 +43,22 @@ export default function AdminBulletins() {
   const openComments = (initial = {}) => {
     setCommentInitial(initial); setCommentKey((k) => k + 1); setCommentOpen(true);
   };
+  // Aperçu (moteur officiel, aucune écriture) : point d'entrée de toute
+  // génération individuelle, et de la révision avant une génération groupée.
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewInitial, setPreviewInitial] = useState({});
+  const [previewKey, setPreviewKey] = useState(0);
+  const openPreview = (initial = {}) => {
+    setPreviewInitial(initial); setPreviewKey((k) => k + 1); setPreviewOpen(true);
+  };
+  // Génération groupée : révision (portée, élèves, commentaire commun) avant confirmation.
+  const [review, setReview] = useState(null);
+  const [commonComment, setCommonComment] = useState("");
 
   // 1. D'abord les données de référence
-  const { data: studData } = useQuery({ queryKey: ["students-all"], queryFn: () => studentsAPI.list() });
   const { data: classData } = useQuery({ queryKey: ["classes"], queryFn: () => classesAPI.list() });
   const { data: yearsData } = useQuery({ queryKey: ["years"], queryFn: schoolsAPI.years });
 
-  const students   = studData?.data?.results   || studData?.data   || [];
   const classes    = classData?.data?.results  || classData?.data  || [];
   const years      = yearsData?.data?.results  || yearsData?.data  || [];
   // P2 : en mode « Toutes les Académies », aucune année ne peut
@@ -65,13 +74,20 @@ export default function AdminBulletins() {
   });
 
   const bulletins    = bulletinData?.data?.results || bulletinData?.data || [];
-  const studentOpts  = students.map(s => ({ value: s.id, label: studentOptionLabel(s) }));
 
   const genMut = useMutation({
     mutationFn: (d) => {
+      // Commentaire commun : une seule opération applique le commentaire puis
+      // génère (création des bulletins absents des élèves notés).
+      if (commonComment.trim()) {
+        return bulletinsAPI.createOperation({
+          scope: genMode === "class" ? "class" : "academy", class_id: d.class_id,
+          period: d.period, school_year_id: d.school_year_id, action: "set_comment",
+          comment: commonComment, regenerate: true, create_missing: true,
+        });
+      }
       if (genMode === "class") return bulletinsAPI.generateClass(d);
-      if (genMode === "all")   return bulletinsAPI.generateAll(d);
-      return bulletinsAPI.generate(d);
+      return bulletinsAPI.generateAll(d);
     },
     onSuccess: (res) => {
       const resData = res.data;
@@ -84,12 +100,20 @@ export default function AdminBulletins() {
         qc.invalidateQueries({ queryKey: ["bulletins"] });
       }
       setGenOpen(false);
+      setReview(null);
+      setCommonComment("");
       reset();
     },
-    onError: (e) => {
-      const msg = e.response?.data?.error || e.response?.data?.detail || "Erreur lors de la génération";
-      toast.error(msg);
-    },
+    onError: (e) => toast.error(extractApiError(e)),
+  });
+
+  const reviewMut = useMutation({
+    mutationFn: (d) => bulletinsAPI.commentPreview({
+      scope: genMode === "class" ? "class" : "academy", class_id: d.class_id,
+      period: d.period, school_year_id: d.school_year_id,
+    }).then((r) => ({ ...r.data, request: d })),
+    onSuccess: (data) => setReview(data),
+    onError: (e) => toast.error(extractApiError(e)),
   });
 
   const { data: genOpData } = useQuery({
@@ -110,8 +134,12 @@ export default function AdminBulletins() {
   const onSubmit = (d) => {
     const payload = { ...d };
     if (!payload.school_year_id && currentYear) payload.school_year_id = currentYear.id;
-    genMut.mutate(payload);
+    // 1re étape : révision (aucune génération) ; la génération ne part que
+    // depuis le bouton de confirmation de la révision.
+    reviewMut.mutate(payload);
   };
+  const toGenerate = review ? review.existing_bulletins + review.missing_with_grades : 0;
+  const closeGen = () => { setGenOpen(false); setReview(null); setCommonComment(""); reset(); };
 
   const cols = [
     { key: "student",      label: t("Élève"),        accessor: "student_name" },
@@ -150,9 +178,9 @@ export default function AdminBulletins() {
               <MessageSquare className="w-4 h-4" />{t("Commentaires du directeur")}</button>
             <button onClick={() => refetch()} className="btn-secondary flex items-center gap-2">
               <RefreshCw className="w-4 h-4" />{t("Rafraîchir")}</button>
-            <button onClick={() => { reset({ school_year_id: currentYear?.id || "" }); setGenMode("student"); setGenOpen(true); }}
+            <button onClick={() => openPreview({ yearId: currentYear?.id })}
               className="btn-primary flex items-center gap-2">
-              <FileText className="w-4 h-4" />{t("Générer un bulletin")}</button>
+              <FileText className="w-4 h-4" />{t("Prévisualiser / générer un bulletin")}</button>
             <button onClick={() => { reset({ school_year_id: currentYear?.id || "" }); setGenMode("class"); setGenOpen(true); }}
               className="btn-secondary flex items-center gap-2">
               <Users className="w-4 h-4" />{t("Par classe")}</button>
@@ -194,6 +222,10 @@ export default function AdminBulletins() {
           bulkDeletePending={bulkDeleteMut.isPending}
           actions={row => (
             <div className="flex items-center gap-1">
+              <button type="button" title={t("Aperçu du bulletin")}
+                onClick={() => openPreview({ studentId: row.student, yearId: row.school_year, period: row.period })}
+                className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs bg-slate-100 text-slate-700 hover:bg-slate-200 font-medium">
+                <Eye className="w-3 h-3" />{t("Aperçu")}</button>
               <button type="button" title={t("Commentaire du directeur")}
                 onClick={() => openComments({ scope: "student", studentId: row.student,
                   yearId: row.school_year, period: row.period })}
@@ -209,53 +241,88 @@ export default function AdminBulletins() {
       </div>
 
       <BulletinCommentManager key={commentKey} open={commentOpen} onClose={() => setCommentOpen(false)} initial={commentInitial} />
+      <BulletinPreviewDialog key={`p${previewKey}`} open={previewOpen} onClose={() => setPreviewOpen(false)} initial={previewInitial} />
 
-      <Modal open={genOpen} onClose={() => { setGenOpen(false); reset(); }}
-        title={genMode === "class" ? "Générer bulletins d'une classe" : genMode === "all" ? t("Générer tous les bulletins") : t("Générer un bulletin")}>
+      <Modal open={genOpen} onClose={closeGen} size="lg"
+        title={genMode === "class" ? t("Générer les bulletins d'une classe") : t("Générer tous les bulletins")}>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           {genMode === "all" && (
             <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-sm text-amber-700">
-              ⚠️ Génération des bulletins PDF de <strong>{t("tous les élèves actifs")}</strong>.
+              ⚠️ {t("Génération des bulletins PDF de tous les élèves actifs de l'académie sélectionnée.")}{" "}
               {t("Les PDF existants seront régénérés ; les commentaires du directeur sont conservés.")}
-            </div>
-          )}
-          {genMode === "student" && (
-            <div>
-              <label className="label">{t("Élève*")}</label>
-              <Controller name="student_id" control={control} rules={{ required: true }}
-                render={({ field }) => (
-                  <SearchableSelect options={studentOpts} value={field.value} onChange={field.onChange}
-                    placeholder={t("Rechercher un élève…")} />
-                )} />
             </div>
           )}
           {genMode === "class" && (
             <div>
               <label className="label">{t("Classe*")}</label>
-              <select {...register("class_id", { required: true })} className="input">
+              <select {...register("class_id", { required: true })} className="input" disabled={Boolean(review)}>
                 <option value="">-- Sélectionner --</option>
                 {classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
             </div>
           )}
-          <div>
-            <label className="label">{t("Période*")}</label>
-            <select {...register("period", { required: true })} className="input">
-              {PERIODS.map(p => <option key={p.value} value={p.value}>{t(p.label)}</option>)}
-            </select>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="label">{t("Période*")}</label>
+              <select {...register("period", { required: true })} className="input" disabled={Boolean(review)}>
+                {PERIODS.map(p => <option key={p.value} value={p.value}>{t(p.label)}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="label">{t("Année scolaire*")}</label>
+              <select {...register("school_year_id", { required: true })} className="input" disabled={Boolean(review)}>
+                <option value="">-- Sélectionner --</option>
+                {years.map(y => <option key={y.id} value={y.id}>{y.name}{y.is_current ? " ✓" : ""}</option>)}
+              </select>
+            </div>
           </div>
-          <div>
-            <label className="label">{t("Année scolaire*")}</label>
-            <select {...register("school_year_id", { required: true })} className="input">
-              <option value="">-- Sélectionner --</option>
-              {years.map(y => <option key={y.id} value={y.id}>{y.name}{y.is_current ? " ✓" : ""}</option>)}
-            </select>
-          </div>
+
+          {review && (
+            <div className="space-y-3" data-testid="generation-review">
+              <div className="bg-slate-50 rounded-xl p-3 text-sm">
+                <p><strong>{review.class ? `${t("Classe")} ${review.class.name}` : review.academy?.name}</strong>
+                  {" "}— {review.school_year?.name}, {t(PERIODS.find(p => p.value === review.period)?.label || "")}</p>
+                <p>{t("{n} élève(s)", { n: review.students })} · {t("Bulletins existants")} : {review.existing_bulletins}
+                  {" "}· {t("Bulletins absents")} : {review.missing_with_grades + review.missing_without_grades}
+                  {" "}({t("dont {n} sans aucune note", { n: review.missing_without_grades })})</p>
+              </div>
+              <div className="max-h-56 overflow-y-auto border rounded-xl divide-y">
+                {(review.students_list || []).map(st => (
+                  <div key={st.id} className="flex items-center justify-between px-3 py-1.5 text-sm">
+                    <span>{st.name}
+                      <span className="text-xs text-slate-500"> · {st.has_pdf ? t("bulletin généré") : st.has_grades ? t("à générer") : t("aucune note : ignoré")}
+                        {st.comment ? ` · « ${st.comment.slice(0, 40)}${st.comment.length > 40 ? "…" : ""} »` : ""}</span></span>
+                    <button type="button" className="text-xs text-primary font-medium flex items-center gap-1"
+                      onClick={() => openPreview({ studentId: st.id, yearId: review.request.school_year_id, period: review.request.period })}>
+                      <Eye className="w-3 h-3" />{t("Aperçu")}</button>
+                  </div>
+                ))}
+              </div>
+              <div>
+                <label className="label" htmlFor="common-comment">{t("Commentaire commun (facultatif, remplace les commentaires existants)")}</label>
+                <textarea id="common-comment" className="input min-h-[70px]" value={commonComment}
+                  onChange={(e) => setCommonComment(e.target.value)} />
+              </div>
+              <div className="border border-amber-300 bg-amber-50 rounded-xl p-3 text-sm" data-testid="generation-confirm">
+                {t("{n} bulletin(s) seront générés ou régénérés.", { n: toGenerate })}
+                {commonComment.trim() && ` ${t("Le commentaire commun sera appliqué à chacun.")}`}
+              </div>
+            </div>
+          )}
+
           <div className="flex gap-3 justify-end pt-2">
-            <button type="button" onClick={() => { setGenOpen(false); reset(); }} className="btn-secondary">{t("Annuler")}</button>
-            <button type="submit" disabled={genMut.isPending} className="btn-primary">
-              {genMut.isPending ? t("Génération…") : t("Générer")}
-            </button>
+            <button type="button" onClick={closeGen} className="btn-secondary">{t("Annuler")}</button>
+            {!review ? (
+              <button type="submit" disabled={reviewMut.isPending} className="btn-primary">
+                {reviewMut.isPending ? t("Chargement…") : t("Réviser avant génération")}</button>
+            ) : (
+              <>
+                <button type="button" className="btn-secondary" onClick={() => setReview(null)}>{t("Modifier la portée")}</button>
+                <button type="button" disabled={genMut.isPending || toGenerate === 0} className="btn-primary"
+                  onClick={() => genMut.mutate(review.request)}>
+                  {genMut.isPending ? t("Génération…") : t("Confirmer et générer ({n})", { n: toGenerate })}</button>
+              </>
+            )}
           </div>
         </form>
       </Modal>

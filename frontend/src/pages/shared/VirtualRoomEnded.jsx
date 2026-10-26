@@ -10,6 +10,7 @@ import { useEffect, useRef } from "react";
 import { Link, useParams } from "react-router-dom";
 import { virtualAPI } from "../../api";
 import { useAuthStore } from "../../store/authStore";
+import { useBranding } from "../../hooks/useBranding";
 
 const HOME = {
   superadmin: "/superadmin/dashboard", admin: "/admin/dashboard", teacher: "/teacher/dashboard",
@@ -21,8 +22,15 @@ export default function VirtualRoomEnded() {
   const role = useAuthStore((s) => s.user?.role);
   const sent = useRef(false);
 
+  // Titre de l'académie de l'utilisateur (celle de la salle) : « FEBA -
+  // Faith & Excellence Bilingual Academy » ou « FEBA FHA - FEBA », et favicon.
+  const { brandingData } = useBranding();
+  const meetingTitle = brandingData?.meeting_title;
   useEffect(() => {
-    document.title = "Réunion terminée — FEBA";
+    if (meetingTitle) document.title = meetingTitle;
+  }, [meetingTitle]);
+
+  useEffect(() => {
     if (sent.current || !id) return;
     sent.current = true;
     virtualAPI.leave(id).catch(() => { /* trace, pas un blocage */ });
