@@ -5,6 +5,37 @@ Rien ici n'est présenté comme fonctionnel sans preuve.
 
 ---
 
+## 000000. Académies typées, fiche FHA, appréciations (26 octobre 2026)
+
+Cette section prévaut sur les suivantes. Validations faites EN LOCAL
+uniquement (piles Docker du poste, Chrome réel). Ni préproduction ni
+Hetzner (accès SSH refusé) : BLOCKED.
+
+- **Académies non classées** : une académie existante qui mêle primaire et
+  secondaire (c'est le cas de FEBA dans les données de démonstration) n'est
+  couverte par aucun des trois types demandés ; elle reste « non classée »
+  et fonctionne comme avant (barème décidé par le cycle de chaque niveau).
+  Elle ne peut être classée que si ses niveaux le permettent.
+- **Niveaux créés avant cette version depuis l'interface** : l'ancien écran
+  ne proposait pas le cycle ; ils sont en « primaire » (bulletin sur 10).
+  Le cycle n'est pas corrigé automatiquement (on ne devine pas qu'un
+  niveau est du collège) : à vérifier dans « Niveaux ».
+- **Fiches FHA reçues avant cette version** : sexe « Non renseigné ».
+- **Barème par cycle** : l'aperçu de la saisie groupée des notes utilise
+  le barème de l'académie (« tous cycles ») ; la valeur enregistrée et le
+  bulletin appliquent bien le barème du cycle s'il existe.
+- **Libellés anglais des appréciations** : enregistrés et renvoyés par
+  l'API ; les bulletins restent imprimés avec les libellés français, comme
+  avant (aucun bulletin n'est produit en anglais aujourd'hui).
+- **Lettres A+…F** : barème inchangé et non administrable (hors périmètre).
+- **Nouvelle académie en ligne** : pas de formulaire public d'inscription
+  à son nom ni de rapports mensuels (fonctions propres à FEBA FHA).
+- **Diplômes / certificats d'une nouvelle académie** : refusés tant que ses
+  fonds officiels ne sont pas fournis.
+- **Serveur Vite de développement** : la première connexion après un
+  redémarrage peut être interrompue par le rechargement d'optimisation des
+  dépendances (constaté en local, sans effet sur le build de production).
+
 ## 00000. Aperçu des bulletins, logo actif, favicons, onglets de visio (26 octobre 2026)
 
 Cette section prévaut sur les suivantes. Validations faites EN LOCAL

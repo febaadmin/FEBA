@@ -18,7 +18,7 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-NOM="${1:-FEBA_VERSION_BULLETINS_BRANDING_FAVICON_CORRIGEE}"
+NOM="${1:-FEBA_VERSION_ACADEMIES_INSCRIPTIONS_APPRECIATIONS_VALIDEE}"
 SORTIE="${2:-$(dirname "$ROOT")}"
 STAGE="$(mktemp -d)"
 # Le dossier racine porte le MÊME nom que l'archive. En V8 il était
@@ -239,7 +239,22 @@ for requis in backend/manage.py frontend/package.json Makefile \
               frontend/src/components/bulletins/BulletinPreviewDialog.test.jsx \
               frontend/src/hooks/useBranding.test.jsx \
               plugnmeet/client-branding/feba-branding.js \
-              docs/historique/FINAL_REPORT_2026-10-26_commentaires_visio.md; do
+              docs/historique/FINAL_REPORT_2026-10-26_commentaires_visio.md \
+              docs/historique/FINAL_REPORT_2026-10-26_bulletins_branding.md \
+              ACADEMIES_GUIDE.md \
+              backend/apps/website/migrations/0012_fha_child_gender.py \
+              backend/apps/schools/migrations/0020_academy_type.py \
+              backend/apps/grades/migrations/0013_appreciation_rules.py \
+              backend/apps/schools/academy_setup.py backend/apps/schools/academy_types.py \
+              backend/apps/schools/management/commands/academy_types_report.py \
+              backend/apps/grades/appreciations.py backend/apps/grades/appreciation_views.py \
+              backend/tests/test_fha_child_gender.py backend/tests/test_academy_types_creation.py \
+              backend/tests/test_appreciation_rules.py backend/tests/test_isolation_2_7_19_academies.py \
+              backend/tests/isolation_campaign.py backend/tests/academy_fixtures.py \
+              backend/tests/test_audit_academies_2026_10_26.py \
+              frontend/src/pages/superadmin/Academies.jsx frontend/src/pages/superadmin/Academies.test.jsx \
+              frontend/src/pages/admin/Appreciations.jsx frontend/src/pages/admin/Appreciations.test.jsx \
+              frontend/src/components/AcademyLogo.jsx frontend/src/site/fhaEnrollGender.test.jsx; do
   [ -e "$CIBLE/$requis" ] || { echo "  ÉCHEC : « $requis » manquant"; exit 1; }
 done
 echo "  OK    tous les fichiers attendus sont présents"

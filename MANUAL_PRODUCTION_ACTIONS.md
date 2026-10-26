@@ -14,6 +14,46 @@
 ---
 
 
+## 00000. Académies typées, fiche FHA (sexe), appréciations (26/10/2026)
+
+Rien n'a été déployé ni migré en production. Validations : en local.
+
+1. **Sauvegarde vérifiée**, puis `make prod` (ou `scripts/deploy_feba.sh`),
+   qui applique trois migrations, toutes sans suppression de données :
+   - `website.0012_fha_child_gender` : champ « sexe » de la fiche FHA ; les
+     dossiers déjà reçus restent VIDES (« Non renseigné ») — rien n'est
+     deviné ;
+   - `schools.0020_academy_type` : type d'académie, déduit des données
+     (académie en ligne → « en ligne » ; niveaux uniquement maternelle /
+     primaire → « physique primaire » ; uniquement collège / lycée →
+     « physique secondaire »). Une académie qui mêle primaire et secondaire,
+     ou sans niveau, reste **non classée** ;
+   - `grades.0013_appreciation_rules` : COPIE, dans chaque académie, du
+     barème d'appréciations en vigueur (mêmes seuils, mêmes libellés :
+     aucun bulletin ne change).
+2. **Classement des académies** : `python manage.py academy_types_report`
+   (lecture seule) liste chaque académie et, pour une académie non classée,
+   le motif et une proposition. Le classement se fait dans « Académies »
+   (super administrateur) ; il est refusé tant que des niveaux le
+   contredisent (la liste des niveaux en cause est affichée). Une académie
+   non classée fonctionne exactement comme avant.
+3. **Vérifier les cycles des niveaux** (écran « Niveaux », colonne « Cycle ·
+   barème ») : l'ancien écran ne proposait pas le cycle, tout niveau créé
+   depuis l'interface était donc « primaire » (bulletin sur 10). Corriger
+   en « Collège » ou « Lycée » les niveaux du secondaire (bulletin sur 20).
+4. **Appréciations** : écran « Appréciations » de chaque académie ; le
+   barème copié est identique à l'ancien. Le modifier ne change pas les
+   bulletins déjà émis.
+5. **Nouvelle académie** : voir `ACADEMIES_GUIDE.md` (création, puis liste
+   « Configuration restante » : année, matières, classes, administrateur,
+   logo). Les diplômes et certificats exigent les fonds officiels de
+   l'académie (non fournis) : ils sont refusés, jamais produits au fond d'une
+   autre académie.
+6. Retour arrière : `make prod-rollback` ; `migrate grades 0012`,
+   `migrate schools 0019`, `migrate website 0011` retirent les ajouts (le
+   sexe saisi sur les nouvelles fiches et les barèmes d'appréciations
+   modifiés seraient alors perdus — sauvegarde ; aller-retour vérifié en local).
+
 ## 0000. Aperçu des bulletins, logo, favicons, onglets de visio (26/10/2026)
 
 Rien n'a été déployé ni migré en production.
