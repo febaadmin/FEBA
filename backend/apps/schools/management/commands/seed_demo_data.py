@@ -403,7 +403,7 @@ class Command(BaseCommand):
                             continue
                         # Barème officiel centralisé — jamais de seuils locaux.
                         from apps.grades.models import get_appreciation
-                        appreciation = get_appreciation(avg)
+                        appreciation = get_appreciation(avg, academy=student.school)
                         Bulletin.objects.get_or_create(
                             student=student, school_year=sy, period=period,
                             defaults={

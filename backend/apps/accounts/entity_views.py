@@ -45,6 +45,7 @@ def serialize_entity(school):
         "legal_name": school.legal_name or school.name,
         "slug": school.slug,
         "entity_type": school.entity_type,
+        "academy_type": school.academy_type,
         "timezone": school.timezone,
         "currency": school.currency_code,
         "currency_symbol": school.currency_symbol,

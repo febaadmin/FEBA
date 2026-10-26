@@ -673,6 +673,7 @@ class GradeViewSet(BulkDeleteMixin, viewsets.ModelViewSet):
 
         from apps.students.models import Student
         from apps.schools.models import SchoolYear
+        from .appreciations import cycle_of_class
         from .models import get_letter_grade, get_appreciation
 
         school = get_request_school(request)
@@ -785,7 +786,8 @@ class GradeViewSet(BulkDeleteMixin, viewsets.ModelViewSet):
             "letter":       letter,
             "meaning":      meaning,
             "stars":        stars,
-            "appreciation": get_appreciation(avg),
+            "appreciation": get_appreciation(avg, academy=student.school,
+                                             cycle=cycle_of_class(student_class)),
             "rank":         rank,
             "total_in_class": total_in_class,
             "subjects":     subjects_list,

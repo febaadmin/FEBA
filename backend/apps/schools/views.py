@@ -9,8 +9,8 @@ from apps.accounts.permissions import IsAdminOrAbove, IsSuperAdmin
 from apps.core.tenancy import get_request_school
 from .models import School, SchoolYear, Level, Room, RoomType, SchoolBranding
 from .serializers import (
-    SchoolSerializer, SchoolPlatformSerializer, SchoolYearSerializer, LevelSerializer,
-    RoomSerializer, RoomTypeSerializer, SchoolBrandingSerializer
+    AcademyCreateSerializer, SchoolSerializer, SchoolPlatformSerializer, SchoolYearSerializer,
+    LevelSerializer, RoomSerializer, RoomTypeSerializer, SchoolBrandingSerializer
 )
 
 
@@ -60,6 +60,57 @@ class SchoolViewSet(viewsets.ModelViewSet):
         if self.action == 'destroy':
             return [IsAuthenticated(), IsSuperAdmin()]
         return [IsAuthenticated()]
+
+    def create(self, request, *args, **kwargs):
+        """
+        Création d'une académie : validée par AcademyCreateSerializer puis
+        INITIALISÉE (niveaux du type, barème d'appréciations, première année
+        facultative) dans une seule transaction.
+        """
+        from .academy_setup import create_academy, setup_status
+
+        serializer = AcademyCreateSerializer(data=request.data, context={'request': request})
+        serializer.is_valid(raise_exception=True)
+        academy = create_academy(serializer.validated_data, created_by=request.user)
+        data = SchoolPlatformSerializer(academy, context={'request': request}).data
+        data['setup_status'] = setup_status(academy)
+        return Response(data, status=status.HTTP_201_CREATED)
+
+    def destroy(self, request, *args, **kwargs):
+        """
+        Suppression DÉFINITIVE réservée à une académie VIDE (création erronée).
+
+        Avant : un DELETE effaçait l'académie et, en cascade, ses élèves,
+        notes, bulletins et paiements. Une académie qui contient des données
+        se DÉSACTIVE (is_active=False) : ses utilisateurs ne peuvent plus se
+        connecter et rien n'est perdu.
+        """
+        academy = self.get_object()
+        from apps.accounts.models import CustomUser
+        from apps.payments.models import Payment
+        from apps.students.models import Student
+
+        blockers = {
+            'élèves': Student.objects.filter(school=academy).count(),
+            'utilisateurs': CustomUser.objects.filter(school=academy).count(),
+            'années scolaires': academy.years.count(),
+            'paiements': Payment.objects.filter(student__school=academy).count(),
+        }
+        blockers = {k: v for k, v in blockers.items() if v}
+        if blockers:
+            return Response({'detail': (
+                "Suppression refusée : l'académie contient des données ("
+                + ", ".join(f"{v} {k}" for k, v in blockers.items())
+                + "). Désactivez-la plutôt : rien ne sera perdu."),
+                'blockers': blockers}, status=status.HTTP_409_CONFLICT)
+        return super().destroy(request, *args, **kwargs)
+
+    @action(detail=True, methods=['get'], url_path='setup-status')
+    def setup_status(self, request, pk=None):
+        """Ce qui reste à configurer, d'après la base (superadmin ou admin de l'académie)."""
+        from .academy_setup import setup_status
+
+        return Response(setup_status(self.get_object()))
 
 
 class SchoolYearViewSet(viewsets.ModelViewSet):

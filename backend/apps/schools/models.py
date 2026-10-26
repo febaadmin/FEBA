@@ -35,6 +35,43 @@ class School(models.Model):
         ("online", "Académie en ligne"),
     ]
 
+    # ── Type d'académie (P0 du 26/10/2026) ───────────────────────────────
+    # Plus fin que `entity_type`, qui ne distingue que présentiel / en
+    # ligne : il dit QUEL ENSEIGNEMENT l'académie dispense, donc quels
+    # cycles (et par conséquent quels barèmes, voir apps.grades.grading)
+    # ses niveaux peuvent porter. `entity_type` en est DÉRIVÉ dès que le
+    # type est connu (save()), pour que la matrice des fonctionnalités ne
+    # puisse pas le contredire.
+    #
+    # NULL = « non classée » : académie antérieure dont les niveaux ne
+    # permettent pas de trancher (par exemple primaire ET collège). Elle
+    # fonctionne exactement comme avant ; le super administrateur la
+    # classe quand ses niveaux le permettent. On n'attribue jamais un type
+    # au hasard.
+    TYPE_ONLINE = "online"
+    TYPE_PHYSICAL_PRIMARY = "physical_primary"
+    TYPE_PHYSICAL_SECONDARY = "physical_secondary"
+    ACADEMY_TYPE_CHOICES = [
+        (TYPE_ONLINE, "Académie en ligne"),
+        (TYPE_PHYSICAL_PRIMARY, "Académie physique — primaire"),
+        (TYPE_PHYSICAL_SECONDARY, "Académie physique — secondaire (collège et lycée)"),
+    ]
+    #: Cycles de niveau admis par type. Une académie en ligne peut couvrir
+    #: tous les âges (FEBA FHA accueille des enfants de 6 à 17 ans).
+    ALLOWED_CYCLES = {
+        TYPE_ONLINE: ("maternelle", "primaire", "college", "lycee"),
+        TYPE_PHYSICAL_PRIMARY: ("maternelle", "primaire"),
+        TYPE_PHYSICAL_SECONDARY: ("college", "lycee"),
+    }
+    #: Cycle proposé par défaut à un nouveau niveau. Le défaut historique du
+    #: modèle (« primaire ») aurait noté sur 10 un niveau créé sans précision
+    #: dans un lycée.
+    DEFAULT_LEVEL_CYCLE = {
+        TYPE_ONLINE: "primaire",
+        TYPE_PHYSICAL_PRIMARY: "primaire",
+        TYPE_PHYSICAL_SECONDARY: "college",
+    }
+
     name = models.CharField(max_length=200)
     legal_name = models.CharField(
         max_length=250, blank=True,
@@ -50,6 +87,13 @@ class School(models.Model):
     entity_type = models.CharField(
         max_length=20, choices=ENTITY_TYPE_CHOICES, default="campus",
         help_text="Détermine les fonctionnalités par défaut (présentiel vs académie en ligne).",
+    )
+    academy_type = models.CharField(
+        max_length=24, choices=ACADEMY_TYPE_CHOICES, null=True, blank=True,
+        help_text=(
+            "En ligne, physique primaire ou physique secondaire. Fixe les cycles "
+            "admis pour les niveaux. Vide = académie antérieure non classée."
+        ),
     )
     slug = models.SlugField(
         max_length=80, unique=True, blank=True,
@@ -222,6 +266,34 @@ class School(models.Model):
     def is_online_academy(self):
         return self.entity_type == "online"
 
+    @classmethod
+    def entity_type_for(cls, academy_type):
+        """`entity_type` imposé par un type d'académie (None si non classée)."""
+        if not academy_type:
+            return None
+        return "online" if academy_type == cls.TYPE_ONLINE else "campus"
+
+    def allowed_cycles(self):
+        """Cycles de niveau admis ; une académie non classée les admet tous."""
+        return self.ALLOWED_CYCLES.get(
+            self.academy_type, ("maternelle", "primaire", "college", "lycee"))
+
+    def default_level_cycle(self):
+        return self.DEFAULT_LEVEL_CYCLE.get(self.academy_type, "primaire")
+
+    def incompatible_levels(self, academy_type=None):
+        """
+        Niveaux EXISTANTS dont le cycle est refusé par `academy_type`.
+
+        Sert à refuser un classement qui contredirait les données : un
+        lycée dont un niveau est en « primaire » serait noté sur 10.
+        """
+        target = academy_type if academy_type is not None else self.academy_type
+        if not target or not self.pk:
+            return []
+        allowed = self.ALLOWED_CYCLES[target]
+        return list(self.levels.exclude(cycle__in=allowed).order_by("order", "name"))
+
     @property
     def display_name(self):
         """Nom complet à utiliser dans les documents et titres de page."""
@@ -277,6 +349,11 @@ class School(models.Model):
         return self.name
 
     def save(self, *args, **kwargs):
+        derived = self.entity_type_for(self.academy_type)
+        if derived and self.entity_type != derived:
+            self.entity_type = derived
+            if kwargs.get("update_fields") is not None:
+                kwargs["update_fields"] = set(kwargs["update_fields"]) | {"entity_type"}
         if not self.slug:
             base = slugify(self.name)[:70] or "ecole"
             slug = base

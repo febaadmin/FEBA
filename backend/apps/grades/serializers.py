@@ -64,8 +64,24 @@ class GradeSerializer(TenantRelationsMixin, AcademyMetadataMixin, StudentAgeMixi
         return obj.subject.coefficient if obj.subject else 1
 
     def get_appreciation(self, obj):
+        """
+        Appréciation de la note selon le barème de l'académie de l'élève (et
+        du cycle de sa classe). Les barèmes résolus sont mémorisés pour la
+        durée de la réponse : une liste de notes ne relit pas la table à
+        chaque ligne.
+        """
+        from .appreciations import cycle_of_class
         from .models import get_appreciation
-        return get_appreciation(obj.value)
+
+        memo = self.context.setdefault('_appreciation_memo', {'scales': {}, 'cycles': {}})
+        enrollment = getattr(obj, 'enrollment', None)
+        klass = getattr(enrollment, 'class_obj', None) if enrollment else None
+        klass = klass or getattr(obj.student, 'current_class', None)
+        key = getattr(klass, 'pk', None)
+        if key not in memo['cycles']:
+            memo['cycles'][key] = cycle_of_class(klass)
+        return get_appreciation(obj.value, academy=obj.student.school,
+                                cycle=memo['cycles'][key], cache=memo['scales'])
 
     def get_deleted_by_name(self, obj):
         if obj.deleted_by:

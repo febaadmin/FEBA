@@ -294,6 +294,7 @@ class ParentDashboardView(APIView):
             avg_t1 = Grade.calculate_average(child, school_year, "T1") if school_year else None
             avg_t2 = Grade.calculate_average(child, school_year, "T2") if school_year else None
             avg_t3 = Grade.calculate_average(child, school_year, "T3") if school_year else None
+            from apps.grades.appreciations import cycle_of_class
             from apps.grades.models import get_appreciation
 
             # FIX (moyennes tableau de bord parent) : le tableau de bord
@@ -349,7 +350,9 @@ class ParentDashboardView(APIView):
                 "average_t3": safe_float(avg_t3) if avg_t3 is not None else None,
                 "subject_averages": subject_averages,
                 "bilingual": bilingual,
-                "appreciation": get_appreciation(avg) if avg is not None else None,
+                "appreciation": get_appreciation(
+                    avg, academy=child.school, cycle=cycle_of_class(child.current_class),
+                ) if avg is not None else None,
                 "progression": (
                     round(safe_float(avg_t2) - safe_float(avg_t1), 2)
                     if avg_t1 is not None and avg_t2 is not None else None
@@ -397,6 +400,7 @@ class StudentDashboardView(APIView):
         grades_t1 = Grade.calculate_average(student, school_year, "T1") if school_year else None
         grades_t2 = Grade.calculate_average(student, school_year, "T2") if school_year else None
         grades_t3 = Grade.calculate_average(student, school_year, "T3") if school_year else None
+        from apps.grades.appreciations import cycle_of_class
         from apps.grades.models import get_appreciation
 
         # FIX (moyennes tableau de bord élève) : même bug de câblage que le
@@ -462,7 +466,9 @@ class StudentDashboardView(APIView):
                 "annual_average": safe_float(avg) if avg is not None else None,
                 "subject_averages": subject_averages,
                 "bilingual": bilingual,
-                "appreciation": get_appreciation(avg) if avg is not None else None,
+                "appreciation": get_appreciation(
+                    avg, academy=student.school, cycle=cycle_of_class(student.current_class),
+                ) if avg is not None else None,
                 "progression": (
                     round(safe_float(grades_t2) - safe_float(grades_t1), 2)
                     if grades_t1 is not None and grades_t2 is not None else None

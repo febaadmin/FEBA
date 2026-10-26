@@ -189,6 +189,20 @@ UNCHANGED = object()
 #: page (voir _page_marks). ContextVar : sûr entre requêtes concurrentes.
 _PREVIEW = contextvars.ContextVar("bulletin_preview", default=False)
 
+#: Barème d'appréciations du bulletin en cours : académie de l'élève et cycle
+#: de son niveau (apps.grades.appreciations). Posé par render_bulletin_pdf
+#: pour que les fonctions de mise en page, qui ne reçoivent que des
+#: moyennes, appliquent le barème de LA BONNE académie.
+_APPRECIATION_SCOPE = contextvars.ContextVar("bulletin_appreciation_scope", default=None)
+
+
+def _appreciation(value):
+    if value is None:
+        return '—'
+    scope = _APPRECIATION_SCOPE.get() or {}
+    return get_appreciation(value, academy=scope.get('academy'), cycle=scope.get('cycle'),
+                            cache=scope.get('cache'))
+
 
 def _page_marks(canvas, doc):
     """Marques de page communes aux deux gabarits : filigrane de l'aperçu."""
@@ -250,7 +264,11 @@ def render_bulletin_pdf(student, period, school_year, *, comment=UNCHANGED, prev
     if comment is not UNCHANGED:
         draft.general_comment = comment
     draft.average = average
-    draft.appreciation = get_appreciation(average)
+    from apps.grades.appreciations import cycle_of_class
+
+    scope = {'academy': student.school, 'cycle': cycle_of_class(student_class), 'cache': {}}
+    draft.appreciation = get_appreciation(average, academy=scope['academy'],
+                                          cycle=scope['cycle'], cache=scope['cache'])
     # BUG N°2 : le rang n'apparaît plus sur le bulletin et n'est plus calculé.
     draft.rank_in_class = None
 
@@ -259,6 +277,7 @@ def render_bulletin_pdf(student, period, school_year, *, comment=UNCHANGED, prev
     palette = Palette(branding_for(student))
     buffer = BytesIO()
     token = _PREVIEW.set(bool(preview))
+    scope_token = _APPRECIATION_SCOPE.set(scope)
     try:
         if is_maternelle:
             _build_maternelle_pdf(buffer, student, period, school_year,
@@ -274,6 +293,7 @@ def render_bulletin_pdf(student, period, school_year, *, comment=UNCHANGED, prev
         raise
     finally:
         _PREVIEW.reset(token)
+        _APPRECIATION_SCOPE.reset(scope_token)
         buffer.close()
 
     return pdf_bytes, draft
@@ -531,7 +551,7 @@ def _subject_rows_trimester(entries, scale=20):
             _fmt_scale_denom(avg, scale),
             f'{weighted:.2f}' if weighted is not None else '—',
             letter or '—',
-            C(get_appreciation(avg) if avg is not None else '—', align='CENTER'),
+            C(_appreciation(avg), align='CENTER'),
         ])
     return rows
 
@@ -551,7 +571,7 @@ def _subject_rows_annual(entries, scale=20):
             _fmt_scale(t_avgs.get('T3'), scale),
             _fmt_scale_denom(avg, scale),
             letter or '—',
-            C(get_appreciation(avg) if avg is not None else '—', align='CENTER'),
+            C(_appreciation(avg), align='CENTER'),
         ])
     return rows
 
@@ -592,10 +612,10 @@ def _add_language_section(story, title, entries, period, head_color, zebra_color
     total_label = C('MOYENNE DE LA PARTIE', bold=True)
     total_row = ([total_label, '', '', '', '',
                   _fmt_scale_denom(section_avg, scale), letter or '—',
-                  C(get_appreciation(section_avg), align='CENTER', bold=True)]
+                  C(_appreciation(section_avg), align='CENTER', bold=True)]
                  if period == 'annual' else
                  [total_label, '', '', _fmt_scale_denom(section_avg, scale), '',
-                  letter or '—', C(get_appreciation(section_avg), align='CENTER', bold=True)])
+                  letter or '—', C(_appreciation(section_avg), align='CENTER', bold=True)])
 
     full_rows = [header] + rows + [total_row]
     tbl = Table(full_rows, colWidths=col_widths, repeatRows=1)

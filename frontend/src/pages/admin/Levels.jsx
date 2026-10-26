@@ -12,37 +12,66 @@ import { t } from "../../i18n";
 import AcademyBadge from "../../components/AcademyBadge";
 import { useAcademy } from "../../context/AcademyContext";
 
+/* Le cycle décide du barème du bulletin (backend : apps.grades.grading) :
+   maternelle et primaire sur 10, collège et lycée sur 20. Le serveur
+   refuse un cycle incompatible avec le type de l'académie ; ces listes ne
+   servent qu'à ne pas proposer ce qui serait refusé. */
+export const CYCLES = [
+  ["maternelle", "Maternelle", 10],
+  ["primaire", "Primaire", 10],
+  ["college", "Collège", 20],
+  ["lycee", "Lycée", 20],
+];
+const ALLOWED_BY_TYPE = {
+  online: ["maternelle", "primaire", "college", "lycee"],
+  physical_primary: ["maternelle", "primaire"],
+  physical_secondary: ["college", "lycee"],
+};
+const DEFAULT_BY_TYPE = { physical_secondary: "college" };
+
 export default function AdminLevels() {
-  const { isAllAcademies } = useAcademy();
+  const { isAllAcademies, activeAcademy, academyKey } = useAcademy();
+  const academyType = activeAcademy?.academy_type || null;
+  const allowedCycles = CYCLES.filter(([code]) =>
+    (ALLOWED_BY_TYPE[academyType] || CYCLES.map(([c]) => c)).includes(code));
+  const defaultCycle = DEFAULT_BY_TYPE[academyType] || "primaire";
   const qc = useQueryClient();
   const [modalOpen, setModalOpen] = useState(false);
   const [editItem, setEditItem] = useState(null);
   const [deleteItem, setDeleteItem] = useState(null);
   const { register, handleSubmit, reset, formState: { errors } } = useForm();
 
-  const { data: levelsData, isLoading } = useQuery({ queryKey: ["levels"], queryFn: schoolsAPI.levels });
-  const { data: schoolsData } = useQuery({ queryKey: ["schools"], queryFn: schoolsAPI.list });
+  const { data: levelsData, isLoading } = useQuery({
+    queryKey: ["levels", academyKey], queryFn: schoolsAPI.levels,
+  });
   const levels = levelsData?.data?.results || levelsData?.data || [];
-  const schools = schoolsData?.data?.results || schoolsData?.data || [];
 
   const createMut = useMutation({
     mutationFn: schoolsAPI.createLevel,
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["levels"] }); toast.success(t("Niveau créé !")); closeModal(); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["levels", academyKey] }); toast.success(t("Niveau créé !")); closeModal(); },
     onError: (e) => toast.error(extractApiError(e)),
   });
   const updateMut = useMutation({
     mutationFn: ({ id, data }) => schoolsAPI.updateLevel(id, data),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["levels"] }); toast.success(t("Modifié !")); closeModal(); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["levels", academyKey] }); toast.success(t("Modifié !")); closeModal(); },
     onError: (e) => toast.error(extractApiError(e)),
   });
   const deleteMut = useMutation({
     mutationFn: schoolsAPI.deleteLevel,
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["levels"] }); toast.success(t("Supprimé.")); setDeleteItem(null); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["levels", academyKey] }); toast.success(t("Supprimé.")); setDeleteItem(null); },
+    onError: (e) => toast.error(extractApiError(e)),
   });
 
   const closeModal = () => { setModalOpen(false); setEditItem(null); reset(); };
-  const openCreate = () => { reset({ order: levels.length + 1, school: schools[0]?.id || "" }); setModalOpen(true); };
-  const openEdit = (l) => { setEditItem(l); reset({ name: l.name, order: l.order, school: l.school }); setModalOpen(true); };
+  // L'académie n'est PAS choisie dans le formulaire : c'est l'académie
+  // active, imposée par le serveur. L'ancien formulaire présélectionnait
+  // « la première école de la liste ».
+  const openCreate = () => { reset({ order: levels.length + 1, cycle: defaultCycle }); setModalOpen(true); };
+  const openEdit = (l) => { setEditItem(l); reset({ name: l.name, order: l.order, cycle: l.cycle }); setModalOpen(true); };
+  const cycleLabel = (code) => {
+    const row = CYCLES.find(([c]) => c === code);
+    return row ? `${t(row[1])} · /${row[2]}` : code || "—";
+  };
   const onSubmit = (d) => {
     if (editItem) updateMut.mutate({ id: editItem.id, data: d });
     else createMut.mutate(d);
@@ -54,7 +83,9 @@ export default function AdminLevels() {
         title={t("Niveaux scolaires")}
         subtitle={t("{n} niveau(x) — CI, CP, CM1, CM2, 6ème…", { n: levels.length })}
         action={
-          <button onClick={openCreate} className="btn-primary flex items-center gap-2">
+          <button onClick={openCreate} disabled={isAllAcademies}
+                  title={isAllAcademies ? t("Sélectionnez une académie pour créer un niveau.") : undefined}
+                  className="btn-primary flex items-center gap-2 disabled:opacity-50">
             <Plus className="w-4 h-4" />{t("Nouveau niveau")}</button>
         }
       />
@@ -80,6 +111,7 @@ export default function AdminLevels() {
                   )}
                   <th className="text-left py-3 px-4 font-semibold text-slate-500 text-xs uppercase tracking-wider">{t("Ordre")}</th>
                   <th className="text-left py-3 px-4 font-semibold text-slate-500 text-xs uppercase tracking-wider">{t("Nom du niveau")}</th>
+                  <th className="text-left py-3 px-4 font-semibold text-slate-500 text-xs uppercase tracking-wider">{t("Cycle · barème")}</th>
                   <th className="text-left py-3 px-4 font-semibold text-slate-500 text-xs uppercase tracking-wider">{t("École")}</th>
                   <th className="py-3 px-4 w-20" />
                 </tr>
@@ -99,6 +131,9 @@ export default function AdminLevels() {
                     </td>
                     <td className="py-3 px-4">
                       <span className="font-semibold text-slate-800 text-base">{level.name}</span>
+                    </td>
+                    <td className="py-3 px-4 text-slate-600" data-testid={`level-cycle-${level.id}`}>
+                      {cycleLabel(level.cycle)}
                     </td>
                     <td className="py-3 px-4 text-slate-500">{level.school_name || "—"}</td>
                     <td className="py-3 px-4">
@@ -130,15 +165,17 @@ export default function AdminLevels() {
             <label className="label">{t("Ordre d'affichage")}</label>
             <input {...register("order", { valueAsNumber: true })} type="number" min="0" className="input" />
           </div>
-          {!editItem && (
-            <div>
-              <label className="label">{t("École*")}</label>
-              <select {...register("school", { required: true })} className="input">
-                <option value="">-- Sélectionner --</option>
-                {schools.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-              </select>
-            </div>
-          )}
+          <div>
+            <label className="label">{t("Cycle scolaire*")}</label>
+            <select {...register("cycle", { required: true })} className="input" data-testid="level-cycle">
+              {allowedCycles.map(([code, label, scale]) => (
+                <option key={code} value={code}>{t(label)} — {t("bulletin sur")} {scale}</option>
+              ))}
+            </select>
+            <p className="text-xs text-slate-500 mt-1">
+              {t("Le cycle fixe le barème du bulletin : maternelle et primaire sur 10, collège et lycée sur 20.")}
+            </p>
+          </div>
           <div className="flex gap-3 justify-end pt-2">
             <button type="button" onClick={closeModal} className="btn-secondary">{t("Annuler")}</button>
             <button type="submit" disabled={createMut.isPending || updateMut.isPending} className="btn-primary">

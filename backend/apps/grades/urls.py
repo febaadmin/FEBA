@@ -1,6 +1,6 @@
 from django.urls import path
 from rest_framework.routers import DefaultRouter
-from . import views
+from . import appreciation_views, views
 
 router = DefaultRouter()
 router.register(r'', views.GradeViewSet, basename='grade')
@@ -14,4 +14,10 @@ router.register(r'', views.GradeViewSet, basename='grade')
 urlpatterns = [
     path('bilingual/', views.bilingual_averages_view, name='grade-bilingual'),
     path('all-history/', views.all_history_view, name='grade-all-history'),
+    path('appreciations/', appreciation_views.AppreciationScaleView.as_view(),
+         name='grade-appreciations'),
+    path('appreciations/preview/', appreciation_views.AppreciationPreviewView.as_view(),
+         name='grade-appreciations-preview'),
+    path('appreciations/reset/', appreciation_views.AppreciationResetView.as_view(),
+         name='grade-appreciations-reset'),
 ] + router.urls
