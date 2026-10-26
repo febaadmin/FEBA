@@ -232,6 +232,7 @@ for requis in backend/manage.py frontend/package.json Makefile \
               backend/feba_project/static_files/favicon-32x32.png \
               backend/apps/schools/public_branding.py \
               backend/apps/schools/migrations/0018_branding_unique_active.py \
+              backend/apps/schools/migrations/0019_branding_settings_image_defaults.py \
               backend/apps/schools/management/commands/branding_refresh_documents.py \
               backend/tests/test_branding_logo_2026_10_26.py \
               frontend/src/components/bulletins/BulletinPreviewDialog.jsx \

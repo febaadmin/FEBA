@@ -27,7 +27,7 @@ Nouveaux tests (les tests de défaut échouent sur `575d493`, vérifié) :
   bloquées expirées, **deux requêtes simultanées (PostgreSQL : 200 + 409, un
   seul bulletin)**, aperçu sans écriture, aperçu = PDF officiel hormis le
   filigrane, permissions de l'aperçu, liste de révision.
-- `test_branding_logo_2026_10_26.py` (19) : priorité du logo actif, image
+- `test_branding_logo_2026_10_26.py` (23) : priorité du logo actif, image
   du PDF inspectée (couleur du logo activé), isolation, téléversement
   (valide, faux PNG, SVG, trop petit, GIF), académie imposée, contrainte et
   activation atomique, version active protégée, API publique sans connexion,
@@ -35,7 +35,8 @@ Nouveaux tests (les tests de défaut échouent sur `575d493`, vérifié) :
   académie inchangée, commande de régénération (aperçu, application,
   idempotence, échec qui conserve l'ancien fichier), diplômes et certificats
   (blason incrusté remplacé seulement après activation), fichiers fournis
-  installés et `index.html` sans ancienne icône.
+  installés et `index.html` sans ancienne icône, logo de repli recopié par
+  `init_academies` sans effet et retiré par la migration `0019` (aller-retour).
 - `test_visio_multi_academies.py` (+6) : titres exacts par académie, jeton
   re-signé ou modifié refusé, rechargement après expiration (≤ 24 h), CORS,
   titre dans la réponse d'adhésion, script client installé par le setup.

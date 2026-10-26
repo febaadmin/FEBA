@@ -24,6 +24,11 @@ uniquement (piles Docker du poste, plugNmeet v2.5.3 local, Chrome réel).
   l'école : ce ne sont pas des logos et elles ne changent pas.
 - Une version de logo ACTIVE ne peut pas être supprimée : activer d'abord
   une autre version.
+- Pour imposer aux documents un logo différent du logo actif, renseigner
+  la clé `document_logo_override` des réglages de l'académie. L'ancienne clé
+  `document_logo` n'est plus lue pour les images livrées : la migration
+  `schools.0019` retire ces copies (valeurs conservées dans
+  `branding_before_0019`) ; une valeur personnalisée non livrée est laissée.
 
 ### 00000.2 Favicons
 - FEBA : favicons fournis tant qu'aucun logo n'est activé ; ensuite dérivés
