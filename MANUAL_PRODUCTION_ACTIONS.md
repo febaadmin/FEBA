@@ -14,6 +14,35 @@
 ---
 
 
+## 000000. Gabarits officiels des diplômes et certificats (26/10/2026)
+
+Rien n'a été déployé ni migré en production. Validations : en local (voir
+`TEST_REPORT.md`), y compris dans l'image Docker de production.
+
+1. **Sauvegarde vérifiée**, puis `make prod` (ou `scripts/deploy_feba.sh`) :
+   - l'image backend installe deux nouvelles dépendances Python (roues
+     autonomes, aucun paquet système) : `pypdf==6.14.2`, `pypdfium2==4.30.0` ;
+   - migration `documents.0002_academy_document_templates` : deux tables
+     (gabarits versionnés, journal) et une colonne facultative sur les
+     documents ; aucune donnée existante modifiée.
+2. **Sauvegardes** : remplacer la tâche cron par le script livré —
+   `scripts/backup_files.sh` archive désormais `media/` ET `private_media/`
+   (diplômes délivrés, gabarits, dossiers FHA, rapports mensuels). L'ancien
+   script n'archivait que `media/`. Vérifier une archive :
+   `tar tzf /backups/feba/daily/feba_media_$(date +%F).tar.gz | grep -c '^private_media/'`.
+   Les deux scripts de sauvegarde s'arrêtaient aussi en erreur avant la copie
+   hors site tant que les dossiers hebdomadaire et mensuel étaient vides
+   (corrigé) : vérifier dans `/var/log/feba-backup.log` la ligne
+   « copie distante ».
+3. **Gabarits** : chaque académie téléverse ses fonds dans « Gabarits des
+   documents » (`DOCUMENT_TEMPLATES_GUIDE.md`). FEBA et FEBA FHA gardent
+   leurs gabarits intégrés tant qu'aucun gabarit téléversé n'est activé.
+4. **nginx** : `client_max_body_size 25M` (déjà en place) couvre la limite de
+   10 Mo des gabarits ; rien à changer.
+5. Retour arrière : `make prod-rollback` puis `migrate documents 0001`
+   (supprime les gabarits téléversés et le lien des documents vers leur
+   version ; les PDF déjà délivrés restent sur le disque — sauvegarde).
+
 ## 00000. Académies typées, fiche FHA (sexe), appréciations (26/10/2026)
 
 Rien n'a été déployé ni migré en production. Validations : en local.
@@ -46,9 +75,7 @@ Rien n'a été déployé ni migré en production. Validations : en local.
    bulletins déjà émis.
 5. **Nouvelle académie** : voir `ACADEMIES_GUIDE.md` (création, puis liste
    « Configuration restante » : année, matières, classes, administrateur,
-   logo). Les diplômes et certificats exigent les fonds officiels de
-   l'académie (non fournis) : ils sont refusés, jamais produits au fond d'une
-   autre académie.
+   logo). Diplômes et certificats : voir § 000000 (gabarits téléversés).
 6. Retour arrière : `make prod-rollback` ; `migrate grades 0012`,
    `migrate schools 0019`, `migrate website 0011` retirent les ajouts (le
    sexe saisi sur les nouvelles fiches et les barèmes d'appréciations

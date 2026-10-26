@@ -23,11 +23,12 @@ vi.mock("../../api", () => ({
     templates: vi.fn(), list: vi.fn(), create: vi.fn(), issue: vi.fn(), revoke: vi.fn(),
     download: vi.fn(), check: vi.fn(), preview: vi.fn(), batch: vi.fn(), batchIssue: vi.fn(),
   },
+  documentTemplatesAPI: { list: vi.fn() },
   studentsAPI: { list: vi.fn() },
   classesAPI: { list: vi.fn() },
 }));
 
-import { documentsAPI, studentsAPI } from "../../api";
+import { documentTemplatesAPI, documentsAPI, studentsAPI } from "../../api";
 import AdminOfficialDocuments from "./OfficialDocuments";
 
 const okCheck = {
@@ -51,6 +52,13 @@ beforeEach(() => {
   studentsAPI.list.mockResolvedValue({ data: [{ id: 7, full_name: "Awa Kone" }] });
   documentsAPI.check.mockResolvedValue({ data: okCheck });
   documentsAPI.create.mockResolvedValue({ data: { id: 1 } });
+  documentTemplatesAPI.list.mockResolvedValue({ data: { kinds: {
+    diploma: { kind: "diploma", state: "active", pending: null, builtin: null,
+               active: { version: 2, original_filename: "diplome.pdf" } },
+    certificate: { kind: "certificate", state: "absent", active: null, pending: null,
+                   builtin: { label: "Certificat FEBA", in_use: true, can_issue: false,
+                              blockers: ["Le fond « certificat.png » n'est pas installé."] } },
+  } } });
 });
 
 async function openAndPick() {
@@ -59,6 +67,17 @@ async function openAndPick() {
   await waitFor(() => expect(screen.getByTestId("student-select").options.length).toBe(2));
   fireEvent.change(screen.getByTestId("student-select"), { target: { value: "7" } });
 }
+
+describe("État des gabarits sur l'écran de production", () => {
+  it("annonce pour chaque type la source réellement utilisée et ses blocages", async () => {
+    renderPage();
+    const diploma = await screen.findByTestId("template-state-diploma");
+    expect(diploma).toHaveTextContent("Gabarit téléversé de l'académie — version 2");
+    const certificate = screen.getByTestId("template-state-certificate");
+    expect(certificate).toHaveTextContent("Gabarit intégré « Certificat FEBA »");
+    expect(certificate).toHaveTextContent("n'est pas installé");
+  });
+});
 
 describe("Production par type de document", () => {
   it("vérifie auprès du serveur puis exige la confirmation de l'académie", async () => {

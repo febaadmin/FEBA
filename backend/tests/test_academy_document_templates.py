@@ -922,3 +922,26 @@ class ResolutionTests(TestCase):
             code=School.CODE_FEBA_FHA, defaults={"name": "FHA", "address": "En ligne"})
         template = AcademyDocumentTemplate(academy=feba, kind="certificate")
         self.assertEqual(template.sequence_key, "certificate_feba_fha")
+
+
+class EmptyAcademyDeletionTests(TemplateTestBase):
+
+    def test_supprimer_une_academie_vide_supprime_aussi_les_fichiers_de_ses_gabarits(self):
+        from apps.schools.academy_setup import create_academy
+
+        empty = create_academy({"name": "Académie vide", "code": "AC_VIDE_TPL",
+                                "academy_type": "online", "address": "x", "city": "Lomé",
+                                "country": "Togo", "timezone": "Africa/Lome"},
+                               created_by=self.superadmin)
+        client = self.client_for(self.superadmin, empty)
+        response = client.post(BASE, {"kind": "diploma",
+                                      "file": upload("d.png", png_bytes(RED), "image/png")},
+                               format="multipart")
+        self.assertEqual(response.status_code, 201, response.data)
+        path = AcademyDocumentTemplate.objects.get(pk=response.data["id"]).absolute_path
+        self.assertTrue(os.path.exists(path))
+        self.client_for(self.superadmin, self.A.school)  # quitte l'académie à supprimer
+        deleted = client.delete(f"/api/schools/schools/{empty.pk}/")
+        self.assertEqual(deleted.status_code, 204, getattr(deleted, "data", None))
+        self.assertFalse(AcademyDocumentTemplate.objects.filter(academy_id=empty.pk).exists())
+        self.assertFalse(os.path.exists(path))

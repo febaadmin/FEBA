@@ -5,6 +5,32 @@ Rien ici n'est présenté comme fonctionnel sans preuve.
 
 ---
 
+## 0000000. Gabarits officiels des diplômes et certificats (26 octobre 2026)
+
+- **DOCX non pris en charge** : refusé avec explication. Une conversion
+  fidèle exigerait LibreOffice dans l'image (plusieurs centaines de Mo) et
+  sa mise en page varie selon les versions. Procédure : exporter en PDF.
+- **Champs texte uniquement** : un gabarit téléversé reçoit du texte
+  positionné. Signatures, cachets et logo doivent figurer dans le fond
+  lui-même (ils ne sont pas apposés comme images séparées, contrairement aux
+  gabarits intégrés de FEBA et FEBA FHA).
+- **Polices** : Crimson Pro (serif, italique) embarquée ; Helvetica et Times
+  limitées au jeu Windows-1252 (refus explicite d'un caractère hors de ce
+  jeu). Pas de téléversement de police.
+- **Règles d'émission** : deux par type (diplôme : décision administrative
+  ou moyenne annuelle minimale ; certificat : élève inscrit ou décision
+  administrative). FEBA n'avait aucune règle automatique : aucune n'est
+  imposée par défaut aux diplômes.
+- **Production par lot** : une classe à la fois (80 élèves au plus), de
+  façon synchrone ; pas de tâche de fond.
+- **Édition des zones à la souris** : déplacement et redimensionnement ;
+  pas de rotation de texte, pas de magnétisme ni d'alignement automatique
+  entre zones (saisie numérique au dixième de millimètre disponible).
+- **Aperçu de page d'un PDF multipage** : la page choisie s'affiche dans
+  l'éditeur après enregistrement (réouverture de l'éditeur).
+- **Validé en local uniquement** (Chrome réel, PostgreSQL, image Docker de
+  production) : ni préproduction ni Hetzner (accès SSH refusé).
+
 ## 000000. Académies typées, fiche FHA, appréciations (26 octobre 2026)
 
 Cette section prévaut sur les suivantes. Validations faites EN LOCAL

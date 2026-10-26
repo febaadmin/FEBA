@@ -103,7 +103,23 @@ class SchoolViewSet(viewsets.ModelViewSet):
                 + ", ".join(f"{v} {k}" for k, v in blockers.items())
                 + "). Désactivez-la plutôt : rien ne sera perdu."),
                 'blockers': blockers}, status=status.HTTP_409_CONFLICT)
-        return super().destroy(request, *args, **kwargs)
+        # Les gabarits de documents d'une académie vide disparaissent avec
+        # elle (cascade) ; leurs FICHIERS aussi, sinon ils resteraient
+        # orphelins dans le stockage privé, sans propriétaire ni accès.
+        from apps.documents.models import AcademyDocumentTemplate
+
+        paths = []
+        for template in AcademyDocumentTemplate.objects.filter(academy=academy):
+            paths.append(template.absolute_path)
+            if template.render_path:
+                paths.append(template.render_absolute_path)
+        response = super().destroy(request, *args, **kwargs)
+        for path in paths:
+            try:
+                os.remove(path)
+            except OSError:
+                pass
+        return response
 
     @action(detail=True, methods=['get'], url_path='setup-status')
     def setup_status(self, request, pk=None):

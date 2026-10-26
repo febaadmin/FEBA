@@ -41,7 +41,9 @@ sélecteur d'académie (en haut de page), puis :
    l'application affiche le monogramme de l'académie et un favicon à ses
    couleurs ; les documents ne portent aucun logo — jamais celui d'une
    autre académie ;
-6. **Appréciations** : vérifier ou adapter le barème.
+6. **Appréciations** : vérifier ou adapter le barème ;
+7. **Gabarits des documents** : téléverser, placer, vérifier et activer le
+   diplôme et le certificat (`DOCUMENT_TEMPLATES_GUIDE.md`).
 
 ## 3. Appréciations
 
@@ -82,8 +84,10 @@ de ce qu'elle contient.
 - La fiche d'inscription publique en ligne et les rapports mensuels sont
   propres à FEBA FHA ; une nouvelle académie en ligne n'a pas encore de
   formulaire public à son nom.
-- Diplômes et certificats : exigent les fonds officiels de l'académie
-  (gabarits) ; sans eux, la production est refusée.
+- Diplômes et certificats : l'académie téléverse ses gabarits officiels
+  dans « Gabarits des documents » (`DOCUMENT_TEMPLATES_GUIDE.md`) ; sans
+  gabarit actif, la production est refusée — jamais faite au fond d'une
+  autre académie.
 - Une académie du **groupe FEBA** (nom de groupe dans son identité)
   imprime le numéro institutionnel du groupe ; une académie indépendante
   imprime son propre numéro (`Paramètres`).

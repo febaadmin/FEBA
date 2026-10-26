@@ -2702,4 +2702,8 @@ export const EN = {
     "Issue date",
   "Numéro de référence (attribué à la délivrance)":
     "Reference number (assigned on issue)",
+  "Aucun gabarit actif : téléversez-le, vérifiez-le et activez-le dans « Gabarits des documents ».":
+    "No active template: upload, check and activate it in “Document templates”.",
+  "Version {v} en préparation : {s}":
+    "Version {v} in preparation: {s}",
 };

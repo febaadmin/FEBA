@@ -1,12 +1,12 @@
 Vérification navigateur V9 — Chromium réel, build de production
-Application : http://localhost:15173   API : http://localhost:15173
+Application : http://127.0.0.1:15174   API : http://127.0.0.1:18001
 
 1. Parcours public — fiche d'inscription FEBA FHA
   · capture v9-1-public-fha-formulaire.png
   ✓ la fiche est acceptée — HTTP 201
   ✓ un numéro de dossier est attribué — FHA-2026-0002
   ✓ la fiche PDF est produite à la soumission
-  ✓ l'état de l'e-mail est renvoyé au navigateur — {"status":"sent","accepted":true,"tracking_id":"92227950-55f8-48f3-a6b9-8e3ad803bb76"}
+  ✓ l'état de l'e-mail est renvoyé au navigateur — {"status":"sent","accepted":true,"tracking_id":"80194226-b348-434b-a4e1-f65b22fdb759"}
   ✓ l'e-mail annoncé l'a réellement été
   ✓ le numéro de dossier est mis en avant — il est acquis, lui
 
@@ -57,4 +57,4 @@ Application : http://localhost:15173   API : http://localhost:15173
   ✓ la production exige une confirmation explicite de l'académie
   ✓ le bouton reste inactif tant que l'académie n'est pas confirmée
 
-TOUT EST VERT — 35.3 s
+TOUT EST VERT — 31.6 s

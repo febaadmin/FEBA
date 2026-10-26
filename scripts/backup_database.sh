@@ -22,7 +22,7 @@ DOM=$(date +%d)    # jour du mois
 
 mkdir -p "$BACKUP_ROOT"/{daily,weekly,monthly}
 
-echo "[$(date '+%F %T')] Sauvegarde base $PG_DB…"
+echo "[$(date '+%F %T')] Sauvegarde base ${PG_DB}…"
 DUMP="$BACKUP_ROOT/daily/feba_db_${STAMP}.sql.gz"
 docker compose -f "$COMPOSE_FILE" exec -T "$PG_SERVICE" \
     pg_dump -U "$PG_USER" "$PG_DB" | gzip > "$DUMP"
@@ -35,9 +35,12 @@ echo "  ✔ $DUMP ($(du -h "$DUMP" | cut -f1)) + checksum"
 [ "$DOM" = "01" ] && cp "$DUMP" "$BACKUP_ROOT/monthly/" && cp "$DUMP.sha256" "$BACKUP_ROOT/monthly/"
 
 # Rotation : 7 quotidiennes, 4 hebdomadaires, 12 mensuelles
-ls -1t "$BACKUP_ROOT"/daily/feba_db_*.sql.gz   2>/dev/null | tail -n +8  | xargs -r -I{} rm -f {} {}.sha256
-ls -1t "$BACKUP_ROOT"/weekly/feba_db_*.sql.gz  2>/dev/null | tail -n +5  | xargs -r -I{} rm -f {} {}.sha256
-ls -1t "$BACKUP_ROOT"/monthly/feba_db_*.sql.gz 2>/dev/null | tail -n +13 | xargs -r -I{} rm -f {} {}.sha256
+# `|| true` : avec `pipefail`, un dossier encore vide (aucune archive
+# hebdomadaire avant le premier dimanche, aucune mensuelle avant le 1er)
+# faisait échouer `ls`, et le script s'arrêtait AVANT la copie hors site.
+ls -1t "$BACKUP_ROOT"/daily/feba_db_*.sql.gz   2>/dev/null | tail -n +8  | xargs -r -I{} rm -f {} {}.sha256 || true
+ls -1t "$BACKUP_ROOT"/weekly/feba_db_*.sql.gz  2>/dev/null | tail -n +5  | xargs -r -I{} rm -f {} {}.sha256 || true
+ls -1t "$BACKUP_ROOT"/monthly/feba_db_*.sql.gz 2>/dev/null | tail -n +13 | xargs -r -I{} rm -f {} {}.sha256 || true
 
 # Copie distante (jamais uniquement sur le serveur principal)
 if [ -n "${RCLONE_REMOTE:-}" ] && command -v rclone >/dev/null; then

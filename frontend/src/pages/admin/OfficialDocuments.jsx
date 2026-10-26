@@ -17,9 +17,9 @@
  */
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { AlertTriangle, Building2, Download, Eye, FileCheck, Layers, Plus, Stamp, XCircle } from "lucide-react";
+import { AlertTriangle, Building2, Download, Eye, FileCheck, Layers, Lock, Plus, Stamp, XCircle } from "lucide-react";
 import toast from "react-hot-toast";
-import { classesAPI, documentsAPI, studentsAPI } from "../../api";
+import { classesAPI, documentTemplatesAPI, documentsAPI, studentsAPI } from "../../api";
 import PageHeader from "../../components/ui/PageHeader";
 import DataTable from "../../components/ui/DataTable";
 import Modal from "../../components/ui/Modal";
@@ -63,6 +63,17 @@ export default function AdminOfficialDocuments() {
   // explicite plutôt qu'un défaut silencieux.
   const scopeAcademy = templatesData?.data?.academy || null;
   const consolidated = Boolean(templatesData?.data?.consolidated);
+
+  // État RÉEL des gabarits de l'académie active, par type : version
+  // téléversée active, gabarit intégré (et ses blocages), ou rien. Affiché
+  // avant toute chose : un bouton indisponible doit dire pourquoi.
+  const { data: kindsData } = useQuery({
+    queryKey: ["document-templates", academyKey],
+    queryFn: documentTemplatesAPI.list,
+    enabled: Boolean(templatesData) && !consolidated,
+    retry: false,
+  });
+  const kinds = kindsData?.data?.kinds || null;
 
   const { data: docsData, isLoading } = useQuery({
     queryKey: ["official-documents", academyKey],
@@ -299,6 +310,58 @@ export default function AdminOfficialDocuments() {
           </div>
         </div>
       </div>
+
+      {kinds && (
+        <div className="grid gap-4 md:grid-cols-2">
+          {["diploma", "certificate"].map((kind) => {
+            const summary = kinds[kind];
+            const active = summary.active;
+            const builtin = summary.builtin;
+            const ready = Boolean(active) || Boolean(builtin?.in_use && builtin.can_issue);
+            return (
+              <div key={kind} data-testid={`template-state-${kind}`}
+                   className={`card border ${ready ? "border-green-200" : "border-amber-200 bg-amber-50/40"}`}>
+                <div className="flex items-start gap-3">
+                  {ready
+                    ? <FileCheck className="w-5 h-5 text-green-600 shrink-0 mt-0.5" />
+                    : <Lock className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />}
+                  <div className="min-w-0 text-sm">
+                    <p className="font-medium text-slate-800">
+                      {kind === "diploma" ? t("Diplôme") : t("Certificat")}
+                    </p>
+                    {active ? (
+                      <p className="text-green-700 mt-1">
+                        {t("Gabarit téléversé de l'académie — version {v}", { v: active.version })}
+                        {" · "}{active.original_filename}
+                      </p>
+                    ) : builtin?.in_use ? (
+                      <>
+                        <p className="text-slate-600 mt-1">{t("Gabarit intégré « {l} »", { l: t(builtin.label) })}</p>
+                        {builtin.can_issue ? (
+                          <p className="text-green-700 mt-1">{t("Fond vérifié et gabarit calibré : émission possible.")}</p>
+                        ) : (
+                          <ul className="text-slate-700 mt-1 space-y-1 list-disc list-inside">
+                            {builtin.blockers.map((b, i) => <li key={i}>{b}</li>)}
+                          </ul>
+                        )}
+                      </>
+                    ) : (
+                      <p className="text-amber-800 mt-1">
+                        {t("Aucun gabarit actif : téléversez-le, vérifiez-le et activez-le dans « Gabarits des documents ».")}
+                      </p>
+                    )}
+                    {summary.pending && (
+                      <p className="text-xs text-slate-500 mt-1">
+                        {t("Version {v} en préparation : {s}", { v: summary.pending.version, s: t(summary.pending.status_display) })}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       {/* Les gabarits se gèrent dans leur propre écran ; celui-ci produit. */}
       <div className="card flex items-start gap-3 text-sm text-slate-600">

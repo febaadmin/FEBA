@@ -44,10 +44,15 @@ case "$KIND" in
     echo "✔ Base restaurée. Vérifiez /api/health/ puis un parcours de connexion."
     ;;
   media)
-    echo "Restauration des médias…"
+    # Seuls les répertoires PRÉSENTS dans l'archive sont remplacés : une
+    # archive antérieure (médias seuls) ne doit pas effacer les fichiers
+    # privés — diplômes délivrés, gabarits — qu'elle ne contient pas.
+    DIRS=$(tar tzf "$ARCHIVE" | cut -d/ -f1 | sort -u | grep -Ex 'media|private_media' | tr '\n' ' ')
+    [ -n "$DIRS" ] || { echo "✗ Archive sans répertoire media/ ni private_media/"; exit 1; }
+    echo "Restauration de : $DIRS"
     cat "$ARCHIVE" | docker compose -f "$COMPOSE_FILE" exec -T "$BACKEND_SERVICE" \
-        sh -c "rm -rf /app/media && tar xzf - -C /app"
-    echo "✔ Médias restaurés."
+        sh -c "cd /app && rm -rf $DIRS && tar xzf - -C /app"
+    echo "✔ Fichiers restaurés ($DIRS)."
     ;;
   *) echo "✗ Type inconnu : $KIND (db|media)"; exit 1 ;;
 esac
