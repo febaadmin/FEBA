@@ -20,7 +20,10 @@ Rien n'a été déployé ni migré en production.
 
 1. Sauvegarde vérifiée, puis `make prod` : applique `schools.0018`
    (une seule version de logo active par académie ; s'il y en avait
-   plusieurs, la plus récente reste active — aucune suppression).
+   plusieurs, la plus récente reste active — aucune suppression) et
+   `schools.0019` (retire des réglages le logo de repli recopié par
+   `init_academies` — `logo_feba.jpeg` — pour que le logo fourni devienne le
+   repli de FEBA ; valeurs conservées, migration réversible).
 2. **Vérifier le logo actif de chaque académie** (page « Branding &
    Logo », académie sélectionnée) : sur la pile de test, le logo FEBA avait
    été posé par erreur sur FEBA FHA (ancien repli « académie 1 »). En

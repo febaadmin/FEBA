@@ -77,7 +77,16 @@ BRANDING_SETTING_KEYS = (
     "website", "footer_text", "group_name", "document_prefix",
     "document_logo", "stamp", "director_signature", "secretary_stamp",
     "meeting_title", "favicon_16", "favicon_32", "apple_touch_icon",
+    # Logo documentaire IMPOSÉ volontairement, au-dessus du logo activé.
+    # Clé distincte de `document_logo` (simple repli) : `init_academies`
+    # recopiait les valeurs livrées dans les réglages, qui passaient alors
+    # pour un choix administré et masquaient le logo activé.
+    "document_logo_override",
 )
+
+#: Réglages d'image livrés avec le code : ce sont des REPLIS, jamais recopiés
+#: dans `School.settings` (voir init_academies et la migration 0019).
+IMAGE_DEFAULT_KEYS = ("document_logo", "favicon_16", "favicon_32", "apple_touch_icon")
 
 #: Images dont le DESSIN porte le nom d'un établissement, et lequel.
 #:
@@ -459,13 +468,13 @@ def get_branding(academy) -> AcademyBranding:
     # Avant : `document_logo` prenait d'abord l'image statique livrée, puis
     # seulement le logo actif — tous les PDF ignoraient le logo téléversé et
     # activé. Ordre désormais, pour l'application COMME pour les documents :
-    #   1. logo documentaire ADMINISTRÉ explicitement (settings) s'il existe ;
+    #   1. logo documentaire IMPOSÉ explicitement (`document_logo_override`) ;
     #   2. logo téléversé et activé de CETTE académie ;
     #   3. logo de repli livré pour CETTE académie ;
     # jamais celui d'une autre académie.
     uploaded = _academy_logo(academy)
-    default_logo = _static_asset(ACADEMY_DEFAULTS.get(academy.code or "", {}).get("document_logo"))
-    explicit_document_logo = _static_asset(administered.get("document_logo"))
+    default_logo = _static_asset(brand.get("document_logo"))
+    explicit_document_logo = _static_asset(administered.get("document_logo_override"))
 
     palette = {key: brand.get(key) or NEUTRAL_PALETTE[key] for key in NEUTRAL_PALETTE}
     palette_is_neutral = not any(brand.get(key) for key in NEUTRAL_PALETTE)

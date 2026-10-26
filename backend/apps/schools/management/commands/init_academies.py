@@ -9,7 +9,7 @@ horaires, enseignants) : ces champs restent nuls et administrables.
 """
 from django.core.management.base import BaseCommand
 
-from apps.schools.branding import ACADEMY_DEFAULTS
+from apps.schools.branding import ACADEMY_DEFAULTS, IMAGE_DEFAULT_KEYS
 from apps.schools.institution import is_retired_phone, official_phone
 from apps.schools.models import School
 
@@ -22,7 +22,11 @@ class Command(BaseCommand):
         Installe l'identité visuelle de l'académie, sans jamais écraser une
         valeur déjà administrée par l'établissement.
         """
-        wanted = ACADEMY_DEFAULTS.get(academy.code or "")
+        # Les images livrées (logo de repli, favicons) restent des valeurs du
+        # CODE : recopiées ici, elles passaient pour un choix administré et
+        # empêchaient tout nouveau logo livré de s'appliquer.
+        wanted = {k: v for k, v in (ACADEMY_DEFAULTS.get(academy.code or "") or {}).items()
+                  if k not in IMAGE_DEFAULT_KEYS}
         if not wanted:
             return False
         settings_data = dict(academy.settings or {})

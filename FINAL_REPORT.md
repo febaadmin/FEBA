@@ -63,6 +63,7 @@ aperçu individuel depuis la révision d'une classe au premier plan.
 | Client privé : la réponse du branding rejetée comme « périmée » pendant l'amorçage de la portée → barre latérale au logo embarqué (trouvé en navigateur réel) | client public dédié, sans jeton ni portée |
 | Même nom de fichier → même URL → ancienne image en cache ; plusieurs versions actives possibles ; tout fichier « .png » accepté | nom unique `branding/<académie>/<uuid>` ; URL versionnées `?v=` ; contrainte « une version active » (migration `schools.0018`) ; activation atomique ; image décodée (PNG/JPEG/WebP, 5 Mo, 64–6000 px) ; version active non supprimable |
 | Diplômes / certificats : blason **dans les pixels du fond** | après activation, zone du blason recouverte (couleur papier) et logo actif apposé ; sans logo activé, visuel officiel intact |
+| `init_academies` recopiait le logo de REPLI (`logo_feba.jpeg`) dans les réglages de l'académie : il passait alors pour un choix administré (trouvé au test de déploiement depuis l'archive) | les images livrées ne sont plus recopiées ; une imposition volontaire utilise la clé distincte `document_logo_override` ; migration `schools.0019` (retire les copies des fichiers livrés, réversible) |
 | Reçus : ancien supprimé puis nouveau sous le MÊME nom | nom unique, ancien supprimé après réussite |
 | PDF déjà stockés | `manage.py branding_refresh_documents --academy CODE [--apply]` (aperçu, régénération atomique, idempotente, bilan ; rapports envoyés conservés) |
 
@@ -113,4 +114,7 @@ rechargé, reçus sous un nom fixe.
 ## 7. Migrations
 
 `schools.0018_branding_unique_active` (contrainte ; la plus récente des
-versions actives reste active ; aucune suppression ; réversible).
+versions actives reste active ; aucune suppression ; réversible) ;
+`schools.0019_branding_settings_image_defaults` (retire des réglages les
+copies des images livrées ; valeurs conservées dans `branding_before_0019` ;
+réversible).

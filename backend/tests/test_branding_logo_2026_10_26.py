@@ -96,7 +96,7 @@ class SourceOfTruthTests(Base):
 
     def test_logo_documentaire_administre_explicitement_reste_prioritaire(self):
         self.activate_logo(self.feba, (255, 0, 0))
-        self.feba.settings = {"branding": {"document_logo": "logo_groupe_feba.png"}}
+        self.feba.settings = {"branding": {"document_logo_override": "logo_groupe_feba.png"}}
         self.feba.save(update_fields=["settings"])
         self.assertTrue(get_branding(self.feba).document_logo.endswith("logo_groupe_feba.png"))
 
@@ -372,3 +372,45 @@ class ProvidedAssetsTests(TestCase):
         self.assertIn('href="/favicon-16x16.png"', html)
         self.assertIn('rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png"', html)
         self.assertFalse(os.path.exists(repo_path("frontend", "public", "favicon.svg")))
+
+
+class InitAcademiesCopiedDefaultsTests(Base):
+    """
+    Base réelle : `init_academies` avait recopié `document_logo` dans les
+    réglages ; ce repli ne doit JAMAIS passer avant le logo activé.
+    """
+
+    def test_valeur_recopiee_par_init_academies_ne_masque_pas_le_logo_active(self):
+        self.feba.settings = {"branding": {"document_logo": "logo_feba.jpeg", "primary_color": "#071D49"}}
+        self.feba.save(update_fields=["settings"])
+        b = self.activate_logo(self.feba, (255, 0, 0))
+        self.assertEqual(get_branding(self.feba).document_logo, b.logo.path)
+
+    def test_migration_0019_retire_les_copies_et_se_defait(self):
+        import importlib
+        from django.apps import apps as django_apps
+        mig = importlib.import_module("apps.schools.migrations.0019_branding_settings_image_defaults")
+        self.feba.settings = {"branding": {"document_logo": "logo_feba.jpeg", "stamp": "cachet_feba.png",
+                                           "primary_color": "#071D49"}}
+        self.feba.save(update_fields=["settings"])
+        mig.forwards(django_apps, None)
+        self.feba.refresh_from_db()
+        self.assertNotIn("document_logo", self.feba.settings["branding"])
+        self.assertEqual(self.feba.settings["branding"]["primary_color"], "#071D49")
+        self.assertTrue(get_branding(self.feba).document_logo.endswith("feba_logo_document.png"))   # logo fourni
+        mig.backwards(django_apps, None)
+        self.feba.refresh_from_db()
+        self.assertEqual(self.feba.settings["branding"]["document_logo"], "logo_feba.jpeg")
+
+    def test_init_academies_ne_recopie_plus_les_images(self):
+        from django.core.management import call_command
+        call_command("init_academies", stdout=io.StringIO())
+        feba = School.objects.get(code="FEBA")
+        self.assertNotIn("document_logo", (feba.settings or {}).get("branding", {}))
+        self.assertTrue(get_branding(feba).document_logo.endswith("feba_logo_document.png"))
+
+    def test_choix_impose_explicitement(self):
+        self.activate_logo(self.feba, (255, 0, 0))
+        self.feba.settings = {"branding": {"document_logo_override": "logo_groupe_feba.png"}}
+        self.feba.save(update_fields=["settings"])
+        self.assertTrue(get_branding(self.feba).document_logo.endswith("logo_groupe_feba.png"))
