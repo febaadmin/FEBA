@@ -110,6 +110,9 @@ class Command(BaseCommand):
         if not school.matricule_prefix:
             school.matricule_prefix = "FEBA"
             school.save(update_fields=["matricule_prefix"])
+        # Barème d'appréciations propre à l'académie (copie du barème par défaut).
+        from apps.grades.appreciations import install_default_rules
+        install_default_rules(school)
         self.stdout.write("  ✅ Établissement")
 
         # ── 3 ANNÉES SCOLAIRES (dynamiques : N-2, N-1, N) ────────────────
@@ -582,6 +585,8 @@ class Command(BaseCommand):
                 },
             },
         )
+        from apps.grades.appreciations import install_default_rules
+        install_default_rules(fha)
         self.stdout.write("  ✅ Académie FEBA FHA")
 
         today = timezone.now().date()
@@ -878,7 +883,6 @@ class Command(BaseCommand):
             child_last_name="Sossou",
             child_birth_date=datetime.date(2016, 9, 20),
             defaults={
-                "child_gender": "M",
                 "child_country": "Canada", "child_state_province": "QC",
                 "parent_first_name": "Paul", "parent_last_name": "Sossou",
                 "parent_phone": "+1 514 555 0111",

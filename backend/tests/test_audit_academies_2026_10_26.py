@@ -79,3 +79,52 @@ class NewAcademyDocumentsIdentityTests(TestCase):
             with self.subTest(gabarit=template["id"]):
                 self.assertFalse(template["allowed_for_academy"])
                 self.assertFalse(template["can_issue"])
+
+
+class DemoSeedTests(TestCase):
+    """
+    Le jeu de démonstration doit s'installer sans erreur. Une valeur posée
+    sur le mauvais modèle (le sexe sur une demande de test de placement)
+    l'a fait échouer sans qu'aucun test ne le voie : trouvé au démarrage de
+    la pile locale.
+    """
+
+    def test_seed_demo_data_complet(self):
+        import io
+        import tempfile
+
+        from django.core.management import call_command
+        from django.test import override_settings
+
+        from apps.schools.models import School
+        from apps.website.models import FHAEnrollmentApplication
+
+        with override_settings(MEDIA_ROOT=tempfile.mkdtemp()):
+            call_command("seed_demo_data", stdout=io.StringIO())
+        self.assertTrue(School.objects.filter(code="FEBA").exists())
+        self.assertEqual(
+            set(FHAEnrollmentApplication.objects.values_list("child_gender", flat=True)), {"F"})
+        # FEBA de démonstration mêle primaire et collège : non classée, jamais devinée.
+        self.assertIsNone(School.objects.get(code="FEBA").academy_type)
+        self.assertEqual(School.objects.get(code="FEBA_FHA").academy_type, "online")
+        # Chaque académie de démonstration a SON barème, modifiable à l'écran.
+        from apps.grades.models import AppreciationRule
+        for code in ("FEBA", "FEBA_FHA"):
+            self.assertEqual(AppreciationRule.objects.filter(school__code=code, cycle="").count(), 9)
+
+
+class InitAcademiesScaleTests(TestCase):
+
+    def test_init_academies_installe_un_bareme_par_academie(self):
+        import io
+
+        from django.core.management import call_command
+
+        from apps.grades.models import AppreciationRule
+        from apps.schools.models import School
+
+        School.objects.filter(code__in=["FEBA", "FEBA_FHA"]).delete()
+        call_command("init_academies", stdout=io.StringIO())
+        call_command("init_academies", stdout=io.StringIO())           # idempotent
+        for code in ("FEBA", "FEBA_FHA"):
+            self.assertEqual(AppreciationRule.objects.filter(school__code=code).count(), 9)

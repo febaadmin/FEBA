@@ -203,12 +203,21 @@ export default function AdminAppreciations() {
         <div className="card py-12 text-center text-slate-400">{t("Chargement…")}</div>
       ) : query.isError ? (
         <div className="card py-12 text-center text-danger">{extractApiError(query.error)}</div>
-      ) : scope && !hasOwnScale && rows.length === 0 ? (
+      ) : !hasOwnScale && rows.length === 0 ? (
         <div className="card space-y-3" data-testid="appreciations-inherited">
           <p className="text-sm text-slate-600">
-            {t("Ce cycle utilise le barème de l'académie (« Tous les cycles »).")}
+            {scope
+              ? t("Ce cycle utilise le barème de l'académie (« Tous les cycles »).")
+              : t("Cette académie applique le barème par défaut de la plateforme.")}
           </p>
-          <button className="btn-secondary" onClick={startCycleScale}>{t("Créer un barème propre à ce cycle")}</button>
+          <ul className="text-xs text-slate-500 grid sm:grid-cols-3 gap-1">
+            {(payload?.effective || []).map((r) => (
+              <li key={r.min_percent}>≥ {fmt(r.min_percent)} % : {r.label_fr}</li>
+            ))}
+          </ul>
+          <button className="btn-secondary" onClick={startCycleScale} data-testid="appreciations-customize">
+            {scope ? t("Créer un barème propre à ce cycle") : t("Personnaliser le barème de cette académie")}
+          </button>
         </div>
       ) : (
         <div className="card overflow-x-auto">

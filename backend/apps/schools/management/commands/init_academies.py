@@ -152,6 +152,15 @@ class Command(BaseCommand):
         )
         created_any |= self._apply_branding(fha)
 
+        # Barème d'appréciations de chaque académie : une COPIE du barème par
+        # défaut, modifiable dans « Appréciations ». Sans elle, une académie
+        # créée ici (installation neuve) n'avait aucun palier à modifier.
+        from apps.grades.appreciations import install_default_rules
+        for academy in (feba, fha):
+            if install_default_rules(academy):
+                created_any = True
+                self.stdout.write(f"  Barème d'appréciations installé : {academy.name}")
+
         created_any |= self._align_management_phones()
 
         if not created_any:

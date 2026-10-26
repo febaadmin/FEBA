@@ -128,3 +128,21 @@ describe("écran", () => {
     expect(appreciationsAPI.preview.mock.calls[0][0].rules).toHaveLength(3);
   });
 });
+
+describe("académie sans barème propre", () => {
+  it("montre le barème par défaut appliqué et permet de le personnaliser", async () => {
+    appreciationsAPI.get.mockResolvedValue({ data: {
+      academy: { id: 3 }, cycle: "", rules: [], cycles_with_override: [],
+      effective: [{ min_percent: "95", label_fr: "EXCELLENT", label_en: "EXCELLENT" },
+                  { min_percent: "0", label_fr: "TRÈS FAIBLE", label_en: "VERY WEAK" }],
+    } });
+    appreciationsAPI.save.mockResolvedValue(payload());
+    renderPage();
+    expect((await screen.findByTestId("appreciations-inherited")).textContent).toMatch(/barème par défaut/);
+    fireEvent.click(screen.getByTestId("appreciations-customize"));
+    expect(screen.getAllByDisplayValue("EXCELLENT")).toHaveLength(2);
+    fireEvent.click(screen.getByTestId("appreciations-save"));
+    await waitFor(() => expect(appreciationsAPI.save).toHaveBeenCalledTimes(1));
+    expect(appreciationsAPI.save.mock.calls[0][1].map((r) => r.id)).toEqual([null, null]);
+  });
+});
