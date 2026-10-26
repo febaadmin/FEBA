@@ -129,3 +129,28 @@ class InitAcademiesScaleTests(TestCase):
         call_command("init_academies", stdout=io.StringIO())           # idempotent
         for code in ("FEBA", "FEBA_FHA"):
             self.assertEqual(AppreciationRule.objects.filter(school__code=code).count(), 9)
+
+
+class LogoLessAcademyPublicBrandingTests(TestCase):
+    """Académie sans logo : pas d'URL de logo annoncée, favicon monogramme (jamais 404)."""
+
+    def test_payload_et_favicons(self):
+        import io as _io
+
+        from PIL import Image
+
+        academy = build_academy("SANSLOGO", "physical_primary").school
+        c = APIClient()
+        data = c.get(f"/api/schools/public-branding/{academy.code}/").data
+        self.assertIsNone(data["logo_url"])
+        self.assertEqual(c.get(f"/api/schools/public-branding/{academy.code}/logo/").status_code, 404)
+        feba = APIClient().get("/api/schools/public-branding/FEBA/favicon-32.png")
+        for size in (16, 32, 180):
+            with self.subTest(taille=size):
+                r = c.get(f"/api/schools/public-branding/{academy.code}/favicon-{size}.png")
+                self.assertEqual(r.status_code, 200)
+                body = b"".join(r.streaming_content) if r.streaming else r.content
+                self.assertEqual(Image.open(_io.BytesIO(body)).size, (size, size))
+                if size == 32 and feba.status_code == 200:
+                    feba_body = b"".join(feba.streaming_content) if feba.streaming else feba.content
+                    self.assertNotEqual(body, feba_body)

@@ -67,7 +67,11 @@ def favicon_png(academy, size):
             return fh.read()
     source = logo_file(academy)
     if source is None:
-        return None
+        # Académie sans aucune image (créée depuis l'écran « Académies ») :
+        # monogramme à SES couleurs. Sans cela l'URL annoncée répondait 404
+        # et l'onglet gardait le favicon de la page précédente — celui de
+        # FEBA, c'est-à-dire l'identité d'une autre académie.
+        return _monogram_png(brand, size)
     version = branding_version(academy)
     cache_dir = os.path.join(settings.MEDIA_ROOT, "branding", "favicons")
     cached = os.path.join(cache_dir, f"{brand.academy_code or academy.pk}-{version}-{size}.png")
@@ -91,6 +95,29 @@ def favicon_png(academy, size):
     except OSError:
         pass  # cache facultatif
     return data
+
+
+def _initials(name):
+    words = [w for w in str(name or "").replace("_", " ").replace("-", " ").split()
+             if w.lower() not in {"de", "du", "des", "la", "le", "les", "d'", "l'"}]
+    return "".join(w[0] for w in words[:2]).upper() or "?"
+
+
+def _monogram_png(brand, size):
+    """Carré à la couleur principale de l'académie, initiales en blanc."""
+    from PIL import Image, ImageDraw, ImageFont
+
+    color = brand.primary_color or "#334155"
+    image = Image.new("RGBA", (size, size), color)
+    draw = ImageDraw.Draw(image)
+    text = _initials(brand.short_name or brand.display_name)
+    font = ImageFont.load_default(size=max(8, int(size * (0.5 if len(text) > 1 else 0.62))))
+    left, top, right, bottom = draw.textbbox((0, 0), text, font=font)
+    draw.text(((size - (right - left)) / 2 - left, (size - (bottom - top)) / 2 - top),
+              text, font=font, fill="white")
+    buf = io.BytesIO()
+    image.save(buf, format="PNG", optimize=True)
+    return buf.getvalue()
 
 
 def public_payload(academy, build_url):

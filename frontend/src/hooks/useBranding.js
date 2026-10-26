@@ -58,6 +58,13 @@ export function applyFavicons(data) {
     .forEach((el) => el.remove());
 }
 
+/** Initiales d'une académie (« Lycée de Parakou » → « LP »), au plus 3. */
+export function monogramOf(name) {
+  const words = String(name || "").replace(/[_-]+/g, " ").split(/\s+/)
+    .filter((w) => w && !/^(de|du|des|la|le|les|d'|l')$/i.test(w));
+  return words.slice(0, 3).map((w) => w[0].toUpperCase()).join("") || "?";
+}
+
 export function useBranding(academyCode) {
   const { activeAcademy } = useAcademy();
   const code = academyCode || activeAcademy?.code || DEFAULT_ACADEMY_CODE;
@@ -74,10 +81,19 @@ export function useBranding(academyCode) {
 
   // Repli : URL déterministe de CETTE académie ; le logo FEBA embarqué ne
   // sert qu'à FEBA (jamais à une autre académie) si l'API est injoignable.
-  const logoSrc = data?.logo_url || (error && code === DEFAULT_ACADEMY_CODE ? febaLogo : academyLogoUrl(code));
+  //
+  // Réponse reçue SANS logo (académie créée sans logo activé) : aucune
+  // image — l'URL de repli renverrait 404 et l'interface afficherait une
+  // image cassée. Les écrans affichent alors le monogramme de l'académie.
+  const logoSrc = data
+    ? data.logo_url || null
+    : (error && code === DEFAULT_ACADEMY_CODE ? febaLogo : academyLogoUrl(code));
+  const displayName = data?.display_name || activeAcademy?.name || code;
 
   return {
     logoSrc,
+    logoAlt: displayName,
+    monogram: monogramOf(data?.short_name || activeAcademy?.short_name || displayName),
     academyCode: code,
     isDynamic: Boolean(data?.logo_is_uploaded),
     brandingData: data,

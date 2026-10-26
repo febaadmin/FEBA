@@ -4,7 +4,7 @@ import {
   Building2, Star, FileBarChart, LayoutDashboard, Users, Shield, GraduationCap, UserCheck, Users2, BookOpen, DollarSign, Megaphone, Settings, LogOut, Menu, X, MessageSquare, Layers, ClipboardList, FileText, Calendar, UserCog, FolderOpen, Image, ClipboardCheck, Video, Globe, AlertTriangle, CreditCard, Award, Mail, BellRing, Inbox,
 } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
-import { useBranding } from "../hooks/useBranding";
+import AcademyLogo from "../components/AcademyLogo";
 import { clsx } from "clsx";
 import { motion, AnimatePresence } from "framer-motion";
 import { useQuery } from "@tanstack/react-query";
@@ -73,7 +73,6 @@ export default function SuperAdminLayout() {
   const [open, setOpen] = useState(!isMobile);
   const { user, logout } = useAuth();
   const { user: storeUser } = useAuthStore();
-  const { logoSrc } = useBranding();
 
   useEffect(() => {
     if (isMobile) setOpen(false);
@@ -115,7 +114,7 @@ export default function SuperAdminLayout() {
           >
             <div className="p-5 flex items-center gap-3 border-b border-white/10">
               <div className="w-9 h-9 rounded-xl overflow-hidden bg-white border-2 border-purple-400 flex items-center justify-center shrink-0">
-                <img src={logoSrc} alt={t("FEBA")} className="w-full h-full object-contain" />
+                <AcademyLogo />
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-white font-bold text-sm leading-tight">{t("FEBA")}</p>

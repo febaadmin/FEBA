@@ -4,7 +4,7 @@ import {
   Star, FileBarChart, LayoutDashboard, Users, GraduationCap, UserCheck, BookOpen, ClipboardList, DollarSign, Calendar, FileText, Bell, MessageSquare, Megaphone, Settings, LogOut, School, Menu, X, UserCog, Layers, FolderOpen, ClipboardCheck, Video, Globe, CreditCard, Award, Mail, BellRing, Inbox,
 } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
-import { useBranding } from "../hooks/useBranding";
+import AcademyLogo from "../components/AcademyLogo";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { notificationsAPI, conversationsAPI } from "../api";
 import { motion, AnimatePresence } from "framer-motion";
@@ -80,7 +80,6 @@ export default function AdminLayout() {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const { user, logout } = useAuth();
-  const { logoSrc } = useBranding();
 
   // Close sidebar on mobile when screen resizes to mobile
   useEffect(() => {
@@ -145,7 +144,7 @@ export default function AdminLayout() {
             )}>
             <div className="p-5 flex items-center gap-3 border-b border-white/10">
               <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-yellow-400 shrink-0 bg-white">
-                <img src={logoSrc} alt={t("FEBA")} className="w-full h-full object-contain" />
+                <AcademyLogo />
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-white font-bold text-sm leading-tight">{t("FEBA Academy")}</p>

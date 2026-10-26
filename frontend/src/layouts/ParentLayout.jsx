@@ -1,7 +1,7 @@
 import { NavLink, useNavigate } from "react-router-dom";
 import { Home, Users, ClipboardList, Calendar, FileText, MessageSquare, DollarSign, BookOpen, User, LogOut, School, Menu, X, Bell, Megaphone, Video } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
-import { useBranding } from "../hooks/useBranding";
+import AcademyLogo from "../components/AcademyLogo";
 import { clsx } from "clsx";
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -53,7 +53,6 @@ export default function ParentLayout() {
   const visibleNav = nav.filter((item) => !item.feature || hasFeature(item.feature));
 
   const { user, logout } = useAuth();
-  const { logoSrc } = useBranding();
   const qc = useQueryClient();
   const isMobile = useIsMobile();
   const [open, setOpen] = useState(window.innerWidth >= 768);
@@ -90,7 +89,7 @@ export default function ParentLayout() {
             className={clsx("w-64 bg-[#0F172A] flex flex-col h-full shrink-0 z-20 shadow-2xl", isMobile && "fixed inset-y-0 left-0")}>
             <div className="p-5 flex items-center gap-3 border-b border-white/10">
               <div className="w-9 h-9 rounded-xl overflow-hidden bg-white border-2 border-amber-400 flex items-center justify-center shrink-0">
-                <img src={logoSrc} alt={t("FEBA")} className="w-full h-full object-contain" />
+                <AcademyLogo />
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-white font-bold text-sm">{t("FEBA")}</p>
