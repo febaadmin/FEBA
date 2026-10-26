@@ -18,7 +18,7 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-NOM="${1:-FEBA_VERSION_ACADEMIES_INSCRIPTIONS_APPRECIATIONS_VALIDEE}"
+NOM="${1:-FEBA_GABARITS_DIPLOMES_CERTIFICATS_VALIDEE}"
 SORTIE="${2:-$(dirname "$ROOT")}"
 STAGE="$(mktemp -d)"
 # Le dossier racine porte le MÊME nom que l'archive. En V8 il était
@@ -209,6 +209,17 @@ for requis in backend/manage.py frontend/package.json Makefile \
               frontend/src/pages/shared/VirtualRoomEnded.jsx \
               frontend/src/components/SmsPreferencesCard.jsx \
               DOCUMENTATION_INDEX.md docs/historique/FINAL_REPORT_V13.md \
+              DOCUMENT_TEMPLATES_GUIDE.md \
+              backend/apps/documents/academy_templates.py \
+              backend/apps/documents/academy_template_views.py \
+              backend/apps/documents/migrations/0002_academy_document_templates.py \
+              backend/tests/test_academy_document_templates.py \
+              backend/tests/test_backup_private_media.py \
+              frontend/src/pages/admin/DocumentTemplates.jsx \
+              frontend/src/components/documents/TemplateEditor.jsx \
+              backend/feba_project/static_files/fonts/CrimsonPro-Regular.ttf \
+              e2e/parcours-gabarits.mjs \
+              docs/historique/FINAL_REPORT_2026-10-26_academies_appreciations.md \
               scripts/deploy_feba.sh scripts/tls_bootstrap.sh \
               backend/apps/core/preflight.py \
               backend/apps/core/management/commands/production_preflight.py \
