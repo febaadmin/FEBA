@@ -231,10 +231,22 @@ export const monthlyReportsAPI = {
   generateMonth: (d)      => api.post("/monthly-reports/reports/generate-month/", d),
 };
 
+// Barème d'appréciations de l'académie active (apps.grades.appreciations).
+export const appreciationsAPI = {
+  get:     (cycle = "")         => api.get("/grades/appreciations/", { params: { cycle } }),
+  save:    (cycle, rules)       => api.put("/grades/appreciations/", { cycle, rules }),
+  preview: (d)                  => api.post("/grades/appreciations/preview/", d),
+  reset:   (cycle = "")         => api.post("/grades/appreciations/reset/", { cycle, confirm: true }),
+};
+
 export const schoolsAPI = {
   list: ()           => api.get("/schools/schools/"),
   get: (id)          => api.get(`/schools/schools/${id}/`),
   update: (id, d)    => api.patch(`/schools/schools/${id}/`, d),
+  // Académies (super administrateur) : création typée et initialisée côté serveur.
+  createAcademy: (d)  => api.post("/schools/schools/", d),
+  deleteAcademy: (id) => api.delete(`/schools/schools/${id}/`),
+  setupStatus: (id)   => api.get(`/schools/schools/${id}/setup-status/`),
   years: ()          => api.get("/schools/years/", { params: BIG }),
   createYear: (d)    => api.post("/schools/years/", d),
   updateYear: (id,d) => api.patch(`/schools/years/${id}/`, d),

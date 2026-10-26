@@ -100,7 +100,7 @@ def setup_status(academy):
          "Créer les classes dans « Classes »."),
         ("admin", "Administrateur de l'académie",
          CustomUser.objects.filter(school=academy, role="admin", is_active=True).exists(),
-         "Créer un administrateur dans « Administrateurs »."),
+         "Créer un administrateur dans « Gestion Admins »."),
         ("appreciations", "Barème d'appréciations valide",
          bool(rules) and not validate_scale(rules),
          "Vérifier le barème dans « Appréciations »."),

@@ -100,6 +100,8 @@ const AdminUserFiles = lazy(() => import("../pages/admin/UserFiles"));
 const AdminUsers = lazy(() => import("../pages/admin/Users"));
 const AdminLevels = lazy(() => import("../pages/admin/Levels"));
 const AdminBranding = lazy(() => import("../pages/admin/Branding"));
+const AdminAppreciations = lazy(() => import("../pages/admin/Appreciations"));
+const SuperAdminAcademies = lazy(() => import("../pages/superadmin/Academies"));
 const AdminEnrollments = lazy(() => import("../pages/admin/Enrollments"));
 const AdminProfile = lazy(() => import("../pages/admin/Profile"));
 const FhaAdmissions = lazy(() => import("../pages/admin/FhaAdmissions"));
@@ -324,6 +326,7 @@ export default function AppRouter() {
         <Route path="dashboard"     element={<SuperAdminDashboard />} />
         <Route path="users"         element={<SuperAdminUsers />} />
         <Route path="admins"        element={<SuperAdminAdmins />} />
+        <Route path="academies"     element={<SuperAdminAcademies />} />
         <Route path="messages"      element={<AdminMessages />} />
         <Route path="students"      element={<AdminStudents />} />
         <Route path="teachers"      element={<AdminTeachers />} />
@@ -342,6 +345,7 @@ export default function AppRouter() {
         <Route path="settings"      element={<AdminSettings />} />
         <Route path="user-files"    element={<AdminUserFiles />} />
         <Route path="branding"      element={<AdminBranding />} />
+        <Route path="appreciations" element={<AdminAppreciations />} />
         <Route path="enrollments"   element={<AdminEnrollments />} />
         <Route path="virtual"       element={<VirtualRooms />} />
         <Route path="website"       element={<AdminWebsite />} />
@@ -386,6 +390,7 @@ export default function AppRouter() {
         <Route path="users"         element={<AdminUsers />} />
         <Route path="user-files"    element={<AdminUserFiles />} />
         <Route path="branding"      element={<AdminBranding />} />
+        <Route path="appreciations" element={<AdminAppreciations />} />
         <Route path="enrollments"   element={<AdminEnrollments />} />
         <Route path="virtual"       element={<VirtualRooms />} />
         <Route path="website"       element={<AdminWebsite />} />

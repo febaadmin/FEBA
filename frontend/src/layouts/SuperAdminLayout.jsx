@@ -1,7 +1,7 @@
 import { NavLink } from "react-router-dom";
 import { useState, useEffect } from "react";
 import {
-  FileBarChart, LayoutDashboard, Users, Shield, GraduationCap, UserCheck, Users2, BookOpen, DollarSign, Megaphone, Settings, LogOut, Menu, X, MessageSquare, Layers, ClipboardList, FileText, Calendar, UserCog, FolderOpen, Image, ClipboardCheck, Video, Globe, AlertTriangle, CreditCard, Award, Mail, BellRing, Inbox,
+  Building2, Star, FileBarChart, LayoutDashboard, Users, Shield, GraduationCap, UserCheck, Users2, BookOpen, DollarSign, Megaphone, Settings, LogOut, Menu, X, MessageSquare, Layers, ClipboardList, FileText, Calendar, UserCog, FolderOpen, Image, ClipboardCheck, Video, Globe, AlertTriangle, CreditCard, Award, Mail, BellRing, Inbox,
 } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
 import { useBranding } from "../hooks/useBranding";
@@ -18,6 +18,7 @@ const nav = [
   { section: "SuperAdmin", items: [
     { label: "Tableau de bord",       icon: LayoutDashboard, to: "/superadmin/dashboard" },
     { label: "Tous les utilisateurs", icon: Users,            to: "/superadmin/users" },
+    { label: "Académies",             icon: Building2,        to: "/superadmin/academies" },
     { label: "Gestion Admins",        icon: Shield,           to: "/superadmin/admins" },
     { label: "Messages",              icon: MessageSquare,    to: "/superadmin/messages", badge: true },
     { label: "E-mails groupés", icon: Mail, to: "/superadmin/emails" },
@@ -34,6 +35,7 @@ const nav = [
     { label: "Niveaux",           icon: Layers,        to: "/superadmin/levels" },
     { label: "Notes",             icon: ClipboardList, to: "/superadmin/grades" },
     { label: "Bulletins",         icon: FileText,      to: "/superadmin/bulletins" },
+    { label: "Appréciations",     icon: Star,          to: "/superadmin/appreciations" },
     { label: "Paiements",         icon: DollarSign,    to: "/superadmin/payments" },
   { label: "Transactions carte", icon: CreditCard, to: "/superadmin/card-transactions" },
   { label: "Relances de paiement", icon: BellRing, to: "/superadmin/payment-reminders" },

@@ -36,7 +36,7 @@ const STATIC_ROOM_TYPES = [
 ];
 
 export default function AdminSettings() {
-  const { allEntitiesMode } = useEntityContext();
+  const { allEntitiesMode, activeEntity } = useEntityContext();
   const academyKey = useAcademyKey();
 
   const qc = useQueryClient();
@@ -76,7 +76,14 @@ export default function AdminSettings() {
   const { data: roomsData }     = useQuery({ queryKey: ["rooms", academyKey],             queryFn: () => schoolsAPI.rooms() });
   const { data: roomTypesData } = useQuery({ queryKey: ["room-types", academyKey],        queryFn: () => schoolsAPI.roomTypes() });
 
-  const school       = schoolData?.data?.results?.[0]  || schoolData?.data?.[0];
+  // L'établissement est celui de l'ACADÉMIE ACTIVE. Avant : le premier de
+  // la liste — pour un super administrateur, la liste contient TOUTES les
+  // académies (triées par nom) : « Enregistrer » écrasait le nom et
+  // l'adresse d'une autre académie que celle sélectionnée.
+  const schoolList   = schoolData?.data?.results || schoolData?.data || [];
+  const school       = activeEntity
+    ? schoolList.find((s) => s.id === activeEntity.id)
+    : (allEntitiesMode ? undefined : schoolList[0]);
   const subjects     = subjectsData?.data?.results     || subjectsData?.data     || [];
   const years        = yearsData?.data?.results        || yearsData?.data        || [];
   const classes      = classData?.data?.results        || classData?.data        || [];
@@ -284,7 +291,12 @@ export default function AdminSettings() {
       {/* École */}
       <div className="card">
         <h3 className="font-semibold text-slate-800 mb-4">{t("Informations de l'École")}</h3>
-        <form onSubmit={handleSubmit(d => updateMut.mutate(d))} className="space-y-4">
+        {!school ? (
+          <p className="text-sm text-amber-700" role="alert">
+            {t("Sélectionnez une académie pour modifier ses informations.")}
+          </p>
+        ) : (
+        <form onSubmit={handleSubmit(d => updateMut.mutate(d))} className="space-y-4" data-testid="school-form">
           <div className="grid grid-cols-2 gap-4">
             <div><label className="label">{t("Nom*")}</label><input {...register("name", { required: true })} className="input" /></div>
             <div><label className="label">{t("Ville")}</label><input {...register("city")} className="input" /></div>
@@ -299,6 +311,7 @@ export default function AdminSettings() {
               <Save className="w-4 h-4" />{t("Enregistrer")}</button>
           </div>
         </form>
+        )}
       </div>
 
       {/* ── Types de salles personnalisés ─────────────────────────────────── */}

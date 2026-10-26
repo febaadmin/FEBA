@@ -10,11 +10,11 @@ import { render, screen, fireEvent, waitFor, cleanup } from "@testing-library/re
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter } from "react-router-dom";
 
-vi.mock("../siteApi", () => ({
+vi.mock("./siteApi", () => ({
   siteAPI: { sendFhaEnrollment: vi.fn() },
 }));
-import { siteAPI } from "../siteApi";
-import FhaEnrollPage from "./FhaEnrollPage";
+import { siteAPI } from "./siteApi";
+import FhaEnrollPage from "./pages/FhaEnrollPage";
 
 const DRAFT_KEY = "feba-fha-enroll-draft";
 

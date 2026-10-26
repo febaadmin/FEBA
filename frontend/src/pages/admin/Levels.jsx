@@ -48,17 +48,17 @@ export default function AdminLevels() {
 
   const createMut = useMutation({
     mutationFn: schoolsAPI.createLevel,
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["levels", academyKey] }); toast.success(t("Niveau créé !")); closeModal(); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["levels"] }); toast.success(t("Niveau créé !")); closeModal(); },
     onError: (e) => toast.error(extractApiError(e)),
   });
   const updateMut = useMutation({
     mutationFn: ({ id, data }) => schoolsAPI.updateLevel(id, data),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["levels", academyKey] }); toast.success(t("Modifié !")); closeModal(); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["levels"] }); toast.success(t("Modifié !")); closeModal(); },
     onError: (e) => toast.error(extractApiError(e)),
   });
   const deleteMut = useMutation({
     mutationFn: schoolsAPI.deleteLevel,
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["levels", academyKey] }); toast.success(t("Supprimé.")); setDeleteItem(null); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["levels"] }); toast.success(t("Supprimé.")); setDeleteItem(null); },
     onError: (e) => toast.error(extractApiError(e)),
   });
 

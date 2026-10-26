@@ -296,9 +296,23 @@ def smtp_reachability(timeout=5):
                 "detail": f"{settings.EMAIL_HOST}:{settings.EMAIL_PORT} injoignable — {type(exc).__name__}: {exc}"}
 
 
-def email_configuration():
-    """Configuration EFFECTIVE, sans aucun secret."""
+def email_configuration(request=None):
+    """
+    Configuration EFFECTIVE, sans aucun secret.
+
+    `academy_senders` : le super administrateur voit l'expéditeur de chaque
+    académie ; un administrateur ne voit QUE la sienne. Avant, la liste de
+    toutes les académies de la plateforme (codes, noms, adresses) était
+    renvoyée à n'importe quel administrateur — trouvé par la campagne
+    d'isolation à 2, 7 et 19 académies.
+    """
     from apps.schools.models import School
+
+    academies = School.objects.order_by("id")
+    # Sans requête : commande d'exploitation (`email_check`), qui voit tout.
+    user = getattr(request, "user", None) if request is not None else None
+    if request is not None and (user is None or not user.is_superadmin()):
+        academies = academies.filter(pk=getattr(user, "school_id", None))
 
     from .mailer import current_transport, provider_is_configured, sender_for, transport_backend
 
@@ -318,7 +332,7 @@ def email_configuration():
         "default_from": getattr(settings, "DEFAULT_FROM_EMAIL", ""),
         "reply_to": getattr(settings, "EMAIL_REPLY_TO", ""),
         "academy_senders": [
-            {"code": a.code, "name": a.name, "from": sender_for(a)} for a in School.objects.order_by("id")
+            {"code": a.code, "name": a.name, "from": sender_for(a)} for a in academies
         ],
         "delivery_mode": getattr(settings, "EMAIL_DELIVERY_MODE", "auto"),
         "capture_ui_url": getattr(settings, "MAILPIT_UI_URL", "") if transport == "capture" else "",
@@ -340,7 +354,7 @@ class EmailConfigView(APIView):
     permission_classes = [IsAuthenticated, IsAdminOrAbove]
 
     def get(self, request):
-        data = email_configuration()
+        data = email_configuration(request)
         if request.query_params.get("check") == "1":
             data["reachability"] = smtp_reachability()
         since = timezone.now() - timedelta(hours=24)
@@ -382,6 +396,6 @@ class EmailConfigTestView(APIView):
         )
         logger.info("Test SMTP par %s vers %s : %s (%s)", request.user.email, to, delivery.status,
                     delivery.transport)
-        return Response({**_row(delivery), "explanation": email_configuration()["explanation"],
+        return Response({**_row(delivery), "explanation": email_configuration(request)["explanation"],
                          "capture_ui_url": getattr(settings, "MAILPIT_UI_URL", "")
                          if delivery.transport == "capture" else ""})

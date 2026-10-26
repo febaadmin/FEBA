@@ -44,7 +44,9 @@ def build_academy(tag, academy_type, *, grades=(16, 12), superadmin=None):
         "school_year_end": datetime.date(2027, 7, 31),
     }, created_by=superadmin)
     year = school.years.get(is_current=True)
-    level = school.levels.order_by("order").first()
+    # Premier niveau hors maternelle : le bulletin de maternelle est en
+    # lettres seulement, sans moyenne ni appréciation.
+    level = school.levels.exclude(cycle="maternelle").order_by("order").first()
     if level is None:                       # académie en ligne : groupes à créer
         level = school.levels.create(name=f"Groupe {tag}", cycle="primaire", order=1)
     klass = Class.objects.create(name=f"Classe-{tag}", level=level, school_year=year)

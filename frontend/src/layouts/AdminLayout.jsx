@@ -1,7 +1,7 @@
 import { NavLink, useNavigate } from "react-router-dom";
 import { useState, useEffect, useRef } from "react";
 import {
-  FileBarChart, LayoutDashboard, Users, GraduationCap, UserCheck, BookOpen, ClipboardList, DollarSign, Calendar, FileText, Bell, MessageSquare, Megaphone, Settings, LogOut, School, Menu, X, UserCog, Layers, FolderOpen, ClipboardCheck, Video, Globe, CreditCard, Award, Mail, BellRing, Inbox,
+  Star, FileBarChart, LayoutDashboard, Users, GraduationCap, UserCheck, BookOpen, ClipboardList, DollarSign, Calendar, FileText, Bell, MessageSquare, Megaphone, Settings, LogOut, School, Menu, X, UserCog, Layers, FolderOpen, ClipboardCheck, Video, Globe, CreditCard, Award, Mail, BellRing, Inbox,
 } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
 import { useBranding } from "../hooks/useBranding";
@@ -26,6 +26,7 @@ const nav = [
   { label: "Niveaux",         icon: Layers,           to: "/admin/levels" },
   { label: "Notes",           icon: ClipboardList,    to: "/admin/grades" },
   { label: "Bulletins",       icon: FileText,         to: "/admin/bulletins" },
+  { label: "Appréciations",   icon: Star,             to: "/admin/appreciations" },
   { label: "Absences",        icon: Calendar,         to: "/admin/attendance" },
   { label: "Emploi du temps", icon: Calendar,         to: "/admin/schedule" },
   // Fonctionnalité conditionnelle : réservée aux entités « académie en
