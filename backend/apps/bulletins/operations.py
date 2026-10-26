@@ -18,6 +18,7 @@ Règles :
   - le bilan rapporte ce qui a été FAIT, élève par élève.
 """
 import logging
+from datetime import timedelta
 
 from django.db import transaction
 from django.db.models import Exists, OuterRef, Q
@@ -37,7 +38,8 @@ PERIODS = {code for code, _ in Bulletin.PERIOD_CHOICES}
 class ScopeError(ValueError):
     """Paramètres de portée invalides ou hors de l'académie (→ 400/404)."""
 
-    def __init__(self, message, status=400):
+    def __init__(self, message, status=400, current_comment=None):
+        self.current_comment = current_comment
         super().__init__(message)
         self.status = status
 
@@ -224,6 +226,15 @@ def apply_to_student(student, year, period, *, action, comment="", regenerate=Tr
     res["processed"] += 1
     must_generate = action == BulletinOperation.ACTION_GENERATE or (
         regenerate and (outcome not in ("commentaire inchangé",) or bulletin.pdf_outdated))
+    if must_generate and not bulletin.pdf_file and not _has_grades(student, year, period):
+        # Brouillon (commentaire saisi avant génération) d'un élève encore
+        # sans note : on ne fabrique pas de bulletin vide. Le commentaire est
+        # enregistré ; le PDF viendra avec la première génération.
+        must_generate = False
+        res["skipped"] += 1
+        res["skipped_items"].append({**row, "reason": "PDF non généré : aucune note sur la période "
+                                                      "(commentaire enregistré)"})
+        outcome += ", PDF non généré (aucune note)"
     if must_generate:
         try:
             bulletin = generate_bulletin(student, period, year)
@@ -239,6 +250,91 @@ def apply_to_student(student, year, period, *, action, comment="", regenerate=Tr
             outcome += ", PDF NON régénéré"
     res["items"].append({**row, "bulletin_id": bulletin.pk, "outcome": outcome})
     return bulletin
+
+
+def save_student_comment(school, *, student_id, school_year_id, period, comment,
+                         regenerate=True, expected_comment=None, user=None):
+    """
+    Commentaire d'UN élève (année, période), bulletin généré ou non.
+
+    Tout se passe dans une transaction avec verrou de ligne : deux
+    enregistrements simultanés sont sérialisés, une même demande répétée ne
+    crée pas de doublon (contrainte unique élève/année/période) et ne change
+    rien la seconde fois. `expected_comment` : commentaire que l'utilisateur
+    avait sous les yeux ; s'il a changé entre-temps → ScopeError 409.
+    """
+    from django.db import IntegrityError
+    year, student, _cls, _qs = resolve_scope(
+        school, scope=BulletinOperation.SCOPE_STUDENT, period=period,
+        school_year_id=school_year_id, student_id=student_id)
+    result = _new_result(1)
+    with transaction.atomic():
+        try:
+            bulletin, created = Bulletin.objects.select_for_update().get_or_create(
+                student=student, school_year=year, period=period)
+        except IntegrityError:
+            created = False
+            bulletin = Bulletin.objects.select_for_update().get(
+                student=student, school_year=year, period=period)
+        current = bulletin.general_comment or ""
+        if expected_comment is not None and expected_comment.replace("\r\n", "\n").strip() != current:
+            raise ScopeError("Le commentaire a été modifié par quelqu'un d'autre entre-temps. "
+                             "Rechargez-le avant de l'enregistrer.", status=409, current_comment=current)
+        changed = current != comment
+        if changed:
+            bulletin.general_comment = comment
+            bulletin.comment_updated_at = timezone.now()
+            bulletin.comment_updated_by = user
+            bulletin.save(update_fields=["general_comment", "comment_updated_at", "comment_updated_by"])
+            result["comments_set" if comment else "comments_cleared"] += 1
+        else:
+            result["unchanged"] += 1
+    result["processed"] = 1
+    result["draft_created"] = created
+    outcome = ("commentaire enregistré" if comment else "commentaire supprimé") if changed else "commentaire inchangé"
+    bulletin.refresh_from_db()
+    if regenerate and (changed or bulletin.pdf_outdated):
+        if not bulletin.pdf_file and not _has_grades(student, year, period):
+            result["skipped"] += 1
+            result["skipped_items"].append({**_row(student), "reason": "PDF non généré : aucune note "
+                                            "sur la période (commentaire enregistré)"})
+            outcome += ", PDF non généré (aucune note)"
+        else:
+            from .pdf_generator import generate_bulletin
+            try:
+                bulletin = generate_bulletin(student, period, year)
+                result["pdf_generated"] += 1
+                outcome += ", PDF régénéré"
+            except Exception as exc:
+                logger.error("PDF non régénéré %s/%s : %s", student.matricule, period, exc, exc_info=True)
+                result["failed"] += 1
+                result["failures"].append({**_row(student), "reason": (
+                    f"PDF non régénéré ({exc}) ; le commentaire est enregistré"
+                    + (" et l'ancien PDF est conservé" if bulletin.pdf_file else ""))})
+                outcome += ", PDF NON régénéré"
+    result["items"].append({**_row(student), "bulletin_id": bulletin.pk, "outcome": outcome})
+    result["bulletin_id"] = bulletin.pk
+    logger.info("Commentaire bulletin %s (%s %s/%s) par %s : %s", bulletin.pk, student.matricule,
+                period, year.name, getattr(user, "pk", None), outcome)
+    return result
+
+
+#: Au-delà, une opération « en file » ou « en cours » sans fin est considérée
+#: comme interrompue (worker arrêté, redémarrage) : elle ne bloque plus les
+#: suivantes.
+STALE_QUEUED_AFTER = timedelta(minutes=10)
+STALE_RUNNING_AFTER = timedelta(minutes=60)
+
+
+def expire_stale_operations(school):
+    """Marque échouées les opérations bloquées de l'académie ; retourne leur nombre."""
+    now = timezone.now()
+    stale = BulletinOperation.objects.filter(school=school).filter(
+        Q(status="queued", created_at__lt=now - STALE_QUEUED_AFTER)
+        | Q(status="running", created_at__lt=now - STALE_RUNNING_AFTER))
+    return stale.update(status="failed", finished_at=now, error=(
+        "Opération interrompue : aucun worker ne l'a terminée (worker Celery arrêté ou "
+        "redémarré). Relancez-la ; les bulletins déjà traités le resteront."))
 
 
 def run_operation(op):

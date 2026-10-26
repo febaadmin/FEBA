@@ -508,3 +508,158 @@ class GroupOperationTests(BulletinCommentBase):
         run_bulletin_operation(r.data["id"])     # seconde livraison du message
         op = BulletinOperation.objects.get(pk=r.data["id"])
         self.assertEqual(op.result["comments_set"], 1)
+
+
+class CommentTargetTests(BulletinCommentBase):
+    """Un élève, bulletin généré ou non : POST /bulletins/comment-target/ (synchrone)."""
+
+    def target(self, student, text, period="T1", **extra):
+        return self.client.post("/api/bulletins/comment-target/", {
+            "student_id": student.pk, "school_year_id": self.a.year.pk, "period": period,
+            "comment": text, **extra}, format="json")
+
+    def test_avant_generation_ajout_modification_suppression(self):
+        s = self.a.students[0]
+        r = self.target(s, "Avant génération.", regenerate=False)
+        self.assertEqual(r.status_code, 200, r.data)
+        b = Bulletin.objects.get(student=s, period="T1")
+        self.assertEqual(b.general_comment, "Avant génération.")
+        self.assertFalse(b.pdf_file)                                    # brouillon, aucun PDF
+        self.assertEqual(self.target(s, "Modifié avant génération.", regenerate=False).status_code, 200)
+        self.assertEqual(self.target(s, "", regenerate=False).status_code, 200)
+        b.refresh_from_db()
+        self.assertEqual(b.general_comment, "")
+        self.assertEqual(Bulletin.objects.filter(student=s).count(), 1)
+        # Le brouillon est invisible des familles…
+        self.target(s, "Repris à la génération.", regenerate=False)
+        parent = APIClient()
+        parent.force_authenticate(self.a.parent_user)
+        listed = parent.get("/api/bulletins/").json()
+        self.assertEqual(len(listed.get("results", listed)), 0)
+        self.assertEqual(parent.get(f"/api/bulletins/{b.pk}/").status_code, 404)
+        # …et la génération ultérieure imprime le commentaire.
+        r = self.client.post("/api/bulletins/generate/", {"student_id": s.pk, "period": "T1",
+                             "school_year_id": self.a.year.pk}, format="json")
+        self.assertEqual(r.status_code, 201)
+        self.assertIn("Repris à la génération.", flat(pdf_text(b)[0]))
+        self.assertEqual(len(parent.get("/api/bulletins/").json().get("results", [])), 1)
+
+    def test_avant_generation_avec_pdf_immediat_si_notes(self):
+        s = self.a.students[0]
+        r = self.target(s, "Généré tout de suite.")
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(r.data["result"]["pdf_generated"], 1)
+        self.assertIn("Généré tout de suite.", flat(pdf_text(Bulletin.objects.get(student=s))[0]))
+
+    def test_eleve_sans_note_commentaire_garde_sans_pdf_vide(self):
+        s = self.a.students[2]                        # aucune note
+        r = self.target(s, "Sans note.")
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(r.data["result"]["pdf_generated"], 0)
+        self.assertIn("aucune note", r.data["result"]["skipped_items"][0]["reason"])
+        b = Bulletin.objects.get(student=s)
+        self.assertEqual(b.general_comment, "Sans note.")
+        self.assertFalse(b.pdf_file)
+
+    def test_cycles_repetes_apres_generation(self):
+        """Cinq cycles ajout → modification → suppression, PDF relu à chaque étape."""
+        s = self.a.students[1]
+        self.generate(s)
+        urls = set()
+        for i in range(5):
+            for text in (f"Ajout {i} — « é à ç »\nligne 2", f"Modification {i}", ""):
+                r = self.target(s, text, expected_comment=Bulletin.objects.get(student=s).general_comment)
+                self.assertEqual(r.status_code, 200, (i, text, r.data))
+                b = Bulletin.objects.get(student=s, period="T1")
+                self.assertEqual(b.general_comment, text)
+                content = flat(pdf_text(b)[0])
+                self.assertIn(flat(text) if text else NO_COMMENT, content)
+                urls.add(b.pdf_file.name)
+                self.assertTrue(b.pdf_file.storage.exists(b.pdf_file.name))
+                self.assertFalse(r.data["bulletin"]["pdf_outdated"])
+        self.assertEqual(len(urls), 15)                       # un fichier (une URL) par version
+        self.assertEqual(Bulletin.objects.filter(student=s).count(), 1)
+        # Les anciens fichiers ont été retirés : seul le dernier subsiste.
+        b = Bulletin.objects.get(student=s, period="T1")
+        self.assertEqual([n for n in urls if b.pdf_file.storage.exists(n)], [b.pdf_file.name])
+
+    def test_regenerations_successives_conservent_le_commentaire(self):
+        s = self.a.students[0]
+        self.target(s, "Conservé.")
+        for _ in range(4):
+            r = self.client.post("/api/bulletins/generate/", {"student_id": s.pk, "period": "T1",
+                                 "school_year_id": self.a.year.pk}, format="json")
+            self.assertEqual(r.status_code, 201)
+        b = Bulletin.objects.get(student=s)
+        self.assertEqual(b.general_comment, "Conservé.")
+        self.assertIn("Conservé.", flat(pdf_text(b)[0]))
+
+    def test_erreur_de_sauvegarde_n_annonce_pas_de_succes(self):
+        s = self.a.students[0]
+        self.generate(s)
+        with mock.patch("apps.bulletins.models.Bulletin.save", side_effect=RuntimeError("disque plein")):
+            r = self.target(s, "Ne doit pas passer.")
+        self.assertEqual(r.status_code, 500)
+        self.assertNotIn("bulletin", r.data)
+        self.assertEqual(Bulletin.objects.get(student=s).general_comment, "")
+
+    def test_requete_repetee_idempotente_et_conflit(self):
+        s = self.a.students[0]
+        self.assertEqual(self.target(s, "Une fois.").status_code, 200)
+        r = self.target(s, "Une fois.")
+        self.assertEqual(r.data["result"]["unchanged"], 1)
+        self.assertEqual(r.data["result"]["pdf_generated"], 0)       # rien à refaire
+        r = self.target(s, "Autre", expected_comment="périmé")
+        self.assertEqual(r.status_code, 409)
+        self.assertEqual(r.data["current_comment"], "Une fois.")
+
+    def test_isolation_et_permissions(self):
+        r = self.target(self.b.students[0], "intrus")
+        self.assertEqual(r.status_code, 404)
+        self.assertFalse(Bulletin.objects.filter(student=self.b.students[0]).exists())
+        for user in (self.a.parent_user, self.a.students[0].user, self.a.teacher.user):
+            c = APIClient()
+            c.force_authenticate(user)
+            r = c.post("/api/bulletins/comment-target/", {"student_id": self.a.students[0].pk,
+                       "school_year_id": self.a.year.pk, "period": "T1", "comment": "x"}, format="json")
+            self.assertEqual(r.status_code, 403, user.role)
+
+    def test_operation_bloquee_ne_bloque_plus(self):
+        from datetime import timedelta
+        from django.utils import timezone
+        op = BulletinOperation.objects.create(school=self.a.school, school_year=self.a.year, period="T1",
+                                              scope="academy", action="generate", status="queued")
+        BulletinOperation.objects.filter(pk=op.pk).update(created_at=timezone.now() - timedelta(minutes=30))
+        r = self.operation(scope="academy", action="generate")
+        self.assertEqual(r.status_code, 202, r.data)
+        op.refresh_from_db()
+        self.assertEqual(op.status, "failed")
+        self.assertIn("interrompue", op.error)
+
+
+class ConcurrentCommentTests(BulletinCommentBase):
+    """Deux enregistrements simultanés (PostgreSQL : verrous de ligne réels)."""
+
+    def test_deux_demandes_simultanees(self):
+        import threading
+        from django.db import connection
+        if connection.vendor != "postgresql":
+            self.skipTest("Concurrence réelle : PostgreSQL requis.")
+        s = self.a.students[0]
+        codes = []
+
+        def send(text):
+            c = APIClient()
+            c.force_authenticate(self.a.admin)
+            r = c.post("/api/bulletins/comment-target/", {"student_id": s.pk, "school_year_id": self.a.year.pk,
+                       "period": "T2", "comment": text, "regenerate": False, "expected_comment": ""},
+                       format="json")
+            codes.append(r.status_code)
+            connection.close()
+
+        threads = [threading.Thread(target=send, args=(f"Texte {i}",)) for i in range(2)]
+        [t.start() for t in threads]
+        [t.join() for t in threads]
+        self.assertEqual(Bulletin.objects.filter(student=s, period="T2").count(), 1)
+        self.assertEqual(sorted(codes), [200, 409])            # le second voit la modification du premier
+        self.assertIn(Bulletin.objects.get(student=s, period="T2").general_comment, ("Texte 0", "Texte 1"))

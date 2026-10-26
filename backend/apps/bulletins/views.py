@@ -70,6 +70,10 @@ class BulletinViewSet(BulkDeleteMixin, viewsets.ModelViewSet):
 
         if user.role_level >= 80:
             return qs
+        # Un bulletin sans PDF est un BROUILLON (commentaire saisi avant la
+        # génération) : il n'existe pas encore pour les familles ni pour les
+        # enseignants.
+        qs = qs.exclude(pdf_file="").exclude(pdf_file__isnull=True)
         qs = qs.filter(student__is_active=True, student__user__is_active=True)
         if user.is_teacher():
             try:
@@ -90,7 +94,8 @@ class BulletinViewSet(BulkDeleteMixin, viewsets.ModelViewSet):
         # étaient ouvertes à tout utilisateur authentifié — un parent
         # pouvait modifier le bulletin de son enfant) exige un administrateur.
         from rest_framework.permissions import SAFE_METHODS
-        if getattr(self, "action", None) in ("operations", "operation_detail", "comment_preview"):
+        if getattr(self, "action", None) in ("operations", "operation_detail", "comment_preview",
+                                             "comment_target"):
             # Journal et suivi des opérations : administration uniquement.
             return [IsAuthenticated(), IsAdminOrAbove()]
         if self.request is not None and self.request.method not in SAFE_METHODS:
@@ -152,6 +157,46 @@ class BulletinViewSet(BulkDeleteMixin, viewsets.ModelViewSet):
         code = 200 if not result["failed"] and not result["skipped"] else 207
         return Response({"bulletin": data, "result": result}, status=code)
 
+    @action(detail=False, methods=["post"], url_path="comment-target")
+    def comment_target(self, request):
+        """
+        POST /api/bulletins/comment-target/
+        {"student_id", "school_year_id", "period", "comment": "…" | "",
+         "regenerate": true, "expected_comment"?: "…"}
+
+        Commentaire d'UN élève pour une année et une période, que son
+        bulletin existe déjà ou non. Synchrone (aucun worker requis) :
+          - bulletin existant : commentaire enregistré, PDF régénéré ;
+          - bulletin pas encore généré : commentaire enregistré dans un
+            BROUILLON (sans PDF, invisible des familles) ; le PDF est
+            produit maintenant si l'élève a des notes et que `regenerate`
+            est demandé, sinon à la prochaine génération, qui le reprendra.
+        """
+        from .operations import ScopeError, clean_comment, save_student_comment
+        try:
+            school = self._operation_school(request)
+            text = clean_comment(request.data.get("comment", ""))
+            expected = request.data.get("expected_comment")
+            outcome = save_student_comment(
+                school, student_id=request.data.get("student_id"),
+                school_year_id=request.data.get("school_year_id"),
+                period=request.data.get("period"), comment=text,
+                regenerate=str(request.data.get("regenerate", "true")).lower() not in ("false", "0"),
+                expected_comment=None if expected is None else str(expected),
+                user=request.user)
+        except _ScopeHttpError as exc:
+            return Response({"error": str(exc)}, status=400)
+        except ScopeError as exc:
+            data = {"error": str(exc)}
+            if getattr(exc, "current_comment", None) is not None:
+                data["current_comment"] = exc.current_comment
+            return Response(data, status=exc.status)
+        bulletin = Bulletin.objects.select_related("student", "school_year").get(pk=outcome["bulletin_id"])
+        return Response({
+            "bulletin": BulletinSerializer(bulletin, context={"request": request}).data,
+            "result": outcome,
+        }, status=200 if not outcome["failed"] else 207)
+
     # ── Opérations groupées ──────────────────────────────────────────────
 
     def _operation_school(self, request):
@@ -200,6 +245,8 @@ class BulletinViewSet(BulkDeleteMixin, viewsets.ModelViewSet):
             "missing_without_grades": len(missing) - missing_with_grades,
             "bulletin": BulletinSerializer(bulletin, context={"request": request}).data
             if bulletin else None,
+            # Un élève : a-t-il des notes sur la période (PDF possible) ?
+            "has_grades": _has_grades(student, year, period) if student else None,
         })
 
     @action(detail=False, methods=["get", "post"], url_path="operations")
@@ -239,6 +286,8 @@ class BulletinViewSet(BulkDeleteMixin, viewsets.ModelViewSet):
                 student_id=data.get("student_id"), class_id=data.get("class_id"))
         except ScopeError as exc:
             return Response({"error": str(exc)}, status=exc.status)
+        from .operations import expire_stale_operations
+        expire_stale_operations(school)
         if BulletinOperation.objects.filter(
                 school=school, status__in=BulletinOperation.ACTIVE_STATUSES).exists():
             return Response({"error": "Une opération sur les bulletins de cette académie est déjà "

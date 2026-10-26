@@ -15,6 +15,10 @@
  */
 export const EN = {
   // Commentaire du directeur sur les bulletins
+  "Bulletin pas encore généré : le commentaire est enregistré et sera imprimé à la génération.": "Report card not generated yet: the comment is saved and will be printed when it is generated.",
+  "Aucune note sur cette période : le PDF ne peut pas encore être produit.": "No grade for this period: the PDF cannot be produced yet.",
+  "Enregistré par le serveur": "Saved by the server",
+  "Enregistrer le commentaire": "Save the comment",
   "Opération en cours…": "Operation in progress…",
   "Opération terminée": "Operation completed",
   "Opération terminée avec des échecs": "Operation completed with failures",

@@ -154,10 +154,14 @@ export default function BulletinCommentManager({ open, onClose, initial = {} }) 
     : (scope === "student" ? (bulletin?.general_comment || "") : "");
   const setComment = (text) => setDraftState({ key: draftKey, text });
 
-  // Un élève, bulletin existant : enregistrement direct + PDF régénéré.
+  // Un élève : un seul chemin, bulletin déjà généré ou non. Synchrone ;
+  // l'interface n'affiche que ce que le serveur a confirmé.
+  const [savedState, setSavedState] = useState({ key: null, text: "" });
+  const saved = savedState.key === targetKey ? savedState.text : "";
   const saveMut = useMutation({
-    mutationFn: (text) => bulletinsAPI.comment(bulletin.id, {
-      comment: text, regenerate, expected_comment: bulletin.general_comment,
+    mutationFn: (text) => bulletinsAPI.commentTarget({
+      student_id: studentId, school_year_id: effectiveYear, period,
+      comment: text, regenerate, expected_comment: bulletin?.general_comment ?? "",
     }),
     onSuccess: (res) => {
       const result = res.data.result;
@@ -165,8 +169,10 @@ export default function BulletinCommentManager({ open, onClose, initial = {} }) 
         (p) => ({ ...(p || {}), bulletin: res.data.bulletin }));
       refreshBulletins();
       setError(result.failed ? result.failures.map((f) => f.reason).join(" ; ") : "");
+      setSavedState({ key: targetKey, text: result.failed ? "" : (result.items?.[0]?.outcome || "") });
     },
     onError: (e) => {
+      setSavedState({ key: targetKey, text: "" });
       if (e.response?.status === 409) {
         setError(t("Le commentaire a été modifié par quelqu'un d'autre entre-temps. Rechargez-le avant de l'enregistrer."));
         previewQuery.refetch();
@@ -174,12 +180,12 @@ export default function BulletinCommentManager({ open, onClose, initial = {} }) 
     },
   });
 
-  // Opérations groupées (et élève sans bulletin) : Celery + suivi.
+  // Opérations groupées : Celery + suivi.
   const opMut = useMutation({
     mutationFn: () => bulletinsAPI.createOperation({
       ...target,
-      action: scope === "student" ? "set_comment" : action,
-      comment: scope === "student" || action === "set_comment" ? comment : "",
+      action,
+      comment: action === "set_comment" ? comment : "",
       regenerate, create_missing: createMissing,
     }),
     onSuccess: (res) => { setOpState({ key: targetKey, id: res.data.id }); setConfirmKey(null); setError(""); },
@@ -265,28 +271,27 @@ export default function BulletinCommentManager({ open, onClose, initial = {} }) 
 
         {/* Un élève : état du bulletin */}
         {scope === "student" && preview && (
-          bulletin ? (
-            <div className="text-sm bg-slate-50 rounded-xl p-3 flex flex-wrap items-center gap-x-4 gap-y-1" data-testid="bulletin-state">
+          <div className={`text-sm rounded-xl p-3 flex flex-wrap items-center gap-x-4 gap-y-1 ${
+            bulletin?.pdf_url ? "bg-slate-50" : "bg-amber-50 border border-amber-200 text-amber-800"}`}
+            data-testid="bulletin-state">
+            {bulletin?.pdf_url ? (
               <span>{t("Bulletin généré le")} {bulletin.generated_at ? new Date(bulletin.generated_at).toLocaleString() : "—"}</span>
-              {bulletin.pdf_outdated && (
-                <span className="text-amber-700 font-medium">{t("PDF à régénérer : il ne contient pas le dernier commentaire.")}</span>
-              )}
-              {bulletin.pdf_url && (
-                <a href={bulletin.pdf_url} target="_blank" rel="noreferrer"
-                  className="inline-flex items-center gap-1 text-primary font-medium" data-testid="pdf-link">
-                  <ExternalLink className="w-3.5 h-3.5" />{t("Ouvrir le PDF")}
-                </a>
-              )}
-            </div>
-          ) : (
-            <div className="text-sm bg-amber-50 border border-amber-200 rounded-xl p-3 text-amber-800 space-y-2">
-              <p>{t("Aucun bulletin n'a encore été généré pour cet élève sur cette période.")}</p>
-              <label className="flex items-center gap-2">
-                <input type="checkbox" checked={createMissing} onChange={(e) => setCreateMissing(e.target.checked)} />
-                {t("Générer le bulletin maintenant avec ce commentaire")}
-              </label>
-            </div>
-          )
+            ) : (
+              <span>
+                {t("Bulletin pas encore généré : le commentaire est enregistré et sera imprimé à la génération.")}
+                {preview.has_grades === false && ` ${t("Aucune note sur cette période : le PDF ne peut pas encore être produit.")}`}
+              </span>
+            )}
+            {bulletin?.pdf_url && bulletin.pdf_outdated && (
+              <span className="text-amber-700 font-medium">{t("PDF à régénérer : il ne contient pas le dernier commentaire.")}</span>
+            )}
+            {bulletin?.pdf_url && (
+              <a href={bulletin.pdf_url} target="_blank" rel="noreferrer"
+                className="inline-flex items-center gap-1 text-primary font-medium" data-testid="pdf-link">
+                <ExternalLink className="w-3.5 h-3.5" />{t("Ouvrir le PDF")}
+              </a>
+            )}
+          </div>
         )}
 
         {/* Portée groupée : chiffres du serveur */}
@@ -317,6 +322,7 @@ export default function BulletinCommentManager({ open, onClose, initial = {} }) 
           <div>
             <label className="label" htmlFor="bc-text">{t("Commentaire du Directeur / Principal's Comment")}</label>
             <textarea id="bc-text" className="input min-h-[120px]" value={comment} maxLength={COMMENT_MAX + 200}
+              readOnly={saveMut.isPending}
               onChange={(e) => setComment(e.target.value)}
               placeholder={t("Saisissez le commentaire imprimé sur le bulletin…")} />
             <p className={`text-xs mt-1 ${tooLong ? "text-danger font-medium" : "text-slate-500"}`}>
@@ -339,6 +345,12 @@ export default function BulletinCommentManager({ open, onClose, initial = {} }) 
         </div>
 
         {error && <div className="bg-danger-50 border border-danger-200 rounded-xl p-3 text-sm text-danger" role="alert">{error}</div>}
+        {!error && saved && !saveMut.isPending && (
+          <div className="bg-success-50 border border-success-200 rounded-xl p-3 text-sm text-success-800" role="status"
+            data-testid="save-confirmation">
+            {t("Enregistré par le serveur")} : {saved}
+          </div>
+        )}
         {op && <OperationReport op={op} />}
 
         {confirming && preview && (
@@ -360,23 +372,19 @@ export default function BulletinCommentManager({ open, onClose, initial = {} }) 
 
         <div className="flex flex-wrap gap-2 justify-end pt-2">
           <button type="button" className="btn-secondary" onClick={onClose}>{t("Fermer")}</button>
-          {scope === "student" && bulletin && (
+          {scope === "student" && preview && (
             <>
-              <button type="button" className="btn-secondary" disabled={busy || !bulletin.general_comment}
+              <button type="button" className="btn-secondary" disabled={busy || !bulletin?.general_comment}
                 onClick={() => saveMut.mutate("")}>{t("Supprimer le commentaire")}</button>
               <button type="button" className="btn-primary flex items-center gap-2"
                 disabled={busy || tooLong || isAllAcademies || !comment.trim()}
                 onClick={() => saveMut.mutate(comment)}>
                 <MessageSquare className="w-4 h-4" />
-                {saveMut.isPending ? t("Enregistrement…") : regenerate ? t("Enregistrer et régénérer le PDF") : t("Enregistrer")}
+                {saveMut.isPending ? t("Enregistrement…")
+                  : regenerate && (bulletin?.pdf_url || preview.has_grades) ? t("Enregistrer et régénérer le PDF")
+                  : t("Enregistrer le commentaire")}
               </button>
             </>
-          )}
-          {scope === "student" && preview && !bulletin && (
-            <button type="button" className="btn-primary" disabled={busy || !createMissing || tooLong || !comment.trim()}
-              onClick={() => opMut.mutate()}>
-              {t("Générer le bulletin avec ce commentaire")}
-            </button>
           )}
           {scope !== "student" && (
             <button type="button" className="btn-primary"

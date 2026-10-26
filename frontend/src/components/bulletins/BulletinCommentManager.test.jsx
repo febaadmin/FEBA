@@ -16,6 +16,7 @@ vi.mock("../../api", () => ({
   bulletinsAPI: {
     commentPreview: vi.fn(),
     comment: vi.fn(),
+    commentTarget: vi.fn(),
     createOperation: vi.fn(),
     operation: vi.fn(),
   },
@@ -48,9 +49,9 @@ describe("commentaire d'un élève", () => {
     bulletinsAPI.commentPreview.mockResolvedValue({ data: {
       student: { id: 7, name: "Naomi Adjovi" }, bulletin: bulletin({ general_comment: "Ancien" }),
     } });
-    bulletinsAPI.comment.mockResolvedValue({ data: {
+    bulletinsAPI.commentTarget.mockResolvedValue({ data: {
       bulletin: bulletin({ general_comment: "Très bon trimestre", pdf_url: "/media/bulletins/bulletin_new.pdf" }),
-      result: { failed: 0, failures: [] },
+      result: { failed: 0, failures: [], items: [{ outcome: "commentaire enregistré, PDF régénéré" }] },
     } });
     renderManager({ scope: "student", studentId: 7, yearId: 1, period: "T1" });
 
@@ -63,24 +64,26 @@ describe("commentaire d'un élève", () => {
 
     await waitFor(() => expect(screen.getByTestId("pdf-link").getAttribute("href"))
       .toBe("/media/bulletins/bulletin_new.pdf"));
-    expect(bulletinsAPI.comment).toHaveBeenCalledWith(11, {
+    expect(bulletinsAPI.commentTarget).toHaveBeenCalledWith({
+      student_id: 7, school_year_id: 1, period: "T1",
       comment: "Très bon trimestre", regenerate: true, expected_comment: "Ancien",
     });
+    expect(screen.getByTestId("save-confirmation")).toBeInTheDocument();
   });
 
   it("supprime le commentaire sans supprimer le bulletin", async () => {
     bulletinsAPI.commentPreview.mockResolvedValue({ data: { bulletin: bulletin({ general_comment: "À retirer" }) } });
-    bulletinsAPI.comment.mockResolvedValue({ data: { bulletin: bulletin(), result: { failed: 0, failures: [] } } });
+    bulletinsAPI.commentTarget.mockResolvedValue({ data: { bulletin: bulletin(), result: { failed: 0, failures: [] } } });
     renderManager({ scope: "student", studentId: 7, yearId: 1, period: "T1" });
     const btn = await screen.findByRole("button", { name: /Supprimer le commentaire/ });
     await waitFor(() => expect(btn).not.toBeDisabled());
     fireEvent.click(btn);
-    await waitFor(() => expect(bulletinsAPI.comment).toHaveBeenCalledWith(11, expect.objectContaining({ comment: "" })));
+    await waitFor(() => expect(bulletinsAPI.commentTarget).toHaveBeenCalledWith(expect.objectContaining({ comment: "" })));
   });
 
   it("signale un échec de régénération au lieu d'annoncer une réussite", async () => {
     bulletinsAPI.commentPreview.mockResolvedValue({ data: { bulletin: bulletin() } });
-    bulletinsAPI.comment.mockResolvedValue({ data: {
+    bulletinsAPI.commentTarget.mockResolvedValue({ data: {
       bulletin: bulletin({ general_comment: "X", pdf_outdated: true }),
       result: { failed: 1, failures: [{ reason: "PDF non régénéré (panne) ; l'ancien PDF est conservé" }] },
     } });
@@ -91,6 +94,36 @@ describe("commentaire d'un élève", () => {
     fireEvent.click(screen.getByRole("button", { name: /Enregistrer et régénérer/ }));
     expect(await screen.findByRole("alert")).toHaveTextContent("ancien PDF est conservé");
     expect(screen.getByText(/PDF à régénérer/)).toBeInTheDocument();
+  });
+});
+
+describe("bulletin pas encore généré", () => {
+  it("enregistre le commentaire sans exiger la génération, puis affiche la confirmation du serveur", async () => {
+    bulletinsAPI.commentPreview.mockResolvedValue({ data: { bulletin: null, has_grades: false } });
+    bulletinsAPI.commentTarget.mockResolvedValue({ data: {
+      bulletin: { id: 40, general_comment: "Avant génération", pdf_url: null, generated_at: "2026-10-26T10:00:00Z",
+        comment_updated_at: "2026-10-26T10:00:00Z", pdf_outdated: true },
+      result: { failed: 0, failures: [], items: [{ outcome: "commentaire enregistré, PDF non généré (aucune note)" }] },
+    } });
+    renderManager({ scope: "student", studentId: 7, yearId: 1, period: "T2" });
+    expect(await screen.findByTestId("bulletin-state")).toHaveTextContent("pas encore généré");
+    fireEvent.change(screen.getByLabelText(/Commentaire du Directeur/), { target: { value: "Avant génération" } });
+    fireEvent.click(screen.getByRole("button", { name: /Enregistrer le commentaire/ }));
+    expect(await screen.findByTestId("save-confirmation")).toHaveTextContent("PDF non généré");
+    expect(bulletinsAPI.commentTarget).toHaveBeenCalledWith(expect.objectContaining({
+      student_id: 7, period: "T2", comment: "Avant génération", expected_comment: "" }));
+    await waitFor(() => expect(screen.getByLabelText(/Commentaire du Directeur/).value).toBe("Avant génération"));
+  });
+
+  it("une erreur serveur n'est jamais présentée comme un succès", async () => {
+    bulletinsAPI.commentPreview.mockResolvedValue({ data: { bulletin: null, has_grades: true } });
+    bulletinsAPI.commentTarget.mockRejectedValue({ response: { status: 500, data: { error: "Base indisponible" } } });
+    renderManager({ scope: "student", studentId: 7, yearId: 1, period: "T2" });
+    await screen.findByTestId("bulletin-state");
+    fireEvent.change(screen.getByLabelText(/Commentaire du Directeur/), { target: { value: "X" } });
+    fireEvent.click(screen.getByRole("button", { name: /Enregistrer/ }));
+    expect(await screen.findByRole("alert")).toBeInTheDocument();
+    expect(screen.queryByTestId("save-confirmation")).toBeNull();
   });
 });
 

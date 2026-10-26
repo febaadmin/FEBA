@@ -568,6 +568,7 @@ export const bulletinsAPI = {
   generateAll: (d)   => api.post("/bulletins/generate-all/", d),
   // Commentaire du directeur : un bulletin (PDF régénéré) ou une portée.
   comment: (id, d)   => api.post(`/bulletins/${id}/comment/`, d),
+  commentTarget: (d) => api.post("/bulletins/comment-target/", d),
   commentPreview: (d) => api.post("/bulletins/comment-preview/", d),
   createOperation: (d) => api.post("/bulletins/operations/", d),
   operation: (id)    => api.get(`/bulletins/operations/${id}/`),
