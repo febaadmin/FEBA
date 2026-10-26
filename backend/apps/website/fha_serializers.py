@@ -570,6 +570,9 @@ class FHAApplicationDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = FHAEnrollmentApplication
         fields = '__all__'
+        # Le dossier reste dans l'académie où la famille l'a déposé : un
+        # PATCH {"entity": …} le transférait dans une autre académie.
+        read_only_fields = ('entity',)
 
     def get_confirmation_email(self, obj):
         from .fha_enrollment import PURPOSE_PARENT_ACK
@@ -780,6 +783,9 @@ class FHAPlacementTestDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = FHAPlacementTestRequest
         fields = '__all__'
+        # Académie, dossier lié et salle de visio : fixés par le dépôt et par
+        # l'action « schedule » (qui vérifie la salle), jamais par un PATCH.
+        read_only_fields = ('entity', 'application', 'meeting_room')
 
     def get_result(self, obj):
         result = getattr(obj, 'result', None)

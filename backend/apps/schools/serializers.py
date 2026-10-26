@@ -1,9 +1,19 @@
 from rest_framework import serializers
 from .models import School, SchoolYear, Level, Room, RoomType, SchoolBranding
 from apps.core.academy_serializers import ACADEMY_FIELDS, AcademyMetadataMixin
+from apps.core.tenancy import TenantRelationsMixin
+
+#: Isolation des relations écrites (audit du 26/10/2026) : un PATCH
+#: {"school": <autre académie>} déplaçait un niveau ou une salle physique
+#: dans une autre académie. Le champ reste accepté s'il désigne l'académie
+#: de la requête (super administrateur en vue « toutes les académies » :
+#: choix libre, mais cohérent entre relations).
+_SCHOOL_ONLY = {"school": ""}
 
 
-class SchoolBrandingSerializer(serializers.ModelSerializer):
+class SchoolBrandingSerializer(TenantRelationsMixin, serializers.ModelSerializer):
+    tenant_relations = _SCHOOL_ONLY
+
     logo_url = serializers.SerializerMethodField()
     uploaded_by_name = serializers.SerializerMethodField()
 
@@ -11,7 +21,7 @@ class SchoolBrandingSerializer(serializers.ModelSerializer):
         model = SchoolBranding
         fields = ['id', 'school', 'logo', 'logo_url', 'is_active', 'label',
                   'uploaded_at', 'updated_at', 'uploaded_by', 'uploaded_by_name']
-        read_only_fields = ['uploaded_at', 'updated_at']
+        read_only_fields = ['uploaded_at', 'updated_at', 'uploaded_by']
 
     def get_logo_url(self, obj):
         request = self.context.get('request')
@@ -25,7 +35,9 @@ class SchoolBrandingSerializer(serializers.ModelSerializer):
         return None
 
 
-class LevelSerializer(AcademyMetadataMixin, serializers.ModelSerializer):
+class LevelSerializer(TenantRelationsMixin, AcademyMetadataMixin, serializers.ModelSerializer):
+    tenant_relations = _SCHOOL_ONLY
+
     # P3 : chaque objet expose son académie, sans quoi la vue
     # « Toutes les Académies » ne peut pas étiqueter ses lignes.
     academy_source = "school"
@@ -72,7 +84,12 @@ class SchoolSerializer(serializers.ModelSerializer):
         # sur lequel s'appuient l'isolation, la devise et l'identité
         # visuelle. Le renommer depuis un écran ferait basculer une académie
         # dans l'identité d'une autre.
-        read_only_fields = ['slug', 'code', 'is_active', 'plan', 'max_students',
+        # `entity_type` aussi : il fixe la matrice des fonctionnalités
+        # (cours en ligne, tests de placement, classes monolingues…). Un
+        # administrateur d'académie le passait de « campus » à « online »
+        # par un simple PATCH et s'ouvrait toutes ces fonctions. Seul le
+        # super administrateur (SchoolPlatformSerializer) le modifie.
+        read_only_fields = ['slug', 'code', 'entity_type', 'is_active', 'plan', 'max_students',
                             'trial_ends_at', 'created_at', 'updated_at']
 
     def get_branding(self, obj):
@@ -162,13 +179,17 @@ class SchoolYearSerializer(AcademyMetadataMixin, serializers.ModelSerializer):
         return attrs
 
 
-class RoomTypeSerializer(serializers.ModelSerializer):
+class RoomTypeSerializer(TenantRelationsMixin, serializers.ModelSerializer):
+    tenant_relations = _SCHOOL_ONLY
+
     class Meta:
         model = RoomType
         fields = ['id', 'school', 'name', 'created_at']
 
 
-class RoomSerializer(AcademyMetadataMixin, serializers.ModelSerializer):
+class RoomSerializer(TenantRelationsMixin, AcademyMetadataMixin, serializers.ModelSerializer):
+    tenant_relations = {"school": "", "room_type_obj": "school"}
+
     # P3 : chaque objet expose son académie, sans quoi la vue
     # « Toutes les Académies » ne peut pas étiqueter ses lignes.
     academy_source = "school"
