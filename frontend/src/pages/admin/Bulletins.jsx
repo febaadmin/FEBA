@@ -241,7 +241,6 @@ export default function AdminBulletins() {
       </div>
 
       <BulletinCommentManager key={commentKey} open={commentOpen} onClose={() => setCommentOpen(false)} initial={commentInitial} />
-      <BulletinPreviewDialog key={`p${previewKey}`} open={previewOpen} onClose={() => setPreviewOpen(false)} initial={previewInitial} />
 
       <Modal open={genOpen} onClose={closeGen} size="lg"
         title={genMode === "class" ? t("Générer les bulletins d'une classe") : t("Générer tous les bulletins")}>
@@ -326,6 +325,10 @@ export default function AdminBulletins() {
           </div>
         </form>
       </Modal>
+      {/* Rendu APRÈS la fenêtre de génération : l'aperçu ouvert depuis la
+          révision d'une classe doit passer au-dessus (même z-index, l'ordre du
+          DOM décide) — sinon il s'ouvrait derrière, inutilisable. */}
+      <BulletinPreviewDialog key={`p${previewKey}`} open={previewOpen} onClose={() => setPreviewOpen(false)} initial={previewInitial} />
     </div>
   );
 }
