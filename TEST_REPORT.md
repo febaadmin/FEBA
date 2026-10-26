@@ -10,8 +10,8 @@ jamais compté comme réussi. Vérification depuis l'archive extraite :
 
 | Suite | Résultat | Statut |
 |---|---|---|
-| Backend PostgreSQL 16 + Mailpit SMTP + plugNmeet v2.5.3 réel | **1733 réussis, 0 ignoré, 0 échec** | PASS |
-| Backend SQLite | 1723 réussis, **10 ignorés** (PostgreSQL, Mailpit ou plugNmeet requis — tous exécutés et réussis sur PostgreSQL), 0 échec | PASS |
+| Backend PostgreSQL 16 + Mailpit SMTP + plugNmeet v2.5.3 réel | **1737 réussis, 0 ignoré, 0 échec** | PASS |
+| Backend SQLite | 1727 réussis, **10 ignorés** (PostgreSQL, Mailpit ou plugNmeet requis — tous exécutés et réussis sur PostgreSQL), 0 échec | PASS |
 | Frontend Vitest | 329 / 329 (41 fichiers) | PASS |
 | ESLint | 0 erreur (74 avertissements antérieurs ; 6 supprimés, aucun ajouté) | PASS |
 | Build Vite | réussi ; favicons fournis et `apple-touch-icon` dans `dist/`, plus de `favicon.svg` | PASS |
