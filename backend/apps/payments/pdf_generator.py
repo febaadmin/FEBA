@@ -345,14 +345,20 @@ def generate_receipt(payment):
     pdf_content = buffer.getvalue()
     buffer.close()
 
-    if payment.receipt_file:
-        try:
-            payment.receipt_file.delete(save=False)
-        except Exception as exc:
-            logger.warning("Erreur non bloquante ignorée : %s", exc, exc_info=True)
+    # Nouveau fichier sous un nom UNIQUE, puis seulement suppression de
+    # l'ancien : avec le même nom, l'URL ne changeait pas et le navigateur
+    # pouvait resservir l'ancien reçu (ancien logo) ; et l'ancien était
+    # supprimé avant que le nouveau soit enregistré.
+    old_name = payment.receipt_file.name or None
+    stamp = timezone.now().strftime("%Y%m%d%H%M%S%f")
     payment.receipt_file.save(
-        f"receipt_{payment.reference_number}.pdf",
+        f"receipt_{payment.reference_number}_{stamp}.pdf",
         ContentFile(pdf_content),
         save=True,
     )
+    if old_name and old_name != payment.receipt_file.name:
+        try:
+            payment.receipt_file.storage.delete(old_name)
+        except Exception as exc:
+            logger.warning("Ancien reçu non supprimé (non bloquant) : %s", exc, exc_info=True)
     return payment

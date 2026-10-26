@@ -239,3 +239,112 @@ class PublicBrandingTests(Base):
         self.assertEqual(self.get("/api/schools/public-branding/FEBA_FHA/favicon-32.png").content, fha_fav)
         provided = open(f"{STATIC_FILES_DIR}/favicon-32x32.png", "rb").read()
         self.assertNotEqual(fha_fav, provided)                             # FHA n'a pas le favicon FEBA
+
+
+class DocumentsRefreshTests(Base):
+    """Documents courants produits avec un ancien logo : identifiés puis régénérés."""
+
+    def setUp(self):
+        super().setUp()
+        from datetime import date
+        from decimal import Decimal
+        from apps.classes.models import Class
+        from apps.payments.models import Payment
+        from apps.schools.models import Level, SchoolYear
+        from apps.students.models import Student
+        self.year = SchoolYear.objects.create(school=self.feba, name="2026-2027", start_date=date(2026, 9, 1),
+                                              end_date=date(2027, 7, 31), is_current=True)
+        cls = Class.objects.create(name="CE1", level=Level.objects.create(school=self.feba, name="CE1", order=1),
+                                   school_year=self.year)
+        self.st = Student.objects.create(school=self.feba, first_name="E", last_name="L", current_class=cls,
+                                         school_year=self.year)
+        self.pay = Payment.objects.create(student=self.st, school_year=self.year, amount=Decimal("150000"),
+                                          payment_type="tuition", payment_method="cash", received_by=self.admin)
+
+    def run_cmd(self, *args):
+        from django.core.management import call_command
+        out = io.StringIO()
+        call_command("branding_refresh_documents", "--academy", "FEBA", *args, stdout=out)
+        return out.getvalue()
+
+    def test_aperçu_puis_application_puis_idempotence(self):
+        import os
+        import time
+        from apps.bulletins.models import Bulletin
+        from apps.bulletins.pdf_generator import generate_bulletin
+        from apps.payments.pdf_generator import generate_receipt
+        b = generate_bulletin(self.st, "T1", self.year)
+        Bulletin.objects.filter(pk=b.pk).update(general_comment="Conservé")
+        generate_receipt(self.pay)
+        self.pay.refresh_from_db()
+        old_b, old_r = b.pdf_file.name, self.pay.receipt_file.name
+        past = time.time() - 3600
+        for path in (b.pdf_file.path, self.pay.receipt_file.path):
+            os.utime(path, (past, past))                                   # produits « avant »
+        self.activate_logo(self.feba, (255, 0, 0))
+
+        out = self.run_cmd()                                                # aperçu : rien ne change
+        self.assertIn("bulletins          1 documents ·     1 antérieurs au logo", out)
+        self.assertIn("receipts           1 documents ·     1 antérieurs au logo", out)
+        b.refresh_from_db()
+        self.assertEqual(b.pdf_file.name, old_b)
+
+        out = self.run_cmd("--apply")
+        self.assertIn("1 régénérés · 0 échecs", out)
+        b.refresh_from_db()
+        self.pay.refresh_from_db()
+        self.assertNotEqual(b.pdf_file.name, old_b)
+        self.assertNotEqual(self.pay.receipt_file.name, old_r)             # nouvelle URL
+        self.assertEqual(b.general_comment, "Conservé")
+        for path in (b.pdf_file.path, self.pay.receipt_file.path):
+            reds = [c for c in dominant_color_of_images(path) if c[0] > 200 and c[1] < 60 and c[2] < 60]
+            self.assertTrue(reds, f"logo actif absent de {path}")
+        self.assertFalse(b.pdf_file.storage.exists(old_b))
+        self.assertFalse(self.pay.receipt_file.storage.exists(old_r))
+
+        out = self.run_cmd()                                                # idempotent
+        self.assertIn("bulletins          1 documents ·     0 antérieurs au logo", out)
+
+    def test_un_echec_conserve_l_ancien_fichier(self):
+        import os
+        import time
+        from unittest import mock
+        from django.core.management.base import CommandError
+        from apps.bulletins.pdf_generator import generate_bulletin
+        b = generate_bulletin(self.st, "T1", self.year)
+        past = time.time() - 3600
+        os.utime(b.pdf_file.path, (past, past))
+        self.activate_logo(self.feba, (255, 0, 0))
+        with mock.patch("apps.bulletins.pdf_generator._build_standard_pdf", side_effect=RuntimeError("panne")):
+            with self.assertRaises(CommandError):
+                self.run_cmd("--apply", "--kinds", "bulletins")
+        b2 = type(b).objects.get(pk=b.pk)
+        self.assertEqual(b2.pdf_file.name, b.pdf_file.name)
+        self.assertTrue(b2.pdf_file.storage.exists(b2.pdf_file.name))
+
+
+class EmbeddedShieldTests(Base):
+    """Diplômes / certificats : blason incrusté dans le fond, remplacé par le logo ACTIVÉ."""
+
+    VALUES = {"student_name": "Naomi Adjovi", "issue_date": datetime.date(2026, 10, 26),
+              "director_name": "D", "teacher_name": "T", "document_number": "X-1"}
+
+    def colors(self, pdf):
+        path = f"{self.media}/doc.pdf"
+        open(path, "wb").write(pdf)
+        return dominant_color_of_images(path)
+
+    def test_sans_logo_active_le_fond_officiel_reste_intact(self):
+        from apps.documents.renderer import render_document
+        pdf = render_document("diploma_feba", self.VALUES, branding=get_branding(self.feba))
+        self.assertFalse([c for c in self.colors(pdf) if c[0] > 200 and c[1] < 60 and c[2] < 60])
+
+    def test_logo_active_appose_sur_les_quatre_gabarits(self):
+        from apps.documents.renderer import render_document
+        self.activate_logo(self.feba, (255, 0, 0))
+        self.activate_logo(self.fha, (255, 0, 0))
+        for tid, school in (("diploma_feba", self.feba), ("certificate_feba", self.feba),
+                            ("diploma_feba_fha", self.fha), ("certificate_feba_fha", self.fha)):
+            pdf = render_document(tid, self.VALUES, branding=get_branding(school))
+            reds = [c for c in self.colors(pdf) if c[0] > 200 and c[1] < 60 and c[2] < 60]
+            self.assertTrue(reds, f"logo activé absent de {tid}")

@@ -327,6 +327,11 @@ def _draw_asset(pdf, layout, asset, branding=None):
     approchée ou un cachet ressemblant ne sont pas des solutions de repli :
     ce sont des faux.
     """
+    cover = getattr(asset, "cover", None)
+    if cover and not getattr(branding, "logo_is_uploaded", False):
+        # Aucun logo activé : le blason dessiné dans le fond EST le logo
+        # officiel ; rien n'est recouvert.
+        return False
     path = resolve_resource(asset.resource, branding)
     if path is None:
         if asset.required:
@@ -338,6 +343,20 @@ def _draw_asset(pdf, layout, asset, branding=None):
         return False
 
     box = asset.box
+
+    if cover:
+        # LOGO INCRUSTÉ DANS LE FOND (diplômes, certificats) : le blason fait
+        # partie des pixels du visuel ; changer de logo dans l'application ne
+        # le remplaçait donc jamais. Quand un logo est téléversé et activé, la
+        # zone du blason est recouverte (couleur du papier relevée sur le
+        # fond), puis le logo actif y est apposé.
+        from reportlab.lib.colors import HexColor as _Hex
+        x_pt, y_pt = layout.to_pdf(box.x_mm, box.y_mm + box.height_mm)
+        pdf.saveState()
+        pdf.setFillColor(_Hex(cover["color"]))
+        pdf.setStrokeColor(_Hex(cover["color"]))
+        pdf.rect(x_pt, y_pt, box.width_mm * mm, box.height_mm * mm, stroke=0, fill=1)
+        pdf.restoreState()
 
     # Certains sceaux officiels sont un tracé foncé sur fond blanc : posés
     # tels quels sur un médaillon marine, ils seraient illisibles. Le
