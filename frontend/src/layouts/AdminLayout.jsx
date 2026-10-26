@@ -12,7 +12,6 @@ import { clsx } from "clsx";
 import { useAuthStore } from "../store/authStore";
 import LanguageSwitcher from "../components/ui/LanguageSwitcher";
 import { t } from "../i18n";
-import logoFeba from "../assets/logo_feba.jpeg"; // fallback only
 import { useEntityContext } from "../hooks/useEntityContext";
 import EntitySwitcher from "../components/EntitySwitcher";
 import AcademyScopedOutlet from "../components/AcademyScopedOutlet";

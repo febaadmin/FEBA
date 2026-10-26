@@ -6,7 +6,6 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { notificationsAPI, conversationsAPI } from "../api";
 import { clsx } from "clsx";
 import { useState, useEffect } from "react";
-import logoFeba from "../assets/logo_feba.jpeg";
 import { motion, AnimatePresence } from "framer-motion";
 import { t } from "../i18n";
 import LanguageSwitcher from "../components/ui/LanguageSwitcher";

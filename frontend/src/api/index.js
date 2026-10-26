@@ -251,6 +251,8 @@ export const schoolsAPI = {
   // Branding / Logo management
   listBranding:     (p)      => api.get("/schools/branding/", { params: { ...BIG, ...p } }),
   activeBranding:   (p)      => api.get("/schools/branding/active/", { params: p }),
+  // Identité publique (sans authentification) : logo effectif, favicons, titre visio.
+  publicBranding:   (code)   => api.get(`/schools/public-branding/${encodeURIComponent(code)}/`),
   uploadBranding:   (fd)     => api.post("/schools/branding/", fd, { headers: { "Content-Type": "multipart/form-data" } }),
   activateBranding: (id)     => api.post(`/schools/branding/${id}/activate/`),
   deleteBranding:   (id)     => api.delete(`/schools/branding/${id}/`),

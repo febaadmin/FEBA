@@ -21,7 +21,48 @@ class SchoolBrandingSerializer(TenantRelationsMixin, serializers.ModelSerializer
         model = SchoolBranding
         fields = ['id', 'school', 'logo', 'logo_url', 'is_active', 'label',
                   'uploaded_at', 'updated_at', 'uploaded_by', 'uploaded_by_name']
-        read_only_fields = ['uploaded_at', 'updated_at', 'uploaded_by']
+        # `is_active` : l'activation passe par /activate/ (atomique). Un PATCH
+        # direct pouvait laisser deux versions actives.
+        read_only_fields = ['uploaded_at', 'updated_at', 'uploaded_by', 'is_active']
+        extra_kwargs = {'school': {'required': False}}
+
+    #: Formats acceptés, contrôlés sur le CONTENU décodé (pas l'extension).
+    LOGO_FORMATS = {'PNG', 'JPEG', 'WEBP'}
+    LOGO_MAX_BYTES = 5 * 1024 * 1024
+    LOGO_MIN_SIDE, LOGO_MAX_SIDE = 64, 6000
+
+    def validate_logo(self, value):
+        if value is None:
+            raise serializers.ValidationError("Fichier requis.")
+        if value.size > self.LOGO_MAX_BYTES:
+            raise serializers.ValidationError("Fichier trop volumineux (5 Mo au maximum).")
+        from PIL import Image, UnidentifiedImageError
+        try:
+            value.seek(0)
+            with Image.open(value) as img:
+                fmt = img.format
+                width, height = img.size
+                img.verify()               # structure du fichier
+            value.seek(0)
+            with Image.open(value) as img:
+                img.load()                 # décodage complet des pixels
+        except (UnidentifiedImageError, OSError, SyntaxError, ValueError):
+            raise serializers.ValidationError(
+                "Ce fichier n'est pas une image lisible (PNG, JPEG ou WebP).")
+        finally:
+            value.seek(0)
+        if fmt not in self.LOGO_FORMATS:
+            raise serializers.ValidationError(f"Format {fmt} refusé : PNG, JPEG ou WebP uniquement.")
+        if min(width, height) < self.LOGO_MIN_SIDE or max(width, height) > self.LOGO_MAX_SIDE:
+            raise serializers.ValidationError(
+                f"Dimensions {width}×{height} : entre {self.LOGO_MIN_SIDE} et {self.LOGO_MAX_SIDE} pixels.")
+        return value
+
+    def validate(self, attrs):
+        attrs = super().validate(attrs)
+        if self.instance is None and not attrs.get('logo'):
+            raise serializers.ValidationError({'logo': "Fichier requis."})
+        return attrs
 
     def get_logo_url(self, obj):
         request = self.context.get('request')

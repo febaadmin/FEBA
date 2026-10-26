@@ -8,7 +8,6 @@ import { useBranding } from "../hooks/useBranding";
 import { clsx } from "clsx";
 import { motion, AnimatePresence } from "framer-motion";
 import { useQuery } from "@tanstack/react-query";
-import logoFeba from "../assets/logo_feba.jpeg";
 import { useAuthStore } from "../store/authStore";
 import { t } from "../i18n";
 import LanguageSwitcher from "../components/ui/LanguageSwitcher";

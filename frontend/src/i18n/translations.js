@@ -14,6 +14,11 @@
  *  examen/examination · devoir/assignment · administration/administration
  */
 export const EN = {
+  // Logo et favicons
+  "Format refusé : PNG, JPEG ou WebP uniquement.": "Format rejected: PNG, JPEG or WebP only.",
+  "Fichier trop volumineux (5 Mo au maximum).": "File too large (5 MB maximum).",
+  "Sélectionnez d'abord l'académie dont vous gérez le logo (sélecteur d'académie en haut de page).": "First select the academy whose logo you manage (academy selector at the top of the page).",
+  "Logo de repli de l'académie": "Academy fallback logo",
   // Commentaire du directeur sur les bulletins
   "Bulletin pas encore généré : le commentaire est enregistré et sera imprimé à la génération.": "Report card not generated yet: the comment is saved and will be printed when it is generated.",
   "Aucune note sur cette période : le PDF ne peut pas encore être produit.": "No grade for this period: the PDF cannot be produced yet.",

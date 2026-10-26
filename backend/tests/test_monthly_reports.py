@@ -20,6 +20,7 @@ est vérifiée ici plutôt que supposée :
    un backend qui écrit dans la console non plus. Le statut ne bascule
    que si un fournisseur externe a accepté le message.
 """
+import os
 from datetime import date, timedelta
 
 import fitz  # PyMuPDF
@@ -794,8 +795,13 @@ class TestDefautsVusSurLeDocument:
 
         from apps.schools.branding import get_branding
 
+        from apps.schools.branding import STATIC_FILES_DIR
+
         feba, fha = academies
-        source = Image.open(get_branding(feba).document_logo).convert("RGB")
+        # L'ORIGINAL du blason est `logo_feba.jpeg` (ancien logo FEBA). Depuis
+        # le 26/10/2026, FEBA a pour logo de repli le logo fourni : la
+        # comparaison porte donc directement sur le fichier d'origine.
+        source = Image.open(os.path.join(STATIC_FILES_DIR, "logo_feba.jpeg")).convert("RGB")
         derive = Image.open(get_branding(fha).document_logo).convert("RGB")
 
         assert derive.width == source.width, "le blason a été redimensionné"

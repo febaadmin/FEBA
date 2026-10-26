@@ -4,7 +4,6 @@ import { useAuth } from "../hooks/useAuth";
 import { useBranding } from "../hooks/useBranding";
 import { clsx } from "clsx";
 import { useState, useEffect } from "react";
-import logoFeba from "../assets/logo_feba.jpeg";
 import { motion, AnimatePresence } from "framer-motion";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { notificationsAPI, conversationsAPI } from "../api";

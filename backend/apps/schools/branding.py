@@ -76,6 +76,7 @@ BRANDING_SETTING_KEYS = (
     "primary_color", "secondary_color", "accent_color", "background_color",
     "website", "footer_text", "group_name", "document_prefix",
     "document_logo", "stamp", "director_signature", "secretary_stamp",
+    "meeting_title", "favicon_16", "favicon_32", "apple_touch_icon",
 )
 
 #: Images dont le DESSIN porte le nom d'un établissement, et lequel.
@@ -95,6 +96,17 @@ ACADEMY_BOUND_ASSETS = {
     "logo_feba.jpeg": (
         "FEBA",
         "« Faith & Excellence Bilingual Academy » incrusté sous le bouclier."),
+    # Logo et favicons FOURNIS le 26/10/2026 (branding/source/) : le bouclier
+    # porte « FEBA » et le ruban « Faith & Excellence ». Identité de l'école
+    # FEBA ; FEBA FHA garde la sienne.
+    "feba_logo_document.png": (
+        "FEBA", "« FEBA » en lettres capitales sur le bouclier, ruban « Faith & Excellence »."),
+    "favicon-16x16.png": (
+        "FEBA", "Réduction 16 px du logo FEBA fourni : bouclier « FEBA » sur fond bleu et or."),
+    "favicon-32x32.png": (
+        "FEBA", "Réduction 32 px du logo FEBA fourni : bouclier « FEBA » sur fond bleu et or."),
+    "apple-touch-icon.png": (
+        "FEBA", "Réduction 180 px du logo FEBA fourni : bouclier « FEBA », ruban de la devise."),
     "cachet_feba.png": (
         "FEBA",
         "« COMPLEXE SCOLAIRE FAITH & EXCELLENCE BILINGUAL ACADEMY » en "
@@ -139,7 +151,15 @@ ACADEMY_DEFAULTS = {
         "background_color": "#F7F2E8",
         "group_name": "GROUPE ÉDUCATIF FEBA",
         "document_prefix": "FEBA",
-        "document_logo": "logo_feba.jpeg",
+        # Logo de REPLI (aucun logo activé dans « Branding & Logo ») : le logo
+        # fourni le 26/10/2026, réduit pour les documents. Un logo téléversé
+        # et activé passe AVANT lui, partout (voir get_branding).
+        "document_logo": "feba_logo_document.png",
+        "favicon_16": "favicon-16x16.png",
+        "favicon_32": "favicon-32x32.png",
+        "apple_touch_icon": "apple-touch-icon.png",
+        # Titre exact de l'onglet de visioconférence (exigence du 26/10/2026).
+        "meeting_title": "FEBA - Faith & Excellence Bilingual Academy",
         "stamp": "cachet_feba.png",
         "secretary_stamp": "cachet_secretariat.png",
         "director_signature": "signature_direction.png",
@@ -152,6 +172,7 @@ ACADEMY_DEFAULTS = {
         "background_color": "#FFFFFF",
         "group_name": "GROUPE ÉDUCATIF FEBA",
         "document_prefix": "FHA",
+        "meeting_title": "FEBA FHA - FEBA",
         # DÉFAUT TROUVÉ EN REGARDANT UN RAPPORT MENSUEL PRODUIT, PAS EN
         # LISANT LE CODE.
         #
@@ -281,6 +302,17 @@ class AcademyBranding:
     #: administrées. Consommé par `branding_check`, jamais par un rendu.
     palette_is_neutral: bool = False
 
+    # ── Interface (onglets, visioconférence) ────────────────────────────
+    #: Titre de l'onglet de visioconférence de cette académie.
+    meeting_title: str = ""
+    #: Favicons propres à l'académie (fichiers livrés), ou None : ils sont
+    #: alors dérivés de son logo (voir apps.schools.public_branding).
+    favicon_16: Optional[str] = None
+    favicon_32: Optional[str] = None
+    apple_touch_icon: Optional[str] = None
+    #: Vrai si `logo` est un logo téléversé et ACTIVÉ (et non le repli livré).
+    logo_is_uploaded: bool = False
+
     # ── Confort de rendu ────────────────────────────────────────────────
 
     @property
@@ -365,6 +397,8 @@ class AcademyBranding:
             "footer_text": self.footer_text,
             "document_prefix": self.document_prefix,
             "palette_is_neutral": self.palette_is_neutral,
+            "meeting_title": self.meeting_title,
+            "logo_is_uploaded": self.logo_is_uploaded,
         }
 
 
@@ -419,6 +453,19 @@ def get_branding(academy) -> AcademyBranding:
         )
 
     brand = resolved_branding_settings(academy)
+    administered = ((academy.settings or {}).get("branding")) or {}
+
+    # SOURCE DE VÉRITÉ DU LOGO (correctif du 26/10/2026).
+    # Avant : `document_logo` prenait d'abord l'image statique livrée, puis
+    # seulement le logo actif — tous les PDF ignoraient le logo téléversé et
+    # activé. Ordre désormais, pour l'application COMME pour les documents :
+    #   1. logo documentaire ADMINISTRÉ explicitement (settings) s'il existe ;
+    #   2. logo téléversé et activé de CETTE académie ;
+    #   3. logo de repli livré pour CETTE académie ;
+    # jamais celui d'une autre académie.
+    uploaded = _academy_logo(academy)
+    default_logo = _static_asset(ACADEMY_DEFAULTS.get(academy.code or "", {}).get("document_logo"))
+    explicit_document_logo = _static_asset(administered.get("document_logo"))
 
     palette = {key: brand.get(key) or NEUTRAL_PALETTE[key] for key in NEUTRAL_PALETTE}
     palette_is_neutral = not any(brand.get(key) for key in NEUTRAL_PALETTE)
@@ -432,8 +479,8 @@ def get_branding(academy) -> AcademyBranding:
         display_name=academy.name,
         short_name=academy.short_name,
         group_name=str(brand.get("group_name") or ""),
-        logo=_academy_logo(academy),
-        document_logo=_static_asset(brand.get("document_logo")) or _academy_logo(academy),
+        logo=uploaded or default_logo,
+        document_logo=explicit_document_logo or uploaded or default_logo,
         stamp=_static_asset(brand.get("stamp")),
         director_signature=_static_asset(brand.get("director_signature")),
         secretary_stamp=_static_asset(brand.get("secretary_stamp")),
@@ -461,6 +508,12 @@ def get_branding(academy) -> AcademyBranding:
             brand.get("document_prefix") or academy.matricule_prefix or academy.code or ""
         ).upper(),
         palette_is_neutral=palette_is_neutral,
+        meeting_title=str(brand.get("meeting_title")
+                          or f"{academy.short_name} - {academy.legal_name or academy.name}"),
+        favicon_16=None if uploaded else _static_asset(brand.get("favicon_16")),
+        favicon_32=None if uploaded else _static_asset(brand.get("favicon_32")),
+        apple_touch_icon=None if uploaded else _static_asset(brand.get("apple_touch_icon")),
+        logo_is_uploaded=bool(uploaded),
     )
 
 

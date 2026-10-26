@@ -1,7 +1,9 @@
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
+import os
+from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.views import APIView
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from apps.accounts.permissions import IsAdminOrAbove, IsSuperAdmin
 from apps.core.tenancy import get_request_school
@@ -265,6 +267,55 @@ class RoomViewSet(viewsets.ModelViewSet):
         serializer.save(school=school or serializer.validated_data.get('school'))
 
 
+class PublicBrandingView(APIView):
+    """
+    GET /api/schools/public-branding/<code>/                 identité publique (JSON)
+    GET /api/schools/public-branding/<code>/logo/            logo effectif
+    GET /api/schools/public-branding/<code>/favicon-<n>.png  favicon 16, 32 ou 180
+
+    Sans authentification, lecture seule : voir apps.schools.public_branding.
+    """
+    authentication_classes = []
+    permission_classes = [AllowAny]
+
+    def get(self, request, code, asset=None, size=None):
+        from django.http import HttpResponse, Http404
+        from . import public_branding as pb
+        academy = School.objects.filter(code=code, is_active=True).first()
+        if academy is None:
+            raise Http404
+        version = pb.branding_version(academy)
+        immutable = request.query_params.get('v') == version
+        cache = ('public, max-age=31536000, immutable' if immutable else 'public, max-age=300')
+        if asset is None:
+            # Chemins RELATIFS : derrière le proxy Vite ou nginx, une URL absolue
+            # construite côté serveur désignerait l'hôte interne du conteneur.
+            base = f"/api/schools/public-branding/{code}/"
+            response = Response(pb.public_payload(academy, lambda suffix: base + suffix))
+            response['Cache-Control'] = 'no-cache'
+            return response
+        if asset == 'logo':
+            path = pb.logo_file(academy)
+            if path is None:
+                raise Http404
+            ext = os.path.splitext(path)[1].lower()
+            ctype = {'.png': 'image/png', '.webp': 'image/webp'}.get(ext, 'image/jpeg')
+            with open(path, 'rb') as fh:
+                data = fh.read()
+        else:
+            data = pb.favicon_png(academy, int(size))
+            ctype = 'image/png'
+            if data is None:
+                raise Http404
+        response = HttpResponse(data, content_type=ctype)
+        response['Cache-Control'] = cache
+        response['ETag'] = f'"{version}-{asset}-{size or ""}"'
+        response['X-Content-Type-Options'] = 'nosniff'
+        # Le client plugNmeet (autre domaine) charge ces images comme favicon.
+        response['Cross-Origin-Resource-Policy'] = 'cross-origin'
+        return response
+
+
 class SchoolBrandingViewSet(viewsets.ModelViewSet):
     """
     Gestion centralisée du branding/logo de l'école.
@@ -303,11 +354,37 @@ class SchoolBrandingViewSet(viewsets.ModelViewSet):
         return ctx
 
     def perform_create(self, serializer):
-        school = get_request_school(self.request)
-        branding = serializer.save(uploaded_by=self.request.user, school=school or serializer.validated_data.get('school'))
+        """
+        Téléversement d'un logo pour l'académie DE LA REQUÊTE.
+
+        Avant : la page envoyait `school = <première académie listée> || 1`,
+        et le serveur prenait ce champ tel quel pour un super administrateur
+        en vue « toutes les académies » — le logo pouvait atterrir chez une
+        autre académie. Désormais : académie de l'utilisateur ; pour le super
+        administrateur, l'académie sélectionnée, ou l'académie explicitement
+        choisie dans le formulaire ; sinon refus.
+        """
+        from django.db import transaction
+        from rest_framework.exceptions import ValidationError
+        school = get_request_school(self.request) or (
+            serializer.validated_data.get('school') if self.request.user.is_superadmin() else None)
+        if school is None:
+            raise ValidationError({'school': "Choisissez l'académie dont vous changez le logo."})
         activate = self.request.data.get('activate', True)
-        if activate and str(activate).lower() not in ('false', '0', 'no'):
-            branding.activate()
+        with transaction.atomic():
+            branding = serializer.save(uploaded_by=self.request.user, school=school)
+            if activate and str(activate).lower() not in ('false', '0', 'no'):
+                branding.activate()
+
+    def perform_destroy(self, instance):
+        from rest_framework.exceptions import ValidationError
+        if instance.is_active:
+            # Supprimer la version active laisserait l'académie sur son logo de
+            # repli sans que personne l'ait décidé : activer une autre version
+            # d'abord.
+            raise ValidationError({'detail': "Ce logo est actif : activez une autre version avant de "
+                                             "le supprimer."})
+        instance.delete()
 
     @action(detail=True, methods=['post'])
     def activate(self, request, pk=None):

@@ -1,4 +1,5 @@
 import logging
+import os
 logger = logging.getLogger("apps")
 from django.db import models
 
@@ -303,9 +304,24 @@ class School(models.Model):
         return None
 
 
+def branding_logo_path(instance, filename):
+    """
+    Nom de fichier UNIQUE par téléversement : `branding/<académie>/<uuid>.<ext>`.
+
+    Avec le nom d'origine, un nouveau « logo.png » pouvait reprendre l'URL
+    d'une version précédente, que navigateurs et proxys continuaient de
+    servir depuis leur cache.
+    """
+    import uuid
+    ext = os.path.splitext(filename or "")[1].lower()
+    if ext not in (".png", ".jpg", ".jpeg", ".webp"):
+        ext = ".png"
+    return f"branding/{instance.school_id or 'x'}/{uuid.uuid4().hex}{ext}"
+
+
 class SchoolBranding(models.Model):
     school = models.ForeignKey(School, on_delete=models.CASCADE, related_name="branding_versions")
-    logo = models.ImageField(upload_to="branding/", null=True, blank=True)
+    logo = models.ImageField(upload_to=branding_logo_path, null=True, blank=True)
     is_active = models.BooleanField(default=False)
     label = models.CharField(max_length=100, blank=True)
     uploaded_at = models.DateTimeField(auto_now_add=True)
@@ -318,15 +334,34 @@ class SchoolBranding(models.Model):
     class Meta:
         verbose_name = "Version branding"
         ordering = ["-uploaded_at"]
+        constraints = [
+            # Au plus UNE version active par académie : deux logos « actifs »
+            # rendaient le résultat dépendant de l'ordre des requêtes.
+            models.UniqueConstraint(fields=["school"], condition=models.Q(is_active=True),
+                                    name="uniq_active_branding_per_school"),
+        ]
 
     def __str__(self):
         status = "Active" if self.is_active else "Archive"
         return f"{self.school.name} [{status}]"
 
     def activate(self):
-        SchoolBranding.objects.filter(school=self.school, is_active=True).update(is_active=False)
-        self.is_active = True
-        self.save(update_fields=["is_active"])
+        """
+        Active cette version et désactive la précédente, ATOMIQUEMENT.
+
+        La ligne de l'académie est verrouillée : deux activations simultanées
+        sont sérialisées. Une erreur annule tout — l'académie garde son logo
+        actif précédent, jamais zéro ni deux.
+        """
+        from django.db import transaction
+        if not self.logo:
+            raise ValueError("Une version sans fichier ne peut pas être activée.")
+        with transaction.atomic():
+            School.objects.select_for_update().filter(pk=self.school_id).first()
+            SchoolBranding.objects.filter(school_id=self.school_id, is_active=True).exclude(
+                pk=self.pk).update(is_active=False)
+            self.is_active = True
+            self.save(update_fields=["is_active", "updated_at"])
 
     @classmethod
     def get_active_logo_path(cls, school):
