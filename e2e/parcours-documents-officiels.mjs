@@ -268,18 +268,17 @@ async function choisirEleve(page, nomEleve) {
 async function produire(page, motifGabarit, nomEleve) {
   await page.locator('button', { hasText: 'Produire un document' }).first().click();
   await page.waitForTimeout(600);
-  // Le libellé du gabarit porte le nom de l'académie (« Diplôme FEBA »,
-  // « Diplôme FEBA French Heritage Academy ») : on sélectionne par
-  // IDENTIFIANT, qui ne bouge pas quand le libellé est retraduit.
-  const valeurs = await page.$$eval('#doc-template option',
-                                    (o) => o.map((x) => x.value));
-  const cible = valeurs.find((v) => v.startsWith(motifGabarit));
-  if (!cible) throw new Error(`Aucun gabarit « ${motifGabarit} » parmi ${valeurs}`);
-  await page.selectOption('#doc-template', cible);
+  // Le TYPE est choisi ; le gabarit est résolu par le serveur pour
+  // l'académie de l'élève (« certificate_feba » → certificat).
+  const type = motifGabarit.split('_')[0];
+  await page.selectOption('#doc-kind', type);
   await page.waitForTimeout(300);
 
   await choisirEleve(page, nomEleve);
 
+  // La vérification préalable (gabarit résolu, données) doit être là
+  // avant de confirmer l'académie : c'est elle qui l'annonce.
+  await page.waitForSelector('[data-testid="document-check"]', { timeout: 15000 });
   const confirmation = page.locator('input[type=checkbox]').first();
   if (await confirmation.count()) await confirmation.check();
   await page.waitForTimeout(200);

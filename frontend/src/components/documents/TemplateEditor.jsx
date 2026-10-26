@@ -271,9 +271,13 @@ export default function TemplateEditor({ template, catalog, rules, onClose }) {
               <button type="button" className="btn-secondary px-3" title={t("Placer ce champ")}
                       onClick={() => {
                         const select = document.getElementById("add-field");
-                        if (!select.value) return;
-                        setFields((list) => [...list, newField(select.value, page, list)]);
-                        setSelected(select.value);
+                        // Valeur lue MAINTENANT : la fonction passée à
+                        // setFields s'exécute plus tard, après la remise à
+                        // zéro de la liste — elle lisait alors un nom vide.
+                        const name = select.value;
+                        if (!name) return;
+                        setFields((list) => [...list, newField(name, page, list)]);
+                        setSelected(name);
                         select.value = "";
                       }}>
                 <Plus className="w-4 h-4" />
