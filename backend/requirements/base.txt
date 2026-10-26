@@ -10,6 +10,11 @@ redis==5.0.3
 psycopg2-binary==2.9.12   # 2.9.9 n'a pas de roue pour Python ≥ 3.13
 Pillow==10.3.0
 reportlab==4.2.2
+# Gabarits officiels téléversés (diplômes, certificats) : lecture et fusion
+# des fonds PDF (pypdf, BSD) et aperçu des pages PDF dans l'éditeur
+# (pypdfium2, Apache-2.0/BSD ; roues autonomes, aucun paquet système).
+pypdf==6.14.2
+pypdfium2==4.30.0
 WeasyPrint==62.3
 django-ratelimit==4.1.0
 gunicorn==21.2.0

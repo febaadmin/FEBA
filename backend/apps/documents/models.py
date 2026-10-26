@@ -163,6 +163,14 @@ class GeneratedDocument(models.Model):
     file_sha256 = models.CharField(max_length=64, blank=True)
     file_size = models.PositiveIntegerField(default=0)
 
+    #: Version du gabarit TÉLÉVERSÉ qui a produit ce document (vide pour
+    #: un gabarit intégré). PROTECT : une version qui a servi ne peut pas
+    #: disparaître, sinon le document ne dirait plus d'où il vient.
+    academy_template = models.ForeignKey(
+        "documents.AcademyDocumentTemplate", on_delete=models.PROTECT,
+        null=True, blank=True, related_name="documents",
+    )
+
     replaces = models.ForeignKey(
         "self", on_delete=models.SET_NULL, null=True, blank=True,
         related_name="replaced_by",
@@ -352,3 +360,183 @@ class DocumentEvent(models.Model):
 
     def __str__(self):
         return f"{self.document_id} — {self.action} — {self.performed_at:%d/%m/%Y %H:%M}"
+
+
+def academy_templates_root():
+    """Gabarits téléversés : stockage privé, jamais `/media/`."""
+    return os.path.join(private_documents_root(), "academy_templates")
+
+
+class AcademyDocumentTemplate(models.Model):
+    """
+    Gabarit officiel TÉLÉVERSÉ par une académie : une version d'un fond.
+
+    POURQUOI DES VERSIONS ET NON UN FICHIER REMPLACÉ
+    ------------------------------------------------
+    Chaque document émis désigne la version qui l'a produit. Écraser le
+    fichier ferait mentir cette référence : l'empreinte conservée ne
+    correspondrait plus à rien. Un remplacement crée donc une NOUVELLE
+    version ; l'ancienne passe à « remplacé » et reste lisible.
+
+    UNE SEULE VERSION ACTIVE PAR ACADÉMIE ET PAR TYPE
+    -------------------------------------------------
+    Garanti par une contrainte en base, pas par l'interface : deux
+    activations simultanées ne peuvent pas laisser deux diplômes actifs.
+    Tant qu'une version active existe, elle prime sur le gabarit intégré
+    livré avec l'application pour ce type — la règle est unique et écrite
+    (`documents.academy_templates.resolve_template`).
+    """
+
+    DIPLOMA = "diploma"
+    CERTIFICATE = "certificate"
+    KIND_CHOICES = [(DIPLOMA, "Diplôme"), (CERTIFICATE, "Certificat")]
+
+    FORMAT_PDF = "pdf"
+    FORMAT_PNG = "png"
+    FORMAT_JPEG = "jpeg"
+    FORMAT_CHOICES = [
+        (FORMAT_PDF, "PDF (fond vectoriel)"),
+        (FORMAT_PNG, "Image PNG"),
+        (FORMAT_JPEG, "Image JPEG"),
+    ]
+
+    DRAFT = "draft"
+    VALIDATED = "validated"
+    ACTIVE = "active"
+    DISABLED = "disabled"
+    ARCHIVED = "archived"
+    INVALID = "invalid"
+    STATUS_CHOICES = [
+        (DRAFT, "Téléversé, non validé"),
+        (VALIDATED, "Valide, prêt à être activé"),
+        (ACTIVE, "Actif — utilisé pour les documents"),
+        (DISABLED, "Désactivé"),
+        (ARCHIVED, "Remplacé par une version plus récente"),
+        (INVALID, "Invalide ou incompatible"),
+    ]
+    #: Versions dont la configuration peut encore changer. Une version
+    #: active ou ayant servi se duplique : son rendu doit rester rejouable.
+    EDITABLE_STATUSES = {DRAFT, VALIDATED, INVALID}
+
+    academy = models.ForeignKey(
+        "schools.School", on_delete=models.CASCADE, related_name="document_templates",
+    )
+    kind = models.CharField(max_length=20, choices=KIND_CHOICES)
+    version = models.PositiveIntegerField()
+
+    original_filename = models.CharField(max_length=255)
+    file_format = models.CharField(max_length=10, choices=FORMAT_CHOICES)
+    file_path = models.CharField(
+        max_length=500,
+        help_text="Chemin RELATIF dans le stockage privé ; nom aléatoire.",
+    )
+    render_path = models.CharField(
+        max_length=500, blank=True,
+        help_text="Fond normalisé (image redressée selon l'EXIF), si différent.",
+    )
+    file_sha256 = models.CharField(max_length=64)
+    file_size = models.PositiveIntegerField()
+
+    page_count = models.PositiveIntegerField(default=1)
+    page_index = models.PositiveIntegerField(
+        default=0, help_text="Page du PDF utilisée comme fond (0 = première).",
+    )
+    page_width_mm = models.FloatField()
+    page_height_mm = models.FloatField()
+    image_width_px = models.PositiveIntegerField(default=0)
+    image_height_px = models.PositiveIntegerField(default=0)
+
+    #: Champs positionnés, en MILLIMÈTRES depuis le coin haut-gauche de la
+    #: page : un repère documentaire, indépendant de l'écran qui l'a saisi.
+    fields = models.JSONField(default=list, blank=True)
+    #: Textes fixes propres à ce gabarit (intitulé, signataire, objet…) et
+    #: règle d'émission.
+    options = models.JSONField(default=dict, blank=True)
+
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=DRAFT)
+    validation_report = models.JSONField(default=dict, blank=True)
+    validated_at = models.DateTimeField(null=True, blank=True)
+    activated_at = models.DateTimeField(null=True, blank=True)
+
+    uploaded_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name="document_templates_uploaded",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Gabarit d'académie"
+        verbose_name_plural = "Gabarits d'académie"
+        ordering = ["academy", "kind", "-version"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["academy", "kind", "version"], name="uniq_academy_template_version",
+            ),
+            models.UniqueConstraint(
+                fields=["academy", "kind"], condition=models.Q(status="active"),
+                name="uniq_active_academy_template",
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.academy} — {self.get_kind_display()} v{self.version} ({self.status})"
+
+    @property
+    def absolute_path(self):
+        return os.path.join(academy_templates_root(), self.file_path)
+
+    @property
+    def render_absolute_path(self):
+        return os.path.join(academy_templates_root(), self.render_path or self.file_path)
+
+    @property
+    def is_editable(self):
+        return self.status in self.EDITABLE_STATUSES
+
+    @property
+    def template_id(self):
+        """Identifiant porté par les documents produits sur ce gabarit."""
+        return f"{self.kind}_upload"
+
+    @property
+    def sequence_key(self):
+        """
+        Clé du compteur de numéros.
+
+        Celle du gabarit intégré de la même académie (« diploma_feba »,
+        « certificate_feba_fha »…) : passer du gabarit livré au gabarit
+        téléversé ne doit pas remettre la numérotation à 1 — deux diplômes
+        « FEBA-DIP-2026-0001 » seraient refusés par la base, ou pire,
+        confondus sur papier.
+        """
+        return f"{self.kind}_{self.academy.code.lower()}"
+
+    def fingerprint(self):
+        """Empreinte de la version : fichier + configuration rendue."""
+        import json
+
+        payload = json.dumps({
+            "file": self.file_sha256, "page": self.page_index,
+            "size": [self.page_width_mm, self.page_height_mm],
+            "fields": self.fields, "options": self.options,
+        }, sort_keys=True, ensure_ascii=False)
+        return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
+class AcademyTemplateEvent(models.Model):
+    """Journal des opérations sur un gabarit — qui, quoi, quand."""
+
+    template = models.ForeignKey(
+        AcademyDocumentTemplate, on_delete=models.CASCADE, related_name="events",
+    )
+    action = models.CharField(max_length=30)
+    performed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
+    )
+    detail = models.TextField(blank=True)
+    performed_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Événement de gabarit"
+        ordering = ["-performed_at"]
