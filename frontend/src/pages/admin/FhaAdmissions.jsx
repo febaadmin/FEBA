@@ -710,6 +710,8 @@ function ApplicationDetail({ id, onClose }) {
             <Row label={t("Nom")} value={`${row.child_first_name} ${row.child_last_name}`} />
             <Row label={t("Date de naissance")} value={row.child_birth_date} />
             <Row label={t("Âge")} value={row.child_age} />
+            <Row label={t("Sexe")}
+                 value={{ F: t("Féminin"), M: t("Masculin") }[row.child_gender] || t("Non renseigné")} />
             <Row label={t("Ville")} value={row.child_city} />
             <Row label={t("État / province")} value={row.child_state_province} />
             <Row label={t("Pays")} value={row.child_country} />

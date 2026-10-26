@@ -42,6 +42,7 @@ def valid_application(**overrides):
         "child_last_name": "Doe",
         "child_first_name": "Ama",
         "child_birth_date": "2016-05-04",
+        "child_gender": "F",
         "child_city": "Philadelphia",
         "child_state_province": "PA",
         "child_country": "United States",

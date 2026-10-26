@@ -133,7 +133,7 @@ async function parcoursPublicFha() {
     // navigation entre les étapes (couverte par les tests de composants).
     const payload = {
       child_last_name: 'Gbêdjissi', child_first_name: 'Élisabeth',
-      child_birth_date: '2015-04-12', child_country: 'United States',
+      child_birth_date: '2015-04-12', child_gender: 'F', child_country: 'United States',
       parent1_last_name: 'Gbêdjissi', parent1_first_name: 'Ahouéfa',
       parent1_phone: '+1 215 555 0100', parent1_whatsapp: '+1 215 555 0199',
       parent1_email: `parcours.${uniq}@example.test`,

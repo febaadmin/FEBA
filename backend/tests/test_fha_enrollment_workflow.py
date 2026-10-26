@@ -29,6 +29,7 @@ def payload(**overrides):
         "child_last_name": "Gbêdjissi",
         "child_first_name": "Élisabeth",
         "child_birth_date": "2015-04-12",
+        "child_gender": "F",
         "child_city": "Philadelphia",
         "child_state_province": "Pennsylvania",
         "child_country": "United States",

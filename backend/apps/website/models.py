@@ -588,6 +588,16 @@ class FHAEnrollmentApplication(models.Model):
     child_last_name = models.CharField(max_length=120)
     child_first_name = models.CharField(max_length=120)
     child_birth_date = models.DateField()
+    #: Sexe de l'enfant — mêmes codes que `Student.gender` pour que le
+    #: dossier se reporte tel quel sur la fiche élève. Obligatoire pour une
+    #: NOUVELLE fiche (validé par le sérialiseur public) ; vide pour les
+    #: dossiers reçus avant l'ajout du champ : on n'invente pas cette
+    #: information, le document affiche « Non renseigné ».
+    GENDER_CHOICES = [('F', 'Féminin'), ('M', 'Masculin')]
+    child_gender = models.CharField(
+        max_length=1, choices=GENDER_CHOICES, blank=True, default='',
+        help_text="F ou M. Vide = non renseigné (dossiers antérieurs).",
+    )
     child_city = models.CharField(max_length=120, blank=True)
     child_state_province = models.CharField(max_length=120, blank=True)
     child_country = models.CharField(max_length=100, blank=True)

@@ -189,6 +189,7 @@ def admin_alert_bodies(application):
         ("Académie", f"{brand.display_name} [{brand.academy_code}]"),
         ("Enfant", f"{application.child_first_name} {application.child_last_name}"),
         ("Âge", f"{application.child_age} ans" if application.child_age is not None else "—"),
+        ("Sexe", application.get_child_gender_display() if application.child_gender else "Non renseigné"),
         ("Pays", application.child_country or "—"),
         ("Groupe suggéré",
          dict(application.GROUP_CHOICES).get(application.suggested_group, "à déterminer")),

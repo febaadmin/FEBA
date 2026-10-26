@@ -149,6 +149,7 @@ class FHAEnrollmentCreateSerializer(HoneypotMixin, serializers.ModelSerializer):
         fields = [
             # étape 1
             'child_last_name', 'child_first_name', 'child_birth_date', 'child_age',
+            'child_gender',
             'child_city', 'child_state_province', 'child_country',
             'child_current_school', 'child_grade', 'child_photo',
             # étape 2
@@ -205,6 +206,13 @@ class FHAEnrollmentCreateSerializer(HoneypotMixin, serializers.ModelSerializer):
             'child_birth_date': {'error_messages': {
                 'required': "La date de naissance est obligatoire.",
                 'invalid': "Date de naissance invalide (format attendu : AAAA-MM-JJ).",
+            }},
+            # Facultatif au niveau du modèle (dossiers antérieurs), mais
+            # OBLIGATOIRE pour toute nouvelle fiche.
+            'child_gender': {'required': True, 'allow_blank': False, 'error_messages': {
+                'required': "Le sexe de l'enfant est obligatoire.",
+                'blank': "Le sexe de l'enfant est obligatoire.",
+                'invalid_choice': "Sexe invalide : choisir « F » (féminin) ou « M » (masculin).",
             }},
             'parent1_last_name': {'error_messages': {
                 'required': "Le nom du parent est obligatoire.",
@@ -521,7 +529,7 @@ class FHAApplicationListSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'reference', 'status', 'status_display', 'entity_code',
             'entity_short_name',
-            'child_first_name', 'child_last_name', 'child_age',
+            'child_first_name', 'child_last_name', 'child_age', 'child_gender',
             'child_country', 'suggested_group', 'recommended_group',
             'parent1_first_name', 'parent1_last_name', 'parent1_email',
             'parent1_phone', 'parent1_whatsapp', 'family_timezone',

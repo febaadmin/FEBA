@@ -847,6 +847,7 @@ class Command(BaseCommand):
             child_last_name="Kponou",
             child_birth_date=datetime.date(2015, 5, 4),
             defaults={
+                "child_gender": "F",
                 "child_country": "United States", "child_state_province": "PA",
                 "child_city": "Philadelphia",
                 "family_origin_country": "Bénin",
@@ -877,6 +878,7 @@ class Command(BaseCommand):
             child_last_name="Sossou",
             child_birth_date=datetime.date(2016, 9, 20),
             defaults={
+                "child_gender": "M",
                 "child_country": "Canada", "child_state_province": "QC",
                 "parent_first_name": "Paul", "parent_last_name": "Sossou",
                 "parent_phone": "+1 514 555 0111",

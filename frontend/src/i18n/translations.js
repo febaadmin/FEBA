@@ -365,6 +365,7 @@ export const EN = {
   "Date de naissance": "Date of birth",
   "Lieu de naissance": "Place of birth",
   "Genre": "Gender",
+  "Sexe": "Sex",
   "Masculin": "Male",
   "Féminin": "Female",
   "Adresse": "Address",
