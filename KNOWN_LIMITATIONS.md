@@ -5,6 +5,51 @@ Rien ici n'est présenté comme fonctionnel sans preuve.
 
 ---
 
+## 00000. Aperçu des bulletins, logo actif, favicons, onglets de visio (26 octobre 2026)
+
+Cette section prévaut sur les suivantes. Validations faites EN LOCAL
+uniquement (piles Docker du poste, plugNmeet v2.5.3 local, Chrome réel).
+
+### 00000.1 Logo
+- Les PDF DÉJÀ stockés gardent le logo de leur production. Après une
+  activation, `manage.py branding_refresh_documents --academy <CODE>` les
+  liste (aperçu), puis `--apply` régénère bulletins, reçus et fiches.
+  Les rapports mensuels déjà envoyés ne sont pas réécrits (historiques).
+- Diplômes et certificats : le blason est dessiné dans le fond. Tant
+  qu'aucun logo n'est activé, le visuel officiel est conservé tel quel ;
+  après activation, la zone du blason est recouverte d'un aplat couleur
+  papier (la texture fine du fond n'y est pas reproduite) puis le logo
+  actif y est apposé.
+- Les photographies du site (`campus-*logo*.webp`) montrent la façade de
+  l'école : ce ne sont pas des logos et elles ne changent pas.
+- Une version de logo ACTIVE ne peut pas être supprimée : activer d'abord
+  une autre version.
+
+### 00000.2 Favicons
+- FEBA : favicons fournis tant qu'aucun logo n'est activé ; ensuite dérivés
+  du logo actif (16, 32, 180 px). FEBA FHA : dérivés de son propre logo.
+- Les favicons des onglets déjà ouverts changent au chargement suivant de
+  l'identité (≤ 1 min, ou immédiatement sur la page Branding).
+
+### 00000.3 Onglet de visioconférence (client plugNmeet)
+- Personnalisation installée par `scripts/plugnmeet_setup.sh` (script
+  injecté dans le client, conteneur redémarré). Elle doit être relancée à
+  chaque mise à jour du client plugNmeet.
+- L'en-tête INTERNE de la réunion garde le nom de la salle (affiché par
+  plugNmeet) ; seul l'onglet du navigateur porte l'identité de l'académie.
+- Si FEBA est injoignable depuis le navigateur, l'onglet garde le titre de
+  plugNmeet ; la réunion fonctionne normalement.
+
+### 00000.4 Aperçu des bulletins
+- Rendu à la demande, en mémoire (aucun fichier) : quelques secondes par
+  aperçu ; filigrane « APERÇU ».
+
+### 00000.5 Non vérifié
+Serveur Hetzner, SMTP et SMS réels (BLOCKED), réunion entre réseaux
+distincts et partage d'écran (NOT RUN).
+
+---
+
 ## 0000. Commentaires des bulletins et visio multi-académies (26 octobre 2026)
 
 Cette section prévaut sur les suivantes.

@@ -1,149 +1,116 @@
-# FEBA — Rapport final : commentaires des bulletins et visioconférence multi-académies
+# FEBA — Rapport final : aperçu et commentaires des bulletins, logo actif, favicons, onglets de visioconférence
 
-26 octobre 2026 · branche `fix/feba-commentaires-visio` · base : archive
-`FEBA_VERSION_FINALE_VALIDEE_PRODUCTION.zip` (commit `25b4c57`, empreinte
-vérifiée). Commit livré : `SOURCE_COMMIT.txt` dans l'archive.
+26 octobre 2026 · branche `fix/feba-logo-favicon-visio-commentaires`.
+Départ : commit `575d493` (archive `FEBA_VERSION_COMMENTAIRES_BULLETINS_VISIO_MULTI_ACADEMIES.zip`),
+qui contient déjà toutes les corrections des versions précédentes, dont celles
+de `FEBA_VERSION_PLUGNMEET_SMS_AUDIT_COMPLET.zip` (plus ancienne : elle n'a pas
+remplacé le dépôt). Commit livré : `SOURCE_COMMIT.txt` dans l'archive.
 
 Statuts : **PASS** · **FAIL** · **BLOCKED** · **NOT RUN** · **SIMULATED**.
-Détail des tests : `TEST_REPORT.md`. Limites : `KNOWN_LIMITATIONS.md` § 0000.
-Actions de l'exploitant : `MANUAL_PRODUCTION_ACTIONS.md` § 000.
-Version précédente : `docs/historique/FINAL_REPORT_2026-10-25.md`.
+Détail : `TEST_REPORT.md`. Limites : `KNOWN_LIMITATIONS.md` § 00000.
+Actions de l'exploitant : `MANUAL_PRODUCTION_ACTIONS.md` § 0000.
 
-**Où la validation a eu lieu : uniquement en local** (piles Docker isolées
-sur le poste de travail, plugNmeet v2.5.3 local, navigateur Chrome réel).
-Ni préproduction ni serveur Hetzner : accès SSH refusé (BLOCKED). Rien n'a
-été déployé, migré ni envoyé en production.
+**Lieu des validations : en local uniquement** (piles Docker isolées du poste,
+plugNmeet v2.5.3 local, Chrome réel). Ni préproduction ni Hetzner (accès SSH
+refusé). Rien n'a été déployé, migré ni envoyé en production.
 
 ---
 
-## 1. P0 n° 1 — Commentaire du Directeur / Principal's Comment
+## 1. Commentaires des bulletins — causes racines et corrections
 
-### Cause racine (reproduite sur le code livré)
-1. **Aucun parcours de gestion** : le champ `Bulletin.general_comment`
-   existait et le générateur l'imprimait, mais aucune page ne permettait de
-   le saisir ; un PATCH sur l'API changeait la base sans changer le PDF.
-2. **La régénération effaçait le commentaire** : `generate`,
-   `generate-class` et `generate-all` SUPPRIMAIENT le bulletin avant de le
-   recréer (reproduit : commentaire `''` après régénération, identifiant
-   du bulletin changé).
-3. **Un échec détruisait le PDF** : `generate_bulletin` effaçait l'ancien
-   fichier AVANT de construire le nouveau (reproduit : élève sans PDF après
-   une génération échouée).
-4. Case du commentaire de hauteur fixe (2,4 cm) : un texte long débordait
-   sur la signature du parent.
-5. `generate-all` d'un super administrateur sans académie sélectionnée
-   générait pour TOUTES les académies (le commentaire du code affirmait le
-   contraire) ; et la génération groupée synchrone dépassait le délai de
-   60 s du proxy sur une académie entière.
+| Cause (reproduite) | Correction |
+|---|---|
+| La régénération SUPPRIMAIT le bulletin puis le recréait (commentaire perdu, identifiant changé) ; un échec effaçait l'ancien PDF | (version précédente, conservée) bulletin réutilisé ; PDF construit en mémoire puis remplacé seulement après réussite ; nom de fichier unique |
+| **Avant la première génération, impossible d'ajouter, modifier ou supprimer un commentaire** sans générer le bulletin (12 échecs sur 24 opérations dans le scénario réel) | `POST /bulletins/comment-target/` : élève + année + période, bulletin généré ou non ; brouillon sans PDF (invisible des familles et des enseignants) ; verrou de ligne ; 409 si modifié entre-temps ; PDF produit seulement s'il y a des notes |
+| Une opération groupée restée « en file » (worker arrêté) bloquait toutes les suivantes (409) indéfiniment | opérations bloquées expirées (10 / 60 min) |
+| L'interface affichait l'état local comme acquis | confirmation affichée uniquement d'après la réponse du serveur ; zone verrouillée pendant l'enregistrement ; erreurs affichées, saisie conservée |
 
-### Correction
-- **Génération sans perte** (`pdf_generator.generate_bulletin`) : bulletin
-  existant réutilisé (jamais supprimé), commentaire conservé, PDF construit
-  en mémoire puis enregistré sous un **nom unique** (nouvelle URL : pas de
-  cache navigateur) ; ancien fichier supprimé seulement après succès ; en
-  cas d'échec, rien n'est écrit et un bulletin absent n'est pas créé ;
-  `generated_at` = dernière génération réussie.
-- **API** (administrateur / super administrateur uniquement, contrôle côté
-  serveur) :
-  - `POST /api/bulletins/{id}/comment/` — ajouter, modifier, supprimer
-    (texte vide) + régénération ; validation (1 200 caractères max., pas de
-    troncature silencieuse, retours à la ligne normalisés) ; `409` si un
-    autre administrateur a modifié entre-temps (`expected_comment`) ;
-  - `POST /api/bulletins/comment-preview/` — portée vérifiée avant
-    confirmation (élèves, bulletins existants, avec commentaire, absents
-    avec ou sans notes) ;
-  - `GET|POST /api/bulletins/operations/`, `GET /api/bulletins/operations/{id}/`
-    — opération pour un élève, une classe ou toute l'académie, exécutée par
-    le **worker Celery** (tâche `bulletins.run_operation`), bilan détaillé,
-    une seule opération à la fois par académie, `503` honnête si la file
-    est indisponible ;
-  - `generate-class` / `generate-all` passent par ces opérations (`202`) ;
-  - les écritures génériques `PUT/PATCH/POST /bulletins/` sont fermées
-    (`405`) : elles contournaient la validation et le PDF.
-- **Journal d'audit** : modèle `BulletinOperation` (utilisateur, académie,
-  portée, période, année, nombre de bulletins, résultat).
-- **Interface** : composant `BulletinCommentManager`, ouvert depuis
-  **Notes** (« Commentaires des bulletins ») et **Bulletins** (« Commentaires
-  du directeur », et « Commentaire » sur chaque ligne). Colonne
-  « Commentaire du directeur » et mention « PDF à régénérer » dans la liste.
-- **PDF** : case extensible ; texte exceptionnellement long (données
-  anciennes) imprimé pleine largeur dans un bloc sécable, jamais tronqué ;
-  texte toujours échappé (pas de balisage injectable).
-- Correctif voisin : le détail d'un bulletin d'une **année passée** n'est
-  plus un 404 (le filtre « année active » ne vaut que pour la liste).
+Résultat réel (Chrome, rechargement de la page et relecture en base après
+CHAQUE opération) : **72/72 opérations confirmées** (3 cycles × ajout /
+modification / suppression × 2 élèves × avant et après génération × pages
+Notes et Bulletins), contre 12 échecs sur 24 avant correction.
 
-## 2. P0 n° 2 — Visioconférence pour toutes les académies
+## 2. Aperçu des bulletins avant génération
 
-### Cause racine
-`School.DEFAULT_FEATURES["campus"]` désactivait `virtual_classrooms` et
-`video_conferencing` : l'académie FEBA (type « campus ») recevait `403` sur
-toute l'API des salles et le menu était masqué.
+- `render_bulletin_pdf` : rendu SANS écriture, partagé par la génération
+  officielle et l'aperçu (mêmes calculs, même mise en page, même identité).
+  `POST /bulletins/preview/` renvoie le PDF en mémoire, filigrané « APERÇU » :
+  aucun bulletin créé, aucun PDF officiel remplacé, aucun fichier temporaire.
+- Fenêtre « Aperçu du bulletin » (page Bulletins : bouton principal et
+  bouton « Aperçu » de chaque ligne ; page Notes) : élève, année, période,
+  aperçu PDF réel, commentaire éditable, **Actualiser l'aperçu** (rend le
+  commentaire saisi), **Enregistrer le commentaire** (sans générer),
+  **Supprimer le commentaire**, **Générer le bulletin définitif** (après
+  confirmation explicite ; un commentaire saisi est d'abord enregistré),
+  **Annuler** (rien n'est enregistré).
+- Générations par classe / académie : étape de **révision** (portée, année,
+  période, nombre de bulletins, liste des élèves avec aperçu individuel,
+  commentaire commun facultatif) puis confirmation explicite ; bilan réel.
 
-### Correction
-- Valeurs par défaut corrigées (toutes les académies, et toute nouvelle
-  académie) ; **migration `schools.0017`** : réactive les désactivations
-  explicites, ne touche aucun autre drapeau, conserve les valeurs d'origine
-  (réversible). `HasEntityFeature` est conservé : une désactivation
-  explicite reste appliquée.
-- **Isolation renforcée** (défauts trouvés en testant) :
-  - une salle pouvait viser la **classe, la matière ou l'année d'une autre
-    académie** (reproduit : HTTP 201) → `TenantRelationsMixin` ; classe et
-    année doivent concorder ;
-  - un **enseignant pouvait supprimer la salle de l'administration**
-    (reproduit : HTTP 204) → il ne gère que ses salles et celles de ses
-    classes ; champ `can_manage` pour l'interface ;
-  - super administrateur sans académie sélectionnée : création refusée.
+Vérifié en navigateur réel : aperçu avant génération (0 bulletin avant,
+0 après), commentaire saisi rendu dans l'aperçu, enregistrement sans
+génération, génération définitive, brouillon annulé non enregistré,
+modification et suppression régénérées — **5 PDF relus, tous conformes** ;
+aperçu individuel depuis la révision d'une classe au premier plan.
 
-## 3. Audit global — défauts confirmés et corrigés
+## 3. Logo actif — source de vérité
 
-| Défaut (reproduit) | Correction | Test |
-|---|---|---|
-| L'administrateur d'une académie changeait `entity_type` (campus → online) et s'ouvrait toutes les fonctions en ligne | champ réservé au super administrateur | `test_audit_2026_10_26` |
-| Un PATCH `{school: autre}` déplaçait un **niveau** ou une **salle physique** dans une autre académie ; type de salle d'une autre académie accepté | `TenantRelationsMixin` (niveaux, types de salle, salles, logos) | idem |
-| Un PATCH `{entity: autre}` transférait un **dossier d'admission FHA** ou un **test de placement** dans une autre académie | `entity`, `application`, `meeting_room` en lecture seule (préinscriptions : `entity`) | idem |
+| Cause (reproduite) | Correction |
+|---|---|
+| `get_branding().document_logo` prenait l'image statique AVANT le logo activé : **tous les PDF** l'ignoraient | ordre : logo documentaire administré explicitement → logo activé de l'académie → repli de CETTE académie (FEBA : logo fourni) ; jamais celui d'une autre |
+| Page Branding : académie = « premier établissement » ou `"1"` — **constaté sur la pile de test : le logo FEBA téléversé par le super administrateur avait été posé sur FEBA FHA (académie n° 1)** | académie du contexte ; super administrateur : sélection obligatoire ; contrôle serveur |
+| `/branding/active/` : 401 sans connexion → site public et page de connexion toujours au logo statique | API publique en lecture seule `/schools/public-branding/<code>/` (logo, favicons, titre de visio, couleurs ; rien d'administratif) |
+| Client privé : la réponse du branding rejetée comme « périmée » pendant l'amorçage de la portée → barre latérale au logo embarqué (trouvé en navigateur réel) | client public dédié, sans jeton ni portée |
+| Même nom de fichier → même URL → ancienne image en cache ; plusieurs versions actives possibles ; tout fichier « .png » accepté | nom unique `branding/<académie>/<uuid>` ; URL versionnées `?v=` ; contrainte « une version active » (migration `schools.0018`) ; activation atomique ; image décodée (PNG/JPEG/WebP, 5 Mo, 64–6000 px) ; version active non supprimable |
+| Diplômes / certificats : blason **dans les pixels du fond** | après activation, zone du blason recouverte (couleur papier) et logo actif apposé ; sans logo activé, visuel officiel intact |
+| Reçus : ancien supprimé puis nouveau sous le MÊME nom | nom unique, ancien supprimé après réussite |
+| PDF déjà stockés | `manage.py branding_refresh_documents --academy CODE [--apply]` (aperçu, régénération atomique, idempotente, bilan ; rapports envoyés conservés) |
 
-Sondes exécutées sur la pile de démonstration (deux académies, 6 rôles) :
-- **lecture** : 229 routes de liste et 194 routes de détail, 4 632
-  requêtes → **0 fuite inter-académies, 0 erreur serveur** ;
-- **écriture par rôle** (parent, élève, enseignant ; 130 routes, POST /
-  PATCH / DELETE) → aucune écriture illégitime (les seules acceptées
-  concernent les classes de l'enseignant) ;
-- **frontend → backend** : 230 appels API, 0 route orpheline ;
-- **navigateur** : 119 pages de menu visitées (6 comptes) → aucune erreur
-  JavaScript ; seules erreurs HTTP : 400 « Choisissez l'académie
-  destinataire » du super administrateur en vue « toutes les académies »,
-  comportement voulu et affiché à l'écran ;
-- tâches planifiées Celery : les 6 sont enregistrées dans le worker.
+Vérifié en navigateur réel : site public sans connexion (FEBA et /feba-fha),
+téléversement par l'admin FEBA (école n° 2, plus 1), barre latérale et
+favicons changés **sans rechargement**, enseignant / parent / élève / site
+public au nouveau logo, **FEBA FHA inchangée**, bulletin régénéré
+contenant le nouveau logo (image du PDF inspectée), logo identique après
+redémarrage du backend.
 
-## 4. Résultats
+## 4. Favicons fournis
 
-| Domaine | Résultat | Statut |
-|---|---|---|
-| Backend PostgreSQL 16 + Mailpit + plugNmeet réel | voir `TEST_REPORT.md` § 1 | PASS |
-| Backend SQLite | voir `TEST_REPORT.md` § 1 | PASS |
-| Frontend (Vitest, ESLint, build) | 313/313, 0 erreur (aucun avertissement ajouté), build OK | PASS |
-| Migrations : base EXISTANTE de l'ancienne version migrée, retour arrière, réapplication | commentaire, salles, 120 bulletins conservés | PASS |
-| Commentaires — parcours réel dans Chrome (Notes et Bulletins, ajout, modification, suppression, classe via le vrai worker Celery), texte vérifié dans les PDF produits | 4/4 PDF conformes | PASS (local) |
-| Visio — réunion réelle dans l'académie FEBA (salle créée par l'admin FEBA dans l'interface, enseignant + élève, vidéo reçue, présences par webhook, fin par l'enseignant), FEBA FHA refusée (404) | conforme | PASS (local) |
-| Scénarios e2e (8) | tous verts | PASS |
-| Plusieurs académies sur le même plugNmeet | identifiants de salle distincts, événements rattachés à la seule académie de la salle | PASS (tests + réel local) |
-| SMTP Hostinger, Twilio, serveur Hetzner | aucun accès | BLOCKED |
-| Partage d'écran, TURN entre réseaux, recette en production | — | NOT RUN |
+Installés tels quels (`branding/source/` → `frontend/public/`,
+`backend/feba_project/static_files/`) ; `favicon.svg` (le triangle) retiré ;
+`apple-touch-icon` 180 px dérivé du logo fourni par
+`scripts/build_branding_assets.py` (reproductible, `--check`). Favicons par
+académie servis par l'API (FEBA : fichiers fournis à l'octet près tant
+qu'aucun logo n'est activé ; ensuite dérivés du logo actif ; FEBA FHA : son
+propre logo). Cache : URL versionnées ; favicons fixes revalidés à l'heure ;
+`index.html` en `no-cache`.
 
-## 5. Fichiers, migrations, API
+## 5. Onglets de visioconférence
 
-- **Migrations ajoutées** : `bulletins.0006_comments_operations` (champs
-  `comment_updated_at`, `comment_updated_by`, `generated_at` sans
-  `auto_now_add`, modèle `BulletinOperation` — additive) ;
-  `schools.0017_enable_video_for_all_academies` (données, réversible).
-- **Backend** : `bulletins/{models,operations (nouveau),pdf_generator,serializers,tasks,views}.py` ;
-  `schools/{models,serializers}.py` ; `core/features.py` ;
-  `virtualclass/{serializers,views}.py` ; `website/{serializers,fha_serializers}.py`.
-- **Frontend** : `components/bulletins/BulletinCommentManager.jsx` (nouveau) ;
-  `pages/admin/{Bulletins,Grades}.jsx` ; `pages/shared/VirtualRooms.jsx` ;
-  `api/index.js` ; `i18n/translations.js`.
-- **Tests ajoutés** : `test_bulletin_comments.py` (26),
-  `test_visio_multi_academies.py` (16), `test_audit_2026_10_26.py` (7),
-  `BulletinCommentManager.test.jsx` (5). Tests de l'ancienne règle « FEBA
-  sans visio » adaptés à la nouvelle règle, sans affaiblir le contrôle (la
-  désactivation explicite reste testée).
+Cause : le client plugNmeet impose `document.title` = nom de la salle à
+chaque mise à jour des métadonnées ; la page FEBA qui redirige ne pouvait
+donc rien imposer. Solution réelle sur le client servi :
+`plugnmeet/client-branding/feba-branding.js`, injecté par
+`scripts/plugnmeet_setup.sh` (idempotent, redémarre le serveur plugNmeet qui
+garde `index.html` en mémoire) ; l'académie est déterminée par FEBA à partir
+du **jeton plugNmeet dont la signature est vérifiée** (`POST
+/api/virtual-rooms/meeting-branding/`) — un paramètre modifié ne change rien.
+
+Vérifié sur la **vraie page plugNmeet** (local) : FEBA « FEBA - Faith &
+Excellence Bilingual Academy », FEBA FHA « FEBA FHA - FEBA », à l'ouverture,
+dans la réunion, après rechargement et sur la page de fin ; favicon
+identique à celui de l'académie ; réunion fonctionnelle. Pages publiques
+/feba-fha : titres à l'identité FEBA FHA.
+
+## 6. Audit
+
+Sondes rejouées sur la pile de démonstration : lecture 4 664 requêtes
+(234 routes de liste, 194 de détail) → **0 fuite, 0 erreur serveur** ;
+écriture par rôle (133 routes) → aucune écriture illégitime ; défauts
+trouvés et corrigés pendant les tests réels : branding rejeté par la garde
+de portée, aperçu masqué derrière la révision, client plugNmeet non
+rechargé, reçus sous un nom fixe.
+
+## 7. Migrations
+
+`schools.0018_branding_unique_active` (contrainte ; la plus récente des
+versions actives reste active ; aucune suppression ; réversible).

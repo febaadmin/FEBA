@@ -18,7 +18,7 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-NOM="${1:-FEBA_VERSION_COMMENTAIRES_BULLETINS_VISIO_MULTI_ACADEMIES}"
+NOM="${1:-FEBA_VERSION_BULLETINS_BRANDING_FAVICON_CORRIGEE}"
 SORTIE="${2:-$(dirname "$ROOT")}"
 STAGE="$(mktemp -d)"
 # Le dossier racine porte le MÊME nom que l'archive. En V8 il était
@@ -90,6 +90,11 @@ if [ -e "$CIBLE/plugnmeet/runtime" ]; then
   echo "  ÉCHEC : plugnmeet/runtime (secrets plugNmeet générés) présent dans l'archive"; exit 1
 fi
 echo "  OK    aucun secret plugNmeet (plugnmeet/runtime absent)"
+
+if [ -e "$CIBLE/frontend/public/favicon.svg" ]; then
+  echo "  ÉCHEC : ancienne icône frontend/public/favicon.svg présente"; exit 1
+fi
+echo "  OK    aucune ancienne icône (favicon.svg)"
 
 for interdit in node_modules __pycache__ .pytest_cache venv; do
   if find "$CIBLE" -name "$interdit" -print -quit | grep -q .; then
@@ -217,7 +222,23 @@ for requis in backend/manage.py frontend/package.json Makefile \
               backend/tests/test_bulletin_comments.py backend/tests/test_visio_multi_academies.py \
               backend/tests/test_audit_2026_10_26.py \
               frontend/src/components/bulletins/BulletinCommentManager.jsx \
-              frontend/src/components/bulletins/BulletinCommentManager.test.jsx; do
+              frontend/src/components/bulletins/BulletinCommentManager.test.jsx \
+              branding/source/feba_logo_transparent.png branding/source/favicon-16x16.png \
+              branding/source/favicon-32x32.png scripts/build_branding_assets.py \
+              frontend/public/favicon-16x16.png frontend/public/favicon-32x32.png \
+              frontend/public/apple-touch-icon.png frontend/src/assets/feba_logo.png \
+              backend/feba_project/static_files/feba_logo_document.png \
+              backend/feba_project/static_files/favicon-16x16.png \
+              backend/feba_project/static_files/favicon-32x32.png \
+              backend/apps/schools/public_branding.py \
+              backend/apps/schools/migrations/0018_branding_unique_active.py \
+              backend/apps/schools/management/commands/branding_refresh_documents.py \
+              backend/tests/test_branding_logo_2026_10_26.py \
+              frontend/src/components/bulletins/BulletinPreviewDialog.jsx \
+              frontend/src/components/bulletins/BulletinPreviewDialog.test.jsx \
+              frontend/src/hooks/useBranding.test.jsx \
+              plugnmeet/client-branding/feba-branding.js \
+              docs/historique/FINAL_REPORT_2026-10-26_commentaires_visio.md; do
   [ -e "$CIBLE/$requis" ] || { echo "  ÉCHEC : « $requis » manquant"; exit 1; }
 done
 echo "  OK    tous les fichiers attendus sont présents"

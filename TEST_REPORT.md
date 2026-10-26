@@ -1,68 +1,65 @@
-# FEBA — Rapport de tests : commentaires des bulletins et visio multi-académies
+# FEBA — Rapport de tests : aperçu et commentaires des bulletins, logo, favicons, onglets de visio
 
-Exécuté le 26 octobre 2026, branche `fix/feba-commentaires-visio`, **en
-local uniquement**. Version précédente : `docs/historique/TEST_REPORT_2026-10-25.md`.
+26 octobre 2026, branche `fix/feba-logo-favicon-visio-commentaires`, **en local
+uniquement**. Version précédente : `docs/historique/TEST_REPORT_2026-10-26_commentaires_visio.md`.
+Statuts : PASS · FAIL · BLOCKED · NOT RUN · SIMULATED. Un test ignoré n'est
+jamais compté comme réussi. Vérification depuis l'archive extraite :
+`DELIVERY_VERIFICATION_*.txt`, livré à côté du ZIP.
 
-Statuts : **PASS** · **FAIL** · **BLOCKED** · **NOT RUN** · **SIMULATED**.
-Un test ignoré n'est jamais compté comme réussi. La vérification depuis une
-extraction neuve de l'archive est consignée dans `DELIVERY_VERIFICATION_*.txt`,
-livré à côté du ZIP.
-
-## 1. Tests automatisés (dépôt)
+## 1. Tests automatisés (dépôt, code final)
 
 | Suite | Résultat | Statut |
 |---|---|---|
-| Backend PostgreSQL 16 + Mailpit SMTP + plugNmeet v2.5.3 réel | **1693 réussis, 0 ignoré, 0 échec** (607 sous-tests) | PASS |
-| Backend SQLite | 1684 réussis, **9 ignorés** (3 Mailpit, 3 plugNmeet réel, 3 concurrence PostgreSQL — tous exécutés et réussis sur PostgreSQL), 0 échec | PASS |
-| Frontend Vitest | 313 / 313 (38 fichiers) | PASS |
-| ESLint | 0 erreur ; 80 avertissements, tous antérieurs (aucun ajouté) | PASS |
-| Build Vite | réussi | PASS |
-| `makemigrations --check`, `manage.py check` | aucun écart | PASS |
-| `compose_config_check.sh`, `repo_safety_check.sh` | valides | PASS |
+| Backend PostgreSQL 16 + Mailpit SMTP + plugNmeet v2.5.3 réel | **1733 réussis, 0 ignoré, 0 échec** | PASS |
+| Backend SQLite | 1723 réussis, **10 ignorés** (PostgreSQL, Mailpit ou plugNmeet requis — tous exécutés et réussis sur PostgreSQL), 0 échec | PASS |
+| Frontend Vitest | 329 / 329 (41 fichiers) | PASS |
+| ESLint | 0 erreur (74 avertissements antérieurs ; 6 supprimés, aucun ajouté) | PASS |
+| Build Vite | réussi ; favicons fournis et `apple-touch-icon` dans `dist/`, plus de `favicon.svg` | PASS |
+| `nginx -t` (frontend de production) | configuration valide | PASS |
+| `scripts/build_branding_assets.py --check` | dérivés conformes aux fichiers fournis | PASS |
 
-Nouveaux tests (ils échouent sur le code livré `25b4c57`, vérifié) :
-- `test_bulletin_comments.py` — 26 tests : les 22 scénarios demandés
-  (ajout, base, PDF réel lu avec PyMuPDF, modification, ancien texte absent,
-  suppression → texte par défaut, régénération qui conserve, échec qui
-  conserve bulletin + commentaire + PDF, caractères spéciaux, commentaire
-  long sans débordement, classe, académie seule, suppression groupée sans
-  perte de notes, bulletins manquants selon le choix, échec partiel
-  rapporté, parent/élève/enseignant refusés, autre académie refusée, super
-  administrateur obligé de choisir l'académie, lien PDF renouvelé, annotation
-  rouge jamais imprimée) + double requête, modification concurrente (409),
-  année passée, file Celery indisponible (503), exécution unique de la tâche.
-- `test_visio_multi_academies.py` — 16 tests : les 20 scénarios demandés
-  (activation pour toutes les académies et les nouvelles, admin et
-  enseignant FEBA créent / modifient / suppriment / ouvrent, élève et
-  parent rejoignent, mêmes fonctions ailleurs, listes et accès par
-  identifiant cloisonnés sans révéler l'existence, classe/matière/année
-  étrangères refusées, événements et présences dans la bonne académie,
-  webhook d'un participant d'une autre académie non rattaché, enregistrements
-  protégés, tâche de réconciliation par salle, super administrateur,
-  migration réversible, même serveur plugNmeet sans mélange).
-- `test_audit_2026_10_26.py` — 7 tests (défauts de l'audit global).
-- `BulletinCommentManager.test.jsx` — 5 tests (lien PDF renouvelé, suppression,
-  échec affiché, portée + confirmation + bilan partiel, aucune action sans
-  académie sélectionnée).
+Nouveaux tests (les tests de défaut échouent sur `575d493`, vérifié) :
+- `test_bulletin_comments.py` (+15) : commentaire avant génération (ajout,
+  modification, suppression, brouillon invisible des familles, PDF à la
+  génération), cinq cycles après génération avec PDF relu à chaque étape et
+  une URL par version, régénérations successives, erreur de sauvegarde
+  (aucun succès annoncé), idempotence, conflit 409, isolation, opérations
+  bloquées expirées, **deux requêtes simultanées (PostgreSQL : 200 + 409, un
+  seul bulletin)**, aperçu sans écriture, aperçu = PDF officiel hormis le
+  filigrane, permissions de l'aperçu, liste de révision.
+- `test_branding_logo_2026_10_26.py` (19) : priorité du logo actif, image
+  du PDF inspectée (couleur du logo activé), isolation, téléversement
+  (valide, faux PNG, SVG, trop petit, GIF), académie imposée, contrainte et
+  activation atomique, version active protégée, API publique sans connexion,
+  favicons fournis à l'octet près puis dérivés, version/URL changées, autre
+  académie inchangée, commande de régénération (aperçu, application,
+  idempotence, échec qui conserve l'ancien fichier), diplômes et certificats
+  (blason incrusté remplacé seulement après activation), fichiers fournis
+  installés et `index.html` sans ancienne icône.
+- `test_visio_multi_academies.py` (+6) : titres exacts par académie, jeton
+  re-signé ou modifié refusé, rechargement après expiration (≤ 24 h), CORS,
+  titre dans la réponse d'adhésion, script client installé par le setup.
+- Frontend : `BulletinPreviewDialog.test.jsx` (4), `useBranding.test.jsx` (5),
+  `Seo.test.jsx` (2), titres des pages de session et de fin de réunion (3).
 
-## 2. Validations réelles (local)
+## 2. Validations réelles (local, Chrome)
 
 | Contrôle | Résultat | Statut |
 |---|---|---|
-| Commentaires dans Chrome : page Notes (élève Estelle Acakpo, T1) — ajout, modification, suppression ; page Bulletins — classe CE1-A via le vrai worker Celery (`bulletins.run_operation` exécutée) | à chaque enregistrement, nouveau lien PDF ; texte lu dans les 4 PDF téléchargés conforme (accents, guillemets « », apostrophes, retour à la ligne ; texte par défaut après suppression ; aucune annotation) | PASS |
-| Second passage de l'opération de classe | 1 bulletin modifié, 5 inchangés (déjà à jour) — bilan exact | PASS |
-| Rendu visuel de la zone du commentaire | lisible, sans chevauchement de la signature ni du pied de page | PASS |
-| Visio FEBA : salle créée par l'admin FEBA dans l'interface (menu visible), enseignant `prof.math@feba.bj` et élève `eleve1@feba.bj` dans la réunion plugNmeet (caméra et micro simulés, vidéo de l'autre participant reçue), présences enregistrées par webhook (107 s, 99 s), fin par l'enseignant, élève redirigé vers la page de fin | conforme | PASS |
-| Même salle demandée par l'admin FEBA FHA (détail, participants, join) ; présence dans sa liste | 404, 404, 404 ; absente | PASS |
-| Migration d'une base EXISTANTE (ancienne version + données de démonstration) | `bulletins.0006` et `schools.0017` appliquées ; FEBA obtient la visio, ses autres drapeaux intacts ; commentaire, 3 salles, 120 bulletins conservés ; régénération qui garde le commentaire ; retour arrière puis réapplication réussis | PASS |
-| Scénarios e2e (`e2e/*.mjs`, Chrome) : académies, espaces anglais, site public, devises et documents, documents officiels (54/54), préinscription (41/41), rapports mensuels (30/30), v9 | tous verts | PASS |
-| Sondes d'audit (lecture 4 632 requêtes, écriture par rôle, routes frontend, 119 pages, tâches Celery) | voir `FINAL_REPORT.md` § 3 | PASS |
+| Commentaires : 3 cycles ajout / modification / suppression, 2 élèves, avant ET après génération, pages Notes et Bulletins, rechargement + relecture en base après chaque opération | **72 / 72** (avant correction : 12 échecs / 24) | PASS |
+| Aperçu avant génération : aperçu, commentaire saisi rendu, enregistrement sans génération, génération définitive, brouillon annulé, modification et suppression régénérées | 0 bulletin créé par l'aperçu ; **5 PDF relus conformes** | PASS |
+| Révision d'une génération de classe, aperçu individuel au premier plan, confirmation, bilan | 6 / 6 régénérés, 0 échec | PASS |
+| Logo : site public sans connexion (FEBA et /feba-fha), téléversement par l'admin FEBA (académie 2), barre latérale et favicons changés sans rechargement, enseignant / parent / élève / site public, FEBA FHA inchangée, bulletin régénéré (image inspectée : nouveau logo), logo identique après redémarrage du backend | conforme | PASS |
+| Favicon FEBA sans logo activé = fichier fourni, octet pour octet | conforme | PASS |
+| Onglet de visio sur la VRAIE page plugNmeet : FEBA et FEBA FHA, ouverture / réunion / rechargement / page de fin, favicon de l'académie | titres exacts, favicons conformes, réunion fonctionnelle | PASS |
+| Sondes d'isolation (4 664 requêtes) et d'escalade (133 routes) | 0 fuite, 0 erreur serveur, aucune écriture illégitime | PASS |
+| Scénarios e2e (8) | tous verts | PASS |
 
 ## 3. Non exécuté ou bloqué
 
 | Contrôle | Statut |
 |---|---|
-| Validation sur Hetzner / préproduction (SSH refusé) | BLOCKED |
+| Hetzner, préproduction, plugNmeet de production | BLOCKED (SSH refusé) |
 | SMTP Hostinger, Twilio | BLOCKED |
-| Partage d'écran, réunion entre réseaux distincts (TURN), charge | NOT RUN |
-| Fournisseur plugNmeet de production | NOT RUN (local uniquement) |
+| Partage d'écran, réunion entre réseaux distincts | NOT RUN |
+| Navigation privée et CDN réels de production | NOT RUN (cache vérifié par URL versionnées et en-têtes) |

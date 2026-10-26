@@ -14,6 +14,28 @@
 ---
 
 
+## 0000. Aperçu des bulletins, logo, favicons, onglets de visio (26/10/2026)
+
+Rien n'a été déployé ni migré en production.
+
+1. Sauvegarde vérifiée, puis `make prod` : applique `schools.0018`
+   (une seule version de logo active par académie ; s'il y en avait
+   plusieurs, la plus récente reste active — aucune suppression).
+2. **Vérifier le logo actif de chaque académie** (page « Branding &
+   Logo », académie sélectionnée) : sur la pile de test, le logo FEBA avait
+   été posé par erreur sur FEBA FHA (ancien repli « académie 1 »). En
+   production, contrôler `GET /api/schools/public-branding/FEBA/` et
+   `/FEBA_FHA/` ; corriger en activant la bonne version dans chaque académie.
+3. Documents courants : `python manage.py branding_refresh_documents
+   --academy FEBA` (aperçu), puis `--apply` ; idem `--academy FEBA_FHA`.
+4. Client plugNmeet : `bash scripts/plugnmeet_setup.sh --domain <domaine>
+   --public-ip <IP> --feba-url https://globalfeba.com` (idempotent ; secrets
+   conservés ; redémarre le serveur plugNmeet). Vérifier dans un onglet de
+   réunion : « FEBA - Faith & Excellence Bilingual Academy » / « FEBA FHA -
+   FEBA ».
+5. Retour arrière : `make prod-rollback` ; `migrate schools 0017` retire la
+   contrainte (aucune donnée perdue).
+
 ## 000. Commentaires des bulletins et visio multi-académies (26/10/2026)
 
 Rien n'a été déployé ni migré en production. Ordre conseillé :

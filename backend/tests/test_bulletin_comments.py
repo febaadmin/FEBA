@@ -20,7 +20,7 @@ import tempfile
 from unittest import mock
 
 import fitz  # PyMuPDF
-from django.test import TestCase, override_settings
+from django.test import TestCase, TransactionTestCase, override_settings
 from rest_framework.test import APIClient
 
 from apps.accounts.models import CustomUser
@@ -637,8 +637,22 @@ class CommentTargetTests(BulletinCommentBase):
         self.assertIn("interrompue", op.error)
 
 
-class ConcurrentCommentTests(BulletinCommentBase):
-    """Deux enregistrements simultanés (PostgreSQL : verrous de ligne réels)."""
+class ConcurrentCommentTests(TransactionTestCase):
+    """
+    Deux enregistrements simultanés (PostgreSQL : verrous de ligne réels).
+
+    TransactionTestCase : les deux requêtes passent par deux connexions
+    distinctes, qui doivent voir des données réellement validées (dans un
+    TestCase, elles restent dans une transaction invisible des autres
+    connexions). Même construction que les autres tests de concurrence du
+    projet (pytest-django les exécute après les TestCase).
+    """
+
+    def setUp(self):
+        BulletinCommentBase.setUp(self)
+
+    def tearDown(self):
+        BulletinCommentBase.tearDown(self)
 
     def test_deux_demandes_simultanees(self):
         import threading
