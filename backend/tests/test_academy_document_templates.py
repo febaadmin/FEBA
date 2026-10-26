@@ -945,3 +945,79 @@ class EmptyAcademyDeletionTests(TemplateTestBase):
         self.assertEqual(deleted.status_code, 204, getattr(deleted, "data", None))
         self.assertFalse(AcademyDocumentTemplate.objects.filter(academy_id=empty.pk).exists())
         self.assertFalse(os.path.exists(path))
+
+
+@override_settings(PRIVATE_MEDIA_ROOT=tempfile.mkdtemp(prefix="feba-tpl-conc-"))
+class ConcurrencyTests(__import__("django.test", fromlist=["TransactionTestCase"]).TransactionTestCase):
+    """
+    Demandes SIMULTANÉES (PostgreSQL : verrous réels, connexions distinctes).
+    Délivrances : numéros tous distincts. Activations : une seule version
+    active. Téléversements : numéros de version distincts.
+    """
+
+    def setUp(self):
+        from django.db import connection
+        if connection.vendor != "postgresql":
+            self.skipTest("Concurrence réelle : PostgreSQL requis.")
+        self.A = build_academy("CONC", "physical_secondary")
+        self.students = [self.A.student] + [
+            Student.objects.create(school=self.A.school, first_name=f"Eleve{i}", last_name="Conc",
+                                   current_class=self.A.klass, school_year=self.A.year)
+            for i in range(5)]
+        for s in self.students[1:]:
+            StudentEnrollment.objects.create(student=s, school_year=self.A.year, class_obj=self.A.klass)
+
+    def ready(self, color):
+        tpl = uploads.create_version(academy=self.A.school, kind="diploma",
+                                     uploaded_file=upload("d.png", png_bytes(color), "image/png"))
+        uploads.save_configuration(tpl, fields=LANDSCAPE_FIELDS)
+        self.assertTrue(uploads.validate(tpl)["ok"])
+        return tpl
+
+    def run_threads(self, targets):
+        import threading
+        from django.db import connection
+
+        results = []
+
+        def wrap(fn):
+            try:
+                results.append(("ok", fn()))
+            except Exception as exc:  # noqa: BLE001 — le résultat est inspecté
+                results.append(("error", repr(exc)))
+            finally:
+                connection.close()
+
+        threads = [threading.Thread(target=wrap, args=(fn,)) for fn in targets]
+        [t.start() for t in threads]
+        [t.join() for t in threads]
+        return results
+
+    def test_delivrances_simultanees_numeros_distincts(self):
+        from apps.documents.services import create_for_kind, issue_document
+
+        uploads.activate(self.ready(RED))
+        drafts = [create_for_kind(kind="diploma", student=s) for s in self.students]
+
+        def issuer(pk):
+            return lambda: issue_document(GeneratedDocument.objects.get(pk=pk)).number
+
+        results = self.run_threads([issuer(d.pk) for d in drafts])
+        numbers = [value for status, value in results if status == "ok"]
+        self.assertEqual(len(numbers), len(drafts), results)
+        self.assertEqual(len(set(numbers)), len(drafts), numbers)
+
+    def test_activations_simultanees_une_seule_active(self):
+        first, second = self.ready(RED), self.ready(BLUE)
+        self.run_threads([lambda: uploads.activate(first), lambda: uploads.activate(second)])
+        self.assertEqual(AcademyDocumentTemplate.objects.filter(
+            academy=self.A.school, kind="diploma", status="active").count(), 1)
+
+    def test_televersements_simultanes_versions_distinctes(self):
+        results = self.run_threads([
+            (lambda c=c: uploads.create_version(
+                academy=self.A.school, kind="certificate",
+                uploaded_file=upload("c.png", png_bytes(c), "image/png")).version)
+            for c in (RED, GREEN, BLUE)])
+        versions = sorted(v for status, v in results if status == "ok")
+        self.assertEqual(versions, [1, 2, 3], results)
