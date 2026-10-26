@@ -2425,4 +2425,281 @@ export const EN = {
     "Not recorded (historical sending)",
   "Capturé (Mailpit)":
     "Captured (Mailpit)",
+  // Gabarits des documents (diplômes, certificats) — 26/10/2026
+  "(attribué à la délivrance)":
+    "(assigned on issue)",
+  "Alignement":
+    "Alignment",
+  "Aperçu PDF":
+    "PDF preview",
+  "Aperçu du document":
+    "Document preview",
+  "Aperçu rendu par le serveur (valeurs d'exemple, cadres des zones en pointillés)":
+    "Preview rendered by the server (sample values, field frames dotted)",
+  "Aucun gabarit actif : aucun document de ce type ne peut être produit pour cette académie.":
+    "No active template: no document of this type can be produced for this academy.",
+  "Aucun gabarit disponible":
+    "No template available",
+  "Aucun gabarit téléversé actif : le gabarit intégré « {l} » (livré avec l'application) est utilisé.":
+    "No active uploaded template: the built-in template “{l}” (shipped with the application) is used.",
+  "C'est la version ACTIVE : après suppression, plus aucun document de ce type ne pourra être produit avec un gabarit téléversé.":
+    "This is the ACTIVE version: once deleted, no document of this type can be produced with an uploaded template.",
+  "Centré":
+    "Centred",
+  "Certificat":
+    "Certificate",
+  "Cette version est en lecture seule. Créez une nouvelle version pour modifier sa configuration.":
+    "This version is read-only. Create a new version to change its configuration.",
+  "Champ à placer":
+    "Field to place",
+  "Champ à placer…":
+    "Field to place…",
+  "Chaque document est produit sur le gabarit ACTIF de l'académie de l'élève (rubrique « Gabarits des documents »), à défaut sur le gabarit intégré prévu pour elle. Un document délivré garde son fichier et sa version de gabarit, même après un remplacement.":
+    "Each document is produced on the ACTIVE template of the student's academy (“Document templates” section), otherwise on the built-in template intended for it. An issued document keeps its file and template version, even after a replacement.",
+  "Choisir…":
+    "Choose…",
+  "Configuration enregistrée. Vérifiez le gabarit avant de l'activer.":
+    "Configuration saved. Check the template before activating it.",
+  "Couleur":
+    "Colour",
+  "Date d'obtention (si le gabarit l'affiche)":
+    "Award date (if the template shows it)",
+  "Date d'obtention":
+    "Award date",
+  "Diplôme et certificat officiels de {a}":
+    "Official diploma and certificate of {a}",
+  "Diplôme":
+    "Diploma",
+  "Diplômes et certificats officiels":
+    "Official diplomas and certificates",
+  "Donnée obligatoire manquante : {m}":
+    "Missing required data: {m}",
+  "Droite":
+    "Right",
+  "Délivrer les {n} brouillon(s)":
+    "Issue the {n} draft(s)",
+  "Enregistrer et vérifier":
+    "Save and check",
+  "Fichier (PDF, PNG ou JPEG — 10 Mo au plus)":
+    "File (PDF, PNG or JPEG — 10 MB max.)",
+  "Fichier accepté (version {v}). Placez les champs puis vérifiez le gabarit.":
+    "File accepted (version {v}). Place the fields, then check the template.",
+  "Fond du gabarit":
+    "Template background",
+  "Format de la page imprimée":
+    "Printed page format",
+  "Formats acceptés : PDF (fond vectoriel, une page utilisée), PNG ou JPEG (au moins 600 px). Taille maximale : 10 Mo.":
+    "Accepted formats: PDF (vector background, one page used), PNG or JPEG (at least 600 px). Maximum size: 10 MB.",
+  "Gabarit du certificat":
+    "Certificate template",
+  "Gabarit du diplôme":
+    "Diploma template",
+  "Gabarit désactivé. Les documents déjà délivrés restent consultables.":
+    "Template disabled. Documents already issued remain available.",
+  "Gabarit intégré « {l} »":
+    "Built-in template “{l}”",
+  "Gabarit téléversé de l'académie — version {v}":
+    "Academy's uploaded template — version {v}",
+  "Gabarit vérifié : rendu d'essai conforme. Il peut être activé.":
+    "Template checked: test rendering compliant. It can be activated.",
+  "Gabarits des documents":
+    "Document templates",
+  "Gauche":
+    "Left",
+  "Historique des versions ({n})":
+    "Version history ({n})",
+  "L'image est inscrite dans la page sans être déformée.":
+    "The image is fitted into the page without distortion.",
+  "La version active reste utilisée tant que la nouvelle n'est pas vérifiée puis activée.":
+    "The active version stays in use until the new one is checked and activated.",
+  "La version et son fichier seront supprimés. Une version qui a servi à des documents ne peut pas l'être : désactivez-la.":
+    "The version and its file will be deleted. A version used for documents cannot be: disable it instead.",
+  "La vérification a échoué.":
+    "The check failed.",
+  "Le document remis ne contient que cette page. Enregistrez puis rouvrez l'éditeur pour voir son fond.":
+    "The issued document contains only this page. Save, then reopen the editor to see its background.",
+  "Le nom de l'élève doit être placé.":
+    "The student's name must be placed.",
+  "Les documents Word (DOCX) ne sont pas acceptés : exportez-les en PDF depuis Word.":
+    "Word documents (DOCX) are not accepted: export them to PDF from Word.",
+  "Lignes":
+    "Lines",
+  "Moyenne minimale, sur 20 (convertie sur 10 pour le primaire)":
+    "Minimum average, out of 20 (converted to /10 for primary)",
+  "Nouvelle version créée à partir de celle-ci (brouillon).":
+    "New version created from this one (draft).",
+  "Objet du certificat (facultatif, sinon celui du gabarit)":
+    "Certificate purpose (optional, otherwise the template's)",
+  "Obligatoire (production refusée si la donnée manque)":
+    "Required (production refused if the data is missing)",
+  "Original":
+    "Original file",
+  "Page du PDF utilisée comme fond":
+    "PDF page used as background",
+  "Page {n} sur {c}":
+    "Page {n} of {c}",
+  "Page {w} × {h} mm. Faites glisser une zone pour la déplacer, sa poignée pour la redimensionner.":
+    "Page {w} × {h} mm. Drag a field to move it, its handle to resize it.",
+  "Placer ce champ":
+    "Place this field",
+  "Placer les champs":
+    "Place the fields",
+  "Police":
+    "Font",
+  "Production par classe":
+    "Production by class",
+  "Produire les brouillons":
+    "Produce the drafts",
+  "Rendu d'essai vérifié le {d}":
+    "Test rendering checked on {d}",
+  "Rendu…":
+    "Rendering…",
+  "Reprendre la configuration de la version {v} (champs, textes, règle)":
+    "Reuse the configuration of version {v} (fields, texts, rule)",
+  "Retirer ce champ":
+    "Remove this field",
+  "Règle d'émission":
+    "Issuing rule",
+  "Supprimer une version":
+    "Delete a version",
+  "Sélectionnez une académie dans le sélecteur en haut de page : chaque académie a ses propres gabarits, et ils ne se partagent pas.":
+    "Select an academy in the selector at the top of the page: each academy has its own templates, and they are not shared.",
+  "Textes du gabarit":
+    "Template texts",
+  "Téléverser le gabarit du certificat":
+    "Upload the certificate template",
+  "Téléverser le gabarit du diplôme":
+    "Upload the diploma template",
+  "Téléversé le {d}":
+    "Uploaded on {d}",
+  "Un brouillon est produit pour chaque élève de la classe, sur le gabarit de son académie. Les élèves qui ne remplissent pas la règle d'émission ou dont une donnée obligatoire manque sont listés avec le motif.":
+    "A draft is produced for each student of the class, on their academy's template. Students who do not meet the issuing rule or lack required data are listed with the reason.",
+  "Version activée : elle sert désormais à produire les documents.":
+    "Version activated: it is now used to produce documents.",
+  "Version en préparation":
+    "Version in preparation",
+  "Version en service":
+    "Version in use",
+  "Version vérifiée et réactivée.":
+    "Version checked and reactivated.",
+  "Voir la configuration":
+    "View the configuration",
+  "Vérification des données…":
+    "Checking the data…",
+  "Vérification…":
+    "Checking…",
+  "Vérifier":
+    "Check",
+  "Zone hors de la page : {l}":
+    "Field outside the page: {l}",
+  "Zones superposées : {l}":
+    "Overlapping fields: {l}",
+  "activé le {d}":
+    "activated on {d}",
+  "gabarit intégré":
+    "built-in template",
+  "gabarit v{v}":
+    "template v{v}",
+  "page {n} sur {c}":
+    "page {n} of {c}",
+  "par":
+    "by",
+  "paysage":
+    "landscape",
+  "portrait":
+    "portrait orientation",
+  "{c} brouillon(s) produit(s), {r} refusé(s).":
+    "{c} draft(s) produced, {r} refused.",
+  "{k} — version n° {v}":
+    "{k} — version no. {v}",
+  "{n} champ(s) positionné(s)":
+    "{n} field(s) placed",
+  "{n} document(s) délivré(s).":
+    "{n} document(s) issued.",
+  "{n} document(s) produit(s)":
+    "{n} document(s) produced",
+  "Étapes : téléverser → placer les champs → vérifier → activer. Une nouvelle version ne remplace l'ancienne qu'à son activation ; les documents déjà délivrés ne changent jamais.":
+    "Steps: upload → place the fields → check → activate. A new version replaces the old one only when activated; documents already issued never change.",
+  "Téléversé, non validé":
+    "Uploaded, not validated",
+  "Valide, prêt à être activé":
+    "Valid, ready to be activated",
+  "Actif — utilisé pour les documents":
+    "Active — used for documents",
+  "Actif — remplacement en préparation":
+    "Active — replacement in preparation",
+  "Invalide ou incompatible":
+    "Invalid or incompatible",
+  "Remplacé par une version plus récente":
+    "Replaced by a newer version",
+  "Automatique (A4, selon l'orientation de l'image)":
+    "Automatic (A4, based on the image orientation)",
+  "A4 paysage":
+    "A4 landscape",
+  "A4 portrait":
+    "A4 portrait orientation",
+  "A5 paysage":
+    "A5 landscape",
+  "A5 portrait":
+    "A5 portrait orientation",
+  "Lettre US paysage":
+    "US Letter landscape",
+  "Lettre US portrait":
+    "US Letter portrait orientation",
+  "Serif (Crimson Pro)":
+    "Serif font (Crimson Pro)",
+  "Serif italique (Crimson Pro)":
+    "Serif italic (Crimson Pro)",
+  "Sans serif (Helvetica)":
+    "Sans-serif (Helvetica)",
+  "Sans serif gras (Helvetica)":
+    "Sans-serif bold (Helvetica)",
+  "Times":
+    "Times font",
+  "Décision de l'administration (aucune condition automatique)":
+    "Administration decision (no automatic condition)",
+  "Moyenne annuelle minimale":
+    "Minimum annual average",
+  "Élève inscrit dans une classe pour l'année":
+    "Student enrolled in a class for the year",
+  "Intitulé du document":
+    "Document title",
+  "Nom du signataire":
+    "Signatory name",
+  "Fonction du signataire":
+    "Signatory title",
+  "Objet du certificat":
+    "Certificate purpose",
+  "X (mm)":
+    "X position (mm)",
+  "Y (mm)":
+    "Y position (mm)",
+  "Largeur (mm)":
+    "Width (mm)",
+  "Hauteur (mm)":
+    "Height (mm)",
+  "Taille (pt)":
+    "Size (pt)",
+  "Taille min. (pt)":
+    "Min. size (pt)",
+  "PDF (fond vectoriel)":
+    "PDF (vector background)",
+  "Image PNG":
+    "PNG image",
+  "Image JPEG":
+    "JPEG image",
+  "Nom complet de l'élève":
+    "Student full name",
+  "Nom officiel de l'académie":
+    "Academy official name",
+  "Ville de l'académie (« Fait à »)":
+    "Academy city (“Issued at”)",
+  "Mention (barème de l'académie)":
+    "Distinction (academy scale)",
+  "Date d'obtention (saisie à la production)":
+    "Award date (entered at production)",
+  "Date de délivrance":
+    "Issue date",
+  "Numéro de référence (attribué à la délivrance)":
+    "Reference number (assigned on issue)",
 };

@@ -519,7 +519,27 @@ export const documentsAPI = {
   replace:   (id, d)  => api.post(`/documents/${id}/replace/`, d || {}),
   history:   (id)     => api.get(`/documents/${id}/history/`),
   download:  (id)     => api.get(`/documents/${id}/download/`, { responseType: "blob" }),
+  check:     (d)      => api.post("/documents/check/", d),
+  preview:   (d)      => api.post("/documents/preview/", d, { responseType: "blob" }),
+  batch:     (d)      => api.post("/documents/batch/", d),
+  batchIssue: (ids)   => api.post("/documents/batch-issue/", { ids }),
 };
+
+/** Gabarits officiels téléversés par l'académie active (diplôme, certificat). */
+export const documentTemplatesAPI = {
+  list:       ()          => api.get("/documents/academy-templates/"),
+  get:        (id)        => api.get(`/documents/academy-templates/${id}/`),
+  upload:     (formData)  => api.post("/documents/academy-templates/", formData,
+                                     { headers: { "Content-Type": "multipart/form-data" } }),
+  configure:  (id, d)     => api.patch(`/documents/academy-templates/${id}/`, d),
+  remove:     (id, confirm = false) =>
+    api.delete(`/documents/academy-templates/${id}/`, { params: confirm ? { confirm: 1 } : {} }),
+  action:     (id, name)  => api.post(`/documents/academy-templates/${id}/${name}/`),
+  background: (id)        => api.get(`/documents/academy-templates/${id}/background/`, { responseType: "blob" }),
+  original:   (id)        => api.get(`/documents/academy-templates/${id}/original/`, { responseType: "blob" }),
+  preview:    (id, d)     => api.post(`/documents/academy-templates/${id}/preview/`, d || {}, { responseType: "blob" }),
+};
+
 
 export const conversationsAPI = {
   list:     ()        => api.get("/messages/conversations/"),

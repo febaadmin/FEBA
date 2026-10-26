@@ -89,6 +89,7 @@ const AdminGrades = lazy(() => import("../pages/admin/Grades"));
 const AdminPayments = lazy(() => import("../pages/admin/Payments"));
 const AdminCardTransactions = lazy(() => import("../pages/admin/CardTransactions"));
 const AdminOfficialDocuments = lazy(() => import("../pages/admin/OfficialDocuments"));
+const AdminDocumentTemplates = lazy(() => import("../pages/admin/DocumentTemplates"));
 const AdminAttendance = lazy(() => import("../pages/admin/Attendance"));
 const AdminHomework = lazy(() => import("../pages/admin/Homework"));
 const AdminAnnouncements = lazy(() => import("../pages/admin/Announcements"));
@@ -338,6 +339,7 @@ export default function AppRouter() {
         <Route path="payments"      element={<AdminPayments />} />
         <Route path="card-transactions" element={<AdminCardTransactions />} />
         <Route path="official-documents" element={<AdminOfficialDocuments />} />
+        <Route path="document-templates" element={<AdminDocumentTemplates />} />
         <Route path="attendance"    element={<AdminAttendance />} />
         <Route path="homework"      element={<AdminHomework />} />
         <Route path="schedule"      element={<AdminSchedule />} />
@@ -380,6 +382,7 @@ export default function AppRouter() {
         <Route path="payments"      element={<AdminPayments />} />
         <Route path="card-transactions" element={<AdminCardTransactions />} />
         <Route path="official-documents" element={<AdminOfficialDocuments />} />
+        <Route path="document-templates" element={<AdminDocumentTemplates />} />
         <Route path="attendance"    element={<AdminAttendance />} />
         <Route path="homework"      element={<AdminHomework />} />
         <Route path="announcements" element={<AdminAnnouncements />} />

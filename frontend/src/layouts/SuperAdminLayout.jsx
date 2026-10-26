@@ -1,7 +1,7 @@
 import { NavLink } from "react-router-dom";
 import { useState, useEffect } from "react";
 import {
-  Building2, Star, FileBarChart, LayoutDashboard, Users, Shield, GraduationCap, UserCheck, Users2, BookOpen, DollarSign, Megaphone, Settings, LogOut, Menu, X, MessageSquare, Layers, ClipboardList, FileText, Calendar, UserCog, FolderOpen, Image, ClipboardCheck, Video, Globe, AlertTriangle, CreditCard, Award, Mail, BellRing, Inbox,
+  Building2, Star, Stamp, FileBarChart, LayoutDashboard, Users, Shield, GraduationCap, UserCheck, Users2, BookOpen, DollarSign, Megaphone, Settings, LogOut, Menu, X, MessageSquare, Layers, ClipboardList, FileText, Calendar, UserCog, FolderOpen, Image, ClipboardCheck, Video, Globe, AlertTriangle, CreditCard, Award, Mail, BellRing, Inbox,
 } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
 import AcademyLogo from "../components/AcademyLogo";
@@ -40,6 +40,7 @@ const nav = [
   { label: "Transactions carte", icon: CreditCard, to: "/superadmin/card-transactions" },
   { label: "Relances de paiement", icon: BellRing, to: "/superadmin/payment-reminders" },
   { label: "Documents officiels", icon: Award, to: "/superadmin/official-documents" },
+  { label: "Gabarits des documents", icon: Stamp, to: "/superadmin/document-templates" },
     { label: "Absences",          icon: Calendar,      to: "/superadmin/attendance" },
     { label: "Devoirs",           icon: BookOpen,      to: "/superadmin/homework" },
     { label: "Emploi du temps",   icon: Calendar,      to: "/superadmin/schedule" },
