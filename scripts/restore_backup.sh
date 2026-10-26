@@ -12,10 +12,17 @@ set -euo pipefail
 KIND="${1:?Usage: restore_backup.sh <db|media> <archive>}"
 ARCHIVE="${2:?Archive requise}"
 COMPOSE_FILE="${COMPOSE_FILE:-docker-compose.prod.yml}"
-PG_SERVICE="${PG_SERVICE:-postgres}"
-PG_USER="${PG_USER:-feba}"
-PG_DB="${PG_DB:-feba}"
-BACKEND_SERVICE="${BACKEND_SERVICE:-backend}"
+# Mêmes noms que docker-compose.prod.yml et scripts/deploy_feba.sh. Les
+# valeurs précédentes (« backend », « postgres », base « feba ») ne
+# correspondaient à aucun service ni à aucune base de la composition de
+# production : la tâche cron documentée échouait à chaque exécution.
+ENV_FILE="${ENV_FILE:-.env.prod}"
+PROJECT="${FEBA_PROJECT:-}"
+dc() { docker compose ${PROJECT:+-p "$PROJECT"} $( [ -f "$ENV_FILE" ] && echo --env-file "$ENV_FILE" ) -f "$COMPOSE_FILE" "$@"; }
+PG_SERVICE="${PG_SERVICE:-postgres-prod}"
+PG_USER="${PG_USER:-feba_user}"
+PG_DB="${PG_DB:-feba_prod}"
+BACKEND_SERVICE="${BACKEND_SERVICE:-backend-prod}"
 
 [ -f "$ARCHIVE" ] || { echo "✗ Archive introuvable : $ARCHIVE"; exit 1; }
 if [ -f "$ARCHIVE.sha256" ]; then
@@ -31,16 +38,21 @@ read -r -p "⚠ RESTAURATION $KIND depuis $ARCHIVE — les données actuelles se
 case "$KIND" in
   db)
     echo "1/4 Arrêt des services applicatifs…"
-    docker compose -f "$COMPOSE_FILE" stop backend celery celery-beat 2>/dev/null || true
+    dc stop "$BACKEND_SERVICE" celery-prod celery-beat 2>/dev/null || true
     echo "2/4 Recréation de la base…"
-    docker compose -f "$COMPOSE_FILE" exec -T "$PG_SERVICE" \
-        psql -U "$PG_USER" -d postgres -c "DROP DATABASE IF EXISTS $PG_DB; CREATE DATABASE $PG_DB OWNER $PG_USER;"
+    dc exec -T "$PG_SERVICE" \
+        psql -v ON_ERROR_STOP=1 -U "$PG_USER" -d postgres \
+        -c "DROP DATABASE IF EXISTS $PG_DB WITH (FORCE);" \
+        -c "CREATE DATABASE $PG_DB OWNER $PG_USER;"
+    # Deux -c séparés : réunies dans une seule chaîne, les deux commandes
+    # partaient en un bloc transactionnel, que PostgreSQL refuse pour
+    # DROP DATABASE — et le script s'arrêtait en laissant le backend arrêté.
     echo "3/4 Import du dump…"
-    gunzip -c "$ARCHIVE" | docker compose -f "$COMPOSE_FILE" exec -T "$PG_SERVICE" \
+    gunzip -c "$ARCHIVE" | dc exec -T "$PG_SERVICE" \
         psql -U "$PG_USER" -d "$PG_DB" -q
     echo "4/4 Redémarrage…"
-    docker compose -f "$COMPOSE_FILE" start backend celery celery-beat 2>/dev/null || \
-        docker compose -f "$COMPOSE_FILE" up -d
+    dc start "$BACKEND_SERVICE" celery-prod celery-beat 2>/dev/null || \
+        dc up -d
     echo "✔ Base restaurée. Vérifiez /api/health/ puis un parcours de connexion."
     ;;
   media)
@@ -50,8 +62,11 @@ case "$KIND" in
     DIRS=$(tar tzf "$ARCHIVE" | cut -d/ -f1 | sort -u | grep -Ex 'media|private_media' | tr '\n' ' ')
     [ -n "$DIRS" ] || { echo "✗ Archive sans répertoire media/ ni private_media/"; exit 1; }
     echo "Restauration de : $DIRS"
-    cat "$ARCHIVE" | docker compose -f "$COMPOSE_FILE" exec -T "$BACKEND_SERVICE" \
-        sh -c "cd /app && rm -rf $DIRS && tar xzf - -C /app"
+    cat "$ARCHIVE" | dc exec -T "$BACKEND_SERVICE" \
+        sh -c "cd /app && for d in $DIRS; do mkdir -p \$d && find \$d -mindepth 1 -delete; done && tar xzf - -C /app"
+    # On VIDE les répertoires sans les supprimer : en production ce sont des
+    # points de montage de volumes, que « rm -rf » ne peut pas retirer
+    # (« Device or resource busy ») — la restauration échouait.
     echo "✔ Fichiers restaurés ($DIRS)."
     ;;
   *) echo "✗ Type inconnu : $KIND (db|media)"; exit 1 ;;

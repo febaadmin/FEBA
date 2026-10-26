@@ -14,7 +14,14 @@ set -euo pipefail
 
 BACKUP_ROOT="${1:-./backups}"
 COMPOSE_FILE="${COMPOSE_FILE:-docker-compose.prod.yml}"
-BACKEND_SERVICE="${BACKEND_SERVICE:-backend}"
+# Mêmes noms que docker-compose.prod.yml et scripts/deploy_feba.sh. Les
+# valeurs précédentes (« backend », « postgres », base « feba ») ne
+# correspondaient à aucun service ni à aucune base de la composition de
+# production : la tâche cron documentée échouait à chaque exécution.
+ENV_FILE="${ENV_FILE:-.env.prod}"
+PROJECT="${FEBA_PROJECT:-}"
+dc() { docker compose ${PROJECT:+-p "$PROJECT"} $( [ -f "$ENV_FILE" ] && echo --env-file "$ENV_FILE" ) -f "$COMPOSE_FILE" "$@"; }
+BACKEND_SERVICE="${BACKEND_SERVICE:-backend-prod}"
 STAMP=$(date +%F)
 DOW=$(date +%u); DOM=$(date +%d)
 
@@ -24,7 +31,7 @@ ARCHIVE="$BACKUP_ROOT/daily/feba_media_${STAMP}.tar.gz"
 echo "[$(date '+%F %T')] Sauvegarde médias et fichiers privés…"
 # `private_media` n'est ajouté que s'il existe : une installation qui n'a
 # encore produit aucun fichier privé reste sauvegardable.
-docker compose -f "$COMPOSE_FILE" exec -T "$BACKEND_SERVICE" \
+dc exec -T "$BACKEND_SERVICE" \
     sh -c 'cd /app && if [ -d private_media ]; then tar czf - media private_media; else tar czf - media; fi' \
     | cat > "$ARCHIVE"
 # Une archive vide ou tronquée ne doit pas passer pour une sauvegarde :

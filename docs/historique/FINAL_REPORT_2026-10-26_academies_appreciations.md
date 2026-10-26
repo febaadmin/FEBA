@@ -1,3 +1,5 @@
+> **DOCUMENT HISTORIQUE** — version « académies typées, fiche FHA, appréciations ». Voir `FINAL_REPORT.md` pour la version en cours.
+
 # FEBA — Rapport final : fiche d'inscription FHA, académies typées, appréciations administrables
 
 26 octobre 2026 · branche `feat/academies-inscriptions-appreciations`.

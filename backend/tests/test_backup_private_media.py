@@ -139,3 +139,35 @@ class BackupReachesOffsiteCopyTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr + result.stdout)
         self.assertIn("copie distante", result.stdout)
         self.assertIn("distant:feba", (self.root / "rclone.log").read_text())
+
+
+@unittest.skipUnless((SCRIPTS.parent / "docker-compose.prod.yml").exists(),
+                     "composition de production absente de cet environnement")
+class ScriptDefaultsMatchProductionComposeTests(unittest.TestCase):
+    """
+    Défaut corrigé : les scripts visaient par défaut les services
+    « backend » / « postgres » et la base « feba », inexistants dans
+    docker-compose.prod.yml — la tâche cron documentée échouait toujours.
+    (Vérifié aussi par une exécution réelle contre la pile de production
+    locale : sauvegarde, restauration des fichiers et de la base.)
+    """
+
+    def test_services_base_et_utilisateur_par_defaut(self):
+        import re
+
+        import yaml
+
+        compose = yaml.safe_load((SCRIPTS.parent / "docker-compose.prod.yml").read_text())
+        services = set(compose["services"])
+        env = compose["services"]["postgres-prod"]["environment"]
+        for script in ("backup_database.sh", "backup_files.sh", "restore_backup.sh"):
+            text = (SCRIPTS / script).read_text()
+            for var in ("PG_SERVICE", "BACKEND_SERVICE"):
+                match = re.search(rf'{var}="\$\{{{var}:-([^}}]+)\}}"', text)
+                if match:
+                    self.assertIn(match.group(1), services, f"{script} : {var}")
+            for var, key in (("PG_USER", "POSTGRES_USER"), ("PG_DB", "POSTGRES_DB")):
+                match = re.search(rf'{var}="\$\{{{var}:-([^}}]+)\}}"', text)
+                if match:
+                    self.assertEqual(match.group(1), env[key], f"{script} : {var}")
+            self.assertNotIn('docker compose -f "$COMPOSE_FILE"', text)

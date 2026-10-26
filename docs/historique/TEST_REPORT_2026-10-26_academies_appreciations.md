@@ -1,3 +1,5 @@
+> **DOCUMENT HISTORIQUE** — version « académies typées, fiche FHA, appréciations ». Voir `FINAL_REPORT.md` pour la version en cours.
+
 # FEBA — Rapport de tests : fiche FHA, académies typées, appréciations, isolation
 
 26 octobre 2026, branche `feat/academies-inscriptions-appreciations`, **en local

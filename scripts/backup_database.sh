@@ -13,9 +13,16 @@ set -euo pipefail
 
 BACKUP_ROOT="${1:-./backups}"
 COMPOSE_FILE="${COMPOSE_FILE:-docker-compose.prod.yml}"
-PG_SERVICE="${PG_SERVICE:-postgres}"
-PG_USER="${PG_USER:-feba}"
-PG_DB="${PG_DB:-feba}"
+# Mêmes noms que docker-compose.prod.yml et scripts/deploy_feba.sh. Les
+# valeurs précédentes (« backend », « postgres », base « feba ») ne
+# correspondaient à aucun service ni à aucune base de la composition de
+# production : la tâche cron documentée échouait à chaque exécution.
+ENV_FILE="${ENV_FILE:-.env.prod}"
+PROJECT="${FEBA_PROJECT:-}"
+dc() { docker compose ${PROJECT:+-p "$PROJECT"} $( [ -f "$ENV_FILE" ] && echo --env-file "$ENV_FILE" ) -f "$COMPOSE_FILE" "$@"; }
+PG_SERVICE="${PG_SERVICE:-postgres-prod}"
+PG_USER="${PG_USER:-feba_user}"
+PG_DB="${PG_DB:-feba_prod}"
 STAMP=$(date +%F)
 DOW=$(date +%u)    # 1..7 (7 = dimanche)
 DOM=$(date +%d)    # jour du mois
@@ -24,7 +31,7 @@ mkdir -p "$BACKUP_ROOT"/{daily,weekly,monthly}
 
 echo "[$(date '+%F %T')] Sauvegarde base ${PG_DB}…"
 DUMP="$BACKUP_ROOT/daily/feba_db_${STAMP}.sql.gz"
-docker compose -f "$COMPOSE_FILE" exec -T "$PG_SERVICE" \
+dc exec -T "$PG_SERVICE" \
     pg_dump -U "$PG_USER" "$PG_DB" | gzip > "$DUMP"
 
 sha256sum "$DUMP" > "$DUMP.sha256"

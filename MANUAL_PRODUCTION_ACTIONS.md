@@ -30,10 +30,22 @@ Rien n'a été déployé ni migré en production. Validations : en local (voir
    (diplômes délivrés, gabarits, dossiers FHA, rapports mensuels). L'ancien
    script n'archivait que `media/`. Vérifier une archive :
    `tar tzf /backups/feba/daily/feba_media_$(date +%F).tar.gz | grep -c '^private_media/'`.
-   Les deux scripts de sauvegarde s'arrêtaient aussi en erreur avant la copie
-   hors site tant que les dossiers hebdomadaire et mensuel étaient vides
-   (corrigé) : vérifier dans `/var/log/feba-backup.log` la ligne
-   « copie distante ».
+   Autres défauts corrigés dans ces scripts, constatés en les EXÉCUTANT
+   contre la pile de production locale :
+   - ils visaient les services « backend » / « postgres » et la base
+     « feba », absents de `docker-compose.prod.yml` (les tâches cron
+     documentées échouaient donc à chaque exécution) — désormais
+     `backend-prod`, `postgres-prod`, `feba_user`/`feba_prod`, et
+     `--env-file .env.prod` ;
+   - ils s'arrêtaient avant la copie hors site tant que les dossiers
+     hebdomadaire / mensuel étaient vides ;
+   - la restauration des fichiers échouait (« Device or resource busy » :
+     les répertoires sont des volumes) et celle de la base aussi
+     (`DROP DATABASE` dans un bloc transactionnel), en laissant le backend
+     arrêté.
+   À faire : vérifier `/var/log/feba-backup.log` (lignes « terminée » et
+   « copie distante ») après la première nuit, puis un essai de
+   restauration sur un serveur de test (`RESTORE_GUIDE.md`).
 3. **Gabarits** : chaque académie téléverse ses fonds dans « Gabarits des
    documents » (`DOCUMENT_TEMPLATES_GUIDE.md`). FEBA et FEBA FHA gardent
    leurs gabarits intégrés tant qu'aucun gabarit téléversé n'est activé.
