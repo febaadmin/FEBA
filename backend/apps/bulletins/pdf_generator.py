@@ -180,12 +180,33 @@ def C(text, *, align='LEFT', bold=False, size=8, color=None):
 
 # ─── Entry Point ──────────────────────────────────────────────────────────────
 
-def generate_bulletin(student, period, school_year):
+#: Valeur sentinelle : « ne pas toucher au commentaire ».
+UNCHANGED = object()
+
+
+def generate_bulletin(student, period, school_year, *, comment=UNCHANGED):
     """
     Génère (ou régénère) le bulletin PDF d'un élève.
     Template maternelle si le niveau est maternelle, sinon template
     bilingue standard (parties FR et EN séparées).
+
+    Régénération SANS PERTE (P0 commentaires) :
+      - le bulletin existant (élève, année, période) est RÉUTILISÉ — jamais
+        supprimé : son commentaire, son inscription et son identifiant
+        survivent à toutes les régénérations ;
+      - le PDF est construit EN MÉMOIRE d'abord. Si la construction échoue,
+        rien n'est écrit : bulletin, commentaire et ancien PDF restent tels
+        quels, et un bulletin qui n'existait pas n'est pas créé ;
+      - le nouveau fichier porte un nom unique (l'URL change, le navigateur
+        ne peut pas resservir l'ancienne version) ; l'ancien fichier n'est
+        supprimé qu'après l'enregistrement réussi du nouveau.
+
+    `comment` : nouveau commentaire du directeur à imprimer et enregistrer ;
+    par défaut le commentaire enregistré est conservé.
     """
+    from django.db import IntegrityError, transaction
+    from apps.students.services import get_or_create_enrollment
+
     logger.info(f"Generating bulletin: {student.matricule} {period} {school_year.name}")
 
     # Classe de l'élève POUR L'ANNÉE DEMANDÉE (inscription annuelle),
@@ -213,52 +234,80 @@ def generate_bulletin(student, period, school_year):
     # calculées automatiquement à partir des résultats de tous les élèves.
     class_stats = Grade.get_class_bilingual_stats(student_class, school_year, period)
 
-    # Upsert bulletin
-    bulletin, created = Bulletin.objects.get_or_create(
+    # Copie DE TRAVAIL du bulletin : rien n'est enregistré avant que le PDF
+    # soit construit.
+    existing = Bulletin.objects.filter(
         student=student, school_year=school_year, period=period,
-    )
-    if not created and bulletin.pdf_file:
-        try:
-            bulletin.pdf_file.delete(save=False)
-        except Exception as exc:
-            logger.warning("Erreur non bloquante ignorée : %s", exc, exc_info=True)
-    bulletin.average = average
-    bulletin.appreciation = get_appreciation(average)
+    ).first()
+    draft = existing or Bulletin(student=student, school_year=school_year, period=period)
+    if comment is not UNCHANGED:
+        draft.general_comment = comment
+    draft.average = average
+    draft.appreciation = get_appreciation(average)
     # BUG N°2 : le rang n'apparaît plus sur le bulletin et n'est plus calculé.
-    bulletin.rank_in_class = None
+    draft.rank_in_class = None
 
+    # P0 — l'identité vient de l'académie DE L'ÉLÈVE, résolue une fois
+    # et transportée jusqu'au dernier trait de couleur du document.
+    palette = Palette(branding_for(student))
+    buffer = BytesIO()
     try:
-        # P0 — l'identité vient de l'académie DE L'ÉLÈVE, résolue une fois
-        # et transportée jusqu'au dernier trait de couleur du document.
-        palette = Palette(branding_for(student))
-        buffer = BytesIO()
-
         if is_maternelle:
             _build_maternelle_pdf(buffer, student, period, school_year,
-                                  subject_data, average, bulletin, palette)
+                                  subject_data, average, draft, palette)
         else:
             _build_standard_pdf(buffer, student, period, school_year,
                                 subject_data, bilingual_data, class_stats,
-                                average, bulletin, palette,
+                                average, draft, palette,
                                 expected_languages=_expected_languages(student_class))
-
         pdf_bytes = buffer.getvalue()
-        buffer.close()
-
-        if bulletin.pdf_file:
-            try:
-                bulletin.pdf_file.delete(save=False)
-            except Exception as exc:
-                logger.warning("Erreur non bloquante ignorée : %s", exc, exc_info=True)
-        filename = f"bulletin_{student.matricule}_{period}_{school_year.name}.pdf"
-        bulletin.pdf_file.save(filename, ContentFile(pdf_bytes), save=False)
-        bulletin.save()
-        logger.info(f"Bulletin saved: {filename} ({len(pdf_bytes)} bytes)")
     except Exception as e:
         logger.error(f"PDF build failed {student.matricule}/{period}: {e}", exc_info=True)
-        bulletin.save()
+        raise
+    finally:
+        buffer.close()
+
+    now = timezone.now()
+    filename = (f"bulletin_{student.matricule}_{period}_{school_year.name}_"
+                f"{now.strftime('%Y%m%d%H%M%S%f')}.pdf")
+    enrollment, _ = get_or_create_enrollment(student, school_year.id)
+
+    old_name = new_name = None
+    try:
+        with transaction.atomic():
+            try:
+                bulletin, _created = Bulletin.objects.select_for_update().get_or_create(
+                    student=student, school_year=school_year, period=period)
+            except IntegrityError:
+                # Création concurrente du même bulletin : on reprend l'existant.
+                bulletin = Bulletin.objects.select_for_update().get(
+                    student=student, school_year=school_year, period=period)
+            old_name = bulletin.pdf_file.name or None
+            if comment is not UNCHANGED:
+                bulletin.general_comment = comment
+            bulletin.average = draft.average
+            bulletin.appreciation = draft.appreciation
+            bulletin.rank_in_class = None
+            bulletin.enrollment = enrollment
+            bulletin.generated_at = now
+            bulletin.pdf_file.save(filename, ContentFile(pdf_bytes), save=False)
+            new_name = bulletin.pdf_file.name
+            bulletin.save()
+    except Exception:
+        # Le nouveau fichier a pu être écrit avant l'échec : il est orphelin.
+        try:
+            if new_name and new_name != old_name:
+                Bulletin.pdf_file.field.storage.delete(new_name)
+        except Exception as exc:
+            logger.warning("Nettoyage du PDF orphelin impossible : %s", exc)
         raise
 
+    if old_name and old_name != bulletin.pdf_file.name:
+        try:
+            Bulletin.pdf_file.field.storage.delete(old_name)
+        except Exception as exc:
+            logger.warning("Ancien PDF non supprimé (non bloquant) : %s", exc, exc_info=True)
+    logger.info(f"Bulletin saved: {bulletin.pdf_file.name} ({len(pdf_bytes)} bytes)")
     return bulletin
 
 
@@ -901,10 +950,15 @@ def _build_maternelle_pdf(buffer, student, period, school_year, subject_data,
 
 # ─── Signatures & pied de page ────────────────────────────────────────────────
 
+#: Hauteur au-delà de laquelle le commentaire quitte la case pour un bloc
+#: pleine largeur (≈ 1 200 caractères tiennent dans la case).
+_COMMENT_BOX_MAX_HEIGHT = 9 * cm
+
+
 def _add_signatures(story, bulletin, palette):
     story.append(HRFlowable(width='100%', thickness=1, color=colors.lightgrey))
     story.append(Spacer(1, 0.2 * cm))
-    comment = bulletin.general_comment or '(Aucun commentaire / No comment)'
+    comment = (bulletin.general_comment or '').strip() or '(Aucun commentaire / No comment)'
     # V7 : cachet officiel de la direction apposé dans la case « Cachet ».
     # P0 — le cachet est celui de CETTE académie ; absent, la case reste vide.
     cachet_path = palette.brand.stamp
@@ -947,10 +1001,26 @@ def _add_signatures(story, bulletin, palette):
     # ligne pleine largeur est ainsi absorbé : la zone de validation gagne la
     # hauteur nécessaire à un cachet correctement rendu, SANS allonger le
     # bulletin (un bulletin chargé tient toujours sur une seule page A4).
+    # La case du commentaire avait une hauteur FIXE (2,4 cm) : un commentaire
+    # long débordait sur la signature du parent. Elle garde sa hauteur
+    # minimale et grandit avec le texte ; le bloc entier (KeepTogether)
+    # passe sur la page suivante plutôt que d'être coupé ou tronqué.
+    comment_para = C(comment)
+    _, text_h = comment_para.wrap(9.4 * cm - 10, 100 * cm)
+    if text_h > _COMMENT_BOX_MAX_HEIGHT:
+        # Trop long pour la case (données anciennes : l'API limite désormais
+        # la saisie) : le texte intégral est imprimé pleine largeur, dans un
+        # bloc qui peut se poursuivre sur la page suivante — jamais tronqué.
+        story.append(C('Commentaire du Directeur / Principal\'s Comment', bold=True))
+        story.append(Spacer(1, 0.1 * cm))
+        story.append(pdf_paragraph(comment, fontName='Helvetica', fontSize=8, leading=9.5))
+        story.append(Spacer(1, 0.3 * cm))
+        comment_para = C('(Voir le commentaire complet ci-dessus / See full comment above)')
+        text_h = 0
     comment_box = Table(
         [[C('Commentaire du Directeur / Principal\'s Comment', bold=True)],
-         [C(comment)]],
-        colWidths=[9.4 * cm], rowHeights=[0.5 * cm, 2.4 * cm],
+         [comment_para]],
+        colWidths=[9.4 * cm], rowHeights=[0.5 * cm, max(2.4 * cm, text_h + 8)],
     )
     comment_box.setStyle(TableStyle([
         ('BOX', (0, 0), (-1, -1), 0.25, colors.lightgrey),

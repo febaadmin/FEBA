@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Plus, Trash2, BarChart2, BookOpen, Globe, User, Clock, History, Layers } from "lucide-react";
+import { Plus, Trash2, BarChart2, BookOpen, Globe, User, Clock, History, Layers, MessageSquare } from "lucide-react";
 import { useForm, Controller } from "react-hook-form";
 import toast from "react-hot-toast";
 import { gradesAPI, studentsAPI, subjectsAPI, schoolsAPI, classesAPI } from "../../api";
@@ -22,6 +22,7 @@ import PageHeader from "../../components/ui/PageHeader";
 import Modal from "../../components/ui/Modal";
 import SearchableSelect from "../../components/ui/SearchableSelect";
 import BulkGradeModal from "../../components/grades/BulkGradeModal";
+import BulletinCommentManager from "../../components/bulletins/BulletinCommentManager";
 import { extractApiError } from "../../utils/errors";
 import { isValidGrade, gradePayloadValue } from "../../utils/gradeInput";
 import { t, dateLocale } from "../../i18n";
@@ -67,6 +68,9 @@ export default function AdminGrades() {
   const qc = useQueryClient();
   const [view, setView] = useState("list"); // "list" | "summary" | "bilingual" | "deleted" | "allhistory"
   const [addOpen, setAddOpen] = useState(false);
+  // Commentaire du directeur imprimé sur le bulletin — distinct du
+  // commentaire d'une note (champ « comment » de la note).
+  const [bulletinCommentOpen, setBulletinCommentOpen] = useState(false);
   const [bulkOpen, setBulkOpen] = useState(false);
   const [editItem, setEditItem] = useState(null);
   const [histItem, setHistItem] = useState(null);
@@ -329,6 +333,8 @@ export default function AdminGrades() {
                 Excel / CSV ({grades.length})
               </button>
             )}
+            <button onClick={() => setBulletinCommentOpen(true)}
+              className="btn-secondary flex items-center gap-2"><MessageSquare className="w-4 h-4" />{t("Commentaires des bulletins")}</button>
             <button onClick={() => setBulkOpen(true)}
               className="btn-secondary flex items-center gap-2"><Layers className="w-4 h-4" />{t("Saisie groupée")}</button>
             <button onClick={() => { reset({ school_year: currentYear?.id || "" }); setAddOpen(true); }}
@@ -336,6 +342,9 @@ export default function AdminGrades() {
           </div>
         }
       />
+
+      <BulletinCommentManager open={bulletinCommentOpen} onClose={() => setBulletinCommentOpen(false)}
+        initial={{ yearId: currentYear?.id }} />
 
       <BulkGradeModal
         open={bulkOpen}

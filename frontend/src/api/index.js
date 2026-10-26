@@ -566,6 +566,12 @@ export const bulletinsAPI = {
   generate: (d)      => api.post("/bulletins/generate/", d),
   generateClass: (d) => api.post("/bulletins/generate-class/", d),
   generateAll: (d)   => api.post("/bulletins/generate-all/", d),
+  // Commentaire du directeur : un bulletin (PDF régénéré) ou une portée.
+  comment: (id, d)   => api.post(`/bulletins/${id}/comment/`, d),
+  commentPreview: (d) => api.post("/bulletins/comment-preview/", d),
+  createOperation: (d) => api.post("/bulletins/operations/", d),
+  operation: (id)    => api.get(`/bulletins/operations/${id}/`),
+  operations: ()     => api.get("/bulletins/operations/"),
   delete: (id)       => api.delete(`/bulletins/${id}/`),
   bulkDelete: (ids)  => api.post(`/bulletins/bulk-delete/`, { ids }),
 };
