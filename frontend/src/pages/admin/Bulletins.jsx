@@ -38,8 +38,11 @@ export default function AdminBulletins() {
   const { register, handleSubmit, reset, control } = useForm();
   const [commentOpen, setCommentOpen] = useState(false);
   const [commentInitial, setCommentInitial] = useState({});
+  const [commentKey, setCommentKey] = useState(0);
   const [genOpId, setGenOpId] = useState(null);
-  const openComments = (initial = {}) => { setCommentInitial(initial); setCommentOpen(true); };
+  const openComments = (initial = {}) => {
+    setCommentInitial(initial); setCommentKey((k) => k + 1); setCommentOpen(true);
+  };
 
   // 1. D'abord les données de référence
   const { data: studData } = useQuery({ queryKey: ["students-all"], queryFn: () => studentsAPI.list() });
@@ -99,11 +102,10 @@ export default function AdminBulletins() {
     },
   });
   const genOp = genOpData?.data;
+  const genOpFinished = Boolean(genOp && genOp.status !== "queued" && genOp.status !== "running");
   useEffect(() => {
-    if (genOp && genOp.status !== "queued" && genOp.status !== "running") {
-      qc.invalidateQueries({ queryKey: ["bulletins"] });
-    }
-  }, [genOp?.status, qc]);
+    if (genOpFinished) qc.invalidateQueries({ queryKey: ["bulletins"] });
+  }, [genOpFinished, qc]);
 
   const onSubmit = (d) => {
     const payload = { ...d };
@@ -206,7 +208,7 @@ export default function AdminBulletins() {
           )} />
       </div>
 
-      <BulletinCommentManager open={commentOpen} onClose={() => setCommentOpen(false)} initial={commentInitial} />
+      <BulletinCommentManager key={commentKey} open={commentOpen} onClose={() => setCommentOpen(false)} initial={commentInitial} />
 
       <Modal open={genOpen} onClose={() => { setGenOpen(false); reset(); }}
         title={genMode === "class" ? "Générer bulletins d'une classe" : genMode === "all" ? t("Générer tous les bulletins") : t("Générer un bulletin")}>

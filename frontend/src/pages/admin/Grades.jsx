@@ -71,6 +71,7 @@ export default function AdminGrades() {
   // Commentaire du directeur imprimé sur le bulletin — distinct du
   // commentaire d'une note (champ « comment » de la note).
   const [bulletinCommentOpen, setBulletinCommentOpen] = useState(false);
+  const [bulletinCommentKey, setBulletinCommentKey] = useState(0);
   const [bulkOpen, setBulkOpen] = useState(false);
   const [editItem, setEditItem] = useState(null);
   const [histItem, setHistItem] = useState(null);
@@ -333,7 +334,7 @@ export default function AdminGrades() {
                 Excel / CSV ({grades.length})
               </button>
             )}
-            <button onClick={() => setBulletinCommentOpen(true)}
+            <button onClick={() => { setBulletinCommentKey((k) => k + 1); setBulletinCommentOpen(true); }}
               className="btn-secondary flex items-center gap-2"><MessageSquare className="w-4 h-4" />{t("Commentaires des bulletins")}</button>
             <button onClick={() => setBulkOpen(true)}
               className="btn-secondary flex items-center gap-2"><Layers className="w-4 h-4" />{t("Saisie groupée")}</button>
@@ -343,7 +344,7 @@ export default function AdminGrades() {
         }
       />
 
-      <BulletinCommentManager open={bulletinCommentOpen} onClose={() => setBulletinCommentOpen(false)}
+      <BulletinCommentManager key={bulletinCommentKey} open={bulletinCommentOpen} onClose={() => setBulletinCommentOpen(false)}
         initial={{ yearId: currentYear?.id }} />
 
       <BulkGradeModal

@@ -91,6 +91,8 @@ export function OperationReport({ op }) {
 }
 
 export default function BulletinCommentManager({ open, onClose, initial = {} }) {
+  // Les parents remontent le composant (prop `key`) à chaque ouverture :
+  // l'état part donc toujours de `initial`, sans réinitialisation en effet.
   const qc = useQueryClient();
   const { isAllAcademies, activeAcademy } = useAcademy();
   const [scope, setScope] = useState(initial.scope || "student");
@@ -99,29 +101,8 @@ export default function BulletinCommentManager({ open, onClose, initial = {} }) 
   const [yearId, setYearId] = useState(initial.yearId || "");
   const [period, setPeriod] = useState(initial.period || "T1");
   const [action, setAction] = useState("set_comment");
-  const [comment, setComment] = useState("");
   const [regenerate, setRegenerate] = useState(true);
   const [createMissing, setCreateMissing] = useState(false);
-  const [preview, setPreview] = useState(null);
-  const [confirming, setConfirming] = useState(false);
-  const [opId, setOpId] = useState(null);
-  const [error, setError] = useState("");
-
-  useEffect(() => {
-    if (!open) return;
-    setScope(initial.scope || "student");
-    setStudentId(initial.studentId || "");
-    setClassId(initial.classId || "");
-    setYearId(initial.yearId || "");
-    setPeriod(initial.period || "T1");
-    setAction("set_comment");
-    setComment("");
-    setPreview(null);
-    setConfirming(false);
-    setOpId(null);
-    setError("");
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open]);
 
   const { data: studData } = useQuery({ queryKey: ["students-all"], queryFn: () => studentsAPI.list(), enabled: open });
   const { data: classData } = useQuery({ queryKey: ["classes"], queryFn: () => classesAPI.list(), enabled: open });
@@ -138,49 +119,57 @@ export default function BulletinCommentManager({ open, onClose, initial = {} }) 
     ...(scope === "student" ? { student_id: studentId } : {}),
     ...(scope === "class" ? { class_id: classId } : {}),
   };
+  const targetKey = JSON.stringify(target);
   const targetReady = Boolean(effectiveYear && period && (scope === "academy"
     || (scope === "student" && studentId) || (scope === "class" && classId)));
 
+  // Les états passagers sont rattachés à la cible : changer d'élève, de
+  // classe ou de période les fait disparaître d'eux-mêmes.
+  const [draftState, setDraftState] = useState({ key: null, text: "" });
+  const [confirmKey, setConfirmKey] = useState(null);
+  const [opState, setOpState] = useState({ key: null, id: null });
+  const [errorState, setErrorState] = useState({ key: null, text: "" });
+  const setError = (text) => setErrorState({ key: targetKey, text });
+
   // Aperçu serveur de la portée (et, pour un élève, son bulletin).
-  const previewMut = useMutation({
-    mutationFn: () => bulletinsAPI.commentPreview(target),
-    onSuccess: (res) => {
-      setPreview(res.data);
-      setError("");
-      if (scope === "student") setComment(res.data.bulletin?.general_comment || "");
-    },
-    onError: (e) => { setPreview(null); setError(extractApiError(e)); },
+  const previewQuery = useQuery({
+    queryKey: ["bulletin-comment-preview", targetKey],
+    queryFn: () => bulletinsAPI.commentPreview(target).then((r) => r.data),
+    enabled: Boolean(open && targetReady && !isAllAcademies),
+    retry: false,
+    gcTime: 0,
   });
-  useEffect(() => {
-    setPreview(null);
-    setConfirming(false);
-    setOpId(null);
-    if (open && targetReady && !isAllAcademies) previewMut.mutate();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, scope, studentId, classId, effectiveYear, period, isAllAcademies]);
+  const preview = previewQuery.data || null;
+  const error = errorState.key === targetKey ? errorState.text
+    : previewQuery.error ? extractApiError(previewQuery.error) : "";
 
   const refreshBulletins = () => {
     qc.invalidateQueries({ queryKey: ["bulletins"] });
   };
 
-  // Un élève, bulletin existant : enregistrement direct + PDF régénéré.
+  // Brouillon : celui de l'utilisateur pour CE bulletin, sinon le commentaire enregistré.
   const bulletin = preview?.bulletin || null;
+  const draftKey = `${targetKey}|${bulletin?.comment_updated_at || ""}|${bulletin?.generated_at || ""}`;
+  const comment = draftState.key === draftKey ? draftState.text
+    : (scope === "student" ? (bulletin?.general_comment || "") : "");
+  const setComment = (text) => setDraftState({ key: draftKey, text });
+
+  // Un élève, bulletin existant : enregistrement direct + PDF régénéré.
   const saveMut = useMutation({
     mutationFn: (text) => bulletinsAPI.comment(bulletin.id, {
       comment: text, regenerate, expected_comment: bulletin.general_comment,
     }),
     onSuccess: (res) => {
       const result = res.data.result;
-      setPreview((p) => ({ ...p, bulletin: res.data.bulletin }));
-      setComment(res.data.bulletin.general_comment || "");
+      qc.setQueryData(["bulletin-comment-preview", targetKey],
+        (p) => ({ ...(p || {}), bulletin: res.data.bulletin }));
       refreshBulletins();
-      if (result.failed) setError(result.failures.map((f) => f.reason).join(" ; "));
-      else setError("");
+      setError(result.failed ? result.failures.map((f) => f.reason).join(" ; ") : "");
     },
     onError: (e) => {
       if (e.response?.status === 409) {
         setError(t("Le commentaire a été modifié par quelqu'un d'autre entre-temps. Rechargez-le avant de l'enregistrer."));
-        previewMut.mutate();
+        previewQuery.refetch();
       } else setError(extractApiError(e));
     },
   });
@@ -193,9 +182,10 @@ export default function BulletinCommentManager({ open, onClose, initial = {} }) 
       comment: scope === "student" || action === "set_comment" ? comment : "",
       regenerate, create_missing: createMissing,
     }),
-    onSuccess: (res) => { setOpId(res.data.id); setConfirming(false); setError(""); },
-    onError: (e) => { setConfirming(false); setError(extractApiError(e)); },
+    onSuccess: (res) => { setOpState({ key: targetKey, id: res.data.id }); setConfirmKey(null); setError(""); },
+    onError: (e) => { setConfirmKey(null); setError(extractApiError(e)); },
   });
+  const opId = opState.key === targetKey ? opState.id : null;
   const { data: opData } = useQuery({
     queryKey: ["bulletin-operation", opId],
     queryFn: () => bulletinsAPI.operation(opId),
@@ -205,15 +195,16 @@ export default function BulletinCommentManager({ open, onClose, initial = {} }) 
       return st && st !== "queued" && st !== "running" ? false : 1500;
     },
   });
-  const op = opData?.data;
+  const op = opId ? opData?.data : null;
+  const opFinished = Boolean(op && op.status !== "queued" && op.status !== "running");
   useEffect(() => {
-    if (op && op.status !== "queued" && op.status !== "running") {
-      refreshBulletins();
-      if (scope === "student") previewMut.mutate();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [op?.status]);
+    if (!opFinished) return;
+    qc.invalidateQueries({ queryKey: ["bulletins"] });
+    qc.invalidateQueries({ queryKey: ["bulletin-comment-preview"] });
+  }, [opFinished, qc]);
 
+  const confirming = confirmKey === `${targetKey}|${action}`;
+  const setConfirming = (on) => setConfirmKey(on ? `${targetKey}|${action}` : null);
   const tooLong = comment.trim().length > COMMENT_MAX;
   const busy = saveMut.isPending || opMut.isPending || (op && (op.status === "queued" || op.status === "running"));
   const scopeLabel = scope === "student" ? (preview?.student?.name || "")
@@ -270,7 +261,7 @@ export default function BulletinCommentManager({ open, onClose, initial = {} }) 
           </div>
         )}
 
-        {previewMut.isPending && <p className="text-sm text-slate-500">{t("Chargement…")}</p>}
+        {previewQuery.isFetching && !preview && <p className="text-sm text-slate-500">{t("Chargement…")}</p>}
 
         {/* Un élève : état du bulletin */}
         {scope === "student" && preview && (
