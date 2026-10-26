@@ -11,4 +11,5 @@ urlpatterns = [
     # comme un identifiant de salle par la route détail du ViewSet.
     path("health/", views.JitsiHealthView.as_view(), name="jitsi-health"),
     path("webhook/", views.PlugNmeetWebhookView.as_view(), name="plugnmeet-webhook"),
+    path("meeting-branding/", views.MeetingBrandingView.as_view(), name="plugnmeet-meeting-branding"),
 ] + router.urls

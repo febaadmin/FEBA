@@ -33,6 +33,9 @@ NATS_BOX_IMAGE="natsio/nats-box:0.20.0"
 
 DOMAIN=""
 PUBLIC_IP=""
+# Adresse publique de FEBA, que le client plugNmeet interroge pour l'identité
+# de l'académie (titre et favicon de l'onglet). --feba-url ou FEBA_PUBLIC_URL.
+FEBA_URL="${FEBA_PUBLIC_URL:-}"
 LOCAL=0
 ROTATE=0
 
@@ -46,6 +49,7 @@ while [ $# -gt 0 ]; do
     --domain) DOMAIN="$2"; shift 2 ;;
     --public-ip) PUBLIC_IP="$2"; shift 2 ;;
     --local) LOCAL=1; shift ;;
+    --feba-url) FEBA_URL="$2"; shift 2 ;;
     --rotate-secrets) ROTATE=1; shift ;;
     -h|--help) usage 0 ;;
     *) echo "Option inconnue : $1"; usage 1 ;;
@@ -194,6 +198,36 @@ if n != 1:
     sys.exit("ÉCHEC : serverUrl introuvable dans config.js du client.")
 open(p, "w").write(s)
 PY
+
+# ── Identité FEBA de l'onglet (titre exact et favicon par académie) ─────
+# Le client plugNmeet impose le nom de la salle comme titre d'onglet ; le
+# script FEBA, recopié dans le client et référencé par son index.html, le
+# remplace par l'identité de l'académie de la salle (vérifiée par FEBA à
+# partir du jeton signé). Reconstruit à chaque exécution : rien n'est
+# modifié à la main dans un conteneur.
+if [ -z "$FEBA_URL" ]; then
+  FEBA_URL="$(grep '^FEBA_PUBLIC_URL=' "$ENV_FILE" 2>/dev/null | cut -d= -f2- || true)"
+fi
+if [ -z "$FEBA_URL" ]; then
+  if [ "$LOCAL" = 1 ]; then FEBA_URL="http://localhost:5173"; else FEBA_URL="https://globalfeba.com"; fi
+fi
+grep -q '^FEBA_PUBLIC_URL=' "$ENV_FILE" || echo "FEBA_PUBLIC_URL=$FEBA_URL" >> "$ENV_FILE"
+mkdir -p "$RUNTIME/client/dist/assets/feba"
+cp "$PNM/client-branding/feba-branding.js" "$RUNTIME/client/dist/assets/feba/feba-branding.js"
+python3 - "$RUNTIME/client/dist/index.html" "$FEBA_URL" <<'PY'
+import html, re, sys
+p, feba = sys.argv[1], sys.argv[2]
+s = open(p).read()
+s = re.sub(r"\n?\s*<!-- feba-branding:start -->.*?<!-- feba-branding:end -->", "", s, flags=re.S)
+block = ('\n    <!-- feba-branding:start -->\n'
+         f'    <script src="./assets/feba/feba-branding.js" data-feba-api="{html.escape(feba, quote=True)}"></script>\n'
+         '    <!-- feba-branding:end -->')
+s, n = re.subn(r"(<title>[^<]*</title>)", lambda m: m.group(1) + block, s, count=1)
+if n != 1:
+    sys.exit("ÉCHEC : <title> introuvable dans index.html du client.")
+open(p, "w").write(s)
+PY
+echo "Identité FEBA de l'onglet installée (API : $FEBA_URL)."
 
 cat <<EOF
 

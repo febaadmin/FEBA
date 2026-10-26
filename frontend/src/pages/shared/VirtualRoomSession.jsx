@@ -27,6 +27,7 @@ import { useParams } from "react-router-dom";
 import JitsiMeeting from "../../components/JitsiMeeting";
 import { virtualAPI } from "../../api";
 import { useAcademy } from "../../context/AcademyContext";
+import { useBranding } from "../../hooks/useBranding";
 import { useAuthStore } from "../../store/authStore";
 import { extractApiError } from "../../utils/errors";
 
@@ -131,6 +132,9 @@ export default function VirtualRoomSession() {
           // « leave » envoyé par cette page quand elle s'efface.
           leaveSent.current = true;
           setPhase(PHASE.REDIRECTING);
+          // Titre de l'académie de la salle (fourni par le serveur). Sur la
+          // page plugNmeet, c'est feba-branding.js qui l'impose.
+          if (data.meeting_title) document.title = data.meeting_title;
           window.location.replace(data.join_url);
           return;
         }
@@ -177,9 +181,13 @@ export default function VirtualRoomSession() {
     return () => window.removeEventListener("pagehide", onUnload);
   }, [sendLeave]);
 
-  const titre = meeting?.name || "Salle virtuelle";
+  // Onglet : titre exact et favicon de l'ACADÉMIE de la salle (« FEBA -
+  // Faith & Excellence Bilingual Academy », « FEBA FHA - FEBA »), et non le
+  // nom de la salle.
+  const { brandingData } = useBranding(meeting?.academy_code || undefined);
+  const titre = meeting?.meeting_title || brandingData?.meeting_title || "FEBA";
   useEffect(() => {
-    document.title = `${titre} — FEBA`;
+    document.title = titre;
   }, [titre]);
 
   if (phase === PHASE.ERROR) {
@@ -209,7 +217,7 @@ export default function VirtualRoomSession() {
           <h1 className="text-lg font-semibold text-white mb-3">
             Vous avez quitté la réunion
           </h1>
-          <p className="text-slate-300 text-sm">{titre}</p>
+          <p className="text-slate-300 text-sm">{meeting?.name || "Salle virtuelle"}</p>
           <button
             type="button"
             onClick={() => window.close()}

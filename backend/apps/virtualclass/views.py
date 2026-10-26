@@ -268,6 +268,8 @@ class VirtualRoomViewSet(BulkDeleteMixin, viewsets.ModelViewSet):
             "join_url": opened["join_url"],
             "attendance_id": opened["attendance"].id if opened["attendance"] else None,
             "moderator": moderator,
+            # Titre de l'onglet : celui de l'académie de la salle (serveur).
+            "meeting_title": _meeting_title(room),
         })
         response = Response(data)
         # L'URL contient un jeton : jamais en cache.
@@ -451,6 +453,11 @@ class VirtualRoomViewSet(BulkDeleteMixin, viewsets.ModelViewSet):
         return Response(VirtualRoomAttendanceSerializer(qs, many=True).data)
 
 
+def _meeting_title(room):
+    from apps.schools.branding import get_branding
+    return get_branding(room.school).meeting_title if room.school else ""
+
+
 class PlugNmeetWebhookView(APIView):
     """
     POST /api/virtual-rooms/webhook/ — événements plugNmeet.
@@ -477,6 +484,57 @@ class PlugNmeetWebhookView(APIView):
         record, created = handle_webhook(event)
         return Response({"received": True, "stored": record is not None,
                          "duplicate": not created and record is not None})
+
+
+class MeetingBrandingView(APIView):
+    """
+    POST /api/virtual-rooms/meeting-branding/   {"access_token": "<jeton plugNmeet>"}
+
+    Identité de l'académie d'une réunion, pour l'onglet du client plugNmeet
+    (titre exact et favicon). Appelé par `plugnmeet/client-branding/
+    feba-branding.js`, injecté dans le client plugNmeet par
+    scripts/plugnmeet_setup.sh.
+
+    L'académie vient de la SALLE désignée par un jeton dont la signature est
+    vérifiée côté serveur : modifier un identifiant ou un paramètre dans le
+    navigateur ne permet pas d'afficher l'identité d'une autre académie.
+    Réponse limitée à l'identité publique ; aucun secret, aucune donnée de
+    la salle.
+    """
+    authentication_classes = []
+    permission_classes = []
+
+    def _cors(self, response):
+        from urllib.parse import urlparse
+        from . import plugnmeet
+        if plugnmeet.is_configured():
+            u = urlparse(plugnmeet.public_url())
+            response["Access-Control-Allow-Origin"] = f"{u.scheme}://{u.netloc}"
+            response["Vary"] = "Origin"
+            response["Access-Control-Allow-Methods"] = "POST, OPTIONS"
+            response["Access-Control-Allow-Headers"] = "Content-Type"
+            response["Access-Control-Max-Age"] = "600"
+        response["Cache-Control"] = "no-store"
+        return response
+
+    def options(self, request, *args, **kwargs):
+        return self._cors(Response(status=status.HTTP_204_NO_CONTENT))
+
+    def post(self, request):
+        from django.conf import settings
+        from apps.schools.public_branding import public_payload
+        from . import plugnmeet
+
+        token = request.data.get("access_token") if hasattr(request.data, "get") else None
+        room = plugnmeet.room_for_join_token(token)
+        if room is None or room.school is None:
+            return self._cors(Response({"detail": "Jeton invalide."}, status=status.HTTP_404_NOT_FOUND))
+        code = room.school.code
+        base = (settings.PUBLIC_BASE_URL or "").rstrip("/") + f"/api/schools/public-branding/{code}/"
+        data = public_payload(room.school, lambda suffix: base + suffix)
+        return self._cors(Response({k: data[k] for k in (
+            "academy_code", "short_name", "meeting_title", "favicon_16_url", "favicon_32_url",
+            "apple_touch_icon_url", "version")}))
 
 
 class JitsiHealthView(APIView):

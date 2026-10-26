@@ -29,6 +29,11 @@ vi.mock("../../api", () => ({
 vi.mock("../../context/AcademyContext", () => ({
   useAcademy: () => academie,
 }));
+// L'identité de l'académie (titre d'onglet, favicon) est testée dans
+// hooks/useBranding.test.jsx ; ici, elle est fixée par le test.
+vi.mock("../../hooks/useBranding", () => ({
+  useBranding: (code) => ({ brandingData: code ? { meeting_title: `TITRE ${code}` } : undefined }),
+}));
 // La conférence elle-même est testée dans components/JitsiMeeting.test.jsx.
 // Ici on l'observe : quelles props reçoit-elle, et combien de fois ?
 vi.mock("../../components/JitsiMeeting", () => ({
@@ -410,5 +415,32 @@ describe("plugNmeet : l'onglet rejoint la salle par un jeton à usage unique", (
     await flush();
     expect(replace).not.toHaveBeenCalled();
     expect(screen.getByText(/ne répond pas/)).toBeTruthy();
+  });
+});
+
+describe("VirtualRoomSession — onglet à l'identité de l'académie de la salle", () => {
+  it("titre exact de l'académie, pas le nom de la salle", async () => {
+    virtualAPI.join.mockResolvedValue({ data: { ...SALLE, academy_code: "FEBA_FHA" } });
+    ouvrir();
+    await flush();
+    expect(document.title).toBe("TITRE FEBA_FHA");
+    expect(document.title).not.toContain(SALLE.name);
+  });
+
+  it("plugNmeet : le titre fourni par le serveur est posé avant la redirection", async () => {
+    const replace = vi.fn();
+    const original = window.location;
+    Object.defineProperty(window, "location", { configurable: true, value: { ...original, replace } });
+    virtualAPI.join.mockResolvedValue({ data: {
+      provider: "plugnmeet", join_url: "https://meet.globalfeba.test/?access_token=x",
+      meeting_title: "FEBA - Faith & Excellence Bilingual Academy" } });
+    try {
+      ouvrir();
+      await flush();
+      expect(replace).toHaveBeenCalledWith("https://meet.globalfeba.test/?access_token=x");
+      expect(document.title).toBe("FEBA - Faith & Excellence Bilingual Academy");
+    } finally {
+      Object.defineProperty(window, "location", { configurable: true, value: original });
+    }
   });
 });

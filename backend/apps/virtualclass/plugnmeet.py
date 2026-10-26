@@ -241,6 +241,46 @@ def join_token(room, user, *, is_admin, lang="fr"):
     return call("/room/getJoinToken", body)["token"]
 
 
+#: Un onglet rechargé longtemps après l'entrée présente un jeton expiré mais
+#: authentique : il sert encore à retrouver l'académie de la salle (pas à
+#: entrer dans la réunion, que plugNmeet contrôle lui-même).
+BRANDING_TOKEN_MAX_AGE = 24 * 3600
+
+
+def room_for_join_token(token):
+    """
+    Salle FEBA désignée par un jeton d'adhésion plugNmeet AUTHENTIQUE.
+
+    Le jeton est un JWT HS256 signé avec le secret de l'API : sa signature
+    et son émetteur sont vérifiés ; un jeton modifié (autre `room_id`) est
+    refusé. Retourne la salle, ou None.
+    """
+    import time
+    import jwt
+    from .models import VirtualRoom
+
+    if not token or not is_configured():
+        return None
+    try:
+        claims = jwt.decode(token, settings.PLUGNMEET_API_SECRET, algorithms=["HS256"],
+                            issuer=settings.PLUGNMEET_API_KEY,
+                            options={"require": ["exp", "iss"], "verify_exp": False})
+    except jwt.PyJWTError:
+        return None
+    if claims["exp"] < time.time() - BRANDING_TOKEN_MAX_AGE:
+        return None
+    room_id = str(claims.get("room_id") or "")
+    if not room_id:
+        return None
+    room = VirtualRoom.objects.select_related("school").filter(room_code=room_id).first()
+    if room is None and len(room_id) == MAX_ROOM_ID:
+        for candidate in VirtualRoom.objects.select_related("school").filter(
+                room_code__startswith=room_id[:MAX_ROOM_ID - 17]):
+            if room_id_for(candidate) == room_id:
+                return candidate
+    return room
+
+
 def join_url(token):
     from urllib.parse import quote
 

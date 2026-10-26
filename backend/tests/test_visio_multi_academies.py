@@ -311,3 +311,86 @@ class SuperAdminAndTeacherScopeTests(VisioBase):
     def test_eleve_et_parent_ne_creent_pas(self):
         for u in (self.feba.student_user, self.feba.parent_user):
             self.assertEqual(self.create_room(self.feba, user=u).status_code, 403)
+
+
+class MeetingTabIdentityTests(VisioBase):
+    """Titre exact et favicon de l'onglet plugNmeet, d'après la salle (jeton signé)."""
+
+    def setUp(self):
+        super().setUp()
+        # Les codes réels peuvent déjà exister (migration de données) : ces
+        # lignes sont renommées pour que les académies du test les portent.
+        School.objects.filter(code__in=["FEBA", "FEBA_FHA"]).exclude(
+            pk__in=[self.feba.school.pk, self.fha.school.pk]).update(code=None)
+        School.objects.filter(pk=self.feba.school.pk).update(code="FEBA")
+        School.objects.filter(pk=self.fha.school.pk).update(code="FEBA_FHA")
+        self.feba.school.refresh_from_db()
+        self.fha.school.refresh_from_db()
+        self.room_feba = VirtualRoom.objects.create(school=self.feba.school, name="Cours CE1",
+                                                    created_by=self.feba.admin)
+        self.room_fha = VirtualRoom.objects.create(school=self.fha.school, name="French Explorers",
+                                                   created_by=self.fha.admin)
+
+    def token(self, room, *, secret=None, exp_delta=600, room_id=None):
+        import time
+        import jwt
+        from tests.test_plugnmeet_integration import KEY, SECRET
+        now = int(time.time())
+        return jwt.encode({"iss": KEY, "exp": now + exp_delta, "nbf": now - 5, "user_id": "feba-1",
+                           "room_id": room_id or plugnmeet.room_id_for(room)}, secret or SECRET,
+                          algorithm="HS256")
+
+    def ask(self, token):
+        return self.client.post("/api/virtual-rooms/meeting-branding/", {"access_token": token},
+                                content_type="application/json")
+
+    def test_titres_exacts_par_academie(self):
+        r = self.ask(self.token(self.room_feba))
+        self.assertEqual(r.status_code, 200, r.content)
+        self.assertEqual(r.json()["meeting_title"], "FEBA - Faith & Excellence Bilingual Academy")
+        self.assertIn("/api/schools/public-branding/FEBA/favicon-32.png?v=", r.json()["favicon_32_url"])
+        r = self.ask(self.token(self.room_fha))
+        self.assertEqual(r.json()["meeting_title"], "FEBA FHA - FEBA")
+        self.assertIn("/public-branding/FEBA_FHA/", r.json()["favicon_16_url"])
+        self.assertEqual(r["Access-Control-Allow-Origin"], "https://meet.globalfeba.test")
+        self.assertNotIn("room", r.json())                     # rien sur la salle elle-même
+
+    def test_jeton_modifie_ou_faux_refuse(self):
+        # Même salle FHA, mais jeton re-signé avec un autre secret : refusé.
+        self.assertEqual(self.ask(self.token(self.room_fha, secret="autre-secret-" * 4)).status_code, 404)
+        # Charge utile modifiée à la main (room_id d'une autre salle) : signature invalide.
+        good = self.token(self.room_feba)
+        import base64, json
+        head, body, sig = good.split(".")
+        claims = json.loads(base64.urlsafe_b64decode(body + "=="))
+        claims["room_id"] = plugnmeet.room_id_for(self.room_fha)
+        forged_body = base64.urlsafe_b64encode(json.dumps(claims).encode()).decode().rstrip("=")
+        self.assertEqual(self.ask(f"{head}.{forged_body}.{sig}").status_code, 404)
+        self.assertEqual(self.ask("n'importe quoi").status_code, 404)
+        self.assertEqual(self.ask(self.token(None, room_id="salle-inexistante")).status_code, 404)
+
+    def test_onglet_recharge_apres_expiration_mais_pas_au_dela_de_24_h(self):
+        self.assertEqual(self.ask(self.token(self.room_fha, exp_delta=-3600)).status_code, 200)
+        self.assertEqual(self.ask(self.token(self.room_fha, exp_delta=-3 * 86400)).status_code, 404)
+
+    def test_preflight_cors(self):
+        r = self.client.options("/api/virtual-rooms/meeting-branding/")
+        self.assertEqual(r.status_code, 204)
+        self.assertEqual(r["Access-Control-Allow-Origin"], "https://meet.globalfeba.test")
+
+    def test_la_reponse_d_adhesion_porte_le_titre_de_l_academie(self):
+        r = api(self.fha.admin).post(f"/api/virtual-rooms/{self.room_fha.pk}/join/")
+        self.assertEqual(r.status_code, 200, r.data)
+        self.assertEqual(r.data["meeting_title"], "FEBA FHA - FEBA")
+        r = api(self.feba.admin).post(f"/api/virtual-rooms/{self.room_feba.pk}/join/")
+        self.assertEqual(r.data["meeting_title"], "FEBA - Faith & Excellence Bilingual Academy")
+
+    def test_le_script_client_est_installe_par_le_script_de_preparation(self):
+        """Personnalisation reproductible : fichier versionné + injection idempotente."""
+        from tests.repo_root import read_repo_file
+        js = read_repo_file("plugnmeet/client-branding/feba-branding.js")
+        self.assertIn("/api/virtual-rooms/meeting-branding/", js)
+        self.assertIn("pnm_access_token", js)
+        setup = read_repo_file("scripts/plugnmeet_setup.sh")
+        self.assertIn("feba-branding:start", setup)
+        self.assertIn("client-branding/feba-branding.js", setup)
