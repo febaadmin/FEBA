@@ -83,7 +83,7 @@ Une première archive (commit `dcb0a0e`) a été extraite, puis son image constr
 
 Le défaut a été reproduit à 12 fils (5 échecs sur 180 rendus), puis corrigé par un verrou de rendu. `ConcurrentRenderingTests` a été ajouté : 0 échec sur 180 rendus, et il **échoue sans le correctif**. Cette archive n'a pas été livrée ; elle est remplacée par la présente.
 
-La durée affichée par ce passage (« 8 h 47 ») est fausse : l'horloge de la machine virtuelle Docker a été recalée pendant l'exécution. La durée réelle, mesurée sur l'horloge du poste, est d'environ 45 minutes.
+Ce passage a duré 8 h 47 en temps réel : démarré à 01 h 37, partie PostgreSQL terminée à 10 h 25 (horodatage des journaux). La durée inclut une longue période nocturne d'inactivité du poste. Un passage sans interruption dure environ 20 minutes pour PostgreSQL et 13 minutes pour SQLite (campagne du commit 3198fc9).
 
 ### Tests mis à jour
 
