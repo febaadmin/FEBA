@@ -5,11 +5,21 @@ Rien ici n'est présenté comme fonctionnel sans preuve.
 
 ---
 
+## 00000000. Gabarits multiformats (27 octobre 2026)
+
+La limite « DOCX refusé » de la version précédente est **levée**. DOCX, DOC, ODT, RTF, PPTX, PPT, ODP, TIFF et WEBP sont convertis automatiquement.
+
+Ce qui reste :
+- **Polices** : une police propre à l'établissement, absente du serveur, est remplacée par une police voisine lors de la conversion. Les équivalents Calibri, Cambria, Arial, Times et Courier sont installés. Vérifier l'aperçu, ou exporter le document en PDF avec les polices incorporées.
+- **Marqueurs** : un marqueur placé dans un élément graphique non textuel (WordArt, image) ou coupé par un saut de ligne n'est pas reconnu. La conversion est alors refusée avec un message ; on retire le marqueur et on place le champ dans l'éditeur.
+- **Mise en page des valeurs** : la place laissée par le marqueur détermine la largeur du champ. Une valeur plus longue est réduite jusqu'à la taille minimale, puis refusée. L'administrateur peut élargir la zone dans l'éditeur.
+- **Formats refusés, avec explication** : DOCM, DOTM, PPTM (macros), DOT, DOTX (modèles), XLS, XLSX, ODS (classeurs), GIF, BMP, SVG, HEIC, Pages, Keynote.
+- **Contrôle de recouvrement** : il ne mesure que le **texte** d'un fond PDF. Une zone placée sur un dessin ou sur une image (logo) n'est pas détectée ; c'est l'aperçu qui le montre.
+- **Conversion synchrone** au téléversement (2 à 6 s mesurées, délai maximal configurable). Il n'y a pas de file d'attente en arrière-plan.
+
 ## 0000000. Gabarits officiels des diplômes et certificats (26 octobre 2026)
 
-- **DOCX non pris en charge** : refusé avec explication. Une conversion
-  fidèle exigerait LibreOffice dans l'image (plusieurs centaines de Mo) et
-  sa mise en page varie selon les versions. Procédure : exporter en PDF.
+- ~~DOCX non pris en charge~~ : levée le 27/10/2026 (§ 00000000).
 - **Champs texte uniquement** : un gabarit téléversé reçoit du texte
   positionné. Signatures, cachets et logo doivent figurer dans le fond
   lui-même (ils ne sont pas apposés comme images séparées, contrairement aux

@@ -14,6 +14,26 @@
 ---
 
 
+## 0000000. Gabarits multiformats : Word, OpenDocument, RTF, PowerPoint, TIFF, WEBP (27/10/2026)
+
+Rien n'a été déployé ni migré en production. Validations en local, y compris dans l'image Docker de
+production construite **depuis l'archive livrée** (voir `TEST_REPORT.md`).
+
+1. **Faire une sauvegarde vérifiée**, puis lancer `make prod` (ou `scripts/deploy_feba.sh`). Cela :
+   - reconstruit l'image backend, qui installe **LibreOffice sans interface** et les polices compatibles Microsoft. L'image grossit d'environ 450 Mo ; la construction dure quelques minutes de plus ;
+   - installe une nouvelle dépendance Python, `olefile==0.47` ;
+   - applique la migration `documents.0003_template_conversion` : trois colonnes ajoutées. Les versions existantes reçoivent leur format d'origine (pdf, png, jpeg), rien d'autre ne change.
+2. **Réglages facultatifs** (`.env.prod`) : `DOCUMENT_CONVERSION_TIMEOUT` (90 s par défaut) et `LIBREOFFICE_BINARY` (détecté automatiquement).
+3. **Vérifier après déploiement** :
+
+   ```
+   docker compose --env-file .env.prod -f docker-compose.prod.yml exec backend-prod soffice --version
+   ```
+
+   Puis, dans « Gabarits des documents », le bandeau des formats acceptés doit lister Word, OpenDocument, RTF et PowerPoint.
+4. **Construire l'image depuis un dépôt propre** (git archive ou ZIP livré). Un fichier `.dockerignore` (nouveau) empêche désormais que `media/` et `private_media/` d'un poste soient copiés dans l'image.
+5. **Retour arrière** : `make prod-rollback`, puis `migrate documents 0002`. Les gabarits téléversés en format bureautique restent sur le disque, mais l'ancienne version ne sait pas les relire : désactivez-les avant de revenir en arrière.
+
 ## 000000. Gabarits officiels des diplômes et certificats (26/10/2026)
 
 Rien n'a été déployé ni migré en production. Validations : en local (voir

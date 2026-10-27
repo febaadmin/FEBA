@@ -1,3 +1,5 @@
+> **DOCUMENT HISTORIQUE** — version « gabarits PDF et images ». Voir `FINAL_REPORT.md` pour la version en cours.
+
 # FEBA : gabarits officiels des diplômes et certificats, par académie
 
 26 octobre 2026, branche `feat/gabarits-diplomes-certificats`.

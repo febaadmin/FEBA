@@ -18,7 +18,7 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-NOM="${1:-FEBA_GABARITS_DIPLOMES_CERTIFICATS_VALIDEE}"
+NOM="${1:-FEBA_GABARITS_MULTIFORMATS_DIPLOMES_CERTIFICATS_VALIDEE}"
 SORTIE="${2:-$(dirname "$ROOT")}"
 STAGE="$(mktemp -d)"
 # Le dossier racine porte le MÊME nom que l'archive. En V8 il était
@@ -210,6 +210,20 @@ for requis in backend/manage.py frontend/package.json Makefile \
               frontend/src/components/SmsPreferencesCard.jsx \
               DOCUMENTATION_INDEX.md docs/historique/FINAL_REPORT_V13.md \
               DOCUMENT_TEMPLATES_GUIDE.md \
+              backend/apps/documents/conversion.py \
+              backend/apps/documents/migrations/0003_template_conversion.py \
+              backend/tests/test_template_conversion.py \
+              backend/tests/fixtures/office_templates/diplome_paysage_marqueurs.docx \
+              backend/tests/fixtures/office_templates/diplome_paysage_marqueurs.doc \
+              backend/tests/fixtures/office_templates/diplome_paysage_marqueurs.odt \
+              backend/tests/fixtures/office_templates/diplome_paysage_marqueurs.rtf \
+              backend/tests/fixtures/office_templates/diplome_diapo_marqueurs.pptx \
+              backend/tests/fixtures/office_templates/diplome_diapo_marqueurs.ppt \
+              backend/tests/fixtures/office_templates/diplome_diapo_marqueurs.odp \
+              backend/tests/fixtures/office_templates/certificat_portrait.docx \
+              backend/.dockerignore frontend/.dockerignore \
+              e2e/parcours-gabarits-multiformats.mjs \
+              docs/historique/FINAL_REPORT_2026-10-26_gabarits.md \
               backend/apps/documents/academy_templates.py \
               backend/apps/documents/academy_template_views.py \
               backend/apps/documents/migrations/0002_academy_document_templates.py \

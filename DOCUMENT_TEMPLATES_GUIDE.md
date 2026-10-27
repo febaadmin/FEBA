@@ -24,22 +24,89 @@ Un fichier téléversé pour le diplôme ne sert jamais au certificat.
 
 ## 2. Formats acceptés
 
-| Format | Utilisation | Remarques |
-|---|---|---|
-| **PDF** | La page choisie est reprise **telle quelle** (vectorielle), et les champs sont dessinés par-dessus. | Couleurs, bordures et signatures préimprimées sont conservées sans perte. Si le PDF a plusieurs pages (10 au plus), on choisit la page utilisée : le document délivré n'en contient qu'**une**. |
-| **PNG / JPEG** | L'image est inscrite dans la page choisie (A4 ou A5, paysage ou portrait, ou Lettre US) **sans déformation**, centrée. | 600 px minimum sur le plus grand côté. En dessous de 150 dpi, un avertissement de qualité s'affiche ; 300 dpi est l'idéal. Une photo de téléphone tournée par l'EXIF est redressée. |
-| **DOCX** | **Refusé.** | Le convertir exigerait LibreOffice sur le serveur, et la mise en page varie d'une version à l'autre. Dans Word : « Enregistrer sous » → PDF, puis téléverser le PDF. |
+Le fichier se téléverse **tel quel** : FEBA détecte son format réel et le convertit lui-même.
+Aucun export manuel en PDF n'est nécessaire.
+L'original est toujours conservé ; le moteur travaille sur un **fond normalisé** (PDF ou PNG) rangé à côté.
 
-Contrôles appliqués à chaque téléversement :
-- taille maximale : 10 Mo ;
-- l'extension, le type annoncé et le **contenu réel** doivent concorder : un PDF renommé `.png` est refusé ;
-- un fichier corrompu ou tronqué est refusé ;
-- un PDF chiffré ou contenant du contenu actif est refusé (JavaScript, lancement de programme, fichiers joints, formulaires dynamiques) ;
-- une image de plus de 40 millions de pixels est refusée.
+| Format | Traitement par FEBA |
+|---|---|
+| **PDF** | La page choisie est reprise **telle quelle** (vectorielle), et les champs sont dessinés par-dessus. |
+| **PNG, JPEG** | L'image est inscrite dans la page choisie (A4 ou A5, paysage ou portrait, ou Lettre US) **sans déformation**, centrée. Un JPEG tourné par l'EXIF est redressé. |
+| **TIFF, WEBP** | Convertis en PNG, puis traités comme une image. Un TIFF de plusieurs pages devient un PDF dont on choisit la page. |
+| **Word (DOCX, DOC)**, **OpenDocument texte (ODT)**, **RTF** | Convertis en PDF par **LibreOffice** sur le serveur, puis traités comme un PDF. |
+| **PowerPoint (PPTX, PPT)**, **OpenDocument présentation (ODP)** | Convertis en PDF par **LibreOffice** sur le serveur (une diapositive par page). |
 
-Le fichier est rangé dans le **stockage privé** (`PRIVATE_MEDIA_ROOT/academy_templates/<académie>/<type>/`).
-Son nom est aléatoire. Il n'a aucune URL publique : il n'est lisible que par les routes
-authentifiées de l'administration de l'académie.
+La conversion conserve les dimensions et l'orientation de la page, les marges, les couleurs, les bordures, les images (logos, signatures et cachets scannés), les tableaux et la disposition.
+Les documents de plusieurs pages (10 au plus) sont acceptés : on choisit la page qui sert de fond, et le document délivré n'en contient qu'**une**.
+Les polices compatibles avec celles de Microsoft (Carlito pour Calibri, Caladea pour Cambria, Liberation pour Arial, Times et Courier) sont installées dans l'image : la mise en page d'un document Word est recomposée à l'identique.
+Une police propre à l'établissement, non installée, est remplacée par une police voisine : vérifiez l'aperçu.
+
+Contrôles appliqués à chaque téléversement, **avant** toute conversion :
+- taille maximale : 20 Mo ;
+- l'extension, le type annoncé **et le contenu réel** doivent concorder : un PDF renommé `.docx` est refusé, et le message dit ce qu'est vraiment le fichier ;
+- fichiers corrompus ou tronqués : refusés ;
+- documents **avec macros** (DOCM, PPTM, ou DOCX/DOC contenant un projet VBA) : refusés, car **aucune macro n'est jamais exécutée** ;
+- documents protégés par mot de passe : refusés ;
+- RTF contenant des objets OLE incorporés : refusés ;
+- archives anormales : plus de 3 000 éléments, plus de 250 Mo une fois décompressées, ou taux de compression piégé ;
+- PDF chiffrés ou actifs (JavaScript, lancement de programme, fichiers joints, formulaires dynamiques) : refusés ;
+- images de plus de 40 millions de pixels : refusées.
+
+Chaque format refusé reçoit un message qui dit pourquoi :
+- GIF : qualité insuffisante ;
+- SVG : contenu actif possible ;
+- Excel : n'est pas un fond de document ;
+- HEIC, Pages, Keynote : à exporter dans un format accepté.
+
+**Conversion isolée.** Chaque conversion LibreOffice :
+- s'exécute dans un répertoire temporaire et avec un **profil** qui lui sont propres : des conversions simultanées ne partagent rien ;
+- a les macros désactivées et ne met à jour aucun lien externe ;
+- ne reçoit aucune variable d'environnement du serveur, donc aucun secret ;
+- a un **délai maximal** (90 s par défaut) : au-delà, le processus est tué et le téléversement refusé avec un message.
+
+Le répertoire temporaire est supprimé dans tous les cas. Un échec ne laisse ni version, ni fichier, ni gabarit partiellement actif.
+
+## 2 bis. Marqueurs {{ champ }} dans un document Word, OpenDocument, RTF ou PowerPoint
+
+Un gabarit bureautique peut contenir des marqueurs explicites à l'endroit des données, par exemple :
+« Décerné à {{ student_name }} pour l'année {{ school_year }} ».
+
+À la conversion, FEBA :
+1. repère la position exacte de chaque marqueur sur la page ;
+2. le **retire du fond** sans rien déplacer d'autre : le reste de la ligne garde sa place au point près ;
+3. crée à cet endroit un **champ déjà placé**, avec une taille de texte voisine de celle du marqueur. La zone s'arrête au texte du fond qui suit, et un marqueur seul et centré sur sa ligne donne un champ centré ;
+4. choisit comme fond la page qui porte le plus de marqueurs.
+
+On ajuste ensuite les champs dans l'éditeur comme pour n'importe quel fond. Un marqueur peut être coupé en plusieurs morceaux de mise en forme par Word : il est reconnu quand même.
+
+Noms reconnus, en plus des noms du tableau du § 4 :
+
+| Alias | Champ |
+|---|---|
+| `student_full_name`, `nom_eleve`, `nom_complet` | nom de l'élève |
+| `matricule` | matricule |
+| `date_naissance` | date de naissance |
+| `academie` | nom de l'académie |
+| `ville` | ville |
+| `intitule`, `type_certificat` | intitulé |
+| `objet` | objet du certificat |
+| `niveau` | niveau |
+| `classe` | classe |
+| `annee_scolaire` | année scolaire |
+| `moyenne` | moyenne |
+| `mention` | mention |
+| `date_obtention` | date d'obtention |
+| `date_delivrance` | date de délivrance |
+| `numero`, `reference` | numéro |
+| `signataire`, `fonction_signataire` | signataire et sa fonction |
+
+Les noms sont insensibles à la casse.
+
+Un marqueur **inconnu** est retiré du fond mais **bloque la vérification**, en le nommant : renommez-le, ou placez le champ voulu dans l'éditeur.
+Un PDF ou une image qui contient des marqueurs ne peut pas être nettoyé : la vérification le refuse et demande le document source.
+Aucun marqueur ne peut donc apparaître sur un document délivré.
+
+Laissez à chaque marqueur la place de la valeur réelle. Une valeur longue est réduite jusqu'à la taille minimale, puis refusée si elle ne tient pas ; elle n'est jamais tronquée.
 
 ## 3. Mettre un gabarit en service, étape par étape
 
@@ -64,6 +131,7 @@ authentifiées de l'administration de l'académie.
      - ou « Décision de l'administration ».
 5. **Aperçu** : le serveur rend le document avec des valeurs d'exemple longues et accentuées, filigrané « APERÇU », avec les cadres des zones.
 6. **Enregistrer et vérifier**. FEBA :
+   - contrôle qu'aucune zone ne **recouvre du texte du fond** (titre, mention imprimée…), les pointillés et soulignés de remplissage restant permis ;
    - produit un document d'essai ;
    - le **relit** (chaque valeur doit s'y retrouver, sans aucun marqueur `{{ }}`) ;
    - contrôle la page, les débordements et les superpositions.
@@ -161,11 +229,21 @@ Un élève sans classe pour l'année est refusé, avec le motif.
 
 ## 8. Exploitation
 
-- **Dépendances** : `pypdf==6.14.2` (lecture et fusion des PDF) et `pypdfium2==4.30.0` (aperçu des pages PDF).
-  - Elles sont déclarées dans `backend/requirements/base.txt` et installées dans l'image Docker de production.
-  - Ce sont des roues autonomes : aucun paquet système, aucune variable d'environnement nouvelle.
-- **Stockage** : le volume `private_media_prod` existe déjà dans `docker-compose.prod.yml` et survit aux redémarrages.
-  `scripts/backup_files.sh` le sauvegarde désormais. **Avant cette version, il ne sauvegardait que `media/`** (voir `FINAL_REPORT.md`, § D).
-- **Migration** : `documents.0002_academy_document_templates`.
-  - Elle crée deux tables et une colonne facultative.
-  - Elle ne modifie aucune donnée existante.
+- **LibreOffice** (paquets `libreoffice-writer-nogui` et `libreoffice-impress-nogui`) et les polices compatibles Microsoft sont installés dans `backend/Dockerfile.prod` et `backend/Dockerfile.dev`.
+  - L'image de production grossit d'environ 450 Mo.
+  - Rien n'est à installer à la main sur le serveur.
+  - Sans LibreOffice (poste de développement), les formats bureautiques sont refusés avec un message, et l'écran l'indique.
+- **Réglages facultatifs** dans `.env.prod` :
+  - `DOCUMENT_CONVERSION_TIMEOUT` : délai maximal d'une conversion, en secondes (90 par défaut) ;
+  - `LIBREOFFICE_BINARY` : chemin de `soffice`, détecté automatiquement.
+- **Dépendances Python**, dans `backend/requirements/base.txt` :
+  - `pypdf==6.14.2` : lecture et fusion des PDF ;
+  - `pypdfium2==4.30.0` : aperçu et retrait des marqueurs ;
+  - `olefile==0.47` : contrôle des DOC et PPT.
+- **Stockage** : l'original et le fond normalisé sont dans `PRIVATE_MEDIA_ROOT/academy_templates/<académie>/<type>/`, sous des noms aléatoires.
+  - Ce dossier est dans le volume `private_media_prod`, persistant.
+  - Il est sauvegardé par `scripts/backup_files.sh` (archive `media` + `private_media`).
+- **Migrations** :
+  - `documents.0002_academy_document_templates` ;
+  - `documents.0003_template_conversion` : format d'origine, empreinte du fond normalisé, rapport de conversion. Aucune donnée existante n'est modifiée ; les versions déjà téléversées reçoivent leur format d'origine.
+- **Durée** : une conversion bureautique prend de 2 à 6 s (mesuré). Elle a lieu au téléversement, jamais à la production des documents, qui reste de l'ordre de 0,1 s.

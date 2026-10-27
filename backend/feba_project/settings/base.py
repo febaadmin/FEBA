@@ -122,6 +122,10 @@ MEDIA_ROOT = config('MEDIA_ROOT', default=str(BASE_DIR / 'media'))
 # L'accès passe obligatoirement par /api/documents/<id>/download/, qui
 # vérifie l'appartenance avant de diffuser l'octet.
 PRIVATE_MEDIA_ROOT = config('PRIVATE_MEDIA_ROOT', default=str(BASE_DIR / 'private_media'))
+# Conversion des gabarits bureautiques (DOCX, ODT, RTF, PPTX…) par LibreOffice
+# sans interface — installé dans l'image Docker (backend/Dockerfile.prod).
+DOCUMENT_CONVERSION_TIMEOUT = config('DOCUMENT_CONVERSION_TIMEOUT', default=90, cast=int)
+LIBREOFFICE_BINARY = config('LIBREOFFICE_BINARY', default='')
 DOCUMENT_TEMPLATES_ROOT = config(
     'DOCUMENT_TEMPLATES_ROOT', default=str(BASE_DIR / 'document_templates'))
 
