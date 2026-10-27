@@ -6,14 +6,14 @@
 - Statuts : PASS · FAIL · BLOCKED · NOT RUN · SIMULATED. Un test ignoré n'est jamais compté comme réussi.
 - Vérification de l'archive : `DELIVERY_VERIFICATION_GABARITS_MULTIFORMATS.txt`, livré à côté du ZIP. Elle couvre les tests depuis l'extraction, l'image construite depuis l'archive, la conversion dans ce conteneur et la sauvegarde/restauration.
 
-## 1. Tests automatisés (code final, commit 8a2c313)
+## 1. Tests automatisés (code final, commit 3198fc9)
 
 Le backend a été exécuté **dans l'image Docker de FEBA qui contient LibreOffice** (`backend/Dockerfile.dev`), avec le dépôt entier monté.
 
 | Suite | Résultat | Statut |
 |---|---|---|
-| Backend PostgreSQL 16 + Mailpit SMTP + plugNmeet v2.5.3 réel | **1 919 réussis, 0 ignoré, 0 échec** | PASS |
-| Backend SQLite | 1 905 réussis, **14 ignorés**, 0 échec. Les 14 exigent PostgreSQL, Mailpit ou plugNmeet ; tous ont été exécutés et réussis sous PostgreSQL. | PASS |
+| Backend PostgreSQL 16 + Mailpit SMTP + plugNmeet v2.5.3 réel | **1 920 réussis, 0 ignoré, 0 échec** | PASS |
+| Backend SQLite | 1 906 réussis, **14 ignorés**, 0 échec. Les 14 exigent PostgreSQL, Mailpit ou plugNmeet ; tous ont été exécutés et réussis sous PostgreSQL. | PASS |
 | `makemigrations --check` | aucune migration manquante | PASS |
 | Frontend Vitest | 375 / 375 (50 fichiers) | PASS |
 | ESLint | 0 erreur ; 74 avertissements, tous antérieurs | PASS |
@@ -76,6 +76,14 @@ Les fichiers d'origine (DOCX, DOC, ODT, RTF, PPTX, PPT, ODP) sont **envoyés à 
 - **gabarit remplacé pendant une production** : le brouillon n'est plus délivrable, et le document déjà délivré reste identique.
 
 **Concurrence (PostgreSQL)** : trois conversions simultanées (DOCX, ODT, PPTX) donnent trois versions distinctes, toutes converties, sans conflit de profil LibreOffice.
+
+### Échec trouvé par la campagne lancée DEPUIS L'ARCHIVE, puis corrigé
+
+Une première archive (commit `dcb0a0e`) a été extraite, puis son image construite et la campagne exécutée dans cette image. Résultat : **1 échec**. Une délivrance sur six simultanées a échoué (`IndexError` dans `reportlab…ttfonts.makeSubset`). ReportLab n'est pas sûr entre fils pour le découpage des polices TrueType.
+
+Le défaut a été reproduit à 12 fils (5 échecs sur 180 rendus), puis corrigé par un verrou de rendu. `ConcurrentRenderingTests` a été ajouté : 0 échec sur 180 rendus, et il **échoue sans le correctif**. Cette archive n'a pas été livrée ; elle est remplacée par la présente.
+
+La durée affichée par ce passage (« 8 h 47 ») est fausse : l'horloge de la machine virtuelle Docker a été recalée pendant l'exécution. La durée réelle, mesurée sur l'horloge du poste, est d'environ 45 minutes.
 
 ### Tests mis à jour
 

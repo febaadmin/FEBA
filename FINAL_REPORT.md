@@ -110,6 +110,7 @@ Seul le fond diffère : c'est le PDF normalisé, figé par son empreinte au mome
 | **Recouvrement** : aucune vérification ne détectait une zone posée sur le texte du fond. | La vérification la refuse en citant le texte. | `test_zone_qui_recouvre_le_texte_du_fond_refusee` |
 | **TIFF multipage** sans résolution déclarée : page de 44 m. | Mise à l'échelle sur un A4 | `test_tiff_de_plusieurs_pages…` |
 | **Index de caractères** de PDFium décalé par les caractères générés. | Lecture caractère par caractère | Idem |
+| **Rendus simultanés** dans un même processus : ReportLab partage l'objet d'une police TrueType, et son découpage n'est pas sûr entre fils. Une délivrance sur 6 échouait (`IndexError` dans `ttfonts.makeSubset`). Trouvé par la campagne **lancée depuis l'archive**, puis reproduit à 12 fils. Les processus gunicorn de production ne partagent rien, mais un serveur à fils, oui. | Verrou de rendu commun au moteur (`renderer.RENDER_LOCK`) | `ConcurrentRenderingTests` : 180 rendus simultanés, 0 échec ; il échoue sans le correctif |
 
 Audit des fonctionnalités voisines :
 - permissions et isolation : tests d'accès croisés rejoués ;
