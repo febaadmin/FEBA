@@ -1,3 +1,5 @@
+> **DOCUMENT HISTORIQUE** — version « gabarits multiformats ». Voir `FINAL_REPORT.md` pour la version en cours.
+
 # FEBA — Rapport de tests : gabarits multiformats
 
 27 octobre 2026, branche `feat/gabarits-multiformats`, **en local uniquement**.

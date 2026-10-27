@@ -65,7 +65,10 @@ function LetterBadge({ letter }) {
 }
 
 export default function AdminGrades() {
-  const { isAllAcademies } = useAcademy();
+  const { isAllAcademies, activeAcademy } = useAcademy();
+  // Programme monolingue (français ou anglais uniquement) : pas de moyenne
+  // bilingue 60/40 — l'onglet « Bilingue » n'aurait que des cases vides.
+  const monolingualCurriculum = ["french_only", "english_only"].includes(activeAcademy?.curriculum_language_mode);
   const qc = useQueryClient();
   const [view, setView] = useState("list"); // "list" | "summary" | "bilingual" | "deleted" | "allhistory"
   const [addOpen, setAddOpen] = useState(false);
@@ -373,10 +376,10 @@ export default function AdminGrades() {
         {[
           { key: "list", label: t("Liste"), icon: BookOpen },
           { key: "summary", label: t("Résumé par élève"), icon: User },
-          { key: "bilingual", label: t("Bilingue"), icon: Globe },
+          !monolingualCurriculum && { key: "bilingual", label: t("Bilingue"), icon: Globe },
           { key: "deleted", label: t("Supprimées"), icon: Trash2 },
           { key: "allhistory", label: t("Historique"), icon: History },
-        ].map(({ key, label, icon: Icon }) => (
+        ].filter(Boolean).map(({ key, label, icon: Icon }) => (
           <button key={key} onClick={() => setView(key)}
             className={`flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition ${view === key ? "bg-white shadow text-blue-700" : "text-gray-600 hover:text-gray-800"}`}>
             <Icon className="w-4 h-4 shrink-0" />{label}
@@ -725,7 +728,7 @@ export default function AdminGrades() {
       )}
 
       {/* BILINGUAL VIEW */}
-      {view === "bilingual" && (
+      {view === "bilingual" && !monolingualCurriculum && (
         <div className="space-y-4">
           {!selectedStudent ? (
             <div className="bg-white rounded-xl border border-gray-200 p-12 text-center text-gray-400">

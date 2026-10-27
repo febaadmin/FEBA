@@ -1,4 +1,4 @@
-# FEBA — Documents de référence (version du 27/10/2026 : gabarits multiformats — Word, OpenDocument, RTF, PowerPoint, images)
+# FEBA — Documents de référence (version du 27/10/2026 : programme linguistique des académies, identités sans nom codé en dur)
 
 Les documents marqués **« DOCUMENT HISTORIQUE »** en tête décrivent des
 versions antérieures : leurs résultats ne valent pas pour cette version.
@@ -7,6 +7,8 @@ versions antérieures : leurs résultats ne valent pas pour cette version.
 |---|---|
 | **État de cette version, preuves, blocages** | `FINAL_REPORT.md` |
 | Tests exécutés sur cette version | `TEST_REPORT.md` |
+| **Programme linguistique** (français, anglais, bilingue) : matières, parcours, notes, bulletins, changement avec diagnostic | `ACADEMIES_GUIDE.md` § 1 bis |
+| **Audit des références « FEBA » / « FHA »** (classement, corrections, inventaire complet) | `AUDIT_IDENTITES_ACADEMIES.md` |
 | **Gabarits des diplômes et certificats** (formats, conversion, marqueurs, placement, vérification, production) | `DOCUMENT_TEMPLATES_GUIDE.md` |
 | Créer et configurer une académie (types, barèmes, appréciations, vérifications) | `ACADEMIES_GUIDE.md` |
 | Limites connues | `KNOWN_LIMITATIONS.md` |
@@ -21,4 +23,4 @@ versions antérieures : leurs résultats ne valent pas pour cette version.
 | Identité visuelle (logo, favicons) | `branding/source/` (fichiers fournis), `scripts/build_branding_assets.py` |
 | Installation de développement | `INSTALLATION_GUIDE.md`, `README.md` |
 | Jitsi (retour arrière uniquement) | `JITSI_PRODUCTION_GUIDE.md` |
-| Rapports des versions antérieures | racine (bandeau « historique ») et `docs/historique/` (dont `FINAL_REPORT_2026-10-25.md`, `FINAL_REPORT_2026-10-26_commentaires_visio.md`, `FINAL_REPORT_2026-10-26_bulletins_branding.md`, `FINAL_REPORT_2026-10-26_academies_appreciations.md`, `FINAL_REPORT_2026-10-26_gabarits.md`) |
+| Rapports des versions antérieures | racine (bandeau « historique ») et `docs/historique/` (dont `FINAL_REPORT_2026-10-25.md`, `FINAL_REPORT_2026-10-26_commentaires_visio.md`, `FINAL_REPORT_2026-10-26_bulletins_branding.md`, `FINAL_REPORT_2026-10-26_academies_appreciations.md`, `FINAL_REPORT_2026-10-26_gabarits.md`, `FINAL_REPORT_2026-10-27_gabarits_multiformats.md`) |

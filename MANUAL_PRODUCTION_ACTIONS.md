@@ -14,6 +14,24 @@
 ---
 
 
+## 00000000. Programme linguistique des académies, identités dynamiques (27/10/2026)
+
+Rien n'a été déployé ni migré en production (SSH Hetzner refusé). Toutes les validations sont locales, y compris une montée de version sur une pile de production locale construite **depuis l'archive** (voir `TEST_REPORT.md`).
+
+À faire, dans cet ordre, **après la sauvegarde** que `scripts/deploy_feba.sh` réalise et vérifie lui-même :
+
+1. **Déployer**. La migration `schools.0021_curriculum_language_mode` ajoute la colonne et classe chaque académie d'après ses matières et ses classes. Rien d'autre n'est modifié et aucune donnée n'est supprimée.
+2. `docker exec feba_backend python manage.py init_academies` : FEBA et FEBA FHA reçoivent « Bilingue français-anglais » **seulement si** leur programme est encore vide. C'est leur fonctionnement actuel (bulletins à deux sections, 60/40, classes monolingues de FEBA FHA).
+3. `docker exec feba_backend python manage.py academy_languages_report` : chaque académie restée « À configurer » est listée avec le motif et une proposition. Le super administrateur choisit son programme dans « Académies » → modifier. Le diagnostic s'affiche avant tout enregistrement.
+4. Facultatif : `PUBLIC_SITE_ONLINE_ACADEMY_CODE` (défaut `FEBA_FHA`) et `PUBLIC_SITE_CAMPUS_ACADEMY_CODE` (défaut `FEBA`) dans `.env.prod`. Ces réglages ne changent qu'en cas de rattachement du site public à une autre académie.
+5. Vérifier dans l'application, avec un compte administrateur de chaque académie :
+   - l'en-tête porte le nom de l'académie ;
+   - « Admissions en ligne » et « Rapports mensuels » n'apparaissent que pour FEBA FHA ;
+   - « Préinscriptions du site » n'apparaît que pour FEBA ;
+   - l'emploi du temps n'a qu'un onglet, au nom de l'académie.
+
+Retour arrière : `scripts/deploy_feba.sh --rollback`. La migration se défait (`migrate schools 0020`) sans perte : seule la colonne disparaît.
+
 ## 0000000. Gabarits multiformats : Word, OpenDocument, RTF, PowerPoint, TIFF, WEBP (27/10/2026)
 
 Rien n'a été déployé ni migré en production. Validations en local, y compris dans l'image Docker de

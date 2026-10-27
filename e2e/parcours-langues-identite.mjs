@@ -175,6 +175,10 @@ if (PHASE === 'creation') {
     coefficient: 1, language: 'en' });
   check(forged.status === 400, 'matière anglaise forgée à la main : refusée par le serveur (400)', String(forged.status));
 
+  await page.goto(BASE + '/superadmin/grades', { waitUntil: 'networkidle' });
+  const gradeViews = await page.locator('button').allInnerTexts();
+  check(!gradeViews.some((x) => x.trim() === 'Bilingue'), 'notes : pas d\'onglet « Bilingue » (60/40) pour un programme français');
+
   log('\n═══ 4. RECHARGEMENT ═══');
   await page.reload({ waitUntil: 'networkidle' });
   check(await headerName() === SHORT && (await switcherLabel()).includes(TESTETE), 'après rechargement : toujours testete');
@@ -185,6 +189,10 @@ if (PHASE === 'creation') {
   check((await tabs())[0] === 'FEBA FHA — séances en ligne', 'FEBA FHA : onglet à son nom (donnée de l\'académie)',
     JSON.stringify(await tabs()));
   check(/Admissions en ligne/.test(await menuText()), 'FEBA FHA : « Admissions en ligne » au menu');
+  await page.goto(BASE + '/superadmin/grades', { waitUntil: 'networkidle' });
+  check((await page.locator('button').allInnerTexts()).some((x) => x.trim() === 'Bilingue'),
+    'notes : onglet « Bilingue » conservé pour une académie bilingue');
+  await page.goto(BASE + '/superadmin/schedule', { waitUntil: 'networkidle' });
   check(!/Admissions FEBA FHA/.test(await menuText()), 'plus de libellé « Admissions FEBA FHA » en dur');
   await switchAcademy('Toutes');
   const all = await tabs();

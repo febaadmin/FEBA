@@ -336,8 +336,10 @@ class BulletinTests(GradeFixture):
         self.assertIn(SECTION_FR, text)
         self.assertIn(SECTION_EN, text)
         self.assertIn(MOY_BI, text)
-        self.assertIn("Éducation physique", text)
-        self.assertEqual(text.count("Éducation physique"), 1)   # une seule ligne, pas de double comptage
+        self.assertIn("AUTRES MATIÈRES", text)
+        # Imprimée UNE fois, après la section des autres matières (pas dans FR ni EN).
+        self.assertEqual(text.count("Éducation physique"), 1)
+        self.assertGreater(text.index("Éducation physique"), text.index("AUTRES MATIÈRES"))
 
 
 class ModeChangeTests(GradeFixture):
@@ -453,6 +455,23 @@ class LegacyAndMigrationTests(TestCase):
         klass.subjects.set([fr, en])
         self.assertEqual(klass.expected_subject_languages(), ("fr", "en"))
         self.assertNotIn("bilingual", klass.allowed_subject_languages())
+
+    def test_rapport_des_programmes_lecture_seule(self):
+        from io import StringIO
+
+        ambiguous = School.objects.create(name="Ambiguë", code="AMBIGUE", address="x", entity_type="campus")
+        Subject.objects.create(school=ambiguous, name="Fr", code="FR", coefficient=1, language="fr")
+        conflict = School.objects.create(name="Conflit", code="CONFLIT", address="x", entity_type="campus",
+                                         curriculum_language_mode="french_only")
+        Subject.objects.create(school=conflict, name="Reading", code="RD", coefficient=1, language="en")
+        before = list(School.objects.order_by("pk").values_list("code", "curriculum_language_mode"))
+        out = StringIO()
+        call_command("academy_languages_report", stdout=out)
+        text = out.getvalue()
+        self.assertIn("AMBIGUE", text)
+        self.assertIn("À CONFIGURER : matières uniquement en français mais aucune classe", text)
+        self.assertIn("1 matière(s) hors programme", text)
+        self.assertEqual(list(School.objects.order_by("pk").values_list("code", "curriculum_language_mode")), before)
 
     def test_init_academies_complete_seulement_un_programme_vide(self):
         call_command("init_academies", stdout=BytesIOText())

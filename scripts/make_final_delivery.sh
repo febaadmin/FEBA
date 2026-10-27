@@ -18,7 +18,7 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-NOM="${1:-FEBA_GABARITS_MULTIFORMATS_DIPLOMES_CERTIFICATS_VALIDEE}"
+NOM="${1:-FEBA_LANGUES_IDENTITE_ACADEMIES_VALIDEE}"
 SORTIE="${2:-$(dirname "$ROOT")}"
 STAGE="$(mktemp -d)"
 # Le dossier racine porte le MÊME nom que l'archive. En V8 il était
@@ -279,7 +279,18 @@ for requis in backend/manage.py frontend/package.json Makefile \
               backend/tests/test_audit_academies_2026_10_26.py \
               frontend/src/pages/superadmin/Academies.jsx frontend/src/pages/superadmin/Academies.test.jsx \
               frontend/src/pages/admin/Appreciations.jsx frontend/src/pages/admin/Appreciations.test.jsx \
-              frontend/src/components/AcademyLogo.jsx frontend/src/site/fhaEnrollGender.test.jsx; do
+              frontend/src/components/AcademyLogo.jsx frontend/src/site/fhaEnrollGender.test.jsx \
+              AUDIT_IDENTITES_ACADEMIES.md \
+              backend/apps/schools/curriculum.py \
+              backend/apps/schools/migrations/0021_curriculum_language_mode.py \
+              backend/apps/schools/management/commands/academy_languages_report.py \
+              backend/tests/test_curriculum_language_mode.py backend/tests/test_academy_identity_features.py \
+              frontend/src/components/AcademyName.jsx frontend/src/components/FeatureGate.jsx \
+              frontend/src/layouts/navFeatures.js frontend/src/layouts/menuIdentity.test.jsx \
+              frontend/src/pages/admin/Schedule.tabs.test.jsx frontend/src/components/AcademyBadge.test.jsx \
+              e2e/parcours-langues-identite.mjs \
+              docs/historique/FINAL_REPORT_2026-10-27_gabarits_multiformats.md \
+              docs/historique/TEST_REPORT_2026-10-27_gabarits_multiformats.md; do
   [ -e "$CIBLE/$requis" ] || { echo "  ÉCHEC : « $requis » manquant"; exit 1; }
 done
 echo "  OK    tous les fichiers attendus sont présents"

@@ -5,6 +5,17 @@ Rien ici n'est présenté comme fonctionnel sans preuve.
 
 ---
 
+## 000000000. Programme linguistique et identités dynamiques (27 octobre 2026)
+
+- **Académies « À configurer »** : tant que leur programme est vide, elles gardent **exactement** leur fonctionnement historique. Les nouvelles restrictions (langue des matières, notes, créneaux) ne s'y appliquent pas. Le super administrateur doit les configurer (`academy_languages_report`).
+- **Données hors programme après une confirmation** : elles restent en place, consultables et imprimées sur les bulletins existants. Elles ne reçoivent plus de nouvelle note ni de nouveau créneau. Aucun outil de conversion automatique (par exemple renommer une matière anglaise en matière française) : la correction se fait matière par matière dans « Paramètres » et « Classes ».
+- **Matières « communes »** : elles n'existaient pas en pratique (aucune classe ne les admettait). Une ancienne matière de cette catégorie, dans une académie qui n'est pas bilingue, est signalée par le diagnostic.
+- **Logo d'une académie sans logo** : avant la réponse de l'identité publique, l'application demande le logo à l'adresse de CETTE académie. Elle reçoit 404, que la console du navigateur affiche, puis le monogramme s'affiche. Ce comportement est voulu (pas de logo d'une autre académie, pas d'attente pour les académies qui en ont un) et documenté dans `useBranding.test.jsx`.
+- **Mention de la visio** : la mention `copyright` de plugNmeet reste « FEBA », l'exploitant de la plateforme, pour toutes les académies.
+- **Préinscriptions du site** : si l'académie désignée par `PUBLIC_SITE_CAMPUS_ACADEMY_CODE` n'existe pas, les formulaires publics vont à la première académie présentielle active (repli historique de `get_feba_entity`, conservé). Avec plusieurs académies présentielles, il faut **renseigner ce réglage**.
+- **plugNmeet réel** : le test d'intégration `test_plugnmeet_integration` (serveur réel) n'a **pas** été rejoué pour cette version (NOT RUN). La pile locale avait été retirée et le code de visio n'a pas changé, hors deux messages d'erreur.
+- **Journal SMS** : le libellé « Aucun compte FEBA ne correspond à ce destinataire » est conservé. C'est un choix de modèle, le changer imposerait une migration, et il n'est visible que du super administrateur.
+
 ## 00000000. Gabarits multiformats (27 octobre 2026)
 
 La limite « DOCX refusé » de la version précédente est **levée**. DOCX, DOC, ODT, RTF, PPTX, PPT, ODP, TIFF et WEBP sont convertis automatiquement.

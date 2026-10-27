@@ -15,14 +15,59 @@ Menu **Académies** → **Nouvelle académie**.
 | Académie physique — primaire | Maternelle 1 et 2, CI, CP, CE1, CE2, CM1, CM2 | sur 10 |
 | Académie physique — secondaire | 6ème, 5ème, 4ème, 3ème (collège), Seconde, Première, Terminale (lycée) | sur 20 |
 
-Champs obligatoires : type, nom, **code interne** (définitif : il ne peut
-plus être modifié), adresse, ville, pays. Facultatif : première année
+Champs obligatoires : type, **programme linguistique** (§ 1 bis), nom,
+**code interne** (définitif : il ne peut plus être modifié), adresse, ville,
+pays. Facultatif : première année
 scolaire (nom, début, fin — jamais inventée).
 
 Ce qui est installé : les niveaux du type, une **copie** du barème
 d'appréciations (propre à l'académie), la matrice des fonctionnalités du
 type. Ce qui n'est **jamais** copié d'une autre académie : élèves, parents,
 notes, paiements, dossiers d'inscription, salles virtuelles, logo, cachets.
+
+## 1 bis. Programme linguistique
+
+Il est **distinct de la langue de l'interface et des documents**
+(`default_language`). Le programme décide des matières, des parcours de classe
+et du bulletin. Le serveur l'applique à **toutes** les écritures : matières,
+classes, notes saisies une à une ou en masse, créneaux de l'emploi du temps et
+séances en ligne.
+
+| Programme | Matières admises | Parcours des classes | Bulletin |
+|---|---|---|---|
+| Français uniquement | françaises | francophone | section française seule, sans moyenne 60/40 |
+| Anglais uniquement | anglaises | anglophone | section anglaise seule |
+| Bilingue français-anglais | françaises, anglaises et **communes** | bilingue ; francophone ou anglophone seulement si l'académie autorise les classes monolingues (fonctionnalité `monolingual_classes`, active par défaut pour une académie en ligne) | deux sections ; moyenne bilingue = 60 % FR + 40 % EN, seulement quand les deux existent |
+
+**Matière commune** (catégorie « Commune (bilingue) ») : elle n'est admise que
+dans une académie bilingue et dans une classe de parcours bilingue. Elle est
+comptée **une seule fois** dans la moyenne générale, avec son coefficient. Elle
+n'entre ni dans la moyenne française, ni dans l'anglaise, ni dans le 60/40.
+Elle s'imprime dans « Autres matières ».
+
+Les barèmes ne changent pas : le primaire et la maternelle sont notés sur 10,
+le collège et le lycée sur 20. La moyenne générale est pondérée par les
+coefficients ; une matière sans note n'y entre pas.
+
+**Changer le programme** (« Académies » → modifier) :
+1. L'écran affiche le **diagnostic** (`GET /api/schools/schools/<id>/language-diagnostic/?mode=…`) : matières d'une autre langue, classes qui les portent, nombre de notes rattachées.
+2. S'il y a conflit, l'enregistrement exige une **confirmation explicite**.
+3. Rien n'est supprimé ni converti. Les matières en conflit restent consultables, mais ne reçoivent plus de nouvelles notes ni de nouveaux créneaux tant qu'elles ne sont pas corrigées dans « Paramètres » et « Classes ».
+4. Pour un programme monolingue, le parcours **stocké** des classes est aligné sur le parcours appliqué.
+
+Un programme ne peut pas redevenir vide. Le changement est réservé au super
+administrateur : l'administrateur d'une académie ne peut pas le modifier.
+
+**Académies antérieures** : la migration `schools.0021` les classe d'après
+leurs données, sans rien deviner :
+- matières FR **et** EN, ou une matière commune → bilingue ;
+- toutes les matières dans une langue, toutes les classes dans le parcours monolingue correspondant, et monolingue permis → cette langue ;
+- sinon « À configurer ». Le fonctionnement historique est alors conservé intégralement.
+
+`python manage.py academy_languages_report` (lecture seule) liste les
+académies à configurer, avec le motif et une proposition, ainsi que celles qui
+ont des données hors programme. `init_academies` complète FEBA et FEBA FHA en
+« bilingue » **seulement si leur programme est vide**.
 
 ## 2. Terminer la configuration
 
@@ -74,6 +119,7 @@ de ce qu'elle contient.
 
 - `python manage.py migrate --plan` : aucune migration en attente ;
 - `python manage.py academy_types_report` ;
+- `python manage.py academy_languages_report` ;
 - `python manage.py check --deploy` ;
 - dans l'application : créer une académie de test, vérifier ses niveaux
   et son barème, la sélectionner, constater qu'aucune donnée d'une autre
@@ -81,8 +127,13 @@ de ce qu'elle contient.
 
 ## Limites
 
-- La fiche d'inscription publique en ligne et les rapports mensuels sont
-  propres à FEBA FHA ; une nouvelle académie en ligne n'a pas encore de
+- La fiche d'inscription publique en ligne, les tests de placement et les
+  rapports mensuels ne concernent que l'académie rattachée au site public
+  (`PUBLIC_SITE_ONLINE_ACADEMY_CODE`, par défaut `FEBA_FHA`). Les
+  préinscriptions du site ne concernent que `PUBLIC_SITE_CAMPUS_ACADEMY_CODE`
+  (par défaut `FEBA`). Les menus et onglets correspondants (« Admissions en
+  ligne », « Rapports mensuels », « Préinscriptions du site ») suivent ces
+  capacités calculées par le serveur. Une nouvelle académie n'a pas encore de
   formulaire public à son nom.
 - Diplômes et certificats : l'académie téléverse ses gabarits officiels
   dans « Gabarits des documents » (`DOCUMENT_TEMPLATES_GUIDE.md`) ; sans

@@ -16,6 +16,7 @@ Règle : on ne devine jamais.
 # Valeurs STOCKÉES de Class.language_track (majuscules).
 TRACK_FOR = {"fr": "FRANCOPHONE", "en": "ANGLOPHONE"}
 MODE_FOR = {"fr": "french_only", "en": "english_only"}
+LABEL_FOR = {"fr": "français", "en": "anglais"}
 
 
 def classify_curriculum(subject_languages, class_tracks, monolingual_allowed):
@@ -27,11 +28,12 @@ def classify_curriculum(subject_languages, class_tracks, monolingual_allowed):
     if not languages:
         return None, "aucune matière : programme impossible à déduire"
     (language,) = tuple(languages)
+    label = LABEL_FOR[language]
     if not tracks:
-        return None, f"matières uniquement en « {language} » mais aucune classe"
+        return None, f"matières uniquement en {label} mais aucune classe"
     if tracks != {TRACK_FOR[language]}:
-        return None, (f"matières uniquement en « {language} » mais classes de parcours "
+        return None, (f"matières uniquement en {label} mais classes de parcours "
                       f"{', '.join(sorted(tracks))}")
     if not monolingual_allowed:
         return None, "classes monolingues alors que l'académie ne les permet pas"
-    return MODE_FOR[language], f"matières et classes uniquement en « {language} »"
+    return MODE_FOR[language], f"matières et classes uniquement en {label}"
