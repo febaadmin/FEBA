@@ -36,6 +36,16 @@ OFFICE = unittest.skipUnless(
     "LibreOffice absent de cet environnement : test exécuté dans l'image Docker de FEBA.")
 
 
+#: Zones LIBRES du certificat Word portrait (mesurées sur son rendu) : sous
+#: « … certifie que l'élève : », après « … en classe de : », en bas de page.
+CERT_DOCX_FIELDS = [
+    {"name": "student_name", "x_mm": 30, "y_mm": 78, "width_mm": 150, "height_mm": 12,
+     "font": "serif", "font_size_pt": 20, "max_lines": 2, "required": True},
+    {"name": "class_name", "x_mm": 100, "y_mm": 94, "width_mm": 90, "height_mm": 8},
+    {"name": "document_number", "x_mm": 110, "y_mm": 262, "width_mm": 80, "height_mm": 9},
+]
+
+
 def fixture(name):
     with open(os.path.join(FIXTURES, name), "rb") as handle:
         return handle.read()
@@ -178,11 +188,7 @@ class OfficeFormatTests(TemplateTestBase):
         self.assertIn("DIPLÔME D'HONNEUR", text)
 
     def test_certificat_portrait_sans_marqueur_champs_places_dans_l_editeur(self):
-        fields = [
-            {"name": "student_name", "x_mm": 30, "y_mm": 92, "width_mm": 150, "height_mm": 14,
-             "font": "serif", "font_size_pt": 20, "max_lines": 2, "required": True},
-            {"name": "class_name", "x_mm": 30, "y_mm": 122, "width_mm": 150, "height_mm": 10},
-        ]
+        fields = CERT_DOCX_FIELDS
         template, text, content = self.office_flow(
             "certificat_portrait.docx", kind="certificate", page=(210, 297), fields=fields)
         self.assertEqual(template.fields[0]["name"], "student_name")
@@ -205,6 +211,19 @@ class OfficeFormatTests(TemplateTestBase):
                                 format="json")
         self.assertEqual(response.status_code, 200, response.data)
         self.assertEqual(response.data["page_index"], 0)
+
+    def test_zone_qui_recouvre_le_texte_du_fond_refusee(self):
+        client = self.client_for(self.A.admin)
+        data = client.post(BASE, {"kind": "certificate", "file": upload(
+            "c.docx", fixture("certificat_portrait.docx"), "")}, format="multipart").data
+        over_title = [dict(CERT_DOCX_FIELDS[0], y_mm=45)]  # sur « CERTIFICAT DE SCOLARITÉ »
+        client.patch(f"{BASE}{data['id']}/", {"fields": over_title}, format="json")
+        report = client.post(f"{BASE}{data['id']}/validate/").data["report"]
+        self.assertFalse(report["ok"])
+        self.assertTrue(any("recouvre du texte du fond" in e and "CERTIFICAT" in e
+                            for e in report["errors"]), report["errors"])
+        client.patch(f"{BASE}{data['id']}/", {"fields": CERT_DOCX_FIELDS}, format="json")
+        self.assertTrue(client.post(f"{BASE}{data['id']}/validate/").data["report"]["ok"])
 
     def test_nom_de_fichier_complexe(self):
         client = self.client_for(self.A.admin)
@@ -332,7 +351,8 @@ class OfficeErrorTests(TemplateTestBase):
         pdf.save()
         tpl = self.ready_template_or_report(out.getvalue())
         self.assertFalse(tpl["ok"])
-        self.assertTrue(any("reste visible" in e for e in tpl["errors"]))
+        self.assertTrue(any("resteraient visibles (student_name)" in e for e in tpl["errors"]),
+                        tpl["errors"])
 
     def ready_template_or_report(self, content):
         client = self.client_for(self.A.admin)
@@ -396,14 +416,14 @@ class MultiAcademyMultiFormatTests(TemplateTestBase):
 
     def test_quatre_documents_bons_fonds_bonnes_donnees_acces_croises_refuses(self):
         a_dip = self.ready_template(self.A, "diploma", fixture("diplome_paysage_marqueurs.docx"),
-                                    "diplome.docx", "", LANDSCAPE_FIELDS)
+                                    "diplome.docx", "", None)  # champs placés aux marqueurs
         a_cer = self.ready_template(self.A, "certificate", pdf_bytes(YELLOW, portrait=True),
                                     "certificat.pdf", "application/pdf", PORTRAIT_FIELDS,
                                     options={"certificate_purpose": "Pour servir et valoir"})
         b_dip = self.ready_template(self.B, "diploma", png_bytes(RED), "diplome.png", "image/png",
                                     LANDSCAPE_FIELDS)
         b_cer = self.ready_template(self.B, "certificate", fixture("certificat_portrait.docx"),
-                                    "certificat.docx", "", PORTRAIT_FIELDS,
+                                    "certificat.docx", "", CERT_DOCX_FIELDS,
                                     options={"certificate_purpose": "Pour servir et valoir"})
         self.assertEqual((a_dip.source_format, b_cer.source_format), ("docx", "docx"))
 
@@ -432,13 +452,13 @@ class MultiAcademyMultiFormatTests(TemplateTestBase):
 
     def test_gabarit_remplace_pendant_une_production(self):
         self.ready_template(self.A, "diploma", fixture("diplome_paysage_marqueurs.docx"),
-                            "v1.docx", "", LANDSCAPE_FIELDS)
+                            "v1.docx", "", None)
         _r, issued = self.produce(self.A, "diploma")
         client = self.client_for(self.A.admin)
         draft = client.post("/api/documents/", {"student": self.A.student.pk, "kind": "diploma"},
                             format="json").data
         self.ready_template(self.A, "diploma", fixture("diplome_paysage_marqueurs.odt"),
-                            "v2.odt", "", LANDSCAPE_FIELDS)
+                            "v2.odt", "", None)
         response = client.post(f"/api/documents/{draft['id']}/issue/")
         self.assertEqual(response.status_code, 409)
         self.assertIn("n'est plus en service", response.data["detail"])
@@ -482,3 +502,111 @@ class ConcurrentConversionTests(TransactionTestCase):
         self.assertTrue(all(r[0] == "ok" for r in results), results)
         self.assertEqual(sorted(r[1] for r in results), [1, 2, 3])
         self.assertEqual(sorted(r[2] for r in results), ["docx", "odt", "pptx"])
+
+
+def char_span(content, word):
+    """(gauche, droite) en points du premier mot `word` dans le PDF, ou None."""
+    import pypdfium2 as pdfium
+
+    document = pdfium.PdfDocument(content)
+    try:
+        textpage = document[0].get_textpage()
+        searcher = textpage.search(word, match_case=True)
+        hit = searcher.get_next()
+        if hit is None:
+            return None
+        start, length = hit
+        boxes = [textpage.get_charbox(i) for i in range(start, start + length)]
+        searcher.close()
+        textpage.close()
+        return min(b[0] for b in boxes), max(b[2] for b in boxes)
+    finally:
+        document.close()
+
+
+class MarkerIsolationUnitTests(unittest.TestCase):
+    """Isolement des marqueurs dans le XML OpenDocument (sans LibreOffice)."""
+
+    def test_marqueur_decoupe_entre_plusieurs_portions(self):
+        xml = ('<office:automatic-styles></office:automatic-styles>'
+               '<text:p text:style-name="P1">Élève : <text:span text:style-name="T1">{{ stu</text:span>'
+               '<text:span text:style-name="T2">dent_name }}</text:span> fin</text:p>')
+        result, count = conversion._isolate_in_xml(xml)
+        self.assertEqual(count, 1)
+        self.assertIn('<text:span text:style-name="FebaMarqueur">{{ student_name }}</text:span>', result)
+        self.assertIn("Élève : ", result)
+        self.assertIn(" fin</text:p>", result)
+        self.assertNotIn("dent_name }}</text:span> fin", result)
+        self.assertIn('style:name="FebaMarqueur"', result)
+
+    def test_plusieurs_marqueurs_et_paragraphes_imbriques(self):
+        xml = ('<office:automatic-styles/><text:p>A {{ a }} B {{ b }}'
+               '<draw:frame><draw:text-box><text:p>{{ c }}</text:p></draw:text-box></draw:frame></text:p>')
+        result, count = conversion._isolate_in_xml(xml)
+        self.assertEqual(count, 3)
+        for name in ("a", "b", "c"):
+            self.assertIn(f'<text:span text:style-name="FebaMarqueur">{{{{ {name} }}}}</text:span>', result)
+
+    def test_sans_marqueur_rien_ne_change(self):
+        xml = "<office:automatic-styles/><text:p>Diplôme {{ pas un marqueur</text:p>"
+        self.assertEqual(conversion._isolate_in_xml(xml), (xml, 0))
+
+
+@OFFICE
+class MarkerLayoutTests(TemplateTestBase):
+    """Le fond ne bouge pas quand les marqueurs sont retirés : aucune superposition."""
+
+    def produce_with(self, filename, content=None):
+        client = self.client_for(self.A.admin)
+        data = client.post(BASE, {"kind": "diploma", "file": upload(
+            filename, content or fixture(filename), "")}, format="multipart").data
+        self.assertTrue(client.post(f"{BASE}{data['id']}/validate/").data["report"]["ok"])
+        client.post(f"{BASE}{data['id']}/activate/")
+        _r, pdf = self.produce(self.A, "diploma")
+        return data, pdf
+
+    def test_docx_la_valeur_suit_le_texte_qui_la_precede(self):
+        _d, pdf = self.produce_with("diplome_paysage_marqueurs.docx")
+        scolaire = char_span(pdf, "scolaire")
+        annee = char_span(pdf, self.A.year.name)
+        self.assertIsNotNone(scolaire)
+        self.assertIsNotNone(annee)
+        self.assertGreaterEqual(annee[0], scolaire[1] - 0.5, (scolaire, annee))
+
+    def test_pptx_la_date_suit_delivre_le(self):
+        from django.utils import timezone
+
+        _d, pdf = self.produce_with("diplome_diapo_marqueurs.pptx")
+        libelle = char_span(pdf, "Délivré le")
+        date = char_span(pdf, timezone.localdate().strftime("%d/%m/%Y"))
+        self.assertGreaterEqual(date[0], libelle[1] - 0.5, (libelle, date))
+
+    def test_marqueur_coupe_entre_deux_portions_word(self):
+        source = fixture("diplome_paysage_marqueurs.docx")
+        zin = zipfile.ZipFile(io.BytesIO(source))
+        out = io.BytesIO()
+        with zipfile.ZipFile(out, "w") as z:
+            for info in zin.infolist():
+                data = zin.read(info.filename)
+                if info.filename == "word/document.xml":
+                    self.assertIn(b"{{ issue_date }}", data)
+                    data = data.replace(b"{{ issue_date }}",
+                                        b"{{ issue</w:t></w:r><w:r><w:rPr><w:b/></w:rPr><w:t>_date }}")
+                z.writestr(info, data)
+        data, pdf = self.produce_with("coupe.docx", out.getvalue())
+        self.assertIn("issue_date", {f["name"] for f in data["fields"]})
+        self.assertNotIn("{{", pdf_text(pdf)[0])
+
+
+@OFFICE
+class MarkerNeighbourTests(MarkerLayoutTests):
+    """La zone d'un marqueur s'arrête au texte du fond qui le suit."""
+
+    def test_pptx_le_nom_de_l_academie_ne_recouvre_pas_le_tiret(self):
+        data, pdf = self.produce_with("diplome_diapo_marqueurs.pptx")
+        academy = next(f for f in data["fields"] if f["name"] == "academy_name")
+        tiret = char_span(pdf, "—")
+        self.assertIsNotNone(tiret)
+        self.assertLessEqual(academy["x_mm"] + academy["width_mm"], tiret[0] / 72 * 25.4)
+        nom = char_span(pdf, self.A.school.legal_name or self.A.school.name)
+        self.assertLessEqual(nom[1], tiret[0] + 0.5, (nom, tiret))

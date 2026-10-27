@@ -434,7 +434,8 @@ def fields_from_markers(markers, kind, page_index, page_w, page_h):
                      and abs(m["y_mm"] - marker["y_mm"]) < max(marker["height_mm"], 2)
                      and m["x_mm"] > marker["x_mm"]]
         alone = not [m for m in on_page if m is not marker
-                     and abs(m["y_mm"] - marker["y_mm"]) < max(marker["height_mm"], 2)]
+                     and abs(m["y_mm"] - marker["y_mm"]) < max(marker["height_mm"], 2)] \
+            and marker.get("text_left_mm") is None and marker.get("text_right_mm") is None
         centre = marker["x_mm"] + marker["width_mm"] / 2
         height = max(marker["height_mm"] * 1.8, 6.0)
         top = max(marker["y_mm"] - (height - marker["height_mm"]) / 2, 0)
@@ -444,7 +445,10 @@ def fields_from_markers(markers, kind, page_index, page_w, page_h):
             # quelle que soit sa longueur.
             x, width, align = 20.0, page_w - 40.0, "center"
         else:
-            right = min([m["x_mm"] - 1.5 for m in same_line] + [page_w - 8])
+            limits = [m["x_mm"] - 1.5 for m in same_line] + [page_w - 8]
+            if marker.get("text_right_mm") is not None:
+                limits.append(marker["text_right_mm"] - 1.5)
+            right = min(limits)
             x, width, align = marker["x_mm"], max(right - marker["x_mm"], marker["width_mm"], 10), "left"
         fields.append({
             "name": name, "x_mm": round(x, 2), "y_mm": round(top, 2),
@@ -1097,6 +1101,19 @@ def validate(template, user=None):
                 if hashlib.sha256(handle.read()).hexdigest() != template.normalized_sha256:
                     errors.append("Le fond normalisé ne correspond plus à son empreinte : "
                                   "il a été modifié hors de l'application.")
+    if not errors and template.file_format == AcademyDocumentTemplate.FORMAT_PDF:
+        try:
+            visible = conversion.MARKER.findall(
+                conversion.pdf_text(template.render_absolute_path, template.page_index))
+        except Exception:
+            visible = []
+        if visible:
+            errors.append(
+                "Le fond contient des marqueurs {{ … }} qui resteraient visibles ("
+                + ", ".join(sorted(set(visible))) + "). Un PDF ou une image ne peut pas être "
+                "nettoyé : téléversez le document source (DOCX, ODT…), dont les marqueurs sont "
+                "remplacés automatiquement, ou retirez-les.")
+        errors.extend(background_overlaps(template))
     markers = (template.options or {}).get("markers") or {}
     if markers.get("unknown"):
         errors.append(
@@ -1168,6 +1185,43 @@ def validate(template, user=None):
     log(template, "validated" if not errors else "validation_failed", user,
         "; ".join(errors)[:1500] or "Rendu d'essai relu : conforme.")
     return report
+
+
+def background_overlaps(template):
+    """
+    Zones qui recouvrent du TEXTE du fond (titre, mention imprimée…) : la
+    valeur s'écrirait par-dessus. Les pointillés et filets de remplissage
+    (« Nom : ........ ») ne comptent pas : ils sont faits pour être remplis.
+    Seul un fond PDF porte un texte mesurable ; une image n'en a pas.
+    """
+    try:
+        boxes = conversion.text_boxes(template.render_absolute_path, template.page_index)
+    except Exception:  # fond illisible : signalé par les autres contrôles
+        return []
+    problems = []
+    margin = 0.3
+    for field in template.fields:
+        x0, y0 = field["x_mm"] + margin, field["y_mm"] + margin
+        x1 = field["x_mm"] + field["width_mm"] - margin
+        y1 = field["y_mm"] + field["height_mm"] - margin
+        hits = [b for b in boxes if b[1] < x1 and b[3] > x0 and b[2] < y1 and b[4] > y0]
+        if hits:
+            # La LIGNE du fond touchée, lisible (mots séparés), pas seulement
+            # les quelques lettres dont l'encre entre dans la zone.
+            top, bottom = hits[0][2], hits[0][4]
+            line = sorted((b for b in boxes if b[2] < bottom and b[4] > top), key=lambda b: b[1])
+            excerpt, previous = "", None
+            for char, bx0, _by0, bx1, _by1 in line:
+                if previous is not None and bx0 - previous > 1.2:
+                    excerpt += " "
+                excerpt += char
+                previous = bx1
+            excerpt = excerpt[:50]
+            problems.append(
+                f"La zone « {FIELD_CATALOG[field['name']]['label']} » recouvre du texte du fond "
+                f"(« {excerpt} ») : la valeur s'écrirait par-dessus. Déplacez ou réduisez la zone."
+            )
+    return problems
 
 
 def activate(template, user=None):

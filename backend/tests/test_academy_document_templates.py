@@ -165,8 +165,10 @@ class TemplateTestBase(TestCase):
         self.assertEqual(response.status_code, 201, response.data)
         pk = response.data["id"]
         self.assertEqual(response.data["status"], "draft")
-        response = client.patch(f"{BASE}{pk}/", {"fields": fields, "options": options or {}},
-                                format="json")
+        patch = {"options": options or {}}
+        if fields is not None:  # None : on garde les champs placés aux marqueurs
+            patch["fields"] = fields
+        response = client.patch(f"{BASE}{pk}/", patch, format="json")
         self.assertEqual(response.status_code, 200, response.data)
         response = client.post(f"{BASE}{pk}/validate/")
         self.assertEqual(response.status_code, 200, response.data)

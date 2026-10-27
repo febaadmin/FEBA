@@ -59,4 +59,6 @@ with open(f"{out}/faux_png.png", "wb") as handle:
     handle.write(open(f"{out}/diplome_test_vectoriel.pdf", "rb").read())
 with open(f"{out}/corrompu.pdf", "wb") as handle:
     handle.write(b"%PDF-1.7\n" + b"\x00 donnees tronquees " * 200)
+with open(f"{out}/faux_word.docx", "wb") as handle:  # PDF renommé en .docx
+    handle.write(open(f"{out}/diplome_test_vectoriel.pdf", "rb").read())
 print("ok")
