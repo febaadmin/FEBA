@@ -145,9 +145,8 @@ class ClassSchedule(models.Model):
         if academy is not None and academy.entity_type == "online":
             raise ValidationError(
                 f"« {academy.name} » est une académie en ligne : ses séances "
-                f"se planifient dans l'emploi du temps FEBA FHA (salle "
-                f"virtuelle, fuseau horaire), pas dans l'emploi du temps "
-                f"présentiel."
+                f"se planifient dans les séances en ligne (salle virtuelle, "
+                f"fuseau horaire), pas dans l'emploi du temps présentiel."
             )
 
     def save(self, *args, **kwargs):
@@ -318,8 +317,8 @@ class OnlineSessionSchedule(models.Model):
         if self.academy_id and self.academy.entity_type != self.ACADEMY_REQUIREMENT:
             raise ValidationError(
                 f"« {self.academy.name} » est une école présentielle : ses "
-                f"cours se planifient dans l'emploi du temps FEBA (classe et "
-                f"salle physique), pas dans les séances en ligne."
+                f"cours se planifient dans l'emploi du temps présentiel "
+                f"(classe et salle physique), pas dans les séances en ligne."
             )
 
         assert_single_academy(

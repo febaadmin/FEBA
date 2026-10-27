@@ -5,6 +5,8 @@ import {
 } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
 import AcademyLogo from "../components/AcademyLogo";
+import AcademyName from "../components/AcademyName";
+import { isNavItemVisible } from "./navFeatures";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { notificationsAPI, conversationsAPI } from "../api";
 import { motion, AnimatePresence } from "framer-motion";
@@ -44,8 +46,8 @@ const nav = [
   { label: "Annonces",        icon: Megaphone,        to: "/admin/announcements" },
   { label: "Utilisateurs",    icon: UserCog,          to: "/admin/users" },
   { label: "Fichiers",         icon: FolderOpen,       to: "/admin/user-files" },
-  { label: "Admissions FEBA FHA", icon: ClipboardList, to: "/admin/fha-admissions", feature: "placement_tests" },
-  { label: "Rapports mensuels", icon: FileBarChart, to: "/admin/monthly-reports", feature: "placement_tests" },
+  { label: "Admissions en ligne", icon: ClipboardList, to: "/admin/fha-admissions", feature: "online_admissions" },
+  { label: "Rapports mensuels", icon: FileBarChart, to: "/admin/monthly-reports", feature: "monthly_reports" },
   { label: "Site vitrine",     icon: Globe,            to: "/admin/website" },
   { label: "Branding & Logo",  icon: School,           to: "/admin/branding" },
   { label: "Paramètres",      icon: Settings,         to: "/admin/settings" },
@@ -73,7 +75,7 @@ export default function AdminLayout() {
   // protection réelle est côté serveur (permission HasEntityFeature),
   // qui refuse l'endpoint même si l'URL est saisie à la main.
   const { hasFeature } = useEntityContext();
-  const visibleNav = nav.filter((item) => !item.feature || hasFeature(item.feature));
+  const visibleNav = nav.filter((item) => isNavItemVisible(item, { hasFeature }));
 
   const isMobile = useIsMobile();
   const [sidebarOpen, setSidebarOpen] = useState(!isMobile);
@@ -148,7 +150,7 @@ export default function AdminLayout() {
                 <AcademyLogo />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-white font-bold text-sm leading-tight">{t("FEBA Academy")}</p>
+                <AcademyName className="text-white font-bold text-sm leading-tight" />
                 <p className="text-yellow-400 text-xs">{t("Administrateur")}</p>
               </div>
               {isMobile && (

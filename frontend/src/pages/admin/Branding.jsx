@@ -6,7 +6,7 @@ import { schoolsAPI } from "../../api";
 import PageHeader from "../../components/ui/PageHeader";
 import Modal from "../../components/ui/Modal";
 import { useAcademy } from "../../context/AcademyContext";
-import { academyLogoUrl } from "../../hooks/useBranding";
+import AcademyLogo from "../../components/AcademyLogo";
 import { extractApiError } from "../../utils/errors";
 import { resolveMediaUrl } from "../../utils/media";
 import { t } from "../../i18n";
@@ -110,7 +110,9 @@ export default function AdminBranding() {
     <div className="space-y-6">
       <PageHeader
         title={t("Gestion du Branding & Logo")}
-        subtitle={t("Gestion centralisée du logo officiel de l'école FEBA — propagé automatiquement dans toute l'application")}
+        subtitle={isAllAcademies || !activeAcademy?.name
+          ? t("Gestion centralisée du logo officiel de chaque académie — propagé automatiquement dans toute l'application")
+          : t("Gestion centralisée du logo officiel de {nom} — propagé automatiquement dans toute l'application", { nom: activeAcademy.name })}
         action={
           <button onClick={() => setUploadOpen(true)} disabled={!academyId}
             className="btn-primary flex items-center gap-2">
@@ -133,7 +135,9 @@ export default function AdminBranding() {
           {active?.logo_url ? (
             <img src={resolveMediaUrl(active.logo_url)} alt={t("Logo actif")} className="w-full h-full object-contain" />
           ) : (
-            <img src={activeAcademy ? academyLogoUrl(activeAcademy.code) : undefined} alt={t("Logo de repli de l'académie")} className="w-full h-full object-contain" />
+            // Logo de repli de l'académie, ou son monogramme si elle n'en a
+            // aucun (académie nouvellement créée) : jamais une image cassée.
+            <AcademyLogo />
           )}
         </div>
         <div className="flex-1">
@@ -141,7 +145,7 @@ export default function AdminBranding() {
             <CheckCircle className="w-5 h-5 text-green-400" />
             <span className="font-bold text-lg">{t("Logo actuellement actif")}</span>
           </div>
-          <p className="text-blue-200 text-sm">{active?.label || "Logo FEBA officiel"}</p>
+          <p className="text-blue-200 text-sm">{active?.label || t("Logo officiel par défaut")}</p>
           <p className="text-blue-300 text-xs mt-1">{t("Affiché sur : Page de connexion • Tableaux de bord • Bulletins PDF • Tous les documents")}</p>
         </div>
         <div className="text-right text-xs text-blue-300">
@@ -186,7 +190,7 @@ export default function AdminBranding() {
           <div className="p-8 text-center">
             <Image className="w-12 h-12 text-gray-300 mx-auto mb-3" />
             <p className="text-gray-500 text-sm">{t("Aucune version uploadée.")}</p>
-            <p className="text-gray-400 text-xs mt-1">{t("Le logo FEBA par défaut est utilisé.")}</p>
+            <p className="text-gray-400 text-xs mt-1">{t("Le logo par défaut de l'académie est utilisé.")}</p>
           </div>
         ) : (
           <div className="divide-y divide-gray-100">

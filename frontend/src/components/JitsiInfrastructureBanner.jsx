@@ -63,12 +63,12 @@ export default function JitsiInfrastructureBanner() {
       <div className="min-w-0">
         <p className="font-semibold">
           {degraded
-            ? t("Visioconférence dégradée — instance FEBA injoignable")
-            : t("Visioconférence indisponible — instance FEBA non configurée")}
+            ? t("Visioconférence dégradée — instance de la plateforme injoignable")
+            : t("Visioconférence indisponible — instance de la plateforme non configurée")}
         </p>
         <p className="mt-0.5">
           {t(
-            "Les cours en direct ne peuvent pas démarrer pour le moment. Aucune session n'est basculée vers un service public : les échanges restent sur l'infrastructure FEBA.",
+            "Les cours en direct ne peuvent pas démarrer pour le moment. Aucune session n'est basculée vers un service public : les échanges restent sur l'infrastructure de la plateforme.",
           )}
         </p>
 

@@ -292,7 +292,7 @@ class VirtualRoomViewSet(BulkDeleteMixin, viewsets.ModelViewSet):
                 {
                     "detail": (
                         "La visioconférence est momentanément indisponible : "
-                        "l'instance FEBA n'est pas joignable. Contactez le "
+                        "l'instance de la plateforme n'est pas joignable. Contactez le "
                         "support technique."
                     ),
                     "infrastructure_error": str(exc),

@@ -42,7 +42,7 @@ export default function VirtualRoomEnded() {
       <div className="max-w-lg text-center">
         <h1 className="text-lg font-semibold text-white mb-3">Vous avez quitté la réunion</h1>
         <p className="text-slate-300 text-sm">
-          Votre session FEBA est toujours ouverte.
+          Votre session sur la plateforme est toujours ouverte.
         </p>
         <div className="mt-6 flex flex-wrap gap-3 justify-center">
           <Link to={`/virtual-room/${id}/join`} replace
@@ -51,7 +51,7 @@ export default function VirtualRoomEnded() {
           </Link>
           <Link to={HOME[role] || "/login"}
                 className="px-4 py-2 rounded-lg bg-slate-700 text-white text-sm hover:bg-slate-600">
-            Retour à FEBA
+            Retour à l'accueil
           </Link>
           <button type="button" onClick={() => window.close()}
                   className="px-4 py-2 rounded-lg bg-slate-800 text-slate-200 text-sm hover:bg-slate-700">

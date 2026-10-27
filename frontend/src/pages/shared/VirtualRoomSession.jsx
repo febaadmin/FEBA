@@ -27,6 +27,7 @@ import { useParams } from "react-router-dom";
 import JitsiMeeting from "../../components/JitsiMeeting";
 import { virtualAPI } from "../../api";
 import { useAcademy } from "../../context/AcademyContext";
+import { t } from "../../i18n";
 import { useBranding } from "../../hooks/useBranding";
 import { useAuthStore } from "../../store/authStore";
 import { extractApiError } from "../../utils/errors";
@@ -185,7 +186,7 @@ export default function VirtualRoomSession() {
   // Faith & Excellence Bilingual Academy », « FEBA FHA - FEBA »), et non le
   // nom de la salle.
   const { brandingData } = useBranding(meeting?.academy_code || undefined);
-  const titre = meeting?.meeting_title || brandingData?.meeting_title || "FEBA";
+  const titre = meeting?.meeting_title || brandingData?.meeting_title || meeting?.academy_name || t("Visioconférence");
   useEffect(() => {
     document.title = titre;
   }, [titre]);

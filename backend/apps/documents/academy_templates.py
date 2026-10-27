@@ -1129,7 +1129,7 @@ def validate(template, user=None):
         errors.append(
             "Marqueurs inconnus dans le document : "
             + ", ".join("{{ " + m + " }}" for m in markers["unknown"])
-            + ". Ils ont été effacés du fond mais ne correspondent à aucune donnée de FEBA : "
+            + ". Ils ont été effacés du fond mais ne correspondent à aucune donnée de la plateforme : "
               "renommez-les (voir DOCUMENT_TEMPLATES_GUIDE.md) ou placez le champ voulu dans l'éditeur."
         )
     names = {field["name"] for field in template.fields}

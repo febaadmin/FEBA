@@ -2,6 +2,7 @@ import { NavLink, useNavigate } from "react-router-dom";
 import { Home, ClipboardList, Calendar, FileText, BookOpen, MessageSquare, User, LogOut, School, Menu, X, Bell, Megaphone, Video } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
 import AcademyLogo from "../components/AcademyLogo";
+import AcademyName from "../components/AcademyName";
 import { clsx } from "clsx";
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -90,7 +91,7 @@ export default function StudentLayout() {
                 <AcademyLogo />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-white font-bold text-sm">{t("FEBA")}</p>
+                <AcademyName className="text-white font-bold text-sm" />
                 <p className="text-slate-400 text-xs">{t("Espace Élève")}</p>
               </div>
               {isMobile && <button onClick={() => setOpen(false)} className="text-slate-400 hover:text-white"><X className="w-5 h-5" /></button>}

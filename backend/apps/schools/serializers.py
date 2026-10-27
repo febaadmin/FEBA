@@ -140,6 +140,8 @@ class SchoolSerializer(serializers.ModelSerializer):
     currency_name = serializers.CharField(read_only=True)
     short_name = serializers.CharField(read_only=True)
     branding = serializers.SerializerMethodField()
+    curriculum_language_mode_display = serializers.CharField(
+        source='get_curriculum_language_mode_display', read_only=True, default=None)
 
     class Meta:
         model = School
@@ -150,7 +152,8 @@ class SchoolSerializer(serializers.ModelSerializer):
         # qui déterminent l'en-tête de chaque reçu, de chaque bulletin et de
         # chaque diplôme qu'elle émet.
         fields = ['id', 'name', 'legal_name', 'short_name', 'slug', 'code',
-                  'entity_type', 'academy_type', 'address', 'city', 'country', 'phone',
+                  'entity_type', 'academy_type', 'curriculum_language_mode',
+                  'curriculum_language_mode_display', 'address', 'city', 'country', 'phone',
                   'whatsapp', 'email',
                   'logo', 'logo_url', 'active_logo_url', 'description',
                   'timezone', 'currency_code', 'currency_symbol',
@@ -166,7 +169,10 @@ class SchoolSerializer(serializers.ModelSerializer):
         # administrateur d'académie le passait de « campus » à « online »
         # par un simple PATCH et s'ouvrait toutes ces fonctions. Seul le
         # super administrateur (SchoolPlatformSerializer) le modifie.
-        read_only_fields = ['slug', 'code', 'entity_type', 'academy_type', 'is_active', 'plan',
+        # `curriculum_language_mode` aussi : il décide des matières, des
+        # parcours et des bulletins de toute l'académie (super admin seul).
+        read_only_fields = ['slug', 'code', 'entity_type', 'academy_type',
+                            'curriculum_language_mode', 'is_active', 'plan',
                             'max_students', 'trial_ends_at', 'created_at', 'updated_at']
 
     def get_branding(self, obj):
@@ -236,6 +242,8 @@ class SchoolPlatformSerializer(SchoolSerializer):
                     + ", ".join(f"{lvl.name} — {labels.get(lvl.cycle, lvl.cycle)}" for lvl in conflicts[:6])
                     + "). Corrigez ou déplacez ces niveaux d'abord : sinon leurs bulletins "
                       "seraient notés sur le mauvais barème.")})
+        if instance is not None and 'curriculum_language_mode' in attrs:
+            self._check_curriculum_change(instance, attrs['curriculum_language_mode'])
         derived = School.entity_type_for(academy_type)
         if derived and 'entity_type' in attrs and attrs['entity_type'] != derived:
             raise serializers.ValidationError({'entity_type': (
@@ -243,6 +251,52 @@ class SchoolPlatformSerializer(SchoolSerializer):
                 f"« {dict(School.ACADEMY_TYPE_CHOICES)[academy_type]} » est "
                 f"{'en ligne' if derived == 'online' else 'présentielle'}.")})
         return attrs
+
+    def update(self, instance, validated_data):
+        previous = instance.curriculum_language_mode
+        instance = super().update(instance, validated_data)
+        if instance.curriculum_language_mode != previous:
+            from apps.classes.subject_rules import align_class_tracks
+
+            align_class_tracks(instance)
+        return instance
+
+    def _check_curriculum_change(self, instance, mode):
+        """
+        Changer le programme linguistique ne SUPPRIME ni ne convertit rien.
+        Si des matières, classes ou notes existantes ne le respecteraient
+        plus, le changement est refusé avec le diagnostic détaillé, sauf
+        confirmation explicite (`confirm_curriculum_change`) : les données
+        restent alors en place, consultables, et ne peuvent plus recevoir
+        de nouvelles notes ni de nouveaux créneaux tant qu'elles ne sont
+        pas corrigées.
+        """
+        if mode is None:
+            if instance.curriculum_language_mode:
+                raise serializers.ValidationError({'curriculum_language_mode': (
+                    "Le programme linguistique est obligatoire : il ne peut pas redevenir vide.")})
+            return
+        if mode == instance.curriculum_language_mode:
+            return
+        from apps.classes.subject_rules import curriculum_diagnostic
+
+        diagnostic = curriculum_diagnostic(instance, mode)
+        request = self.context.get('request')
+        confirmed = str((request.data if request is not None else {}).get(
+            'confirm_curriculum_change', '')).lower() in ('1', 'true', 'yes')
+        if not diagnostic['ok'] and not confirmed:
+            raise serializers.ValidationError({
+                'curriculum_language_mode': [(
+                    f"{len(diagnostic['subjects'])} matière(s) et {len(diagnostic['classes'])} "
+                    f"classe(s) ne respecteraient pas ce programme ({diagnostic['grades']} note(s) "
+                    f"rattachée(s)). Rien n'a été modifié. Corrigez-les, ou confirmez : aucune "
+                    f"donnée n'est supprimée.")],
+                # Sans `ok` (toujours faux ici) : DRF convertit le détail
+                # d'erreur en chaînes, et « False » deviendrait vrai côté
+                # navigateur. Le diagnostic complet est servi par
+                # GET …/language-diagnostic/.
+                'diagnostic': {k: v for k, v in diagnostic.items() if k != 'ok'},
+            })
 
     def get_students_count(self, obj):
         return obj.students.filter(is_active=True).count()
@@ -339,13 +393,20 @@ class AcademyCreateSerializer(serializers.ModelSerializer):
         choices=School.ACADEMY_TYPE_CHOICES,
         error_messages={'required': "Le type d'académie est obligatoire.",
                         'invalid_choice': "Type d'académie inconnu."})
+    curriculum_language_mode = serializers.ChoiceField(
+        choices=School.CURRICULUM_CHOICES,
+        error_messages={'required': "Le programme linguistique est obligatoire "
+                                    "(français uniquement, anglais uniquement ou bilingue).",
+                        'invalid_choice': "Programme linguistique inconnu.",
+                        'null': "Le programme linguistique est obligatoire."})
     school_year_name = serializers.CharField(required=False, allow_blank=True, max_length=20)
     school_year_start = serializers.DateField(required=False, allow_null=True)
     school_year_end = serializers.DateField(required=False, allow_null=True)
 
     class Meta:
         model = School
-        fields = ['name', 'legal_name', 'code', 'academy_type', 'address', 'city', 'country',
+        fields = ['name', 'legal_name', 'code', 'academy_type', 'curriculum_language_mode',
+                  'address', 'city', 'country',
                   'phone', 'whatsapp', 'email', 'description', 'timezone', 'currency_code',
                   'currency_locale', 'default_language', 'matricule_prefix',
                   'school_year_name', 'school_year_start', 'school_year_end']

@@ -96,7 +96,7 @@ export default function Outbox() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title={t("Boîte d'envoi")} subtitle={t("Tous les e-mails envoyés depuis FEBA, avec leur contenu et leurs pièces jointes")} />
+      <PageHeader title={t("Boîte d'envoi")} subtitle={t("Tous les e-mails envoyés depuis la plateforme, avec leur contenu et leurs pièces jointes")} />
       <SmtpPanel />
 
       <form className="card grid gap-2 sm:grid-cols-3 lg:grid-cols-7 items-end text-sm" onSubmit={apply}>

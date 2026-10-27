@@ -1,6 +1,28 @@
 import logging
 import os
 logger = logging.getLogger("apps")
+
+
+def public_site_online_academy_code():
+    """
+    Code de l'académie que le site public alimente (formulaires
+    d'inscription et de test de placement « en ligne »). C'est un
+    RATTACHEMENT technique du site public, pas une règle métier : il se
+    règle par `PUBLIC_SITE_ONLINE_ACADEMY_CODE`.
+    """
+    from django.conf import settings
+
+    return getattr(settings, "PUBLIC_SITE_ONLINE_ACADEMY_CODE", "FEBA_FHA")
+
+
+def public_site_campus_academy_code():
+    """
+    Code de l'académie présentielle que le site public alimente (contact,
+    préinscriptions). Même nature que le précédent : `PUBLIC_SITE_CAMPUS_ACADEMY_CODE`.
+    """
+    from django.conf import settings
+
+    return getattr(settings, "PUBLIC_SITE_CAMPUS_ACADEMY_CODE", "FEBA")
 from django.db import models
 
 from apps.core.currency import (
@@ -66,6 +88,21 @@ class School(models.Model):
     #: Cycle proposé par défaut à un nouveau niveau. Le défaut historique du
     #: modèle (« primaire ») aurait noté sur 10 un niveau créé sans précision
     #: dans un lycée.
+    # ── Programme linguistique (matières enseignées) ─────────────────────
+    # DISTINCT de `default_language` (langue de l'INTERFACE) : une académie
+    # peut afficher ses écrans en français et n'enseigner que des matières
+    # anglaises. Les règles qui en découlent vivent dans
+    # `apps/classes/subject_rules.py`, seule autorité (matières, parcours
+    # des classes, notes, emplois du temps, bulletins).
+    CURRICULUM_FRENCH = "french_only"
+    CURRICULUM_ENGLISH = "english_only"
+    CURRICULUM_BILINGUAL = "bilingual"
+    CURRICULUM_CHOICES = [
+        (CURRICULUM_FRENCH, "Français uniquement"),
+        (CURRICULUM_ENGLISH, "Anglais uniquement"),
+        (CURRICULUM_BILINGUAL, "Bilingue français-anglais"),
+    ]
+
     DEFAULT_LEVEL_CYCLE = {
         TYPE_ONLINE: "primaire",
         TYPE_PHYSICAL_PRIMARY: "primaire",
@@ -93,6 +130,14 @@ class School(models.Model):
         help_text=(
             "En ligne, physique primaire ou physique secondaire. Fixe les cycles "
             "admis pour les niveaux. Vide = académie antérieure non classée."
+        ),
+    )
+    curriculum_language_mode = models.CharField(
+        max_length=20, choices=CURRICULUM_CHOICES, null=True, blank=True,
+        help_text=(
+            "Programme linguistique : matières françaises seulement, anglaises "
+            "seulement, ou les deux. Obligatoire à la création ; vide = académie "
+            "antérieure à configurer (fonctionnement historique conservé)."
         ),
     )
     slug = models.SlugField(
@@ -250,12 +295,29 @@ class School(models.Model):
         """
         Matrice effective des fonctionnalités : valeurs par défaut du type
         d'entité, surchargées par `settings['features']` (administrable).
+
+        Deux capacités ne sont PAS des réglages mais des faits, calculés :
+          - `online_admissions` : l'académie reçoit des dossiers
+            d'inscription en ligne. Le seul canal qui en dépose est le
+            formulaire public du site (`/feba-fha/inscription`), rattaché à
+            l'académie désignée par `PUBLIC_SITE_ONLINE_ACADEMY_CODE` ;
+          - `monthly_reports` : les rapports mensuels aux familles, produits
+            pour cette même académie (apps/monthly_reports).
+        Le menu « Admissions FEBA FHA » s'affichait pour TOUTE académie en
+        ligne — y compris une académie nouvellement créée, qui n'a et
+        n'aura aucun dossier : un écran vide présenté comme une fonction.
         """
         base = dict(self.DEFAULT_FEATURES.get(self.entity_type, self.DEFAULT_FEATURES["campus"]))
         overrides = (self.settings or {}).get("features") or {}
         for key, value in overrides.items():
             if key in self.FEATURE_FLAGS:
                 base[key] = bool(value)
+        channel = self.code and self.code == public_site_online_academy_code()
+        base["online_admissions"] = bool(channel)
+        base["monthly_reports"] = bool(channel)
+        # Préinscriptions du site public : seule l'académie présentielle
+        # rattachée au site en reçoit (onglet « Site vitrine »).
+        base["public_preregistrations"] = bool(self.code and self.code == public_site_campus_academy_code())
         return base
 
     def has_feature(self, flag):

@@ -327,8 +327,8 @@ class GeneratedDocument(models.Model):
             raise ValidationError({
                 "student": (
                     "Cet élève n'appartient pas à l'académie émettrice. Un "
-                    "document ne peut pas franchir la frontière entre FEBA et "
-                    "FEBA French Heritage Academy."
+                    "document ne peut pas franchir la frontière entre deux "
+                    "académies."
                 )
             })
 

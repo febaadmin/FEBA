@@ -6,6 +6,11 @@
  * ou /20 des bulletins) et les fonctionnalités. Tout est initialisé par le
  * serveur (apps/schools/academy_setup.py) : cet écran n'invente rien et
  * n'affiche un succès qu'après la réponse du serveur.
+ *
+ * Le PROGRAMME LINGUISTIQUE (français, anglais ou bilingue) est distinct de
+ * la langue de l'interface : il décide des matières admises, des parcours
+ * de classe et des sections du bulletin. Obligatoire à la création ; son
+ * changement est précédé d'un diagnostic et ne supprime aucune donnée.
  */
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -22,7 +27,7 @@ export const ACADEMY_TYPES = [
   {
     value: "online",
     label: "Académie en ligne",
-    detail: "Cours à distance (comme FEBA FHA) : tests de placement, cours et devoirs en ligne. "
+    detail: "Cours à distance : tests de placement, cours et devoirs en ligne. "
       + "Les groupes sont à créer selon le programme.",
     timezone: "America/New_York", currency: "USD", language: "en",
   },
@@ -41,8 +46,50 @@ export const ACADEMY_TYPES = [
 ];
 const typeLabel = (value) => ACADEMY_TYPES.find((x) => x.value === value)?.label;
 
+export const CURRICULUM_MODES = [
+  { value: "french_only", label: "Français uniquement",
+    detail: "Matières en français seulement. Bulletin : une section française, sans moyenne 60/40." },
+  { value: "english_only", label: "Anglais uniquement",
+    detail: "Matières en anglais seulement. Bulletin : une section anglaise." },
+  { value: "bilingual", label: "Bilingue français-anglais",
+    detail: "Matières françaises, anglaises et communes. Bulletin à deux sections, moyenne bilingue 60/40." },
+];
+const curriculumLabel = (value) => CURRICULUM_MODES.find((x) => x.value === value)?.label;
+
+/** Ce qui ne respecterait plus le programme demandé (lecture seule). */
+export function CurriculumDiagnostic({ diagnostic }) {
+  if (!diagnostic) return null;
+  if (diagnostic.ok) {
+    return <p className="text-xs text-emerald-700" data-testid="curriculum-diagnostic-ok">
+      {t("Aucune matière ni classe existante n'est en conflit avec ce programme.")}</p>;
+  }
+  return (
+    <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900 space-y-2"
+         data-testid="curriculum-diagnostic">
+      <p className="font-semibold">
+        {t("Données existantes incompatibles avec ce programme (rien ne sera supprimé) :")}
+      </p>
+      {diagnostic.subjects?.length > 0 && (
+        <div>
+          <span className="font-medium">{t("Matières")} :</span>{" "}
+          {diagnostic.subjects.map((s) => s.name).join(", ")}
+        </div>
+      )}
+      {diagnostic.classes?.length > 0 && (
+        <ul className="list-disc ml-4">
+          {diagnostic.classes.map((c) => (
+            <li key={c.id}>{c.name} ({c.school_year}) — {c.reasons.join(" ; ")}</li>
+          ))}
+        </ul>
+      )}
+      <p>{t("Notes rattachées à ces matières")} : {diagnostic.grades}</p>
+      <p>{t("Ces données restent consultables mais ne pourront plus recevoir de notes ni de créneaux. Corrigez-les dans « Matières » et « Classes », ou confirmez le changement.")}</p>
+    </div>
+  );
+}
+
 const EMPTY = {
-  academy_type: "", name: "", legal_name: "", code: "", address: "", city: "", country: "",
+  academy_type: "", curriculum_language_mode: "", name: "", legal_name: "", code: "", address: "", city: "", country: "",
   phone: "", email: "", timezone: "Africa/Porto-Novo", currency_code: "XOF",
   default_language: "fr", school_year_name: "", school_year_start: "", school_year_end: "",
 };
@@ -96,6 +143,7 @@ export default function SuperAdminAcademies() {
   const [statusFor, setStatusFor] = useState(null);
   const [toggleItem, setToggleItem] = useState(null);
   const [deleteItem, setDeleteItem] = useState(null);
+  const [confirmCurriculum, setConfirmCurriculum] = useState(false);
 
   const { data, isLoading, isError } = useQuery({ queryKey: ["academies"], queryFn: schoolsAPI.list });
   const academies = data?.data?.results || data?.data || [];
@@ -150,6 +198,18 @@ export default function SuperAdminAcademies() {
   };
   const errors = fieldErrors(createMut.error);
   const editErrors = fieldErrors(updateMut.error);
+  const curriculumChanged = Boolean(editItem?.curriculum_language_mode)
+    && editItem.curriculum_language_mode !== editItem.initial_curriculum;
+  const diagnosticQuery = useQuery({
+    queryKey: ["academy-language-diagnostic", editItem?.id, editItem?.curriculum_language_mode],
+    queryFn: () => schoolsAPI.languageDiagnostic(editItem.id, editItem.curriculum_language_mode),
+    enabled: curriculumChanged,
+  });
+  // Le refus du serveur (400) porte aussi le diagnostic, sans `ok` : il
+  // n'est renvoyé que lorsqu'il y a conflit.
+  const diagnostic = curriculumChanged
+    ? (diagnosticQuery.data?.data || (editErrors.diagnostic && { ...editErrors.diagnostic, ok: false }))
+    : null;
 
   return (
     <div className="space-y-6">
@@ -175,6 +235,7 @@ export default function SuperAdminAcademies() {
                 <th className="py-3 px-4">{t("Académie")}</th>
                 <th className="py-3 px-4">{t("Code")}</th>
                 <th className="py-3 px-4">{t("Type")}</th>
+                <th className="py-3 px-4">{t("Programme linguistique")}</th>
                 <th className="py-3 px-4">{t("Élèves")}</th>
                 <th className="py-3 px-4">{t("Statut")}</th>
                 <th className="py-3 px-4" />
@@ -200,6 +261,11 @@ export default function SuperAdminAcademies() {
                       </span>
                     )}
                   </td>
+                  <td className="py-3 px-4" data-testid={`academy-curriculum-${a.code}`}>
+                    {a.curriculum_language_mode
+                      ? <span>{t(curriculumLabel(a.curriculum_language_mode))}</span>
+                      : <span className="text-amber-700">{t("À configurer")}</span>}
+                  </td>
                   <td className="py-3 px-4">{a.students_count ?? "—"}</td>
                   <td className="py-3 px-4">
                     <span className={a.is_active ? "text-emerald-700" : "text-slate-500"}>
@@ -210,7 +276,10 @@ export default function SuperAdminAcademies() {
                     <div className="flex items-center gap-1 justify-end">
                       <button onClick={() => setStatusFor(a)} title={t("Configuration restante")}
                               className="p-1.5 rounded-lg hover:bg-primary-50 text-slate-500"><ListChecks className="w-4 h-4" /></button>
-                      <button onClick={() => { updateMut.reset(); setEditItem({ ...a }); }} title={t("Modifier")}
+                      <button onClick={() => {
+                        updateMut.reset(); setConfirmCurriculum(false);
+                        setEditItem({ ...a, initial_curriculum: a.curriculum_language_mode });
+                      }} title={t("Modifier")} data-testid={`academy-edit-${a.code}`}
                               className="p-1.5 rounded-lg hover:bg-primary-50 text-slate-500"><Pencil className="w-4 h-4" /></button>
                       <button onClick={() => setToggleItem(a)} title={a.is_active ? t("Désactiver") : t("Réactiver")}
                               className="p-1.5 rounded-lg hover:bg-amber-50 text-slate-500"><Power className="w-4 h-4" /></button>
@@ -231,7 +300,8 @@ export default function SuperAdminAcademies() {
         {created ? (
           <div className="space-y-4" data-testid="academy-created">
             <p className="text-sm">
-              <strong>{created.name}</strong> ({created.code}) — {t(typeLabel(created.academy_type))}.
+              <strong>{created.name}</strong> ({created.code}) — {t(typeLabel(created.academy_type))}
+              {created.curriculum_language_mode && <> · {t(curriculumLabel(created.curriculum_language_mode))}</>}.
             </p>
             <p className="text-sm text-slate-600">
               {t("Sélectionnez cette académie dans le sélecteur d'académie pour terminer sa configuration :")}
@@ -257,6 +327,27 @@ export default function SuperAdminAcademies() {
                 ))}
               </div>
               {errors.academy_type && <p className="text-danger text-xs mt-1">{String(errors.academy_type)}</p>}
+            </fieldset>
+
+            <fieldset>
+              <legend className="label">{t("Programme linguistique*")}</legend>
+              <p className="text-xs text-slate-500 mb-2">
+                {t("Langues des matières, des parcours et des bulletins — distinct de la langue de l'interface.")}
+              </p>
+              <div className="grid sm:grid-cols-3 gap-3">
+                {CURRICULUM_MODES.map((mode) => (
+                  <button type="button" key={mode.value} onClick={() => set("curriculum_language_mode", mode.value)}
+                          data-testid={`academy-curriculum-${mode.value}`} aria-pressed={form.curriculum_language_mode === mode.value}
+                          className={`text-left rounded-xl border p-3 transition ${form.curriculum_language_mode === mode.value
+                            ? "border-primary bg-primary-50 ring-2 ring-primary/30" : "border-slate-200 hover:border-primary/40"}`}>
+                    <span className="block font-semibold text-sm text-slate-800">{t(mode.label)}</span>
+                    <span className="block text-xs text-slate-500 mt-1">{t(mode.detail)}</span>
+                  </button>
+                ))}
+              </div>
+              {errors.curriculum_language_mode && (
+                <p className="text-danger text-xs mt-1">{String(errors.curriculum_language_mode)}</p>
+              )}
             </fieldset>
 
             <div className="grid sm:grid-cols-2 gap-4">
@@ -294,7 +385,7 @@ export default function SuperAdminAcademies() {
                   <option value="USD">USD — Dollar</option>
                 </select>
               </Field>
-              <Field label={t("Langue des documents")} error={errors.default_language}>
+              <Field label={t("Langue de l'interface et des documents")} error={errors.default_language}>
                 <select className="input" value={form.default_language} onChange={(e) => set("default_language", e.target.value)}>
                   <option value="fr">Français</option>
                   <option value="en">English</option>
@@ -322,7 +413,7 @@ export default function SuperAdminAcademies() {
             </p>
             <div className="flex justify-end gap-3">
               <button type="button" className="btn-secondary" onClick={() => setCreateOpen(false)}>{t("Annuler")}</button>
-              <button type="submit" className="btn-primary" disabled={createMut.isPending || !form.academy_type}
+              <button type="submit" className="btn-primary" disabled={createMut.isPending || !form.academy_type || !form.curriculum_language_mode}
                       data-testid="academy-submit">
                 {createMut.isPending ? t("Création…") : t("Créer l'académie")}
               </button>
@@ -340,6 +431,10 @@ export default function SuperAdminAcademies() {
             for (const key of ["name", "legal_name", "address", "city", "country", "phone", "email",
               "timezone", "currency_code", "default_language"]) payload[key] = editItem[key] ?? "";
             if (editItem.academy_type) payload.academy_type = editItem.academy_type;
+            if (curriculumChanged) {
+              payload.curriculum_language_mode = editItem.curriculum_language_mode;
+              if (confirmCurriculum) payload.confirm_curriculum_change = true;
+            }
             updateMut.mutate({ id: editItem.id, data: payload });
           }}>
             <p className="text-sm text-slate-600">{t("Code interne")} : <span className="font-mono">{editItem.code}</span> {t("(non modifiable)")}</p>
@@ -350,6 +445,28 @@ export default function SuperAdminAcademies() {
                 {ACADEMY_TYPES.map((type) => <option key={type.value} value={type.value}>{t(type.label)}</option>)}
               </select>
             </Field>
+            <Field label={t("Programme linguistique")} error={editErrors.curriculum_language_mode}>
+              <select className="input" value={editItem.curriculum_language_mode || ""} data-testid="academy-edit-curriculum"
+                      onChange={(e) => { setConfirmCurriculum(false); updateMut.reset();
+                        setEditItem({ ...editItem, curriculum_language_mode: e.target.value || null }); }}>
+                {!editItem.initial_curriculum && <option value="">{t("À configurer")}</option>}
+                {CURRICULUM_MODES.map((mode) => <option key={mode.value} value={mode.value}>{t(mode.label)}</option>)}
+              </select>
+            </Field>
+            {curriculumChanged && (
+              <div className="space-y-2">
+                {diagnosticQuery.isLoading && <p className="text-xs text-slate-400">{t("Analyse des données existantes…")}</p>}
+                {diagnosticQuery.isError && <p className="text-xs text-danger">{extractApiError(diagnosticQuery.error)}</p>}
+                <CurriculumDiagnostic diagnostic={diagnostic} />
+                {diagnostic && !diagnostic.ok && (
+                  <label className="flex items-start gap-2 text-xs text-slate-700">
+                    <input type="checkbox" checked={confirmCurriculum} data-testid="academy-confirm-curriculum"
+                           onChange={(e) => setConfirmCurriculum(e.target.checked)} />
+                    <span>{t("Je confirme le changement : les données listées sont conservées telles quelles.")}</span>
+                  </label>
+                )}
+              </div>
+            )}
             <div className="grid sm:grid-cols-2 gap-4">
               {[["name", "Nom de l'académie*"], ["legal_name", "Dénomination légale"], ["address", "Adresse*"],
                 ["city", "Ville"], ["country", "Pays"], ["phone", "Téléphone"], ["email", "E-mail"],
@@ -361,7 +478,8 @@ export default function SuperAdminAcademies() {
             </div>
             <div className="flex justify-end gap-3">
               <button type="button" className="btn-secondary" onClick={() => setEditItem(null)}>{t("Annuler")}</button>
-              <button type="submit" className="btn-primary" disabled={updateMut.isPending}>
+              <button type="submit" className="btn-primary" data-testid="academy-edit-submit"
+                      disabled={updateMut.isPending || (curriculumChanged && (!diagnostic || (!diagnostic.ok && !confirmCurriculum)))}>
                 {updateMut.isPending ? t("Enregistrement…") : t("Enregistrer")}
               </button>
             </div>

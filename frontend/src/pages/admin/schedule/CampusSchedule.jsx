@@ -185,7 +185,7 @@ export default function CampusSchedule() {
                             la même liste : sans étiquette, rien ne dit à
                             laquelle une ligne appartient. */}
                         {isAllAcademies && (
-                          <AcademyBadge code={item.academy_code} name={item.academy_name} />
+                          <AcademyBadge code={item.academy_code} name={item.academy_name} shortName={item.academy_short_name} />
                         )}
                         <span>{item.subject_name} — {item.class_name}</span>
                       </p>

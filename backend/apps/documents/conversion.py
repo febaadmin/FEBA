@@ -253,8 +253,8 @@ def _check_zip(archive, fmt):
         lowered = name.lower()
         if "vbaproject" in lowered or "vbadata" in lowered or lowered.startswith(("basic/", "scripts/")):
             raise TemplateUploadError(
-                "Ce document contient des MACROS (programmes intégrés). Il est refusé : FEBA "
-                "n'exécute jamais de macro. Enregistrez-le sans macros (DOCX, PPTX, ODT ou ODP)."
+                "Ce document contient des MACROS (programmes intégrés). Il est refusé : la "
+                "plateforme n'exécute jamais de macro. Enregistrez-le sans macros (DOCX, PPTX, ODT ou ODP)."
             )
     if total > ZIP_MAX_UNCOMPRESSED:
         raise TemplateUploadError(
@@ -284,8 +284,8 @@ def _check_ole(ole):
     if any(name.startswith(("macros", "_vba_project_cur", "vba")) or "/vba" in name
            for name in entries):
         raise TemplateUploadError(
-            "Ce document contient des MACROS (programmes intégrés). Il est refusé : FEBA "
-            "n'exécute jamais de macro. Enregistrez-le sans macros (DOCX ou PPTX)."
+            "Ce document contient des MACROS (programmes intégrés). Il est refusé : la "
+            "plateforme n'exécute jamais de macro. Enregistrez-le sans macros (DOCX ou PPTX)."
         )
     if any("encryptedpackage" in name or "encryptioninfo" in name for name in entries):
         raise TemplateUploadError(

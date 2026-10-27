@@ -369,6 +369,11 @@ class GradeViewSet(BulkDeleteMixin, viewsets.ModelViewSet):
                     if not ok:
                         errors.append({"item": item, "error": err})
                         continue
+                from apps.classes.subject_rules import grade_subject_error
+                refus = grade_subject_error(student, subject, school_year)
+                if refus:
+                    errors.append({"item": item, "error": refus})
+                    continue
 
                 enrollment, _ = get_or_create_enrollment(student, school_year.id)
 
@@ -527,6 +532,11 @@ class GradeViewSet(BulkDeleteMixin, viewsets.ModelViewSet):
                 if not ok:
                     line_errors[i]["subject"] = [msg]
                     continue
+            from apps.classes.subject_rules import grade_subject_error
+            refus = grade_subject_error(student, subject, school_year)
+            if refus:
+                line_errors[i]["subject"] = [refus]
+                continue
             # Doublon strict DANS la requête (accidentel) — plusieurs
             # évaluations d'une même matière restent permises si elles
             # diffèrent (note, type, période ou coefficient).

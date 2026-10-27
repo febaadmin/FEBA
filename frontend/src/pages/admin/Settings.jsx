@@ -22,6 +22,7 @@ import { extractApiError } from "../../utils/errors";
 import { t } from "../../i18n";
 import { useAcademyKey, useEntityContext } from "../../hooks/useEntityContext";
 import AcademyBadge from "../../components/AcademyBadge";
+import { subjectLanguageOptions } from "../../utils/classLanguage";
 
 /** Types statiques par défaut (toujours présents dans le dropdown). */
 const STATIC_ROOM_TYPES = [
@@ -391,7 +392,7 @@ export default function AdminSettings() {
                   {/* P3 : deux académies peuvent avoir une année du même
                       nom (« 2025-2026 ») — le badge les distingue. */}
                   {allEntitiesMode && (
-                    <AcademyBadge code={y.academy_code} name={y.academy_name} />
+                    <AcademyBadge code={y.academy_code} name={y.academy_name} shortName={y.academy_short_name} />
                   )}
                   {y.name}
                 </p>
@@ -440,7 +441,7 @@ export default function AdminSettings() {
       <div className="card">
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-semibold text-slate-800">{t("Matières")} ({subjects.length})</h3>
-          <button onClick={() => setSubjectModal(true)} className="btn-primary text-sm flex items-center gap-1">
+          <button onClick={() => setSubjectModal(true)} className="btn-primary text-sm flex items-center gap-1" data-testid="subject-add">
             <Plus className="w-4 h-4" />{t("Ajouter")}</button>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
@@ -449,14 +450,14 @@ export default function AdminSettings() {
               <div>
                 <p className="text-sm font-medium text-slate-800 flex items-center gap-2">
                   {allEntitiesMode && (
-                    <AcademyBadge code={s.academy_code} name={s.academy_name} />
+                    <AcademyBadge code={s.academy_code} name={s.academy_name} shortName={s.academy_short_name} />
                   )}
                   {s.name}
                 </p>
                 <p className="text-xs text-slate-400">
                   Code: {s.code} | Coeff: {s.coefficient} |{" "}
                   <span className={`font-medium ${s.language === "fr" ? "text-blue-600" : s.language === "en" ? "text-green-600" : "text-purple-600"}`}>
-                    {s.language === "fr" ? "🇫🇷 Français" : s.language === "en" ? "🇬🇧 Anglais" : "🌐 Bilingue"}
+                    {s.language === "fr" ? "🇫🇷 Français" : s.language === "en" ? "🇬🇧 Anglais" : `🌐 ${t("Commune (bilingue)")}`}
                   </span>
                 </p>
               </div>
@@ -565,10 +566,8 @@ export default function AdminSettings() {
           </div>
           <div>
             <label className="label">{t("Catégorie de matière *")}</label>
-            <select {...rs("language", { required: true })} className="input">
-              <option value="fr">🇫🇷 Française (Moyenne FR)</option>
-              <option value="en">🇬🇧 Anglaise (Moyenne EN)</option>
-              <option value="bilingual">🌐 Bilingue (FR + EN)</option>
+            <select {...rs("language", { required: true })} className="input" data-testid="subject-language">
+              {subjectLanguageOptions(activeEntity).map((o) => <option key={o.value} value={o.value}>{t(o.label)}</option>)}
             </select>
             <p className="text-xs text-slate-400 mt-1">{t("Détermine dans quelle moyenne la matière est comptabilisée.")}</p>
           </div>
@@ -589,10 +588,8 @@ export default function AdminSettings() {
           </div>
           <div>
             <label className="label">{t("Catégorie de matière *")}</label>
-            <select {...redit("language", { required: true })} className="input">
-              <option value="fr">🇫🇷 Française (Moyenne FR)</option>
-              <option value="en">🇬🇧 Anglaise (Moyenne EN)</option>
-              <option value="bilingual">🌐 Bilingue (FR + EN)</option>
+            <select {...redit("language", { required: true })} className="input" data-testid="subject-edit-language">
+              {subjectLanguageOptions(activeEntity, editSubject?.language).map((o) => <option key={o.value} value={o.value}>{t(o.label)}</option>)}
             </select>
           </div>
           <div className="flex gap-3 justify-end pt-2">

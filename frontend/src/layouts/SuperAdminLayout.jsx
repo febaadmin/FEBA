@@ -5,6 +5,9 @@ import {
 } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
 import AcademyLogo from "../components/AcademyLogo";
+import AcademyName from "../components/AcademyName";
+import { useAcademy } from "../context/AcademyContext";
+import { isNavItemVisible } from "./navFeatures";
 import { clsx } from "clsx";
 import { motion, AnimatePresence } from "framer-motion";
 import { useQuery } from "@tanstack/react-query";
@@ -48,8 +51,8 @@ const nav = [
     { label: "Annonces",          icon: Megaphone,     to: "/superadmin/announcements" },
     { label: "Paramètres",        icon: Settings,      to: "/superadmin/settings" },
     { label: "Fichiers",           icon: FolderOpen,    to: "/superadmin/user-files" },
-    { label: "Admissions FEBA FHA", icon: ClipboardList, to: "/superadmin/fha-admissions", feature: "placement_tests" },
-    { label: "Rapports mensuels", icon: FileBarChart, to: "/superadmin/monthly-reports", feature: "placement_tests" },
+    { label: "Admissions en ligne", icon: ClipboardList, to: "/superadmin/fha-admissions", feature: "online_admissions" },
+    { label: "Rapports mensuels", icon: FileBarChart, to: "/superadmin/monthly-reports", feature: "monthly_reports" },
   { label: "Site vitrine",       icon: Globe,         to: "/superadmin/website" },
     { label: "Logo & Branding",    icon: Image,         to: "/superadmin/branding" },
   ]},
@@ -69,6 +72,11 @@ export default function SuperAdminLayout() {
   // P4 : remonte tout le sous-arbre à chaque bascule d'académie —
   // aucune donnée de l'académie précédente ne peut rester affichée,
   // et aucun rechargement manuel du navigateur n'est nécessaire.
+
+  // Entrées liées à une fonctionnalité (admissions en ligne, rapports
+  // mensuels) : affichées d'après la matrice servie par l'API, jamais
+  // d'après le nom d'une académie.
+  const academy = useAcademy();
 
   const isMobile = useIsMobile();
   const [open, setOpen] = useState(!isMobile);
@@ -118,7 +126,7 @@ export default function SuperAdminLayout() {
                 <AcademyLogo />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-white font-bold text-sm leading-tight">{t("FEBA")}</p>
+                <AcademyName className="text-white font-bold text-sm leading-tight" />
                 <p className="text-purple-400 text-xs font-semibold tracking-wide">{t("SUPER ADMIN")}</p>
               </div>
               {isMobile && (
@@ -135,7 +143,7 @@ export default function SuperAdminLayout() {
                     {t(section.section)}
                   </p>
                   <div className="space-y-0.5">
-                    {section.items.map(item => (
+                    {section.items.filter((item) => isNavItemVisible(item, academy)).map(item => (
                       <NavLink
                         key={item.to} to={item.to}
                         onClick={closeSidebarOnMobile}

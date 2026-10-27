@@ -2,6 +2,7 @@ import { NavLink, useNavigate } from "react-router-dom";
 import { LayoutDashboard, BookOpen, ClipboardList, Calendar, FileText, MessageSquare, User, LogOut, School, Menu, X, Bell, Megaphone, Video } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
 import AcademyLogo from "../components/AcademyLogo";
+import AcademyName from "../components/AcademyName";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { notificationsAPI, conversationsAPI } from "../api";
 import { clsx } from "clsx";
@@ -93,7 +94,7 @@ export default function TeacherLayout() {
                 <AcademyLogo />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-white font-bold text-sm">{t("FEBA")}</p>
+                <AcademyName className="text-white font-bold text-sm" />
                 <p className="text-slate-400 text-xs">{t("Espace Enseignant")}</p>
               </div>
               {isMobile && (

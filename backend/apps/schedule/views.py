@@ -197,7 +197,7 @@ class OnlineSessionScheduleViewSet(viewsets.ModelViewSet):
         academy = get_request_school(self.request)
         if academy is None:
             raise PermissionDenied(
-                "Sélectionnez FEBA FHA avant de créer une séance : en mode "
+                "Sélectionnez une académie en ligne avant de créer une séance : en mode "
                 "« Toutes les Académies », aucune académie n'est active."
             )
         serializer.save(academy=academy)

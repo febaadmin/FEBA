@@ -57,6 +57,22 @@ class GradeSerializer(TenantRelationsMixin, AcademyMetadataMixin, StudentAgeMixi
             'history',
         ] + ACADEMY_FIELDS + STUDENT_AGE_FIELDS
 
+    def validate(self, attrs):
+        """Programme linguistique de l'académie et parcours de la classe."""
+        attrs = super().validate(attrs)
+        if self.instance is not None and not ({"student", "subject"} & set(attrs)):
+            return attrs
+        from apps.classes.subject_rules import grade_subject_error
+
+        student = attrs.get("student") or getattr(self.instance, "student", None)
+        subject = attrs.get("subject") or getattr(self.instance, "subject", None)
+        year = attrs.get("school_year") or getattr(self.instance, "school_year", None)
+        if student is not None:
+            refus = grade_subject_error(student, subject, year)
+            if refus:
+                raise serializers.ValidationError({"subject": refus})
+        return attrs
+
     def get_note_type_label(self, obj):
         return obj.get_note_type_display()
 

@@ -165,7 +165,7 @@ class FeeSchedule(models.Model):
                     field: (
                         "Cet élément appartient à une autre académie : un "
                         "tarif ne peut pas franchir la frontière entre "
-                        "FEBA et FEBA French Heritage Academy."
+                        "deux académies."
                     )
                 })
 

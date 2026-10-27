@@ -161,13 +161,15 @@ function EmailStatus({ state }) {
 
 export default function FhaAdmissions() {
   const [tab, setTab] = useState("applications");
-  const { allEntitiesMode } = useEntityContext();
+  const { allEntitiesMode, activeEntity } = useEntityContext();
 
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="text-xl sm:text-2xl font-bold text-slate-800">
-          {t("Admissions FEBA French Heritage Academy")}
+        <h1 className="text-xl sm:text-2xl font-bold text-slate-800" data-testid="admissions-title">
+          {allEntitiesMode || !activeEntity?.name
+            ? t("Admissions en ligne")
+            : t("Admissions en ligne — {nom}", { nom: activeEntity.name })}
         </h1>
         <p className="text-sm text-slate-500 mt-1">
           {t("Fiches d'inscription et demandes de test de placement.")}

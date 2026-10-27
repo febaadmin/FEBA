@@ -32,6 +32,8 @@ def payload(**overrides):
         "name": "École Test Parakou", "code": "ecole_parakou", "academy_type": "physical_primary",
         "address": "Quartier Zongo, Parakou", "city": "Parakou", "country": "Bénin",
         "timezone": "Africa/Porto-Novo", "currency_code": "XOF", "default_language": "fr",
+        # Obligatoire depuis l'introduction du programme linguistique.
+        "curriculum_language_mode": "french_only",
     }
     data.update(overrides)
     return data
@@ -151,7 +153,9 @@ class CreationValidationTests(Base):
         for field, message in [("academy_type", "Le type d'académie est obligatoire."),
                                ("name", "Le nom de l'académie est obligatoire."),
                                ("code", "Le code interne est obligatoire."),
-                               ("address", "L'adresse est obligatoire.")]:
+                               ("address", "L'adresse est obligatoire."),
+                               ("curriculum_language_mode", "Le programme linguistique est obligatoire "
+                                                            "(français uniquement, anglais uniquement ou bilingue).")]:
             with self.subTest(champ=field):
                 data = payload()
                 del data[field]

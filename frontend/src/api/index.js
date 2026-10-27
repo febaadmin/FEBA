@@ -247,6 +247,7 @@ export const schoolsAPI = {
   createAcademy: (d)  => api.post("/schools/schools/", d),
   deleteAcademy: (id) => api.delete(`/schools/schools/${id}/`),
   setupStatus: (id)   => api.get(`/schools/schools/${id}/setup-status/`),
+  languageDiagnostic: (id, mode) => api.get(`/schools/schools/${id}/language-diagnostic/`, { params: { mode } }),
   years: ()          => api.get("/schools/years/", { params: BIG }),
   createYear: (d)    => api.post("/schools/years/", d),
   updateYear: (id,d) => api.patch(`/schools/years/${id}/`, d),

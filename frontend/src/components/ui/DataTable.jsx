@@ -49,7 +49,7 @@ export default function DataTable({
         accessor: "academy_short_name",
         label: t("Académie"),
         render: (row) => (
-          <AcademyBadge code={row.academy_code} name={row.academy_name} />
+          <AcademyBadge code={row.academy_code} name={row.academy_name} shortName={row.academy_short_name} />
         ),
       },
       ...columns,

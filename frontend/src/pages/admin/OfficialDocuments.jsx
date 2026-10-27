@@ -25,6 +25,7 @@ import DataTable from "../../components/ui/DataTable";
 import Modal from "../../components/ui/Modal";
 import SearchableSelect from "../../components/ui/SearchableSelect";
 import { useAcademy } from "../../context/AcademyContext";
+import AcademyBadge from "../../components/AcademyBadge";
 import { extractApiError } from "../../utils/errors";
 import { blobErrorDetail } from "../../utils/templateLayout";
 import { t } from "../../i18n";
@@ -199,12 +200,7 @@ export default function AdminOfficialDocuments() {
     ...(consolidated ? [{
       key: "academy", label: t("Académie"), sortable: false,
       render: r => (
-        <span className={`badge whitespace-nowrap ${
-          r.academy_code === "FEBA_FHA"
-            ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-            : "bg-indigo-50 text-indigo-700 border border-indigo-200"}`}>
-          {r.academy_code || "—"}
-        </span>
+        <AcademyBadge code={r.academy_code} name={r.academy_name} shortName={r.academy_short_name} />
       ),
     }] : []),
     { key: "number", label: t("Numéro"),

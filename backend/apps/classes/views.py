@@ -130,9 +130,14 @@ class ClassViewSet(viewsets.ModelViewSet):
             if cls.name in existing:
                 skipped.append(cls.name)
                 continue
+            # Le parcours linguistique est recopié : sans lui, une classe
+            # francophone devenait « bilingue » dans la nouvelle année, avec
+            # ses seules matières françaises — configuration incomplète et
+            # bulletin à section anglaise vide.
             new_cls = Class.objects.create(
                 name=cls.name, level=cls.level,
                 school_year=target, max_students=cls.max_students,
+                language_track=cls.language_track,
             )
             new_cls.subjects.set(cls.subjects.all())
             created.append(cls.name)

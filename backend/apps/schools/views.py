@@ -57,7 +57,9 @@ class SchoolViewSet(viewsets.ModelViewSet):
             # L'admin de l'école peut modifier SON établissement (champs non-commerciaux,
             # cf. read_only_fields de SchoolSerializer) ; le superadmin peut tout modifier.
             return [IsAuthenticated(), IsAdminOrAbove()]
-        if self.action == 'destroy':
+        if self.action in ('destroy', 'language_diagnostic'):
+            # Le diagnostic décrit les données d'une académie en vue d'un
+            # changement que seul le super administrateur peut faire.
             return [IsAuthenticated(), IsSuperAdmin()]
         return [IsAuthenticated()]
 
@@ -120,6 +122,24 @@ class SchoolViewSet(viewsets.ModelViewSet):
             except OSError:
                 pass
         return response
+
+    @action(detail=True, methods=['get'], url_path='language-diagnostic',
+            permission_classes=[IsAuthenticated, IsSuperAdmin])
+    def language_diagnostic(self, request, pk=None):
+        """
+        GET …/language-diagnostic/?mode=french_only|english_only|bilingual
+        Ce qui ne respecterait plus le programme demandé (matières, classes,
+        notes rattachées). Lecture seule : rien n'est modifié.
+        """
+        from apps.classes.subject_rules import curriculum_diagnostic
+
+        mode = request.query_params.get('mode')
+        if mode not in dict(School.CURRICULUM_CHOICES):
+            return Response({'detail': "Programme linguistique inconnu."},
+                            status=status.HTTP_400_BAD_REQUEST)
+        academy = self.get_object()
+        return Response({'mode': mode, 'current': academy.curriculum_language_mode,
+                         **curriculum_diagnostic(academy, mode)})
 
     @action(detail=True, methods=['get'], url_path='setup-status')
     def setup_status(self, request, pk=None):

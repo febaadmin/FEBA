@@ -526,7 +526,7 @@ export default function AdminGrades() {
                       </td>
                       {isAllAcademies && (
                         <td className="px-4 py-3">
-                          <AcademyBadge code={r.academy_code} name={r.academy_name} />
+                          <AcademyBadge code={r.academy_code} name={r.academy_name} shortName={r.academy_short_name} />
                         </td>
                       )}
                       <td className="px-4 py-3 font-medium text-gray-800">{r.student_name || r.student}</td>
@@ -755,7 +755,7 @@ export default function AdminGrades() {
             <>
               {/* Bilingual formula explanation */}
               <div className="bg-gradient-to-r from-blue-900 to-blue-800 rounded-xl p-4 text-white">
-                <h3 className="font-bold text-yellow-400 mb-1">{t("Système Bilingue FEBA")}</h3>
+                <h3 className="font-bold text-yellow-400 mb-1">{t("Système bilingue")}</h3>
                 <p className="text-blue-200 text-sm">
                   <strong className="text-white">{t("Formule :")}</strong> {t("Moyenne Bilingue = (Moyenne Française × 60%) + (Moyenne Anglaise × 40%)")}</p>
               </div>

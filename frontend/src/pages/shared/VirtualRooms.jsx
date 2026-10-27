@@ -160,7 +160,7 @@ export default function VirtualRooms() {
     <div className="space-y-6">
       <PageHeader
         title={t("Salles virtuelles")}
-        subtitle={t("Visioconférence FEBA (plugNmeet) — cours en ligne, tableau blanc, sous-groupes, sondages, réunions parents-professeurs…")}
+        subtitle={t("Visioconférence (plugNmeet) — cours en ligne, tableau blanc, sous-groupes, sondages, réunions parents-professeurs…")}
         action={canManage && (
           <button onClick={openCreate} className="btn-primary flex items-center gap-2">
             <Plus className="w-4 h-4" />{t("Nouvelle salle")}</button>

@@ -1,6 +1,7 @@
 /**
  * Retour de plugNmeet : la session FEBA n'est jamais effacée, le départ
- * est signalé une seule fois, et l'utilisateur peut revenir à FEBA.
+ * est signalé une seule fois, et l'utilisateur peut revenir à l'accueil
+ * (aucun nom d'académie écrit en dur : le libellé valait pour toutes).
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
@@ -35,7 +36,7 @@ describe("fin de réunion plugNmeet", () => {
     expect(virtualAPI.leave).toHaveBeenCalledWith("9");
     expect(useAuthStore.getState().accessToken).toBe("a");
     expect(useAuthStore.getState().refreshToken).toBe("r");
-    expect(screen.getByText("Retour à FEBA").getAttribute("href")).toBe("/teacher/dashboard");
+    expect(screen.getByText("Retour à l'accueil").getAttribute("href")).toBe("/teacher/dashboard");
     expect(screen.getByText("Rejoindre à nouveau").getAttribute("href")).toBe("/virtual-room/9/join");
   });
 });

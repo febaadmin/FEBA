@@ -226,6 +226,11 @@ class FHAApplicationViewSet(viewsets.ModelViewSet):
     ISOLATION : le queryset est filtré par l'entité courante. Un admin FEBA
     ne voit AUCUN dossier FHA (son entité n'en possède pas), et un accès
     direct par identifiant renvoie 404 plutôt que d'exposer l'objet.
+
+    MENU : l'entrée « Admissions en ligne » suit la capacité calculée
+    `online_admissions` (School.features) — l'académie rattachée au site
+    public. Pas de 403 ici : une autre académie reçoit une liste vide et
+    404 par identifiant, ce qui ne révèle pas l'existence des dossiers.
     """
     permission_classes = [IsAuthenticated, IsAdminOrAbove]
     http_method_names = ['get', 'patch', 'post', 'delete', 'head', 'options']

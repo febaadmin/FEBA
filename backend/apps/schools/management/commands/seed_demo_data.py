@@ -105,6 +105,7 @@ class Command(BaseCommand):
                 "currency_code": "XOF",
                 "default_language": "fr",
                 "matricule_prefix": "FEBA",  # matricules FEBA-26-0001
+                "curriculum_language_mode": School.CURRICULUM_BILINGUAL,
             },
         )
         if not school.matricule_prefix:
@@ -572,6 +573,7 @@ class Command(BaseCommand):
                 "currency_code": "USD",
                 "default_language": "en",
                 "matricule_prefix": "FHA",
+                "curriculum_language_mode": School.CURRICULUM_BILINGUAL,
                 "settings": {
                     "tagline": "From English Speakers to Confident French Speakers",
                     # Non validé par la direction → reste nul.

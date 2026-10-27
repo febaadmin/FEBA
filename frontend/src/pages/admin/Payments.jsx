@@ -207,16 +207,16 @@ export default function AdminPayments() {
 
       {/* Détail par devise + taux utilisé — affiché uniquement quand le total
           ci-dessus consolide plusieurs devises (« Toutes les Académies »
-          avec FEBA en FCFA et FEBA FHA en dollars, par exemple). */}
+          avec des académies en FCFA et d'autres en dollars, par exemple).
+          Libellé par DEVISE : nommer une académie (« Équivalent FEBA FHA »)
+          attribuait à une seule académie les dollars de toutes. */}
       {summary.is_consolidated && (summary.totals_by_currency?.length > 0 || summary.conversion_errors?.length > 0) && (
         <div className="card p-4 text-sm space-y-2 bg-slate-50/60 border border-slate-100">
           <div className="font-semibold text-slate-600">{t("Détail par devise")}</div>
           <div className="flex flex-wrap gap-x-6 gap-y-1 text-slate-700">
             {summary.totals_by_currency.map(row => (
               <span key={row.currency}>
-                {row.currency === "USD"
-                  ? t("Équivalent FEBA FHA :")
-                  : t("FEBA :")} <span className="font-semibold">{row.formatted}</span>
+                {t("Montants en {devise} :", { devise: row.currency })} <span className="font-semibold">{row.formatted}</span>
               </span>
             ))}
           </div>

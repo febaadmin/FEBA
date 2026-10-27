@@ -39,7 +39,7 @@ export default function SmsPreferencesCard() {
         <MessageSquare className="w-4 h-4" />{t("Notifications par SMS")}
       </h3>
       <p className="text-sm text-slate-500 mb-3">
-        {t("Recevoir aussi par SMS le texte des e-mails et des rappels de paiement que FEBA vous adresse.")}
+        {t("Recevoir aussi par SMS le texte des e-mails et des rappels de paiement que votre académie vous adresse.")}
       </p>
       <div className="flex flex-wrap gap-4 text-sm" role="radiogroup" aria-label={t("Notifications par SMS")}>
         {[["granted", t("J'accepte les SMS")], ["refused", t("Je refuse les SMS")]].map(([value, label]) => (

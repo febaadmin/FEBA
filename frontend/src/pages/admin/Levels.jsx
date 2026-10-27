@@ -121,7 +121,7 @@ export default function AdminLevels() {
                   <tr key={level.id} className="hover:bg-slate-50/50 transition-colors">
                     {isAllAcademies && (
                       <td className="py-3 px-4">
-                        <AcademyBadge code={level.academy_code} name={level.academy_name} />
+                        <AcademyBadge code={level.academy_code} name={level.academy_name} shortName={level.academy_short_name} />
                       </td>
                     )}
                     <td className="py-3 px-4">

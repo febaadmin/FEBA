@@ -65,6 +65,10 @@ class ClassScheduleSerializer(TenantRelationsMixin, AcademyMetadataMixin, serial
             candidate.clean()
         except Exception as exc:  # ValidationError Django → ValidationError DRF
             raise serializers.ValidationError(getattr(exc, "messages", [str(exc)]))
+        from apps.classes.subject_rules import schedule_subject_error
+        refus = schedule_subject_error(field("cls"), field("subject"))
+        if refus:
+            raise serializers.ValidationError({"subject": refus})
 
         start, end = field("start_time"), field("end_time")
         if start and end and end <= start:
@@ -187,6 +191,10 @@ class OnlineSessionScheduleSerializer(AcademyMetadataMixin, serializers.ModelSer
             candidate.clean()
         except Exception as exc:
             raise serializers.ValidationError(getattr(exc, "messages", [str(exc)]))
+        from apps.classes.subject_rules import schedule_subject_error
+        refus = schedule_subject_error(field("group"), field("subject"))
+        if refus:
+            raise serializers.ValidationError({"subject": refus})
 
         start = field("start_time_utc")
         day = field("day_of_week")

@@ -98,12 +98,12 @@ def generate_month_task(self, academy_code=None, year=None, month=None,
     """
     from django.conf import settings
 
-    from apps.schools.models import School
+    from apps.schools.models import School, public_site_online_academy_code
 
     from .services import generate_month, send_report
     from .models import MonthlyReportStatus, MonthlyStudentReport
 
-    academy_code = academy_code or School.CODE_FEBA_FHA
+    academy_code = academy_code or public_site_online_academy_code()
     academy = School.objects.filter(code=academy_code).first()
     if academy is None:
         logger.error("Rapports mensuels — académie « %s » introuvable",

@@ -108,7 +108,7 @@ export default function SuperAdminUsers() {
           label: t("Académie"),
           accessor: "academy_code",
           sortable: false,
-          render: r => <AcademyBadge code={r.academy_code} name={r.academy_name} />,
+          render: r => <AcademyBadge code={r.academy_code} name={r.academy_name} shortName={r.academy_short_name} />,
         }]
       : []),
     { key: "name",  label: t("Nom"),   accessor: "first_name", render: r => `${r.first_name} ${r.last_name}` },

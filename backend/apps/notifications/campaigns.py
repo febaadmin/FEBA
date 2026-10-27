@@ -349,7 +349,7 @@ def _bodies(campaign):
     academy = campaign.academy
     footer = (
         f"\n\n—\n{academy.name}\n"
-        "Message envoyé depuis la plateforme FEBA. Merci de ne pas transférer "
+        "Message envoyé depuis la plateforme de gestion de l'académie. Merci de ne pas transférer "
         "ce message s'il contient des informations personnelles."
     )
     text = campaign.body + footer
@@ -358,7 +358,7 @@ def _bodies(campaign):
         + html.escape(campaign.body).replace("\n", "<br>")
         + "<hr style=\"border:none;border-top:1px solid #ddd;margin:16px 0\">"
         + f"<p style=\"color:#666;font-size:12px\">{html.escape(academy.name)}<br>"
-        + "Message envoyé depuis la plateforme FEBA.</p></div>"
+        + "Message envoyé depuis la plateforme de gestion de l'académie.</p></div>"
     )
     return text, html_body
 

@@ -150,7 +150,7 @@ export default function DocumentTemplates() {
 
       <div className="card text-sm text-slate-600 space-y-1">
         <p>
-          {t("Formats acceptés, téléversés tels quels — FEBA les convertit lui-même :")}{" "}
+          {t("Formats acceptés, téléversés tels quels — la plateforme les convertit elle-même :")}{" "}
           <span data-testid="accepted-formats">
             {(payload?.formats || []).filter((f) => f.available).map((f) => t(f.label)).join(", ")
               || t("Chargement…")}

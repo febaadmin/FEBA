@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import { useAuthStore } from "../store/authStore";
 import { authAPI } from "../api";
+import FeatureGate from "../components/FeatureGate";
 
 /**
  * Jeton présent mais utilisateur absent (connexion interrompue entre
@@ -353,14 +354,14 @@ export default function AppRouter() {
         <Route path="website"       element={<AdminWebsite />} />
         {/* P2 : les dossiers FHA étaient enregistrés sans écran pour
             les consulter — voici leur back-office dédié. */}
-        <Route path="fha-admissions" element={<FhaAdmissions />} />
+        <Route path="fha-admissions" element={<FeatureGate feature="online_admissions"><FhaAdmissions /></FeatureGate>} />
         <Route path="emails" element={<MassEmail />} />
         <Route path="outbox" element={<Outbox />} />
         <Route path="payment-reminders" element={<PaymentReminders />} />
         {/* P3 : rapports mensuels — académie en ligne uniquement. Le
             backend refuse toute autre académie, l'entrée de menu ne fait
             que suivre. */}
-        <Route path="monthly-reports" element={<MonthlyReports />} />
+        <Route path="monthly-reports" element={<FeatureGate feature="monthly_reports"><MonthlyReports /></FeatureGate>} />
         <Route path="incidents"     element={<SuperAdminIncidents />} />
         <Route path="incidents/:id" element={<SuperAdminIncidents />} />
         <Route path="profile"       element={<SuperAdminProfile />} />
@@ -399,14 +400,14 @@ export default function AppRouter() {
         <Route path="website"       element={<AdminWebsite />} />
         {/* P2 : les dossiers FHA étaient enregistrés sans écran pour
             les consulter — voici leur back-office dédié. */}
-        <Route path="fha-admissions" element={<FhaAdmissions />} />
+        <Route path="fha-admissions" element={<FeatureGate feature="online_admissions"><FhaAdmissions /></FeatureGate>} />
         <Route path="emails" element={<MassEmail />} />
         <Route path="outbox" element={<Outbox />} />
         <Route path="payment-reminders" element={<PaymentReminders />} />
         {/* P3 : rapports mensuels — académie en ligne uniquement. Le
             backend refuse toute autre académie, l'entrée de menu ne fait
             que suivre. */}
-        <Route path="monthly-reports" element={<MonthlyReports />} />
+        <Route path="monthly-reports" element={<FeatureGate feature="monthly_reports"><MonthlyReports /></FeatureGate>} />
         <Route path="profile"       element={<AdminProfile />} />
       </Route>
       <Route path="/teacher" element={

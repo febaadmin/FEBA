@@ -37,8 +37,8 @@ def get_fha_entity():
     STABLE. Ne jamais rechercher par nom affiché : l'administration peut
     renommer l'entité sans que la logique métier ne doive changer.
     """
-    from apps.schools.models import School
-    return School.objects.filter(code=School.CODE_FEBA_FHA).first()
+    from apps.schools.models import School, public_site_online_academy_code
+    return School.objects.filter(code=public_site_online_academy_code()).first()
 
 
 def get_feba_entity():
@@ -54,15 +54,16 @@ def get_feba_entity():
     présentielle active, en excluant explicitement FEBA FHA pour ne jamais
     router un message FEBA vers l'académie en ligne.
     """
-    from apps.schools.models import School
+    from apps.schools.models import (
+        School, public_site_campus_academy_code, public_site_online_academy_code)
 
-    entity = School.objects.filter(code=School.CODE_FEBA).first()
+    entity = School.objects.filter(code=public_site_campus_academy_code()).first()
     if entity is not None:
         return entity
     return (
         School.objects
         .filter(is_active=True)
-        .exclude(code=School.CODE_FEBA_FHA)
+        .exclude(code=public_site_online_academy_code())
         .exclude(entity_type="online")
         .order_by("id")
         .first()

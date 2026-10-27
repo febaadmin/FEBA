@@ -124,6 +124,12 @@ MEDIA_ROOT = config('MEDIA_ROOT', default=str(BASE_DIR / 'media'))
 PRIVATE_MEDIA_ROOT = config('PRIVATE_MEDIA_ROOT', default=str(BASE_DIR / 'private_media'))
 # Conversion des gabarits bureautiques (DOCX, ODT, RTF, PPTX…) par LibreOffice
 # sans interface — installé dans l'image Docker (backend/Dockerfile.prod).
+# Académie alimentée par les formulaires publics « en ligne » du site
+# (inscription, test de placement) — voir School.features.
+PUBLIC_SITE_ONLINE_ACADEMY_CODE = config('PUBLIC_SITE_ONLINE_ACADEMY_CODE', default='FEBA_FHA')
+# Académie présentielle alimentée par les formulaires publics du site
+# (contact, préinscriptions).
+PUBLIC_SITE_CAMPUS_ACADEMY_CODE = config('PUBLIC_SITE_CAMPUS_ACADEMY_CODE', default='FEBA')
 DOCUMENT_CONVERSION_TIMEOUT = config('DOCUMENT_CONVERSION_TIMEOUT', default=90, cast=int)
 LIBREOFFICE_BINARY = config('LIBREOFFICE_BINARY', default='')
 DOCUMENT_TEMPLATES_ROOT = config(
@@ -363,7 +369,7 @@ CELERY_BEAT_SCHEDULE = {
             hour=str(MONTHLY_REPORTS_HOUR),
             minute=str(MONTHLY_REPORTS_MINUTE),
         ),
-        'kwargs': {'academy_code': 'FEBA_FHA'},
+        'kwargs': {'academy_code': PUBLIC_SITE_ONLINE_ACADEMY_CODE},
         'options': {
             # Si le worker n'a pas pris la tâche dans l'heure, elle est
             # abandonnée plutôt que rejouée tardivement : un rapport

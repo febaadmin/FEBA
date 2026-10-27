@@ -104,6 +104,7 @@ class Command(BaseCommand):
                 "currency_code": "XOF",
                 "default_language": "fr",
                 "matricule_prefix": "FEBA",
+                "curriculum_language_mode": School.CURRICULUM_BILINGUAL,
                 "is_active": True,
             },
         )
@@ -129,6 +130,7 @@ class Command(BaseCommand):
                 "currency_code": "USD",
                 "default_language": "en",
                 "matricule_prefix": "FHA",
+                "curriculum_language_mode": School.CURRICULUM_BILINGUAL,
                 "is_active": True,
                 "settings": {
                     "tagline": "From English Speakers to Confident French Speakers",
@@ -163,6 +165,17 @@ class Command(BaseCommand):
             if install_default_rules(academy):
                 created_any = True
                 self.stdout.write(f"  Barème d'appréciations installé : {academy.name}")
+
+        # Programme linguistique : les deux académies du groupe enseignent en
+        # français ET en anglais (bulletin à deux sections, moyenne 60/40) ;
+        # FEBA FHA garde ses classes monolingues (fonctionnalité de l'entité).
+        # Jamais écrasé : seule une valeur VIDE est complétée.
+        for academy in (feba, fha):
+            if not academy.curriculum_language_mode:
+                academy.curriculum_language_mode = School.CURRICULUM_BILINGUAL
+                academy.save(update_fields=["curriculum_language_mode"])
+                created_any = True
+                self.stdout.write(f"  Programme linguistique : bilingue — {academy.name}")
 
         created_any |= self._align_management_phones()
 
