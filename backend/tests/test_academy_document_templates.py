@@ -995,7 +995,8 @@ class ConcurrencyTests(__import__("django.test", fromlist=["TransactionTestCase"
             try:
                 results.append(("ok", fn()))
             except Exception as exc:  # noqa: BLE001 — le résultat est inspecté
-                results.append(("error", repr(exc)))
+                import traceback
+                results.append(("error", repr(exc) + "\n" + traceback.format_exc()[-1500:]))
             finally:
                 connection.close()
 
@@ -1032,3 +1033,49 @@ class ConcurrencyTests(__import__("django.test", fromlist=["TransactionTestCase"
             for c in (RED, GREEN, BLUE)])
         versions = sorted(v for status, v in results if status == "ok")
         self.assertEqual(versions, [1, 2, 3], results)
+
+
+class ConcurrentRenderingTests(TestCase):
+    """
+    Rendus simultanés dans un même processus. ReportLab partage l'objet
+    d'une police TrueType entre documents et son découpage n'est pas sûr
+    entre fils : sans le verrou du moteur, des rendus échouaient
+    (IndexError dans ttfonts.makeSubset — trouvé par la campagne lancée
+    depuis l'archive, puis reproduit à 12 fils).
+    """
+
+    def test_douze_fils_quinze_tours_aucun_echec(self):
+        import threading
+
+        from PIL import Image
+
+        root = tempfile.mkdtemp(prefix="feba-render-")
+        try:
+            with override_settings(PRIVATE_MEDIA_ROOT=root):
+                os.makedirs(os.path.join(root, "academy_templates", "1"))
+                Image.new("RGB", (1754, 1240), RED).save(
+                    os.path.join(root, "academy_templates", "1", "fond.png"))
+                template = AcademyDocumentTemplate(
+                    kind="diploma", file_format="png", file_path="1/fond.png", render_path="",
+                    page_width_mm=297, page_height_mm=210, image_width_px=1754,
+                    image_height_px=1240, options={})
+                template.fields = uploads.normalize_fields(template, LANDSCAPE_FIELDS)
+                errors = []
+
+                def run(index):
+                    try:
+                        values = uploads._sample_values(template)
+                        values["student_name"] = f"Élève {index} Ñandú Œuvray-Çaëlle"
+                        content = uploads.render(template, values)
+                        if f"Élève {index}" not in pdf_text(content)[0]:
+                            errors.append(f"texte absent ({index})")
+                    except Exception as exc:  # noqa: BLE001 — l'échec est compté
+                        errors.append(repr(exc))
+
+                for _round in range(15):
+                    threads = [threading.Thread(target=run, args=(i,)) for i in range(12)]
+                    [t.start() for t in threads]
+                    [t.join() for t in threads]
+                self.assertEqual(errors, [])
+        finally:
+            shutil.rmtree(root, ignore_errors=True)

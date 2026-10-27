@@ -942,8 +942,18 @@ def render(template, values, *, preview=False, frames=False, preview_label="APER
     Produit le PDF final sur le fond de CETTE version.
 
     Aperçu et document remis passent par cette même fonction : seule la
-    surimpression « APERÇU » les distingue.
+    surimpression « APERÇU » les distingue. Le rendu est sérialisé par le
+    verrou du moteur (`renderer.RENDER_LOCK`) : ReportLab n'est pas sûr
+    entre fils d'exécution.
     """
+    from apps.documents.renderer import RENDER_LOCK
+
+    with RENDER_LOCK:
+        return _render(template, values, preview=preview, frames=frames,
+                       preview_label=preview_label)
+
+
+def _render(template, values, *, preview, frames, preview_label):
     from apps.documents.renderer import RenderError
 
     page_w_pt, page_h_pt = template.page_width_mm * mm, template.page_height_mm * mm
