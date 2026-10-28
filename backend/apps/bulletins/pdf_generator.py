@@ -171,6 +171,9 @@ def C(text, *, align='LEFT', bold=False, size=8, color=None):
     """
     style = dict(_CELL_BASE)
     style['fontName'] = 'Helvetica-Bold' if bold else 'Helvetica'
+    # Densité : la police se resserre en dernier recours, jamais sous 7 pt
+    # (plancher de lisibilité imposé par apps.core.pdf_longtext).
+    size = max(7.0, round(size * _L()['font'], 2))
     style['fontSize'] = size
     style['leading'] = size + 1.5
     style['alignment'] = {'LEFT': 0, 'CENTER': 1, 'RIGHT': 2}[align]
@@ -183,6 +186,46 @@ def C(text, *, align='LEFT', bold=False, size=8, color=None):
 
 #: Valeur sentinelle : « ne pas toucher au commentaire ».
 UNCHANGED = object()
+
+
+# ─── Densité de mise en page : un bulletin tient sur UNE page ────────────────
+#
+# DÉFAUT CORRIGÉ (bulletin sur deux pages)
+# ----------------------------------------
+# La mise en page était RIGIDE : logo de 2 cm, intertitres de 11 à 14 pt,
+# lignes de matières à 2,5 pt de marge, bloc « commentaire + cachet » de
+# 3 cm de haut. Rien ne tenait compte de la place disponible : dès une
+# dizaine de matières (6 FR + 4 EN, mesuré), les signatures et le pied de
+# page basculaient sur une seconde page presque vide.
+#
+# Le bulletin est désormais rendu à la densité la plus CONFORTABLE qui tient
+# sur une seule page, vérifiée sur le PDF effectivement produit. Seuls les
+# espacements, marges internes, tailles du logo et du cachet et — en dernier
+# recours — les polices (jamais sous 7 pt, plancher de pdf_longtext)
+# changent. Aucune matière, aucune note, aucune appréciation, aucun calcul
+# n'est retiré ni modifié. Au-delà de la densité la plus compacte, la
+# génération est REFUSÉE avec un message explicite : un dépassement n'est
+# jamais accepté en silence.
+LAYOUT_LEVELS = (
+    dict(name='standard', font=1.0, head=1.0, pad=2.5, space=1.0, logo=2.0,
+         stamp=2.5, comment_min=2.4, sig_row=0.7),
+    dict(name='resserré', font=1.0, head=0.92, pad=1.6, space=0.6, logo=1.5,
+         stamp=2.1, comment_min=1.9, sig_row=0.6),
+    dict(name='compact', font=0.94, head=0.85, pad=1.0, space=0.4, logo=1.2,
+         stamp=1.8, comment_min=1.6, sig_row=0.55),
+    dict(name='très compact', font=0.875, head=0.8, pad=0.6, space=0.25, logo=1.0,
+         stamp=1.5, comment_min=1.3, sig_row=0.5),
+)
+_LAYOUT = contextvars.ContextVar("bulletin_layout", default=LAYOUT_LEVELS[0])
+
+
+def _L():
+    """Paramètres de densité du rendu en cours."""
+    return _LAYOUT.get()
+
+
+class BulletinLayoutError(Exception):
+    """Le bulletin ne tient pas sur une page, même à la densité la plus compacte."""
 
 
 #: Aperçu en cours de rendu : le filigrane « APERÇU » est apposé sur chaque
@@ -449,26 +492,27 @@ def _add_header(story, student, period, school_year, palette, title):
     logo_path = brand.document_logo
     if logo_path and os.path.exists(logo_path):
         try:
-            logo_img = Image(logo_path, width=2.0 * cm, height=2.0 * cm)
+            logo_img = Image(logo_path, width=_L()['logo'] * cm, height=_L()['logo'] * cm)
             logo_img.hAlign = 'CENTER'
             story.append(logo_img)
         except Exception as exc:
             logger.warning("Erreur non bloquante ignorée : %s", exc, exc_info=True)
     # V7 : ligne « groupe » au-dessus du nom officiel — libellé administrable
     # par académie ; absente, la ligne disparaît.
+    h, sp = _L()['head'], _L()['space']
     if brand.group_name:
-        story.append(P(brand.group_name, fontSize=9, fontName='Helvetica-Bold',
+        story.append(P(brand.group_name, fontSize=9 * h, leading=11 * h, fontName='Helvetica-Bold',
                        alignment=1, textColor=palette.gold, spaceAfter=1))
-    story.append(P(name.upper(), fontSize=14, fontName='Helvetica-Bold',
-                   alignment=1, textColor=palette.primary, spaceAfter=2))
-    story.append(P(subtitle, fontSize=9, alignment=1, spaceAfter=2))
+    story.append(P(name.upper(), fontSize=14 * h, leading=16.5 * h, fontName='Helvetica-Bold',
+                   alignment=1, textColor=palette.primary, spaceAfter=2 * sp))
+    story.append(P(subtitle, fontSize=9 * h, leading=11 * h, alignment=1, spaceAfter=2 * sp))
     story.append(HRFlowable(width='100%', thickness=3, color=palette.gold))
     story.append(P(f'{title} — {_period_label(period)}',
-                   fontSize=13, fontName='Helvetica-Bold', alignment=1,
-                   textColor=palette.gold, spaceBefore=4))
+                   fontSize=13 * h, leading=15.5 * h, fontName='Helvetica-Bold', alignment=1,
+                   textColor=palette.gold, spaceBefore=4 * sp))
     story.append(P(f'Année scolaire / School Year : {school_year.name}',
-                   fontSize=10, alignment=1, spaceAfter=4))
-    story.append(Spacer(1, 0.2 * cm))
+                   fontSize=10 * h, leading=12 * h, alignment=1, spaceAfter=4 * sp))
+    story.append(Spacer(1, 0.2 * cm * sp))
 
 
 def _add_student_info(story, student, period, school_year, palette):
@@ -499,11 +543,11 @@ def _add_student_info(story, student, period, school_year, palette):
         ('BACKGROUND', (2, 0), (2, -1), palette.light),
         ('LEFTPADDING', (0, 0), (-1, -1), 5),
         ('RIGHTPADDING', (0, 0), (-1, -1), 5),
-        ('TOPPADDING', (0, 0), (-1, -1), 3),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
+        ('TOPPADDING', (0, 0), (-1, -1), min(3, _L()['pad'])),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), min(3, _L()['pad'])),
     ]))
     story.append(info_tbl)
-    story.append(Spacer(1, 0.3 * cm))
+    story.append(Spacer(1, 0.3 * cm * _L()['space']))
 
 
 # ─── Tableaux de résultats FR / EN (BUG N°1) ─────────────────────────────────
@@ -582,12 +626,13 @@ def _add_language_section(story, title, entries, period, head_color, zebra_color
     de cette langue avec notes, coefficients, moyennes et appréciations,
     puis ligne de moyenne de la partie.
     """
-    story.append(P(title, fontSize=11, fontName='Helvetica-Bold',
-                   textColor=head_color, spaceAfter=4))
+    h, sp = _L()['head'], _L()['space']
+    story.append(P(title, fontSize=11 * h, leading=13 * h, fontName='Helvetica-Bold',
+                   textColor=head_color, spaceAfter=4 * max(sp, 0.5)))
 
     if not entries:
         story.append(P('Aucune matière dans cette catégorie / No subject in this category.',
-                       fontSize=9, textColor=colors.grey, spaceAfter=8))
+                       fontSize=9 * h, leading=11 * h, textColor=colors.grey, spaceAfter=8 * sp))
         return None
 
     def hcell(t, align='CENTER'):
@@ -622,13 +667,13 @@ def _add_language_section(story, title, entries, period, head_color, zebra_color
     style_cmds = [
         ('BACKGROUND', (0, 0), (-1, 0), head_color),
         ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-        ('FONTSIZE', (0, 0), (-1, -1), 8),
+        ('FONTSIZE', (0, 0), (-1, -1), max(7, 8 * _L()['font'])),
         ('ALIGN', (1, 0), (-1, -1), 'CENTER'),
         ('GRID', (0, 0), (-1, -1), 0.25, colors.lightgrey),
         ('LEFTPADDING', (0, 0), (-1, -1), 4),
         ('RIGHTPADDING', (0, 0), (-1, -1), 4),
-        ('TOPPADDING', (0, 0), (-1, -1), 2.5),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 2.5),
+        ('TOPPADDING', (0, 0), (-1, -1), _L()['pad']),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), _L()['pad']),
         ('BACKGROUND', (0, -1), (-1, -1), colors.HexColor('#FEF3C7')),
         ('FONTNAME', (0, -1), (-1, -1), 'Helvetica-Bold'),
     ]
@@ -637,7 +682,7 @@ def _add_language_section(story, title, entries, period, head_color, zebra_color
                            colors.white if i % 2 == 0 else zebra_color))
     tbl.setStyle(TableStyle(style_cmds))
     story.append(tbl)
-    story.append(Spacer(1, 0.25 * cm))
+    story.append(Spacer(1, 0.25 * cm * _L()['space']))
     return section_avg
 
 
@@ -672,10 +717,11 @@ def _expected_languages(student_class):
 
 def _add_stats_section(story, bilingual_data, class_stats, average, bulletin, period, palette,
                        scale=20, expected_languages=("fr", "en")):
+    h, sp = _L()['head'], _L()['space']
     story.append(HRFlowable(width='100%', thickness=1, color=palette.gold))
     story.append(P('MOYENNES & STATISTIQUES DE LA CLASSE / AVERAGES & CLASS STATISTICS',
-                   fontSize=11, fontName='Helvetica-Bold', textColor=palette.primary,
-                   spaceBefore=4, spaceAfter=4))
+                   fontSize=11 * h, leading=13 * h, fontName='Helvetica-Bold', textColor=palette.primary,
+                   spaceBefore=4 * max(sp, 0.5), spaceAfter=4 * max(sp, 0.5)))
 
     fr_avg = bilingual_data.get('fr_average')
     en_avg = bilingual_data.get('en_average')
@@ -728,13 +774,13 @@ def _add_stats_section(story, bilingual_data, class_stats, average, bulletin, pe
     style = [
         ('BACKGROUND', (0, 0), (-1, 0), palette.gold),
         ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-        ('FONTSIZE', (0, 0), (-1, -1), 8),
+        ('FONTSIZE', (0, 0), (-1, -1), max(7, 8 * _L()['font'])),
         ('ALIGN', (1, 0), (-1, -1), 'CENTER'),
         ('GRID', (0, 0), (-1, -1), 0.25, colors.lightgrey),
         ('LEFTPADDING', (0, 0), (-1, -1), 4),
         ('RIGHTPADDING', (0, 0), (-1, -1), 4),
-        ('TOPPADDING', (0, 0), (-1, -1), 3),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
+        ('TOPPADDING', (0, 0), (-1, -1), min(3, _L()['pad'])),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), min(3, _L()['pad'])),
     ]
     # Les index de fond étaient écrits en dur (1, 2, 3). Ils suivent
     # désormais les lignes réellement produites.
@@ -744,13 +790,13 @@ def _add_stats_section(story, bilingual_data, class_stats, average, bulletin, pe
     tbl.setStyle(TableStyle(style))
     story.append(tbl)
 
-    story.append(Spacer(1, 0.15 * cm))
+    story.append(Spacer(1, 0.15 * cm * sp))
     if montrer_bi:
         story.append(P(
             f'<font color="{palette.brand.primary_color}"><b>Formule bilingue / '
             'Bilingual formula:</b></font> Moyenne Bilingue = '
             '(Moyenne Française × 60%) + (Moyenne Anglaise × 40%)',
-            fontSize=8, spaceAfter=5,
+            fontSize=max(7, 8 * _L()['font']), leading=max(8.5, 10 * _L()['font']), spaceAfter=5 * sp,
         ))
 
     # Bande "moyenne générale" — sans rang (BUG N°2)
@@ -769,11 +815,11 @@ def _add_stats_section(story, bilingual_data, class_stats, average, bulletin, pe
         ('BACKGROUND', (0, 0), (-1, -1), palette.light),
         ('GRID', (0, 0), (-1, -1), 0.5, palette.primary),
         ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-        ('TOPPADDING', (0, 0), (-1, -1), 5),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
+        ('TOPPADDING', (0, 0), (-1, -1), 2 * _L()['pad']),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 2 * _L()['pad']),
     ]))
     story.append(s_tbl)
-    story.append(Spacer(1, 0.3 * cm))
+    story.append(Spacer(1, 0.3 * cm * sp))
 
 
 # ─── STANDARD PDF Template (Primaire/Collège/Lycée) ──────────────────────────
@@ -781,9 +827,57 @@ def _add_stats_section(story, bilingual_data, class_stats, average, bulletin, pe
 def _build_standard_pdf(buffer, student, period, school_year, subject_data,
                         bilingual_data, class_stats, average, bulletin, palette,
                         expected_languages=("fr", "en")):
+    """
+    Rend le bulletin sur UNE page : essaie les densités de LAYOUT_LEVELS de
+    la plus confortable à la plus compacte et garde la première dont le PDF
+    produit compte exactement une page. Lève BulletinLayoutError sinon.
+    Retourne le nom de la densité retenue.
+    """
+    return _fit_one_page(
+        buffer, student, period, len(subject_data),
+        lambda out: _render_standard_once(
+            out, student, period, school_year, subject_data, bilingual_data,
+            class_stats, average, bulletin, palette, expected_languages))
+
+
+def _fit_one_page(buffer, student, period, n_subjects, render_once):
+    """Densité la plus confortable qui donne exactement UNE page (voir LAYOUT_LEVELS)."""
+    pages = None
+    for level in LAYOUT_LEVELS:
+        token = _LAYOUT.set(level)
+        try:
+            attempt = BytesIO()
+            pages = render_once(attempt)
+        finally:
+            _LAYOUT.reset(token)
+        if pages == 1:
+            buffer.write(attempt.getvalue())
+            if level is not LAYOUT_LEVELS[0]:
+                logger.info("Bulletin %s/%s rendu en densité « %s » pour tenir sur une page",
+                            getattr(student, 'matricule', '?'), period, level['name'])
+            return level['name']
+    raise BulletinLayoutError(
+        f"Le bulletin de {student.get_full_name()} ({_period_label(period)}) ne tient pas sur "
+        f"une page, même en mise en page très compacte ({pages} pages : "
+        f"{n_subjects} matières). Aucun bulletin n'a été produit. Raccourcissez le "
+        f"commentaire du directeur ou vérifiez les matières de la classe."
+    )
+
+
+class _CountingDoc(SimpleDocTemplate):
+    """SimpleDocTemplate qui expose le nombre de pages réellement produites."""
+
+    def afterPage(self):
+        super().afterPage()
+        self.pages_built = getattr(self, 'pages_built', 0) + 1
+
+
+def _render_standard_once(buffer, student, period, school_year, subject_data,
+                          bilingual_data, class_stats, average, bulletin, palette,
+                          expected_languages):
     # Marges 1.2 cm : largeur utile = 21 - 2×1.2 = 18.6 cm. Toutes les tables
     # sont dimensionnées à ≤ 18.5 cm → marge de sécurité, aucun débordement.
-    doc = SimpleDocTemplate(
+    doc = _CountingDoc(
         buffer, pagesize=A4,
         rightMargin=1.2 * cm, leftMargin=1.2 * cm,
         topMargin=1.0 * cm, bottomMargin=1.0 * cm,
@@ -831,6 +925,7 @@ def _build_standard_pdf(buffer, student, period, school_year, subject_data,
     _add_signatures(story, bulletin, palette)
     _add_footer(story, palette)
     doc.build(story, onFirstPage=_page_marks, onLaterPages=_page_marks)
+    return getattr(doc, 'pages_built', 0)
 
 
 # ─── MATERNELLE PDF Template ──────────────────────────────────────────────────
@@ -874,7 +969,16 @@ def _grading_key_cells(scale):
 
 def _build_maternelle_pdf(buffer, student, period, school_year, subject_data,
                           average, bulletin, palette):
-    doc = SimpleDocTemplate(
+    """Bulletin de maternelle, sur UNE page (même mécanisme que le standard)."""
+    return _fit_one_page(
+        buffer, student, period, len(subject_data),
+        lambda out: _render_maternelle_once(out, student, period, school_year, subject_data,
+                                            average, bulletin, palette))
+
+
+def _render_maternelle_once(buffer, student, period, school_year, subject_data,
+                            average, bulletin, palette):
+    doc = _CountingDoc(
         buffer, pagesize=A4,
         rightMargin=1.2 * cm, leftMargin=1.2 * cm,
         topMargin=1.0 * cm, bottomMargin=1.0 * cm,
@@ -905,11 +1009,11 @@ def _build_maternelle_pdf(buffer, student, period, school_year, subject_data,
         ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
     ]))
     story.append(key_tbl)
-    story.append(Spacer(1, 0.35 * cm))
+    story.append(Spacer(1, 0.35 * cm * _L()['space']))
 
     # Résultats en lettres, séparés FR / EN (BUG N°1)
-    story.append(P('MATIÈRES / SUBJECTS', fontSize=11, fontName='Helvetica-Bold',
-                   textColor=palette.primary, spaceAfter=4))
+    story.append(P('MATIÈRES / SUBJECTS', fontSize=11 * _L()['head'], leading=13 * _L()['head'],
+                   fontName='Helvetica-Bold', textColor=palette.primary, spaceAfter=4 * _L()['space']))
 
     entries = list(subject_data.values())
     fr_rows = [e for e in entries if e.get('language') == 'fr']
@@ -956,7 +1060,10 @@ def _build_maternelle_pdf(buffer, student, period, school_year, subject_data,
         ('FONTSIZE', (0, 0), (-1, -1), 8),
         ('ALIGN', (1, 0), (-1, -1), 'CENTER'),
         ('GRID', (0, 0), (-1, -1), 0.25, colors.lightgrey),
-        ('PADDING', (0, 0), (-1, -1), 4),
+        ('LEFTPADDING', (0, 0), (-1, -1), 4),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 4),
+        ('TOPPADDING', (0, 0), (-1, -1), min(4, _L()['pad'] + 1.5)),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), min(4, _L()['pad'] + 1.5)),
     ]
     for i, row in enumerate(full_rows[1:], 1):
         if row[1] == '' and row[2] == '' and row[3] == '':
@@ -969,11 +1076,11 @@ def _build_maternelle_pdf(buffer, student, period, school_year, subject_data,
             style_cmds.append(('BACKGROUND', (0, i), (-1, i), bg))
     g_tbl.setStyle(TableStyle(style_cmds))
     story.append(g_tbl)
-    story.append(Spacer(1, 0.4 * cm))
+    story.append(Spacer(1, 0.4 * cm * _L()['space']))
 
     # Conduite
-    story.append(P('CONDUITE / CONDUCT', fontSize=11, fontName='Helvetica-Bold',
-                   textColor=palette.primary, spaceAfter=4))
+    story.append(P('CONDUITE / CONDUCT', fontSize=11 * _L()['head'], leading=13 * _L()['head'],
+                   fontName='Helvetica-Bold', textColor=palette.primary, spaceAfter=4 * _L()['space']))
     conduct_items = [
         'Contrôle du langage / Controls talking',
         'Respect de l\'autorité / Respects authority',
@@ -996,15 +1103,16 @@ def _build_maternelle_pdf(buffer, student, period, school_year, subject_data,
         ('GRID', (0, 0), (-1, -1), 0.25, colors.lightgrey),
         ('LEFTPADDING', (0, 0), (-1, -1), 4),
         ('RIGHTPADDING', (0, 0), (-1, -1), 4),
-        ('TOPPADDING', (0, 0), (-1, -1), 3),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
+        ('TOPPADDING', (0, 0), (-1, -1), min(3, _L()['pad'])),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), min(3, _L()['pad'])),
     ]))
     story.append(c_tbl)
-    story.append(Spacer(1, 0.3 * cm))
+    story.append(Spacer(1, 0.3 * cm * _L()['space']))
 
     _add_signatures(story, bulletin, palette)
     _add_footer(story, palette)
     doc.build(story, onFirstPage=_page_marks, onLaterPages=_page_marks)
+    return getattr(doc, 'pages_built', 0)
 
 
 # ─── Signatures & pied de page ────────────────────────────────────────────────
@@ -1016,7 +1124,7 @@ _COMMENT_BOX_MAX_HEIGHT = 9 * cm
 
 def _add_signatures(story, bulletin, palette):
     story.append(HRFlowable(width='100%', thickness=1, color=colors.lightgrey))
-    story.append(Spacer(1, 0.2 * cm))
+    story.append(Spacer(1, 0.2 * cm * _L()['space']))
     comment = (bulletin.general_comment or '').strip() or '(Aucun commentaire / No comment)'
     # V7 : cachet officiel de la direction apposé dans la case « Cachet ».
     # P0 — le cachet est celui de CETTE académie ; absent, la case reste vide.
@@ -1025,7 +1133,8 @@ def _add_signatures(story, bulletin, palette):
     if cachet_path:
         try:
             # 2,5 cm : lisible à l'impression sans gonfler la hauteur du bulletin.
-            stamp = Image(cachet_path, width=2.5 * cm, height=2.5 * cm)  # ratio 1:1 conservé
+            # Taille réduite avec la densité (2,5 cm → 1,5 cm), ratio 1:1 conservé.
+            stamp = Image(cachet_path, width=_L()['stamp'] * cm, height=_L()['stamp'] * cm)
             stamp.hAlign = 'CENTER'
             stamp_cell = stamp
         except Exception as exc:
@@ -1072,14 +1181,16 @@ def _add_signatures(story, bulletin, palette):
         # bloc qui peut se poursuivre sur la page suivante — jamais tronqué.
         story.append(C('Commentaire du Directeur / Principal\'s Comment', bold=True))
         story.append(Spacer(1, 0.1 * cm))
-        story.append(pdf_paragraph(comment, fontName='Helvetica', fontSize=8, leading=9.5))
-        story.append(Spacer(1, 0.3 * cm))
+        story.append(pdf_paragraph(comment, fontName='Helvetica', fontSize=max(7, 8 * _L()['font']),
+                                   leading=max(8.5, 9.5 * _L()['font'])))
+        story.append(Spacer(1, 0.3 * cm * _L()['space']))
         comment_para = C('(Voir le commentaire complet ci-dessus / See full comment above)')
         text_h = 0
     comment_box = Table(
         [[C('Commentaire du Directeur / Principal\'s Comment', bold=True)],
          [comment_para]],
-        colWidths=[9.4 * cm], rowHeights=[0.5 * cm, max(2.4 * cm, text_h + 8)],
+        colWidths=[9.4 * cm],
+        rowHeights=[0.5 * cm, max(_L()['comment_min'] * cm, text_h + 8)],
     )
     comment_box.setStyle(TableStyle([
         ('BOX', (0, 0), (-1, -1), 0.25, colors.lightgrey),
@@ -1093,7 +1204,7 @@ def _add_signatures(story, bulletin, palette):
     parent_sig = Table(
         [[C('Signature du Parent / Parent\'s Signature:', bold=True),
           C('________________________', align='CENTER')]],
-        colWidths=[5.2 * cm, 4.2 * cm], rowHeights=[0.7 * cm],
+        colWidths=[5.2 * cm, 4.2 * cm], rowHeights=[_L()['sig_row'] * cm],
     )
     parent_sig.setStyle(TableStyle([
         ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
@@ -1126,7 +1237,7 @@ def _add_signatures(story, bulletin, palette):
 def _add_footer(story, palette):
     brand = palette.brand
     name = brand.footer_text or brand.display_name
-    story.append(Spacer(1, 0.1 * cm))
+    story.append(Spacer(1, 0.1 * cm * _L()['space']))
     story.append(HRFlowable(width='100%', thickness=1, color=colors.lightgrey))
     story.append(P(
         f'{name} | Généré le {timezone.now().strftime("%d/%m/%Y à %H:%M")}',

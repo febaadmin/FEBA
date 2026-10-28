@@ -186,9 +186,15 @@ class BulletinViewSet(BulkDeleteMixin, viewsets.ModelViewSet):
             return Response({"error": str(exc)}, status=400)
         except ScopeError as exc:
             return Response({"error": str(exc)}, status=exc.status)
+        from .pdf_generator import BulletinLayoutError
+
         try:
             pdf, _draft = render_bulletin_pdf(student, request.data.get("period"), year,
                                               comment=comment, preview=True)
+        except BulletinLayoutError as exc:
+            # Le bulletin ne tient pas sur une page : refus explicite, jamais
+            # un PDF de deux pages présenté comme valide.
+            return Response({"error": str(exc)}, status=422)
         except Exception as exc:
             logger.error("Aperçu impossible %s : %s", student.pk, exc, exc_info=True)
             return Response({"error": f"Aperçu impossible : {exc}"}, status=500)
@@ -413,9 +419,14 @@ class BulletinViewSet(BulkDeleteMixin, viewsets.ModelViewSet):
                 {"error": "Impossible de générer un bulletin pour un élève désactivé."},
                 status=400,
             )
+        from apps.bulletins.pdf_generator import BulletinLayoutError
+
         try:
             # Le bulletin existant est réutilisé : commentaire conservé.
             bulletin = generate_bulletin(student, period, school_year)
+        except BulletinLayoutError as e:
+            return Response({"error": f"{e} Le bulletin précédent et son PDF sont conservés."},
+                            status=422)
         except Exception as e:
             logger.error(f"Bulletin generation error: {e}", exc_info=True)
             return Response({"error": f"Génération impossible : {e}. "
