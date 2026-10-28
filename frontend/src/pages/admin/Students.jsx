@@ -584,7 +584,7 @@ export default function AdminStudents() {
               <div>
                 <label className="label">{t("Nouvelle classe (optionnel)")}</label>
                 <select {...re("class_obj")} className="input" style={{ minHeight: "2.5rem" }}>
-                  <option value="">— Pas encore affecté —</option>
+                  <option value="">{t("— Pas encore affecté —")}</option>
                   {(enrollTargetYear
                     ? classes.filter(c => String(c.school_year) === String(enrollTargetYear))
                     : classes

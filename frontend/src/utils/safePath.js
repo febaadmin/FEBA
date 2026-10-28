@@ -13,6 +13,7 @@ export function safeInternalPath(value) {
   // effacé au lieu d'être refusé.
   const path = value;
   if (!path.startsWith("/") || path.startsWith("//") || path.startsWith("/\\")) return null;
-  if (/[\u0000-\u001f\\]/.test(path)) return null;
+  // Caractère de contrôle (code < 32) ou barre oblique inverse : refusé.
+  if ([...path].some((c) => c.charCodeAt(0) < 32 || c === "\\")) return null;
   return path;
 }

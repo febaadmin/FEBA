@@ -100,11 +100,12 @@ class ParentViewSet(BulkDeleteMixin, viewsets.ModelViewSet):
         user = self.request.user
         school = get_request_school(self.request)
         school_year_id = self.request.query_params.get("school_year")
+        # Ordre explicite (pagination stable, voir TeacherViewSet).
         qs = Parent.objects.select_related("user").prefetch_related(
             "children_links__student__current_class__level",
             "children_links__student__school_year",
             "children_links__student__school",
-        )
+        ).order_by("user__last_name", "user__first_name", "pk")
 
         # --- Isolation multi-tenant -----------------------------------------
         if school is not None:

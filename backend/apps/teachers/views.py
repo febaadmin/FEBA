@@ -31,9 +31,11 @@ class TeacherViewSet(BulkDeleteMixin, viewsets.ModelViewSet):
     def get_queryset(self):
         user = self.request.user
         school = get_request_school(self.request)
+        # Ordre explicite : la pagination d'un queryset non ordonné peut
+        # répéter ou omettre des lignes d'une page à l'autre.
         qs = Teacher.objects.select_related("user").prefetch_related(
             "subjects", "classes__level"
-        )
+        ).order_by("user__last_name", "user__first_name", "pk")
 
         if school is not None:
             qs = qs.filter(user__school=school)

@@ -188,7 +188,7 @@ class MonthlyStudentReport(models.Model):
                 name="rapport_mensuel_unique_par_periode_et_version",
             ),
             models.CheckConstraint(
-                check=models.Q(month__gte=1) & models.Q(month__lte=12),
+                condition=models.Q(month__gte=1) & models.Q(month__lte=12),
                 name="rapport_mensuel_mois_valide",
             ),
         ]

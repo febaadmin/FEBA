@@ -25,6 +25,13 @@ class SchoolBrandingSerializer(TenantRelationsMixin, serializers.ModelSerializer
         # direct pouvait laisser deux versions actives.
         read_only_fields = ['uploaded_at', 'updated_at', 'uploaded_by', 'is_active']
         extra_kwargs = {'school': {'required': False}}
+        # DRF ≥ 3.16 génère un validateur pour la contrainte CONDITIONNELLE
+        # « une seule version active par académie » et rend alors `school`
+        # obligatoire dans la requête — or l'académie est fixée par la vue
+        # (jamais par le client) et `is_active` n'est pas modifiable ici.
+        # L'unicité reste garantie par activate() (verrou) et par la
+        # contrainte en base `uniq_active_branding_per_school`.
+        validators = []
 
     #: Formats acceptés, contrôlés sur le CONTENU décodé (pas l'extension).
     LOGO_FORMATS = {'PNG', 'JPEG', 'WEBP'}

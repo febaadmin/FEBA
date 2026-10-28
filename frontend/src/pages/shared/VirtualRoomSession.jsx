@@ -196,7 +196,7 @@ export default function VirtualRoomSession() {
       <Plein>
         <div className="max-w-lg text-center">
           <h1 className="text-lg font-semibold text-white mb-3">
-            Impossible de rejoindre la salle
+            {t("Impossible de rejoindre la salle")}
           </h1>
           <p className="text-slate-300 text-sm leading-relaxed">{error}</p>
           <button
@@ -204,7 +204,7 @@ export default function VirtualRoomSession() {
             onClick={() => window.close()}
             className="mt-6 px-4 py-2 rounded-lg bg-slate-700 text-white text-sm hover:bg-slate-600"
           >
-            Fermer cet onglet
+            {t("Fermer cet onglet")}
           </button>
         </div>
       </Plein>
@@ -216,7 +216,7 @@ export default function VirtualRoomSession() {
       <Plein>
         <div className="max-w-lg text-center">
           <h1 className="text-lg font-semibold text-white mb-3">
-            Vous avez quitté la réunion
+            {t("Vous avez quitté la réunion")}
           </h1>
           <p className="text-slate-300 text-sm">{meeting?.name || "Salle virtuelle"}</p>
           <button
@@ -224,7 +224,7 @@ export default function VirtualRoomSession() {
             onClick={() => window.close()}
             className="mt-6 px-4 py-2 rounded-lg bg-slate-700 text-white text-sm hover:bg-slate-600"
           >
-            Fermer cet onglet
+            {t("Fermer cet onglet")}
           </button>
         </div>
       </Plein>
@@ -236,7 +236,7 @@ export default function VirtualRoomSession() {
       <Plein>
         <div className="max-w-lg text-center">
           <h1 className="text-lg font-semibold text-white mb-3">
-            Impossible de rejoindre la salle
+            {t("Impossible de rejoindre la salle")}
           </h1>
           <p className="text-slate-300 text-sm leading-relaxed">
             Votre portée d'académie n'a pas pu être déterminée. Rechargez
@@ -250,7 +250,7 @@ export default function VirtualRoomSession() {
   if (phase === PHASE.REDIRECTING) {
     return (
       <Plein>
-        <p className="text-slate-300 text-sm">Connexion à la salle de classe…</p>
+        <p className="text-slate-300 text-sm">{t("Connexion à la salle de classe…")}</p>
       </Plein>
     );
   }
@@ -258,7 +258,7 @@ export default function VirtualRoomSession() {
   if (phase === PHASE.JOINING || !meeting) {
     return (
       <Plein>
-        <p className="text-slate-300 text-sm">Ouverture de la salle…</p>
+        <p className="text-slate-300 text-sm">{t("Ouverture de la salle…")}</p>
       </Plein>
     );
   }

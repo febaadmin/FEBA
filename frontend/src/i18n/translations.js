@@ -2780,4 +2780,21 @@ export const EN = {
   "Alerte admissions FHA (équipe)":
     "FHA admissions alert (team)",
   "Cours à distance : tests de placement, cours et devoirs en ligne. Les groupes sont à créer selon le programme.": "Remote teaching: placement tests, online lessons and assignments. Groups are created to suit the programme.",
+  // Libellés visibles auparavant codés en dur (audit du 28/10/2026)
+  "Visioconférence indisponible": "Video conferencing unavailable",
+  "-- Sélectionner un établissement --": "-- Select a school --",
+  "— Moi-même —": "— Myself —",
+  "— Pas encore affecté —": "— Not yet assigned —",
+  "+ Ajouter cette décision": "+ Add this decision",
+  "— Sélectionner —": "— Select —",
+  "— Sélectionner un élève —": "— Select a student —",
+  "Impossible de rejoindre la salle": "Unable to join the room",
+  "Fermer cet onglet": "Close this tab",
+  "Vous avez quitté la réunion": "You have left the meeting",
+  "Connexion à la salle de classe…": "Connecting to the classroom…",
+  "Ouverture de la salle…": "Opening the room…",
+  "Votre session sur la plateforme est toujours ouverte.": "Your session on the platform is still open.",
+  "Rejoindre à nouveau": "Join again",
+  "Retour à l'accueil": "Back to home",
+  "Chargement": "Loading",
 };

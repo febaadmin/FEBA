@@ -146,7 +146,7 @@ class Migration(migrations.Migration):
         ),
         migrations.AddConstraint(
             model_name='feeinstallment',
-            constraint=models.CheckConstraint(check=models.Q(('amount_minor__gt', 0)), name='installment_amount_positive'),
+            constraint=models.CheckConstraint(condition=models.Q(('amount_minor__gt', 0)), name='installment_amount_positive'),
         ),
         migrations.AddConstraint(
             model_name='feeinstallment',
@@ -166,6 +166,6 @@ class Migration(migrations.Migration):
         ),
         migrations.AddConstraint(
             model_name='studentfeearrangement',
-            constraint=models.CheckConstraint(check=models.Q(('discount_minor__gte', 0)), name='arrangement_discount_not_negative'),
+            constraint=models.CheckConstraint(condition=models.Q(('discount_minor__gte', 0)), name='arrangement_discount_not_negative'),
         ),
     ]

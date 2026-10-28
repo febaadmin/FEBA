@@ -223,7 +223,7 @@ export default function CampusSchedule() {
                 </div>
                 <div><label className="label">{t("Année scolaire*")}</label>
                   <select {...register("school_year", { required: true })} className="input">
-                    <option value="">-- Sélectionner --</option>
+                    <option value="">{t("-- Sélectionner --")}</option>
                     {years.map(y => <option key={y.id} value={y.id}>{y.name}{y.is_current ? " ✓" : ""}</option>)}
                   </select>
                 </div>

@@ -237,11 +237,11 @@ class OnlineSessionSchedule(models.Model):
         ordering = ["day_of_week", "start_time_utc"]
         constraints = [
             models.CheckConstraint(
-                check=models.Q(duration_minutes__gte=1) & models.Q(duration_minutes__lte=480),
+                condition=models.Q(duration_minutes__gte=1) & models.Q(duration_minutes__lte=480),
                 name="online_session_duration_between_1_and_480",
             ),
             models.CheckConstraint(
-                check=models.Q(reminder_minutes_before__lte=1440),
+                condition=models.Q(reminder_minutes_before__lte=1440),
                 name="online_session_reminder_at_most_24h",
             ),
             # Un même groupe ne peut pas avoir deux séances au même instant.

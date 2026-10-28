@@ -110,7 +110,7 @@ class FeeSchedule(models.Model):
         ordering = ["academy", "payment_type", "level"]
         constraints = [
             models.CheckConstraint(
-                check=models.Q(amount_minor__gt=0), name="fee_amount_positive",
+                condition=models.Q(amount_minor__gt=0), name="fee_amount_positive",
             ),
             # Deux tarifs identiques pour le même périmètre rendraient la
             # résolution dépendante de l'ordre d'insertion, donc instable.

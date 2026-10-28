@@ -354,7 +354,7 @@ class RenderFidelityTests(DocumentEngineTestCase):
 
         difference = ImageChops.difference(rendered, original)
         total = original.size[0] * original.size[1]
-        differing = sum(1 for pixel in difference.getdata() if max(pixel) > 12)
+        differing = sum(1 for pixel in difference.get_flattened_data() if max(pixel) > 12)
         ratio = differing * 100.0 / total
 
         # Seuil large : le rééchantillonnage PDF → image produit toujours

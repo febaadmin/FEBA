@@ -7,6 +7,7 @@
  * présence est d'abord close par l'événement plugNmeet).
  */
 import { useEffect, useRef } from "react";
+import { t } from "../../i18n";
 import { Link, useParams } from "react-router-dom";
 import { virtualAPI } from "../../api";
 import { useAuthStore } from "../../store/authStore";
@@ -40,22 +41,22 @@ export default function VirtualRoomEnded() {
     <div className="fixed inset-0 w-screen h-screen bg-slate-900 flex items-center justify-center p-6"
          data-testid="virtual-room-ended">
       <div className="max-w-lg text-center">
-        <h1 className="text-lg font-semibold text-white mb-3">Vous avez quitté la réunion</h1>
+        <h1 className="text-lg font-semibold text-white mb-3">{t("Vous avez quitté la réunion")}</h1>
         <p className="text-slate-300 text-sm">
-          Votre session sur la plateforme est toujours ouverte.
+          {t("Votre session sur la plateforme est toujours ouverte.")}
         </p>
         <div className="mt-6 flex flex-wrap gap-3 justify-center">
           <Link to={`/virtual-room/${id}/join`} replace
                 className="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm hover:bg-indigo-500">
-            Rejoindre à nouveau
+            {t("Rejoindre à nouveau")}
           </Link>
           <Link to={HOME[role] || "/login"}
                 className="px-4 py-2 rounded-lg bg-slate-700 text-white text-sm hover:bg-slate-600">
-            Retour à l'accueil
+            {t("Retour à l'accueil")}
           </Link>
           <button type="button" onClick={() => window.close()}
                   className="px-4 py-2 rounded-lg bg-slate-800 text-slate-200 text-sm hover:bg-slate-700">
-            Fermer cet onglet
+            {t("Fermer cet onglet")}
           </button>
         </div>
       </div>

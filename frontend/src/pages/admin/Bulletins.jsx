@@ -255,7 +255,7 @@ export default function AdminBulletins() {
             <div>
               <label className="label">{t("Classe*")}</label>
               <select {...register("class_id", { required: true })} className="input" disabled={Boolean(review)}>
-                <option value="">-- Sélectionner --</option>
+                <option value="">{t("-- Sélectionner --")}</option>
                 {classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
             </div>
@@ -270,7 +270,7 @@ export default function AdminBulletins() {
             <div>
               <label className="label">{t("Année scolaire*")}</label>
               <select {...register("school_year_id", { required: true })} className="input" disabled={Boolean(review)}>
-                <option value="">-- Sélectionner --</option>
+                <option value="">{t("-- Sélectionner --")}</option>
                 {years.map(y => <option key={y.id} value={y.id}>{y.name}{y.is_current ? " ✓" : ""}</option>)}
               </select>
             </div>

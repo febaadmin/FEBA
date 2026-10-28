@@ -176,7 +176,7 @@ export default function AdminHomework() {
                 <div>
                   <label className="label">{t("Matière*")}</label>
                   <select {...register("subject", { required: true })} className="input">
-                    <option value="">-- Sélectionner --</option>
+                    <option value="">{t("-- Sélectionner --")}</option>
                     {subjects.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                   </select>
                 </div>

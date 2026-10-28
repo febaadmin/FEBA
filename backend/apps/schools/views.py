@@ -42,7 +42,7 @@ class SchoolViewSet(viewsets.ModelViewSet):
             return School.objects.all().order_by('name')
         if user.school_id is None:
             return School.objects.none()
-        return School.objects.filter(id=user.school_id)
+        return School.objects.filter(id=user.school_id).order_by('name')
 
     def get_serializer_context(self):
         ctx = super().get_serializer_context()

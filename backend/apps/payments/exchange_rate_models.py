@@ -86,7 +86,7 @@ class ExchangeRate(models.Model):
         verbose_name_plural = "Taux de change"
         ordering = ["-effective_date", "-created_at"]
         constraints = [
-            models.CheckConstraint(check=models.Q(rate__gt=0), name="exchange_rate_positive"),
+            models.CheckConstraint(condition=models.Q(rate__gt=0), name="exchange_rate_positive"),
         ]
         indexes = [
             models.Index(fields=["base_currency", "quote_currency", "effective_date"]),

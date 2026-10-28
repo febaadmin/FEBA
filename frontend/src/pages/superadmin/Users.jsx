@@ -171,7 +171,7 @@ export default function SuperAdminUsers() {
             <div>
               <label className="label">{t("Établissement*")}</label>
               <select {...register("school", { required: needsSchool })} className="input">
-                <option value="">-- Sélectionner un établissement --</option>
+                <option value="">{t("-- Sélectionner un établissement --")}</option>
                 {schools.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
               </select>
               {errors.school && <p className="text-danger text-xs mt-1">{t("Un établissement est requis pour ce rôle")}</p>}

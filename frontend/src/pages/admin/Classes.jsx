@@ -285,13 +285,13 @@ export default function AdminClasses() {
               <label className="label">{t("Année source *")}</label>
               <SearchableSelect
                 options={years.filter(y => String(y.id) !== String(copyTarget)).map(y => ({ value: y.id, label: y.name }))}
-                value={copySource} onChange={setCopySource} placeholder="— Sélectionner —" />
+                value={copySource} onChange={setCopySource} placeholder={t("— Sélectionner —")} />
             </div>
             <div>
               <label className="label">{t("Année cible *")}</label>
               <SearchableSelect
                 options={years.map(y => ({ value: y.id, label: `${y.name}${y.is_current ? " ✓ Active" : ""}` }))}
-                value={copyTarget} onChange={setCopyTarget} placeholder="— Sélectionner —" />
+                value={copyTarget} onChange={setCopyTarget} placeholder={t("— Sélectionner —")} />
             </div>
           </div>
           <div className="flex gap-3 justify-end pt-2">

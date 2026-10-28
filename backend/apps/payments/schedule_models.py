@@ -43,7 +43,7 @@ class FeeInstallment(models.Model):
         verbose_name_plural = "Échéances"
         ordering = ["fee_schedule", "due_date", "order"]
         constraints = [
-            models.CheckConstraint(check=models.Q(amount_minor__gt=0), name="installment_amount_positive"),
+            models.CheckConstraint(condition=models.Q(amount_minor__gt=0), name="installment_amount_positive"),
             models.UniqueConstraint(fields=["fee_schedule", "due_date"], name="uniq_installment_due_date"),
         ]
 
@@ -106,7 +106,7 @@ class StudentFeeArrangement(models.Model):
             models.UniqueConstraint(
                 fields=["student", "fee_schedule", "kind"], name="uniq_student_fee_arrangement",
             ),
-            models.CheckConstraint(check=models.Q(discount_minor__gte=0), name="arrangement_discount_not_negative"),
+            models.CheckConstraint(condition=models.Q(discount_minor__gte=0), name="arrangement_discount_not_negative"),
         ]
 
     def __str__(self):

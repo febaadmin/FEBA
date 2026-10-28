@@ -319,7 +319,7 @@ class Migration(migrations.Migration):
         migrations.AddConstraint(
             model_name="feeschedule",
             constraint=models.CheckConstraint(
-                check=models.Q(("amount_minor__gt", 0)), name="fee_amount_positive"
+                condition=models.Q(("amount_minor__gt", 0)), name="fee_amount_positive"
             ),
         ),
         migrations.AddConstraint(
@@ -378,14 +378,14 @@ class Migration(migrations.Migration):
         migrations.AddConstraint(
             model_name="paymenttransaction",
             constraint=models.CheckConstraint(
-                check=models.Q(("amount_minor__gt", 0)),
+                condition=models.Q(("amount_minor__gt", 0)),
                 name="transaction_amount_positive",
             ),
         ),
         migrations.AddConstraint(
             model_name="paymenttransaction",
             constraint=models.CheckConstraint(
-                check=models.Q(
+                condition=models.Q(
                     ("amount_refunded_minor__lte", models.F("amount_minor"))
                 ),
                 name="transaction_refund_not_over_amount",
@@ -394,7 +394,7 @@ class Migration(migrations.Migration):
         migrations.AddConstraint(
             model_name="paymenttransaction",
             constraint=models.CheckConstraint(
-                check=models.Q(("amount_refunded_minor__gte", 0)),
+                condition=models.Q(("amount_refunded_minor__gte", 0)),
                 name="transaction_refund_not_negative",
             ),
         ),

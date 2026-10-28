@@ -1,4 +1,5 @@
 import { lazy, Suspense, useEffect } from "react";
+import { t } from "../i18n";
 import { Routes, Route, Navigate } from "react-router-dom";
 import { useAuthStore } from "../store/authStore";
 import { authAPI } from "../api";
@@ -58,7 +59,7 @@ function SiteFallback() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#F7F2E8]">
       <div className="w-8 h-8 border-2 border-[#071D49] border-t-transparent rounded-full animate-spin"
-        role="status" aria-label="Chargement" />
+        role="status" aria-label={t("Chargement")} />
     </div>
   );
 }
@@ -165,7 +166,7 @@ function ProtectedRoute({ children, allowedRoles }) {
       <div className="min-h-screen flex items-center justify-center bg-slate-50">
         <div className="flex flex-col items-center gap-3 text-slate-400">
           <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-          <span className="text-sm">Chargement…</span>
+          <span className="text-sm">{t("Chargement…")}</span>
         </div>
       </div>
     );
@@ -182,7 +183,7 @@ function ProtectedRoute({ children, allowedRoles }) {
       <div className="min-h-screen flex items-center justify-center bg-slate-50">
         <div className="flex flex-col items-center gap-3 text-slate-400">
           <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-          <span className="text-sm">Chargement…</span>
+          <span className="text-sm">{t("Chargement…")}</span>
         </div>
       </div>
     );

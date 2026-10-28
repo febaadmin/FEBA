@@ -1003,7 +1003,11 @@ def _render_on_pdf(template, values, source, preview, frames, preview_label):
 
     try:
         reader = PdfReader(source, strict=False)
-        page = reader.pages[template.page_index]
+        # La page est rattachée au document écrit AVANT toute transformation
+        # (rotation, fusion) : pypdf 7 refusera de modifier le contenu d'une
+        # page qui n'appartient à aucun writer.
+        writer = PdfWriter()
+        page = writer.add_page(reader.pages[template.page_index])
         page.transfer_rotation_to_content()
     except Exception as exc:  # fichier altéré depuis la validation
         raise RenderError(f"Le PDF du gabarit ne peut plus être lu : {exc}") from exc
@@ -1028,8 +1032,6 @@ def _render_on_pdf(template, values, source, preview, frames, preview_label):
     for key in ("/Annots", "/AA"):
         if NameObject(key) in page:
             del page[NameObject(key)]
-    writer = PdfWriter()
-    writer.add_page(page)
     writer.add_metadata({"/Title": _title(template, values), "/Producer": "FEBA"})
     out = io.BytesIO()
     writer.write(out)

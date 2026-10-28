@@ -166,18 +166,18 @@ class PaymentTransaction(models.Model):
         ordering = ["-created_at"]
         constraints = [
             models.CheckConstraint(
-                check=models.Q(amount_minor__gt=0),
+                condition=models.Q(amount_minor__gt=0),
                 name="transaction_amount_positive",
             ),
             # Un remboursement ne peut pas dépasser ce qui a été encaissé.
             # Vérifié en base : une erreur applicative ne suffit pas à
             # protéger une écriture faite par un script d'exploitation.
             models.CheckConstraint(
-                check=models.Q(amount_refunded_minor__lte=models.F("amount_minor")),
+                condition=models.Q(amount_refunded_minor__lte=models.F("amount_minor")),
                 name="transaction_refund_not_over_amount",
             ),
             models.CheckConstraint(
-                check=models.Q(amount_refunded_minor__gte=0),
+                condition=models.Q(amount_refunded_minor__gte=0),
                 name="transaction_refund_not_negative",
             ),
         ]

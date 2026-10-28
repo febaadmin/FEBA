@@ -810,7 +810,7 @@ class TestDefautsVusSurLeDocument:
         # blason (recompression, filtre, redimensionnement) l'abîmerait
         # sans que personne ne le remarque avant l'impression.
         haut_source = source.crop((0, 0, source.width, derive.height))
-        assert list(haut_source.getdata()) == list(derive.getdata()), (
+        assert list(haut_source.get_flattened_data()) == list(derive.get_flattened_data()), (
             "les pixels conservés du blason ont été altérés")
 
     def test_un_texte_non_redige_ne_pretend_pas_a_un_defaut_de_saisie(

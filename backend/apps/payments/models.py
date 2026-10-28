@@ -142,7 +142,7 @@ class Payment(models.Model):
             # Garde-fou au niveau de la base : même un import direct en SQL
             # ne peut pas créer un encaissement négatif.
             models.CheckConstraint(
-                check=models.Q(amount_minor__gte=0),
+                condition=models.Q(amount_minor__gte=0),
                 name="payment_amount_minor_not_negative",
             ),
         ]
