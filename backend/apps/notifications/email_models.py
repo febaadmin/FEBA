@@ -133,12 +133,13 @@ class EmailDelivery(models.Model):
         "notifications.EmailContent", on_delete=models.SET_NULL, null=True, blank=True,
         related_name="deliveries",
     )
-    transport = models.CharField(max_length=16, choices=TRANSPORT_CHOICES, blank=True)
+    # db_default : l'ANCIEN code (retour arrière sans restauration) n'écrit pas ces colonnes.
+    transport = models.CharField(max_length=16, choices=TRANSPORT_CHOICES, blank=True, db_default="")
     #: Hôte:port SMTP effectivement visé (jamais d'identifiant ni de secret).
-    smtp_host = models.CharField(max_length=255, blank=True)
+    smtp_host = models.CharField(max_length=255, blank=True, db_default="")
     #: En-tête Message-ID du message émis : permet de le retrouver côté
     #: serveur de messagerie.
-    message_id = models.CharField(max_length=255, blank=True)
+    message_id = models.CharField(max_length=255, blank=True, db_default="")
     last_attempt_at = models.DateTimeField(null=True, blank=True)
     initiated_by = models.ForeignKey(
         "accounts.CustomUser", on_delete=models.SET_NULL, null=True, blank=True,

@@ -31,8 +31,11 @@ from tests.test_academy_document_templates import (
 
 FIXTURES = os.path.join(os.path.dirname(__file__), "fixtures", "office_templates")
 NAVY, PURPLE, GOLD = (30, 58, 110), (106, 27, 154), (176, 138, 46)
+# En CI, `FEBA_REQUIRE_LIBREOFFICE=1` : l'absence de LibreOffice n'est plus
+# un « test ignoré » mais un ÉCHEC — un test qui ne s'exécute pas n'est pas
+# un test réussi (la CI ignorait ces tests en silence, faute de LibreOffice).
 OFFICE = unittest.skipUnless(
-    conversion.office_available(),
+    conversion.office_available() or os.environ.get("FEBA_REQUIRE_LIBREOFFICE") == "1",
     "LibreOffice absent de cet environnement : test exécuté dans l'image Docker de FEBA.")
 
 

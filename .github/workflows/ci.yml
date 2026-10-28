@@ -64,6 +64,10 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 10
+      # SMTP de TEST : sans lui, les tests d'envoi réel étaient ignorés.
+      mailpit:
+        image: axllent/mailpit:v1.31.4
+        ports: ["1025:1025", "8025:8025"]
 
     env:
       # Valeurs de TEST uniquement — jamais celles de production.
@@ -77,15 +81,30 @@ jobs:
       TEST_DB_PASSWORD: feba_dev_pass
       TEST_DB_HOST: localhost
       TEST_DB_PORT: "5432"
+      MAILPIT_SMTP_PORT: "1025"
+      MAILPIT_API_URL: http://localhost:8025
+      # LibreOffice absent = ÉCHEC, et non tests ignorés en silence.
+      FEBA_REQUIRE_LIBREOFFICE: "1"
 
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          # MÊME version que les images Docker (python:3.12-slim) : la CI
+          # testait en 3.11 un code exécuté en 3.12.
+          python-version: "3.12"
           cache: pip
           cache-dependency-path: backend/requirements/*.txt
+
+      - name: LibreOffice et polices (comme backend/Dockerfile.prod)
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq --no-install-recommends \
+            libreoffice-writer-nogui libreoffice-impress-nogui \
+            fonts-dejavu-core fonts-liberation fonts-liberation2 \
+            fonts-crosextra-carlito fonts-crosextra-caladea
+          soffice --version
 
       - name: Installer les dépendances
         working-directory: backend
@@ -106,13 +125,20 @@ jobs:
         env:
           DJANGO_SETTINGS_MODULE: feba_project.settings.test_postgres
         # Aucun « || true » : un échec doit faire échouer la validation.
-        run: pytest tests -q
+        # -rs : chaque test ignoré est listé avec sa raison dans le journal.
+        run: pytest tests -q -rs
 
       - name: Suite backend — SQLite
         working-directory: backend
         env:
           DJANGO_SETTINGS_MODULE: feba_project.settings.test_sqlite
-        run: pytest tests -q
+        run: pytest tests -q -rs
+
+      - name: Bulletin sur une page et délai de conversion (contrôle bloquant explicite)
+        working-directory: backend
+        env:
+          DJANGO_SETTINGS_MODULE: feba_project.settings.test_postgres
+        run: pytest -q -rs tests/test_bulletin_one_page.py tests/test_bulletin_layout.py "tests/test_template_conversion.py::GlobalDeadlineTests" "tests/test_template_conversion.py::OfficeErrorTests::test_delai_de_conversion_depasse"
 
   frontend:
     name: Frontend
@@ -145,6 +171,41 @@ jobs:
       - name: Build de production
         working-directory: frontend
         run: npm run build
+
+  security:
+    name: Sécurité des dépendances
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: pip-audit (dépendances de production)
+        run: |
+          python -m pip install --quiet pip-audit
+          pip-audit -r backend/requirements/base.txt --progress-spinner off
+          grep -v '^-r' backend/requirements/prod.txt > /tmp/prod.txt
+          pip-audit -r /tmp/prod.txt --progress-spinner off
+      - name: npm audit (dépendances livrées, sévérité haute ou critique)
+        working-directory: frontend
+        run: npm audit --omit=dev --audit-level=high
+
+  images:
+    name: Images Docker de production
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Construire les images (aucune publication)
+        run: |
+          docker build -f backend/Dockerfile.prod -t feba-backend:ci backend
+          docker build -f frontend/Dockerfile.prod -t feba-frontend:ci frontend
+      - name: L'image backend démarre et voit ses dépendances
+        run: |
+          docker run --rm --entrypoint sh feba-backend:ci -c \
+            'python --version && soffice --version && python -c "import django, reportlab, pypdf; print(django.get_version())"'
 
   configuration:
     name: Configuration et sûreté du dépôt

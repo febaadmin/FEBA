@@ -86,3 +86,4 @@ backend/private_media/
 
 # plugNmeet : secrets, configurations rendues, client téléchargé — JAMAIS versionnés
 plugnmeet/runtime/
+.previous_deploy_sha

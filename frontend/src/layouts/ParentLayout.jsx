@@ -3,6 +3,7 @@ import { Home, Users, ClipboardList, Calendar, FileText, MessageSquare, DollarSi
 import { useAuth } from "../hooks/useAuth";
 import AcademyLogo from "../components/AcademyLogo";
 import AcademyName from "../components/AcademyName";
+import { safeInternalPath } from "../utils/safePath";
 import { clsx } from "clsx";
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -150,7 +151,7 @@ export default function ParentLayout() {
                   <div className="max-h-72 overflow-y-auto divide-y divide-slate-50">
                     {notifications.length === 0 ? <p className="text-center text-slate-400 py-8 text-sm">{t("Aucune notification")}</p>
                       : notifications.slice(0, 10).map(n => (
-                        <div key={n.id} onClick={() => { setNotifOpen(false); if (n.related_url) navigate(n.related_url); }}
+                        <div key={n.id} onClick={() => { setNotifOpen(false); const to = safeInternalPath(n.related_url); if (to) navigate(to); }}
                           className={`px-4 py-3 cursor-pointer hover:bg-slate-50 ${!n.is_read ? "bg-primary-50/30" : ""}`}>
                           <p className="text-sm font-medium">{n.title}</p>
                           <p className="text-xs text-slate-500 mt-0.5 line-clamp-2">{n.message}</p>

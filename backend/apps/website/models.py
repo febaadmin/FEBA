@@ -595,7 +595,7 @@ class FHAEnrollmentApplication(models.Model):
     #: information, le document affiche « Non renseigné ».
     GENDER_CHOICES = [('F', 'Féminin'), ('M', 'Masculin')]
     child_gender = models.CharField(
-        max_length=1, choices=GENDER_CHOICES, blank=True, default='',
+        max_length=1, choices=GENDER_CHOICES, blank=True, default='', db_default='',
         help_text="F ou M. Vide = non renseigné (dossiers antérieurs).",
     )
     child_city = models.CharField(max_length=120, blank=True)

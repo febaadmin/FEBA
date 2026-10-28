@@ -96,7 +96,9 @@ class Payment(models.Model):
         help_text="Date et heure réelles de la transaction. Vide = heure inconnue.",
     )
     paid_at_source = models.CharField(
-        max_length=24, choices=PAID_AT_SOURCES, blank=True, default="",
+        # db_default : l'ANCIEN code (retour arrière sans restauration) n'écrit
+        # pas cette colonne ; sans défaut en base, il ne pouvait plus créer de paiement.
+        max_length=24, choices=PAID_AT_SOURCES, blank=True, default="", db_default="",
         help_text="Provenance de l'heure affichée — jamais une heure inventée.",
     )
     # Le formulaire proposait « Mois concerné » sans que la valeur soit

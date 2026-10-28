@@ -81,8 +81,9 @@ class FeeSchedule(models.Model):
     # transport, garderie) — voir StudentFeeArrangement. Sans cette
     # distinction, un parent qui n'a jamais inscrit son enfant à la cantine
     # recevrait une relance pour la cantine.
+    # db_default : l'ANCIEN code (retour arrière sans restauration) n'écrit pas cette colonne.
     is_mandatory = models.BooleanField(
-        default=True,
+        default=True, db_default=True,
         help_text="Dû par tous les élèves du périmètre (sinon : abonnés uniquement).",
     )
     INSTALLMENTS_SPLIT = "split"
@@ -93,6 +94,7 @@ class FeeSchedule(models.Model):
     ]
     installment_mode = models.CharField(
         max_length=10, choices=INSTALLMENT_MODES, default=INSTALLMENTS_SPLIT,
+        db_default=INSTALLMENTS_SPLIT,  # voir is_mandatory
         help_text=(
             "En mode « tranches », un échéancier dont la somme diffère du "
             "montant total est une anomalie : aucune relance n'est envoyée "
