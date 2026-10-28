@@ -20,6 +20,7 @@
 name: CI
 
 on:
+  workflow_call:
   pull_request:
   push:
     branches-ignore:

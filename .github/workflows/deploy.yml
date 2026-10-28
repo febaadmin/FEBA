@@ -14,7 +14,12 @@ permissions:
   contents: read
 
 jobs:
+  ci:
+    name: CI — tests et contrôles avant production
+    uses: ./.github/workflows/ci.yml
+
   deploy:
+    needs: ci
     name: Deploy to Hetzner
     runs-on: ubuntu-latest
     timeout-minutes: 30
