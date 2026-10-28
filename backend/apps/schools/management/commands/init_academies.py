@@ -9,7 +9,7 @@ horaires, enseignants) : ces champs restent nuls et administrables.
 """
 from django.core.management.base import BaseCommand
 
-from apps.schools.branding import ACADEMY_DEFAULTS
+from apps.schools.branding import ACADEMY_DEFAULTS, IMAGE_DEFAULT_KEYS
 from apps.schools.institution import is_retired_phone, official_phone
 from apps.schools.models import School
 
@@ -22,7 +22,11 @@ class Command(BaseCommand):
         Installe l'identité visuelle de l'académie, sans jamais écraser une
         valeur déjà administrée par l'établissement.
         """
-        wanted = ACADEMY_DEFAULTS.get(academy.code or "")
+        # Les images livrées (logo de repli, favicons) restent des valeurs du
+        # CODE : recopiées ici, elles passaient pour un choix administré et
+        # empêchaient tout nouveau logo livré de s'appliquer.
+        wanted = {k: v for k, v in (ACADEMY_DEFAULTS.get(academy.code or "") or {}).items()
+                  if k not in IMAGE_DEFAULT_KEYS}
         if not wanted:
             return False
         settings_data = dict(academy.settings or {})
@@ -69,7 +73,10 @@ class Command(BaseCommand):
                     f"  Numéro hors service remplacé sur {academy.name} : "
                     f"{previous} → {academy.phone}"
                 ))
-            elif not (academy.phone or "").strip():
+            elif not (academy.phone or "").strip() and academy.code in ACADEMY_DEFAULTS:
+                # Seules les académies du GROUPE reçoivent le numéro
+                # institutionnel : une académie indépendante garde une
+                # colonne vide plutôt que le numéro d'une autre institution.
                 academy.phone = official_phone()
                 academy.save(update_fields=["phone"])
                 changed = True
@@ -97,6 +104,7 @@ class Command(BaseCommand):
                 "currency_code": "XOF",
                 "default_language": "fr",
                 "matricule_prefix": "FEBA",
+                "curriculum_language_mode": School.CURRICULUM_BILINGUAL,
                 "is_active": True,
             },
         )
@@ -122,6 +130,7 @@ class Command(BaseCommand):
                 "currency_code": "USD",
                 "default_language": "en",
                 "matricule_prefix": "FHA",
+                "curriculum_language_mode": School.CURRICULUM_BILINGUAL,
                 "is_active": True,
                 "settings": {
                     "tagline": "From English Speakers to Confident French Speakers",
@@ -147,6 +156,26 @@ class Command(BaseCommand):
             self.style.SUCCESS(f"{'Créée' if created else 'Présente'} : {fha.name} [{fha.code}]")
         )
         created_any |= self._apply_branding(fha)
+
+        # Barème d'appréciations de chaque académie : une COPIE du barème par
+        # défaut, modifiable dans « Appréciations ». Sans elle, une académie
+        # créée ici (installation neuve) n'avait aucun palier à modifier.
+        from apps.grades.appreciations import install_default_rules
+        for academy in (feba, fha):
+            if install_default_rules(academy):
+                created_any = True
+                self.stdout.write(f"  Barème d'appréciations installé : {academy.name}")
+
+        # Programme linguistique : les deux académies du groupe enseignent en
+        # français ET en anglais (bulletin à deux sections, moyenne 60/40) ;
+        # FEBA FHA garde ses classes monolingues (fonctionnalité de l'entité).
+        # Jamais écrasé : seule une valeur VIDE est complétée.
+        for academy in (feba, fha):
+            if not academy.curriculum_language_mode:
+                academy.curriculum_language_mode = School.CURRICULUM_BILINGUAL
+                academy.save(update_fields=["curriculum_language_mode"])
+                created_any = True
+                self.stdout.write(f"  Programme linguistique : bilingue — {academy.name}")
 
         created_any |= self._align_management_phones()
 

@@ -12,6 +12,7 @@ import SearchableSelect from "../../components/ui/SearchableSelect";
 import { extractApiError } from "../../utils/errors";
 import { t } from "../../i18n";
 import { useSchoolYearScope } from "../../hooks/useSchoolYearScope";
+import { ageColumn, ageText } from "../../utils/age";
 
 function exportCSV(rows, filename) {
   if (!rows.length) { toast.error(t("Aucune donnée à exporter.")); return; }
@@ -212,7 +213,7 @@ export default function AdminStudents() {
       "Académie": s.academy_short_name || s.academy_name || "Sans académie",
       "Matricule": s.matricule || "", "Prénom": s.first_name || "", "Nom": s.last_name || "",
       "Genre": s.gender === "M" ? t("Masculin") : t("Féminin"),
-      "Date de naissance": s.date_of_birth || "", "Niveau": s.class_level || "",
+      "Date de naissance": s.date_of_birth || "", "Âge": ageText(s.age, s.age_status), "Niveau": s.class_level || "",
       "Classe": s.class_name || "", "Année scolaire": s.school_year_name || "",
       "Adresse": s.address || "", "Statut": s.is_active ? t("Actif") : t("Inactif"),
       "Date inscription": s.enrollment_date || "",
@@ -226,6 +227,7 @@ export default function AdminStudents() {
       : <div className="w-8 h-8 rounded-lg bg-primary-50 flex items-center justify-center text-primary text-xs font-bold">{r.first_name?.[0]}{r.last_name?.[0]}</div> },
     { key: "matricule", label: t("Matricule"), accessor: "matricule" },
     { key: "name",    label: t("Nom complet"),    accessor: "full_name" },
+    ageColumn(),
     { key: "class",   label: t("Classe"),         accessor: "class_name" },
     { key: "year",    label: t("Année"),          accessor: "school_year_name" },
     { key: "gender",  label: t("Genre"),          render: r => r.gender === "M" ? t("Masculin") : t("Féminin") },
@@ -344,6 +346,7 @@ export default function AdminStudents() {
               {[
                 ["Genre",          viewItem.gender === "M" ? t("Masculin") : t("Féminin")],
                 ["Date naissance", viewItem.date_of_birth || "—"],
+                ["Âge",            ageText(viewItem.age, viewItem.age_status)],
                 ["Niveau",         viewItem.class_level || "—"],
                 ["Classe",         viewItem.class_name || "—"],
                 ["Année scolaire", viewItem.school_year_name || "—"],
@@ -409,7 +412,7 @@ export default function AdminStudents() {
             </div>
             <div>
               <label className="label">{t("Date de naissance")}</label>
-              <input {...register("date_of_birth")} type="date" className="input" />
+              <input {...register("date_of_birth")} type="date" className="input" max={new Date().toLocaleDateString("en-CA")} />
             </div>
           </div>
 
@@ -581,7 +584,7 @@ export default function AdminStudents() {
               <div>
                 <label className="label">{t("Nouvelle classe (optionnel)")}</label>
                 <select {...re("class_obj")} className="input" style={{ minHeight: "2.5rem" }}>
-                  <option value="">— Pas encore affecté —</option>
+                  <option value="">{t("— Pas encore affecté —")}</option>
                   {(enrollTargetYear
                     ? classes.filter(c => String(c.school_year) === String(enrollTargetYear))
                     : classes

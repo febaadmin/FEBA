@@ -32,6 +32,7 @@ import { t, dateLocale } from "../../i18n";
 import { useSchoolYearScope } from "../../hooks/useSchoolYearScope";
 import { useMoney } from "../../hooks/useMoney";
 
+import { ageText } from "../../utils/age";
 /* ── Promotion status labels ──────────────────────────────────────────────── */
 const PROMOTION_STATUSES = [
   { value: "normal",     label: "Passage normal",             icon: UserCheck, color: "text-emerald-600" },
@@ -246,6 +247,7 @@ export default function AdminEnrollments() {
     setEoyDecisions(prev => [...prev, {
       student_id: Number(eoyStudentId),
       student_name: student ? `${student.first_name} ${student.last_name}` : `Élève #${eoyStudentId}`,
+      student_age_text: student ? ageText(student.age, student.age_status) : "",
       action: eoyAction,
       class_id: eoyClass ? Number(eoyClass) : undefined,
       reason: eoyReason || undefined,
@@ -260,7 +262,7 @@ export default function AdminEnrollments() {
   const eoyMut = useMutation({
     mutationFn: () => studentsAPI.endOfYearAssistant({
       target_year_id: Number(eoyYear),
-      decisions: eoyDecisions.map(({ student_name: _, ...d }) => d),
+      decisions: eoyDecisions.map(({ student_name: _, student_age_text: __, ...d }) => d),
     }),
     onSuccess: (r) => {
       setEoyResult(r.data);
@@ -307,7 +309,7 @@ export default function AdminEnrollments() {
   const classOptionsAllYears = uniqueClasses.map(c => classToOption(c, true));
   const studentOptions = students.map(s => ({
     value: s.id,
-    label: `${s.first_name} ${s.last_name} — ${s.class_name || "Sans classe"} (${s.matricule || ""})`,
+    label: `${s.first_name} ${s.last_name} — ${s.class_name || "Sans classe"} (${s.matricule || ""}) · ${ageText(s.age, s.age_status)}`,
   }));
 
   const statusBadge = (status) => {
@@ -378,11 +380,11 @@ export default function AdminEnrollments() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="label">{t("Année source (départ)")}</label>
-              <SearchableSelect options={yearOptions} value={byYearSrc} onChange={setByYearSrc} placeholder="— Sélectionner —" />
+              <SearchableSelect options={yearOptions} value={byYearSrc} onChange={setByYearSrc} placeholder={t("— Sélectionner —")} />
             </div>
             <div>
               <label className="label">{t("Année cible (arrivée)")}</label>
-              <SearchableSelect options={yearOptions} value={byYearDst} onChange={setByYearDst} placeholder="— Sélectionner —" />
+              <SearchableSelect options={yearOptions} value={byYearDst} onChange={setByYearDst} placeholder={t("— Sélectionner —")} />
             </div>
           </div>
           <ResultBanner result={byYearResult} onClear={() => setByYearResult(null)} />
@@ -411,11 +413,11 @@ export default function AdminEnrollments() {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
               <label className="label">{t("Classe source")}</label>
-              <SearchableSelect options={classOptionsAllYears} value={byClassSrc} onChange={setByClassSrc} placeholder="— Sélectionner —" />
+              <SearchableSelect options={classOptionsAllYears} value={byClassSrc} onChange={setByClassSrc} placeholder={t("— Sélectionner —")} />
             </div>
             <div>
               <label className="label">{t("Année cible")}</label>
-              <SearchableSelect options={yearOptions} value={byClassYear} onChange={(v) => { setByClassYear(v); setByClassDst(""); }} placeholder="— Sélectionner —" />
+              <SearchableSelect options={yearOptions} value={byClassYear} onChange={(v) => { setByClassYear(v); setByClassDst(""); }} placeholder={t("— Sélectionner —")} />
             </div>
             <div>
               <label className="label">{t("Nouvelle classe (optionnel)")}</label>
@@ -450,11 +452,11 @@ export default function AdminEnrollments() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="label">{t("Élève *")}</label>
-              <SearchableSelect options={studentOptions} value={indivStudent} onChange={setIndivStudent} placeholder="— Sélectionner un élève —" />
+              <SearchableSelect options={studentOptions} value={indivStudent} onChange={setIndivStudent} placeholder={t("— Sélectionner un élève —")} />
             </div>
             <div>
               <label className="label">{t("Année scolaire cible *")}</label>
-              <SearchableSelect options={yearOptions} value={indivYear} onChange={(v) => { setIndivYear(v); setIndivClass(""); }} placeholder="— Sélectionner —" />
+              <SearchableSelect options={yearOptions} value={indivYear} onChange={(v) => { setIndivYear(v); setIndivClass(""); }} placeholder={t("— Sélectionner —")} />
             </div>
             <div>
               <label className="label">{t("Classe cible (optionnel)")}</label>
@@ -509,7 +511,7 @@ export default function AdminEnrollments() {
             <div>
               <label className="label">{t("Année scolaire cible (nouvelle année) *")}</label>
               <div className="sm:w-1/2">
-                <SearchableSelect options={yearOptions} value={eoyYear} onChange={(v) => { setEoyYear(v); setEoyClass(""); }} placeholder="— Sélectionner —" />
+                <SearchableSelect options={yearOptions} value={eoyYear} onChange={(v) => { setEoyYear(v); setEoyClass(""); }} placeholder={t("— Sélectionner —")} />
               </div>
             </div>
 
@@ -519,7 +521,7 @@ export default function AdminEnrollments() {
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
                   <label className="label">{t("Élève")}</label>
-                  <SearchableSelect options={studentOptions} value={eoyStudentId} onChange={setEoyStudentId} placeholder="— Sélectionner un élève —" />
+                  <SearchableSelect options={studentOptions} value={eoyStudentId} onChange={setEoyStudentId} placeholder={t("— Sélectionner un élève —")} />
                 </div>
                 <div>
                   <label className="label">{t("Action")}</label>
@@ -561,7 +563,7 @@ export default function AdminEnrollments() {
                 onClick={addEoyDecision}
                 className="btn-secondary text-sm"
               >
-                + Ajouter cette décision
+                {t("+ Ajouter cette décision")}
               </button>
             </div>
 
@@ -577,6 +579,7 @@ export default function AdminEnrollments() {
                     <div className="flex items-center gap-3">
                       <BookOpen className="w-4 h-4 text-slate-400" />
                       <span className="font-medium text-slate-800">{d.student_name}</span>
+                      {d.student_age_text && <span className="text-xs text-slate-500">{d.student_age_text}</span>}
                       <span className="text-slate-500">→</span>
                       <span className="text-primary font-medium">{ACTION_LABELS[d.action] || d.action}</span>
                       {d.class_id && (
@@ -627,7 +630,7 @@ export default function AdminEnrollments() {
           <h3 className="font-bold text-slate-800">{t("Parcours académique d'un élève")}</h3>
           <div className="flex gap-3">
             <div className="flex-1">
-              <SearchableSelect options={studentOptions} value={histStudent} onChange={setHistStudent} placeholder="— Sélectionner un élève —" />
+              <SearchableSelect options={studentOptions} value={histStudent} onChange={setHistStudent} placeholder={t("— Sélectionner un élève —")} />
             </div>
             <button
               type="button"

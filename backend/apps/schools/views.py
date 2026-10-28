@@ -1,14 +1,16 @@
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
+import os
+from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.views import APIView
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from apps.accounts.permissions import IsAdminOrAbove, IsSuperAdmin
 from apps.core.tenancy import get_request_school
 from .models import School, SchoolYear, Level, Room, RoomType, SchoolBranding
 from .serializers import (
-    SchoolSerializer, SchoolPlatformSerializer, SchoolYearSerializer, LevelSerializer,
-    RoomSerializer, RoomTypeSerializer, SchoolBrandingSerializer
+    AcademyCreateSerializer, SchoolSerializer, SchoolPlatformSerializer, SchoolYearSerializer,
+    LevelSerializer, RoomSerializer, RoomTypeSerializer, SchoolBrandingSerializer
 )
 
 
@@ -40,7 +42,7 @@ class SchoolViewSet(viewsets.ModelViewSet):
             return School.objects.all().order_by('name')
         if user.school_id is None:
             return School.objects.none()
-        return School.objects.filter(id=user.school_id)
+        return School.objects.filter(id=user.school_id).order_by('name')
 
     def get_serializer_context(self):
         ctx = super().get_serializer_context()
@@ -55,9 +57,96 @@ class SchoolViewSet(viewsets.ModelViewSet):
             # L'admin de l'école peut modifier SON établissement (champs non-commerciaux,
             # cf. read_only_fields de SchoolSerializer) ; le superadmin peut tout modifier.
             return [IsAuthenticated(), IsAdminOrAbove()]
-        if self.action == 'destroy':
+        if self.action in ('destroy', 'language_diagnostic'):
+            # Le diagnostic décrit les données d'une académie en vue d'un
+            # changement que seul le super administrateur peut faire.
             return [IsAuthenticated(), IsSuperAdmin()]
         return [IsAuthenticated()]
+
+    def create(self, request, *args, **kwargs):
+        """
+        Création d'une académie : validée par AcademyCreateSerializer puis
+        INITIALISÉE (niveaux du type, barème d'appréciations, première année
+        facultative) dans une seule transaction.
+        """
+        from .academy_setup import create_academy, setup_status
+
+        serializer = AcademyCreateSerializer(data=request.data, context={'request': request})
+        serializer.is_valid(raise_exception=True)
+        academy = create_academy(serializer.validated_data, created_by=request.user)
+        data = SchoolPlatformSerializer(academy, context={'request': request}).data
+        data['setup_status'] = setup_status(academy)
+        return Response(data, status=status.HTTP_201_CREATED)
+
+    def destroy(self, request, *args, **kwargs):
+        """
+        Suppression DÉFINITIVE réservée à une académie VIDE (création erronée).
+
+        Avant : un DELETE effaçait l'académie et, en cascade, ses élèves,
+        notes, bulletins et paiements. Une académie qui contient des données
+        se DÉSACTIVE (is_active=False) : ses utilisateurs ne peuvent plus se
+        connecter et rien n'est perdu.
+        """
+        academy = self.get_object()
+        from apps.accounts.models import CustomUser
+        from apps.payments.models import Payment
+        from apps.students.models import Student
+
+        blockers = {
+            'élèves': Student.objects.filter(school=academy).count(),
+            'utilisateurs': CustomUser.objects.filter(school=academy).count(),
+            'années scolaires': academy.years.count(),
+            'paiements': Payment.objects.filter(student__school=academy).count(),
+        }
+        blockers = {k: v for k, v in blockers.items() if v}
+        if blockers:
+            return Response({'detail': (
+                "Suppression refusée : l'académie contient des données ("
+                + ", ".join(f"{v} {k}" for k, v in blockers.items())
+                + "). Désactivez-la plutôt : rien ne sera perdu."),
+                'blockers': blockers}, status=status.HTTP_409_CONFLICT)
+        # Les gabarits de documents d'une académie vide disparaissent avec
+        # elle (cascade) ; leurs FICHIERS aussi, sinon ils resteraient
+        # orphelins dans le stockage privé, sans propriétaire ni accès.
+        from apps.documents.models import AcademyDocumentTemplate
+
+        paths = []
+        for template in AcademyDocumentTemplate.objects.filter(academy=academy):
+            paths.append(template.absolute_path)
+            if template.render_path:
+                paths.append(template.render_absolute_path)
+        response = super().destroy(request, *args, **kwargs)
+        for path in paths:
+            try:
+                os.remove(path)
+            except OSError:
+                pass
+        return response
+
+    @action(detail=True, methods=['get'], url_path='language-diagnostic',
+            permission_classes=[IsAuthenticated, IsSuperAdmin])
+    def language_diagnostic(self, request, pk=None):
+        """
+        GET …/language-diagnostic/?mode=french_only|english_only|bilingual
+        Ce qui ne respecterait plus le programme demandé (matières, classes,
+        notes rattachées). Lecture seule : rien n'est modifié.
+        """
+        from apps.classes.subject_rules import curriculum_diagnostic
+
+        mode = request.query_params.get('mode')
+        if mode not in dict(School.CURRICULUM_CHOICES):
+            return Response({'detail': "Programme linguistique inconnu."},
+                            status=status.HTTP_400_BAD_REQUEST)
+        academy = self.get_object()
+        return Response({'mode': mode, 'current': academy.curriculum_language_mode,
+                         **curriculum_diagnostic(academy, mode)})
+
+    @action(detail=True, methods=['get'], url_path='setup-status')
+    def setup_status(self, request, pk=None):
+        """Ce qui reste à configurer, d'après la base (superadmin ou admin de l'académie)."""
+        from .academy_setup import setup_status
+
+        return Response(setup_status(self.get_object()))
 
 
 class SchoolYearViewSet(viewsets.ModelViewSet):
@@ -265,6 +354,55 @@ class RoomViewSet(viewsets.ModelViewSet):
         serializer.save(school=school or serializer.validated_data.get('school'))
 
 
+class PublicBrandingView(APIView):
+    """
+    GET /api/schools/public-branding/<code>/                 identité publique (JSON)
+    GET /api/schools/public-branding/<code>/logo/            logo effectif
+    GET /api/schools/public-branding/<code>/favicon-<n>.png  favicon 16, 32 ou 180
+
+    Sans authentification, lecture seule : voir apps.schools.public_branding.
+    """
+    authentication_classes = []
+    permission_classes = [AllowAny]
+
+    def get(self, request, code, asset=None, size=None):
+        from django.http import HttpResponse, Http404
+        from . import public_branding as pb
+        academy = School.objects.filter(code=code, is_active=True).first()
+        if academy is None:
+            raise Http404
+        version = pb.branding_version(academy)
+        immutable = request.query_params.get('v') == version
+        cache = ('public, max-age=31536000, immutable' if immutable else 'public, max-age=300')
+        if asset is None:
+            # Chemins RELATIFS : derrière le proxy Vite ou nginx, une URL absolue
+            # construite côté serveur désignerait l'hôte interne du conteneur.
+            base = f"/api/schools/public-branding/{code}/"
+            response = Response(pb.public_payload(academy, lambda suffix: base + suffix))
+            response['Cache-Control'] = 'no-cache'
+            return response
+        if asset == 'logo':
+            path = pb.logo_file(academy)
+            if path is None:
+                raise Http404
+            ext = os.path.splitext(path)[1].lower()
+            ctype = {'.png': 'image/png', '.webp': 'image/webp'}.get(ext, 'image/jpeg')
+            with open(path, 'rb') as fh:
+                data = fh.read()
+        else:
+            data = pb.favicon_png(academy, int(size))
+            ctype = 'image/png'
+            if data is None:
+                raise Http404
+        response = HttpResponse(data, content_type=ctype)
+        response['Cache-Control'] = cache
+        response['ETag'] = f'"{version}-{asset}-{size or ""}"'
+        response['X-Content-Type-Options'] = 'nosniff'
+        # Le client plugNmeet (autre domaine) charge ces images comme favicon.
+        response['Cross-Origin-Resource-Policy'] = 'cross-origin'
+        return response
+
+
 class SchoolBrandingViewSet(viewsets.ModelViewSet):
     """
     Gestion centralisée du branding/logo de l'école.
@@ -303,11 +441,37 @@ class SchoolBrandingViewSet(viewsets.ModelViewSet):
         return ctx
 
     def perform_create(self, serializer):
-        school = get_request_school(self.request)
-        branding = serializer.save(uploaded_by=self.request.user, school=school or serializer.validated_data.get('school'))
+        """
+        Téléversement d'un logo pour l'académie DE LA REQUÊTE.
+
+        Avant : la page envoyait `school = <première académie listée> || 1`,
+        et le serveur prenait ce champ tel quel pour un super administrateur
+        en vue « toutes les académies » — le logo pouvait atterrir chez une
+        autre académie. Désormais : académie de l'utilisateur ; pour le super
+        administrateur, l'académie sélectionnée, ou l'académie explicitement
+        choisie dans le formulaire ; sinon refus.
+        """
+        from django.db import transaction
+        from rest_framework.exceptions import ValidationError
+        school = get_request_school(self.request) or (
+            serializer.validated_data.get('school') if self.request.user.is_superadmin() else None)
+        if school is None:
+            raise ValidationError({'school': "Choisissez l'académie dont vous changez le logo."})
         activate = self.request.data.get('activate', True)
-        if activate and str(activate).lower() not in ('false', '0', 'no'):
-            branding.activate()
+        with transaction.atomic():
+            branding = serializer.save(uploaded_by=self.request.user, school=school)
+            if activate and str(activate).lower() not in ('false', '0', 'no'):
+                branding.activate()
+
+    def perform_destroy(self, instance):
+        from rest_framework.exceptions import ValidationError
+        if instance.is_active:
+            # Supprimer la version active laisserait l'académie sur son logo de
+            # repli sans que personne l'ait décidé : activer une autre version
+            # d'abord.
+            raise ValidationError({'detail': "Ce logo est actif : activez une autre version avant de "
+                                             "le supprimer."})
+        instance.delete()
 
     @action(detail=True, methods=['post'])
     def activate(self, request, pk=None):

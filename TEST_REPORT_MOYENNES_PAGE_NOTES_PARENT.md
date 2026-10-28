@@ -1,5 +1,8 @@
 # TEST_REPORT — Correctif moyennes page « Notes » Parent
 
+> **DOCUMENT HISTORIQUE** — il décrit une version antérieure de FEBA ; ses résultats n'ont pas été
+> rejoués tels quels sur cette version. Références à jour : `DOCUMENTATION_INDEX.md`, `FINAL_REPORT.md`.
+
 Voir `CORRECTIONS_MOYENNES_PAGE_NOTES_PARENT.md` pour le détail du
 diagnostic et des corrections. Toutes les commandes ci-dessous ont été
 **réellement exécutées** dans l'environnement de travail contre un vrai

@@ -1,5 +1,8 @@
 # Paiement par carte bancaire — rapport V8 (P1)
 
+> **DOCUMENT HISTORIQUE** — il décrit une version antérieure de FEBA ; ses résultats n'ont pas été
+> rejoués tels quels sur cette version. Références à jour : `DOCUMENTATION_INDEX.md`, `FINAL_REPORT.md`.
+
 ## Trois règles qui décident de tout le reste
 
 ### 1. Le serveur décide du montant

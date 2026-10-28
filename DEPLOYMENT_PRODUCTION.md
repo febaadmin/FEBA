@@ -9,155 +9,104 @@
                           │
         ┌─────────────────┴─────────────────┐
         │                                   │
-  globalfeba.com                    meet.globalfeba.com
-  (serveur applicatif)              (serveur Jitsi dédié, CPX32)
-        │                                   │
-  ┌─────┴──────┐                     ┌──────┴───────┐
-  │ nginx-prod │  TLS, en-têtes      │ jitsi-web    │ :80 :443
-  ├────────────┤                     │ prosody      │ JWT
-  │ frontend   │  SPA compilée       │ jicofo       │
-  │ backend    │  Django + Gunicorn  │ jvb          │ :10000/udp
-  │ celery     │  tâches + beat      └──────────────┘
-  │ postgres   │
-  │ redis      │
+  globalfeba.com (62.238.38.111)     meet.globalfeba.com
+  serveur applicatif FEBA            visioconférence plugNmeet
+        │                            (PLUGNMEET_DEPLOYMENT_GUIDE.md ;
+  ┌─────┴──────┐                      Jitsi conservé en retour arrière)
+  │ nginx-prod │  TLS, en-têtes, ACME webroot
+  │ frontend   │  SPA compilée (npm ci)
+  │ backend    │  Django + Gunicorn  ┐
+  │ celery     │  worker             ├ UNE image feba-backend:<tag>
+  │ celery-beat│  planificateur      ┘
+  │ postgres   │  redis
   └────────────┘
 ```
 
-Le schéma ci-dessus décrit la **topologie A** (serveurs séparés), la plus
-confortable : le pont vidéo sature réseau et CPU pendant les cours, et une
-classe en direct ne doit pas pouvoir ralentir la facturation ou les
-bulletins.
-
-> **Si Jitsi doit tourner sur CE MÊME serveur**, n'utilisez pas
-> `docker-compose.jitsi.prod.yml` : il publie 80 et 443, que `nginx-prod`
-> occupe déjà. Le démarrage échouerait — ou pire, prendrait les ports
-> avant nginx et empêcherait le site principal de redémarrer.
->
-> Utilisez la **topologie B** : `make jitsi-proxy-up`, puis activez
-> `nginx/sites-available/meet.globalfeba.com.conf`. Voir
-> [`JITSI_PRODUCTION_GUIDE.md`](JITSI_PRODUCTION_GUIDE.md) § 2 bis.
->
-> `make jitsi-config-check` signale ce conflit avant toute tentative.
-
----
+Le backend, le worker et Beat démarrent tous par
+`manage.py production_preflight` : une configuration incomplète ou de
+développement (transport e-mail console ou Mailpit, SMS de capture,
+`PUBLIC_BASE_URL` en localhost, webhook hors `ALLOWED_HOSTS`, secret
+d'exemple…) **refuse le démarrage** avec la liste des corrections.
 
 ## 2. Avant de déployer
 
-Les actions qui ne peuvent pas être faites depuis le dépôt sont listées
-dans [`MANUAL_PRODUCTION_ACTIONS.md`](MANUAL_PRODUCTION_ACTIONS.md) :
-serveur Hetzner, DNS Hostinger, pare-feu, secrets. **Les faire d'abord.**
-
----
+Actions hors dépôt (serveur, DNS, pare-feu, comptes SMTP / SMS / plugNmeet) :
+[`MANUAL_PRODUCTION_ACTIONS.md`](MANUAL_PRODUCTION_ACTIONS.md). **D'abord.**
 
 ## 3. Configuration
 
 ```bash
-cp .env.prod.example .env.prod
+cp .env.prod.example .env.prod      # puis renseigner chaque CHANGE_ME
+chmod 600 .env.prod
+make prod-preflight                 # même contrôle que celui du démarrage
 ```
-
-Variables sans valeur par défaut acceptable :
 
 | Variable | Valeur | Pourquoi |
 |---|---|---|
-| `SECRET_KEY` | `openssl rand -base64 64` | signe sessions et jetons |
-| `ALLOWED_HOSTS` | `globalfeba.com,www.globalfeba.com` | Django refuse tout autre hôte |
-| `CORS_ALLOWED_ORIGINS` | `https://globalfeba.com,https://www.globalfeba.com` | appels du SPA |
-| `CSRF_TRUSTED_ORIGINS` | idem | **sans quoi `/django-admin/` est inaccessible** |
-| `DATABASE_URL` | `postgresql://feba:<FORT>@postgres-prod:5432/feba` | — |
+| `DJANGO_ENV` / `DEPLOYMENT_STAGE` | `prod` / `production` | `staging` (préproduction) tolère Mailpit et la capture SMS |
+| `SECRET_KEY` | `python3 -c "import secrets;print(secrets.token_urlsafe(64))"` | refusée si absente ou d'exemple |
+| `PUBLIC_BASE_URL` | `https://globalfeba.com` | retours de visioconférence, paiements Stripe |
+| `ALLOWED_HOSTS` | `globalfeba.com,www.globalfeba.com` | le PREMIER sert au certificat et aux tests de fumée |
+| `CSRF_TRUSTED_ORIGINS` / `CORS_ALLOWED_ORIGINS` | `https://globalfeba.com,https://www.globalfeba.com` | |
+| `DATABASE_URL` / `DB_PASSWORD` | même mot de passe | PostgreSQL |
 | `REDIS_URL` | `redis://redis-prod:6379/0` | Celery et cache |
-| `JITSI_DOMAIN` | `meet.globalfeba.com` | **jamais une instance publique** |
-| `JITSI_APP_ID` / `JITSI_APP_SECRET` | identiques à `.env.jitsi` | signature des jetons |
-| `EMAIL_*` | SMTP réel | un backend console ne délivre rien |
-| `FEBA_OFFICIAL_PHONE` | *(vide)* | vaut `0160011717` — à ne changer qu'en cas de changement de ligne |
+| `EMAIL_*`, `DEFAULT_FROM_EMAIL` | SMTP Hostinger, `noreply@globalfeba.com` | `EMAIL_CONFIGURATION_GUIDE.md` |
+| `VIDEO_PROVIDER`, `PLUGNMEET_*` | `plugnmeet` | `PLUGNMEET_DEPLOYMENT_GUIDE.md` |
+| `SMS_*`, `TWILIO_*` | `SMS_ENABLED=False` tant que `sms_check` n'a pas réussi | `SMS_CONFIGURATION_GUIDE.md` |
 
-```bash
-grep -rnE '^\s*(SECRET_KEY|.*PASSWORD|.*SECRET)=' .env.prod   # relire avant de continuer
-chmod 600 .env.prod
-```
-
-`.env.prod` est dans `.gitignore`. **Ne jamais le committer.**
-
----
+`.env.prod` est ignoré par Git et exclu des archives. **Ne jamais le committer.**
 
 ## 4. Déploiement
 
 ```bash
-docker compose -f docker-compose.prod.yml --env-file .env.prod build
-docker compose -f docker-compose.prod.yml --env-file .env.prod up -d
-
-docker compose -f docker-compose.prod.yml exec backend-prod python manage.py migrate
-docker compose -f docker-compose.prod.yml exec backend-prod python manage.py init_academies
-docker compose -f docker-compose.prod.yml exec backend-prod python manage.py collectstatic --noinput
-docker compose -f docker-compose.prod.yml exec backend-prod python manage.py createsuperuser
+apt install -y certbot                                   # une fois
+scripts/tls_bootstrap.sh --email admin@globalfeba.com    # certificat + renouvellement webroot (idempotent)
+make prod                                                # = scripts/deploy_feba.sh
 ```
 
-> **Ne pas lancer `seed_demo_data` en production.** Il crée des comptes à
-> mots de passe connus et des données fictives.
+`scripts/deploy_feba.sh` : prérequis → composition résolue → **contrôle de
+pré-démarrage sur la nouvelle image, avant toute bascule** → certificat →
+**sauvegarde de la base vérifiée** (`backups/`) → images actuelles
+marquées `previous` → démarrage (migrations et fichiers statiques par
+l'entrée du backend) → santé → tests de fumée (HTTPS, API protégée,
+même configuration sur backend/worker/Beat, worker joignable) →
+**retour arrière automatique** en cas d'échec. Relancer le script est
+sans danger : aucun volume supprimé, aucun secret modifié.
 
-### Certificat TLS
+Premier déploiement seulement :
 
 ```bash
-certbot certonly --standalone -d globalfeba.com -d www.globalfeba.com
-docker compose -f docker-compose.prod.yml restart nginx-prod
+docker compose --env-file .env.prod -f docker-compose.prod.yml exec backend-prod python manage.py init_academies
+docker compose --env-file .env.prod -f docker-compose.prod.yml exec backend-prod python manage.py createsuperuser
 ```
 
----
+> **Ne pas lancer `seed_demo_data` / `bootstrap_demo` en production** : comptes à mots de passe connus.
 
 ## 5. Vérifications après déploiement
 
+Faites par le script (§ 4). En complément :
+
 ```bash
-# Santé
-curl -sS -o /dev/null -w '%{http_code}\n' https://globalfeba.com/api/health/     # 200
-
-# En-têtes de sécurité
 curl -sSI https://globalfeba.com/ | grep -iE 'strict-transport|x-frame|x-content|referrer'
-
-# Redirection HTTP → HTTPS
 curl -sS -o /dev/null -w '%{http_code}\n' http://globalfeba.com/                 # 301
-
-# Le flyer est une pièce jointe, pas une page HTML
-curl -sSI https://globalfeba.com/images/feba-fha/feba-fha-flyer.pdf \
-  | grep -iE 'HTTP|content-type|content-disposition'
-# 200 · application/pdf · attachment; filename="FEBA-French-Heritage-Academy-flyer.pdf"
-
-# Un fichier absent répond 404 (et non 200 avec la page du SPA)
-curl -sS -o /dev/null -w '%{http_code}\n' \
-  https://globalfeba.com/images/feba-fha/aucun-fichier.pdf                       # 404
-
-# Visioconférence
-make jitsi-health JITSI_TARGET=meet.globalfeba.com
-
-# Réglages Django
-docker compose -f docker-compose.prod.yml exec backend-prod python manage.py check --deploy
+docker compose --env-file .env.prod -f docker-compose.prod.yml exec -T backend-prod python manage.py plugnmeet_health
+docker compose --env-file .env.prod -f docker-compose.prod.yml exec -T backend-prod python manage.py email_check --to <adresse de test>
+docker compose --env-file .env.prod -f docker-compose.prod.yml exec -T backend-prod python manage.py sms_check
+certbot renew --dry-run                                                           # renouvellement TLS
 ```
-
-**Vérification manuelle indispensable :** générer un reçu depuis l'écran
-Paiements et confirmer qu'il porte `Tél: 0160011717`.
-
----
 
 ## 6. Exploitation courante
 
 | Besoin | Commande |
 |---|---|
-| Journaux | `docker compose -f docker-compose.prod.yml logs -f backend-prod` |
-| Redémarrer | `docker compose -f docker-compose.prod.yml restart backend-prod` |
-| Sauvegarde | `bash scripts/backup.sh` |
-| Restauration | `bash scripts/restore.sh <archive>` |
-| Diagnostic | `bash scripts/diagnose.sh` |
-| Tâches Celery | `docker compose -f docker-compose.prod.yml logs -f celery-prod` |
+| Journaux | `make prod-logs` |
+| Contrôle de configuration | `make prod-preflight` |
+| Retour à la version précédente | `make prod-rollback` |
+| Sauvegarde / restauration | `scripts/backup_database.sh`, `RESTORE_GUIDE.md` |
+| Tâches planifiées | `docker compose --env-file .env.prod -f docker-compose.prod.yml logs celery-beat \| grep "Sending due task"` |
 
-### Mise à jour
-
-```bash
-git pull
-docker compose -f docker-compose.prod.yml --env-file .env.prod build
-docker compose -f docker-compose.prod.yml --env-file .env.prod up -d
-docker compose -f docker-compose.prod.yml exec backend-prod python manage.py migrate
-docker compose -f docker-compose.prod.yml exec backend-prod python manage.py collectstatic --noinput
-```
-
-**Sauvegarder la base avant toute migration.**
+Toutes les commandes `docker compose` de production prennent
+`--env-file .env.prod`.
 
 ---
 

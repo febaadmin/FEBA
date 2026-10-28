@@ -21,6 +21,7 @@ import { extractApiError } from "../../utils/errors";
 import { t } from "../../i18n";
 import { useSchoolYearScope } from "../../hooks/useSchoolYearScope";
 
+import { ageText, studentOptionLabel } from "../../utils/age";
 /* ── MultiStudentSelect sans mutation (ne référence plus qc) ─────────────── */
 function MultiStudentSelect({ options, value = [], onChange, placeholder }) {
   const selectedSet = new Set((value || []).map(Number));
@@ -85,7 +86,7 @@ export default function AdminParents() {
   }));
   const studentOptions = allStudents.map(s => ({
     value: s.id,
-    label: `${s.full_name} — ${s.class_name || "?"}`,
+    label: studentOptionLabel(s),
   }));
 
   /* ── Mutations ─────────────────────────────────────────────────────────── */
@@ -258,7 +259,7 @@ export default function AdminParents() {
                         <div className="w-6 h-6 rounded-full bg-primary text-white text-xs flex items-center justify-center font-bold">{link.student_name?.[0] || "?"}</div>
                         <div>
                           <p className="text-xs font-medium text-slate-800">{link.student_name || `Élève #${link.student}`}</p>
-                          <p className="text-xs text-slate-400">{link.relation_label || link.relation || "—"}</p>
+                          <p className="text-xs text-slate-400">{t(link.relationship_label || "—")} · {ageText(link.student_age, link.student_age_status)}</p>
                         </div>
                       </div>
                     ))}

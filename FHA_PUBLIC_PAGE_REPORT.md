@@ -1,5 +1,8 @@
 # FHA_PUBLIC_PAGE_REPORT — formules et flyer
 
+> **DOCUMENT HISTORIQUE** — il décrit une version antérieure de FEBA ; ses résultats n'ont pas été
+> rejoués tels quels sur cette version. Références à jour : `DOCUMENTATION_INDEX.md`, `FINAL_REPORT.md`.
+
 **Priorité n°4.** Page : `/feba-fha`. Statut : **livré.**
 
 ## 1. Formules annuelles

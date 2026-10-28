@@ -1,5 +1,8 @@
 # FEBA — Itération V8
 
+> **DOCUMENT HISTORIQUE** — il décrit une version antérieure de FEBA ; ses résultats n'ont pas été
+> rejoués tels quels sur cette version. Références à jour : `DOCUMENTATION_INDEX.md`, `FINAL_REPORT.md`.
+
 Quatre priorités : la devise, le paiement par carte, le diplôme, le
 certificat. Trois sont terminées et vérifiées. La quatrième — les documents
 officiels — est construite et éprouvée, mais **ne peut pas être achevée**

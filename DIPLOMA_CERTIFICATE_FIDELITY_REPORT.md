@@ -1,5 +1,8 @@
 # Diplômes et certificats — rapport de fidélité
 
+> **DOCUMENT HISTORIQUE** — il décrit une version antérieure de FEBA ; ses résultats n'ont pas été
+> rejoués tels quels sur cette version. Références à jour : `DOCUMENTATION_INDEX.md`, `FINAL_REPORT.md`.
+
 ## Résultat mesuré
 
 | Gabarit | Pixels statiques comparés | Au-delà de la tolérance | Écart maximal | **Score** |

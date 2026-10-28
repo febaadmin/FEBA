@@ -130,9 +130,14 @@ class ClassViewSet(viewsets.ModelViewSet):
             if cls.name in existing:
                 skipped.append(cls.name)
                 continue
+            # Le parcours linguistique est recopié : sans lui, une classe
+            # francophone devenait « bilingue » dans la nouvelle année, avec
+            # ses seules matières françaises — configuration incomplète et
+            # bulletin à section anglaise vide.
             new_cls = Class.objects.create(
                 name=cls.name, level=cls.level,
                 school_year=target, max_students=cls.max_students,
+                language_track=cls.language_track,
             )
             new_cls.subjects.set(cls.subjects.all())
             created.append(cls.name)
@@ -171,7 +176,7 @@ class ClassViewSet(viewsets.ModelViewSet):
     def students(self, request, pk=None):
         from apps.students.serializers import StudentSerializer
         cls = self.get_object()
-        students = cls.students.filter(is_active=True).select_related("user", "school_year")
+        students = cls.students.filter(is_active=True).select_related("user", "school_year", "school")
         return Response(StudentSerializer(students, many=True).data)
 
     @action(detail=True, methods=["get"])

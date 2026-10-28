@@ -304,9 +304,14 @@ class AddressLineTests(TestCase):
     sienne apparaissait deux fois sur ses reçus.
     """
 
-    def _branding(self, **fields):
+    def _branding(self, group=True, **fields):
+        # Académie du GROUPE FEBA (nom de groupe dans son identité) : c'est
+        # le cas que ces tests décrivent depuis le correctif P1. Depuis la
+        # création d'académies indépendantes (26/10/2026), une académie
+        # HORS groupe imprime son propre numéro (tests en fin de classe).
+        settings = {"branding": {"group_name": "GROUPE ÉDUCATIF FEBA"}} if group else {}
         academy = School(
-            name="Académie de test", code=None, currency_code="XOF", **fields,
+            name="Académie de test", code=None, currency_code="XOF", settings=settings, **fields,
         )
         return get_branding(academy)
 
@@ -356,3 +361,16 @@ class AddressLineTests(TestCase):
         self.assertFalse(line.endswith("|"))
         self.assertNotIn("|  |", line)
         self.assertNotIn(" |  ", line)
+
+    def test_une_academie_independante_imprime_son_propre_numero(self):
+        line = self._branding(group=False, address="Zongo", city="Parakou", country="Bénin",
+                              phone="+229 23 61 00 00").address_line
+        self.assertIn("| Tél: +229 23 61 00 00", line)
+        self.assertNotIn(official_phone(), line)
+
+    def test_une_academie_independante_sans_numero_n_imprime_pas_celui_du_groupe(self):
+        line = self._branding(group=False, address="Zongo", city="Parakou", country="Bénin",
+                              email="contact@parakou.test").address_line
+        self.assertNotIn(official_phone(), line)
+        self.assertNotIn("Tél:", line)
+        self.assertFalse(line.endswith("|"))

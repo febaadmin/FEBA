@@ -40,9 +40,15 @@ vi.mock("../../api", () => ({
   },
 }));
 
+// L'onglet suit la capacité `public_preregistrations` servie par l'API
+// (académie rattachée au site public), et non plus le type d'académie.
+const contexte = vi.hoisted(() => ({ features: { public_preregistrations: true } }));
 vi.mock("../../hooks/useEntityContext", () => ({
   useAcademyKey: () => "FEBA",
-  useEntityContext: () => ({ allEntitiesMode: false, isOnlineAcademy: false }),
+  useEntityContext: () => ({
+    allEntitiesMode: false, entities: [],
+    hasFeature: (flag) => Boolean(contexte.features[flag]),
+  }),
 }));
 
 import { websiteAdminAPI } from "../../api";
@@ -292,5 +298,18 @@ describe("Fiche complète du dossier", () => {
     expect(mot.textContent).toHaveLength(300);
     expect(mot.style.wordBreak).toBe("break-word");
     expect(mot.style.minWidth).toBe("0px");
+  });
+});
+
+describe("onglet Préinscriptions selon la capacité de l'académie", () => {
+  it("une académie sans préinscriptions du site (testete) ne voit pas l'onglet", async () => {
+    contexte.features = {};
+    try {
+      monter();
+      expect(await screen.findByRole("button", { name: /Actualités/i })).toBeTruthy();
+      expect(screen.queryByRole("button", { name: /Préinscriptions/i })).toBeNull();
+    } finally {
+      contexte.features = { public_preregistrations: true };
+    }
   });
 });

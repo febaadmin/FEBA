@@ -14,6 +14,87 @@
  *  examen/examination · devoir/assignment · administration/administration
  */
 export const EN = {
+  // Aperçu des bulletins
+  "Commentaire enregistré par le serveur.": "Comment saved by the server.",
+  "Commentaire supprimé (enregistré par le serveur).": "Comment removed (saved by the server).",
+  "Bulletin définitif généré.": "Final report card generated.",
+  "Aperçu du bulletin": "Report card preview",
+  "Ouvrir le PDF officiel": "Open the official PDF",
+  "Bulletin pas encore généré : rien n'est créé tant que vous ne cliquez pas sur « Générer le bulletin définitif ».": "Report card not generated yet: nothing is created until you click “Generate the final report card”.",
+  "Modifié, non enregistré": "Changed, not saved",
+  "Actualiser l'aperçu": "Refresh the preview",
+  "Choisissez l'élève, l'année et la période pour afficher l'aperçu.": "Choose the student, year and period to display the preview.",
+  "Le commentaire a changé : actualisez l'aperçu pour le voir sur le bulletin.": "The comment changed: refresh the preview to see it on the report card.",
+  "Le bulletin officiel sera régénéré avec les données et le commentaire actuels. L'ancien PDF n'est remplacé qu'en cas de réussite.": "The official report card will be regenerated with the current data and comment. The old PDF is replaced only on success.",
+  "Le bulletin officiel sera créé avec les données et le commentaire actuels.": "The official report card will be created with the current data and comment.",
+  "Le commentaire saisi sera d'abord enregistré.": "The typed comment will be saved first.",
+  "Confirmer la génération": "Confirm generation",
+  "Générer le bulletin définitif": "Generate the final report card",
+  "Prévisualiser / générer un bulletin": "Preview / generate a report card",
+  "Générer les bulletins d'une classe": "Generate a class's report cards",
+  "Génération des bulletins PDF de tous les élèves actifs de l'académie sélectionnée.": "Generation of the PDF report cards of all active students of the selected academy.",
+  "bulletin généré": "report card generated",
+  "à générer": "to generate",
+  "aucune note : ignoré": "no grade: skipped",
+  "Commentaire commun (facultatif, remplace les commentaires existants)": "Common comment (optional, replaces existing comments)",
+  "{n} bulletin(s) seront générés ou régénérés.": "{n} report card(s) will be generated or regenerated.",
+  "Le commentaire commun sera appliqué à chacun.": "The common comment will be applied to each.",
+  "Réviser avant génération": "Review before generating",
+  "Modifier la portée": "Change the scope",
+  "Confirmer et générer ({n})": "Confirm and generate ({n})",
+  // Logo et favicons
+  "Format refusé : PNG, JPEG ou WebP uniquement.": "Format rejected: PNG, JPEG or WebP only.",
+  "Fichier trop volumineux (5 Mo au maximum).": "File too large (5 MB maximum).",
+  "Sélectionnez d'abord l'académie dont vous gérez le logo (sélecteur d'académie en haut de page).": "First select the academy whose logo you manage (academy selector at the top of the page).",
+  "Logo de repli de l'académie": "Academy fallback logo",
+  // Commentaire du directeur sur les bulletins
+  "Bulletin pas encore généré : le commentaire est enregistré et sera imprimé à la génération.": "Report card not generated yet: the comment is saved and will be printed when it is generated.",
+  "Aucune note sur cette période : le PDF ne peut pas encore être produit.": "No grade for this period: the PDF cannot be produced yet.",
+  "Enregistré par le serveur": "Saved by the server",
+  "Enregistrer le commentaire": "Save the comment",
+  "Opération en cours…": "Operation in progress…",
+  "Opération terminée": "Operation completed",
+  "Opération terminée avec des échecs": "Operation completed with failures",
+  "Opération échouée": "Operation failed",
+  "Élèves dans la portée": "Students in scope",
+  "Bulletins traités": "Report cards processed",
+  "Commentaires ajoutés ou modifiés": "Comments added or changed",
+  "Commentaires supprimés": "Comments removed",
+  "PDF générés ou régénérés": "PDFs generated or regenerated",
+  "Bulletins créés": "Report cards created",
+  "Élèves ignorés et raison": "Skipped students and reason",
+  "Le commentaire a été modifié par quelqu'un d'autre entre-temps. Rechargez-le avant de l'enregistrer.": "Someone else changed the comment in the meantime. Reload it before saving.",
+  "Tous les élèves de l'académie": "All students of the academy",
+  "Commentaire du directeur sur les bulletins": "Principal's comment on report cards",
+  "Sélectionnez d'abord une académie : les commentaires ne s'appliquent jamais à toutes les académies à la fois.": "Select an academy first: comments are never applied to all academies at once.",
+  "Portée": "Scope",
+  "Bulletin généré le": "Report card generated on",
+  "PDF à régénérer : il ne contient pas le dernier commentaire.": "PDF needs regenerating: it does not contain the latest comment.",
+  "Ouvrir le PDF": "Open the PDF",
+  "Aucun bulletin n'a encore été généré pour cet élève sur cette période.": "No report card has been generated yet for this student and period.",
+  "Générer le bulletin maintenant avec ce commentaire": "Generate the report card now with this comment",
+  "Bulletins existants": "Existing report cards",
+  "Avec commentaire": "With a comment",
+  "Bulletins absents": "Missing report cards",
+  "dont {n} sans aucune note": "of which {n} without any grade",
+  "Ajouter ou remplacer le commentaire": "Add or replace the comment",
+  "Supprimer le commentaire": "Remove the comment",
+  "Commentaire du Directeur / Principal's Comment": "Principal's Comment / Commentaire du Directeur",
+  "Saisissez le commentaire imprimé sur le bulletin…": "Type the comment printed on the report card…",
+  "Régénérer les PDF": "Regenerate the PDFs",
+  "Générer aussi les bulletins absents (élèves ayant des notes)": "Also generate missing report cards (students with grades)",
+  "Appliquer le commentaire": "Apply the comment",
+  "{n} bulletin(s) existant(s)": "{n} existing report card(s)",
+  "{n} bulletin(s) à créer": "{n} report card(s) to create",
+  "Enregistrer et régénérer le PDF": "Save and regenerate the PDF",
+  "Générer le bulletin avec ce commentaire": "Generate the report card with this comment",
+  "Vérifier et appliquer": "Review and apply",
+  "Génération lancée : suivez son avancement ci-dessous.": "Generation started: follow its progress below.",
+  "Commentaire du directeur": "Principal's comment",
+  "PDF à régénérer": "PDF to regenerate",
+  "Commentaires du directeur": "Principal's comments",
+  "Les PDF existants seront régénérés ; les commentaires du directeur sont conservés.": "Existing PDFs will be regenerated; principal's comments are kept.",
+  "Commentaires des bulletins": "Report card comments",
   "Une erreur interne est survenue. L'incident a été transmis à l'équipe technique sous la référence {ref}.": "An internal error occurred. The incident was reported to the technical team under reference {ref}.",
   "Une erreur interne est survenue. Veuillez réessayer ou contacter l'assistance.": "An internal error occurred. Please try again or contact support.",
   "Incidents techniques": "Technical incidents",
@@ -284,6 +365,99 @@ export const EN = {
   "Date de naissance": "Date of birth",
   "Lieu de naissance": "Place of birth",
   "Genre": "Gender",
+  "Sexe": "Sex",
+  "Pays*": "Country*",
+  "Ville*": "City*",
+  "Cette académie applique le barème par défaut de la plateforme.": "This academy applies the platform's default scale.",
+  "Personnaliser le barème de cette académie": "Customise this academy's scale",
+  "Sélectionnez une académie pour modifier ses informations.": "Select an academy to edit its details.",
+  "Ligne {n} : seuil entre 0 et 100 %.": "Row {n}: threshold between 0 and 100%.",
+  "Ligne {n} : libellé français obligatoire.": "Row {n}: French label is required.",
+  "Lignes {a} et {b} : même seuil.": "Rows {a} and {b}: same threshold.",
+  "Lignes {a} et {b} : libellé en double.": "Rows {a} and {b}: duplicate label.",
+  "Au moins une appréciation active est requise.": "At least one active remark is required.",
+  "Le seuil le plus bas doit valoir 0 %.": "The lowest threshold must be 0%.",
+  "Barème enregistré.": "Scale saved.",
+  "Barème non enregistré.": "Scale not saved.",
+  "Barème par défaut rétabli.": "Default scale restored.",
+  "Barème des appréciations des bulletins": "Report card remarks scale",
+  "Sélectionnez d'abord l'académie dont vous gérez le barème (sélecteur d'académie en haut de page).": "First select the academy whose scale you manage (academy selector at the top of the page).",
+  "Barème des appréciations des bulletins — {name}": "Report card remarks scale — {name}",
+  "Barème par défaut": "Default scale",
+  "Abandonner les modifications non enregistrées ?": "Discard unsaved changes?",
+  "barème propre": "own scale",
+  "Modifications non enregistrées": "Unsaved changes",
+  "Seuil bas inclusif, en pourcentage de la note maximale : 95 % = 19/20 = 9,5/10. Une note prend l'appréciation du palier actif le plus élevé qu'elle atteint ; une note exactement sur un seuil prend ce palier.": "Inclusive lower threshold, as a percentage of the maximum mark: 95% = 19/20 = 9.5/10. A mark gets the remark of the highest active level it reaches; a mark exactly on a threshold gets that level.",
+  "Ce cycle utilise le barème de l'académie (« Tous les cycles »).": "This cycle uses the academy scale (\"All cycles\").",
+  "Créer un barème propre à ce cycle": "Create a scale for this cycle",
+  "Libellé (français)": "Label (French)",
+  "Libellé (anglais)": "Label (English)",
+  "Seuil (%)": "Threshold (%)",
+  "Intervalle": "Range",
+  "Utilisée par des bulletins émis : désactivez-la au lieu de la supprimer.": "Used by issued report cards: deactivate it instead of deleting it.",
+  "Ajouter une appréciation": "Add a remark",
+  "Annuler les modifications": "Discard changes",
+  "Sur": "Out of",
+  "Voir l'appréciation": "Show the remark",
+  "L'aperçu applique le barème affiché, même non enregistré. Les bulletins déjà émis gardent leur appréciation ; les bulletins générés ensuite utilisent le barème enregistré.": "The preview applies the scale shown, even if unsaved. Issued report cards keep their remark; report cards generated afterwards use the saved scale.",
+  "Supprimer le barème propre à ce cycle ? Le barème de l'académie s'appliquera de nouveau.": "Delete this cycle's own scale? The academy scale will apply again.",
+  "Rétablir le barème par défaut ? Le barème actuel sera remplacé (les appréciations figurant sur des bulletins émis sont conservées, désactivées).": "Restore the default scale? The current scale will be replaced (remarks used on issued report cards are kept, deactivated).",
+  "Académie créée et initialisée.": "Academy created and initialised.",
+  "Académie mise à jour.": "Academy updated.",
+  "Académie supprimée.": "Academy deleted.",
+  "Académies": "Academies",
+  "Créez et configurez les académies de la plateforme. Chaque académie est isolée des autres.": "Create and configure the platform's academies. Each academy is isolated from the others.",
+  "Nouvelle académie": "New academy",
+  "Impossible de charger les académies.": "Unable to load the academies.",
+  "Non classée": "Unclassified",
+  "Désactivée": "Deactivated",
+  "Configuration restante": "Remaining setup",
+  "Académie créée": "Academy created",
+  "Sélectionnez cette académie dans le sélecteur d'académie pour terminer sa configuration :": "Select this academy in the academy selector to finish its setup:",
+  "Type d'académie*": "Academy type*",
+  "Nom de l'académie*": "Academy name*",
+  "Code interne* (définitif)": "Internal code* (permanent)",
+  "Dénomination légale": "Legal name",
+  "Adresse*": "Address*",
+  "Devise": "Currency",
+  "Langue des documents": "Document language",
+  "Première année scolaire (facultatif)": "First school year (optional)",
+  "Nom (ex. 2026-2027)": "Name (e.g. 2026-2027)",
+  "Aucune donnée d'une autre académie n'est copiée : ni élèves, ni notes, ni paiements, ni logo.": "No data from another academy is copied: no students, grades, payments or logo.",
+  "Créer l'académie": "Create the academy",
+  "Modifier l'académie": "Edit the academy",
+  "Code interne": "Internal code",
+  "(non modifiable)": "(cannot be changed)",
+  "Type d'académie": "Academy type",
+  "Désactiver cette académie ? Ses utilisateurs ne pourront plus se connecter ; aucune donnée n'est supprimée.": "Deactivate this academy? Its users will no longer be able to sign in; no data is deleted.",
+  "Réactiver cette académie ?": "Reactivate this academy?",
+  "Supprimer définitivement cette académie ? Seule une académie vide (créée par erreur) peut l'être ; sinon, désactivez-la.": "Permanently delete this academy? Only an empty academy (created by mistake) can be deleted; otherwise, deactivate it.",
+  "Académie physique — primaire": "On-site academy — primary",
+  "Académie physique — secondaire (collège et lycée)": "On-site academy — secondary (middle and high school)",
+  "Maternelle 1 et 2, CI, CP, CE1, CE2, CM1, CM2 créés. Bulletins sur 10.": "Nursery 1 and 2, CI, CP, CE1, CE2, CM1, CM2 created. Report cards out of 10.",
+  "6ème à 3ème (collège) et Seconde à Terminale (lycée) créés. Bulletins sur 20.": "6ème to 3ème (middle school) and Seconde to Terminale (high school) created. Report cards out of 20.",
+  "Type d'académie défini": "Academy type set",
+  "Année scolaire active": "Active school year",
+  "Administrateur de l'académie": "Academy administrator",
+  "Barème d'appréciations valide": "Valid remarks scale",
+  "Logo activé": "Logo activated",
+  "Choisir le type dans « Académies ».": "Choose the type in \"Academies\".",
+  "Créer l'année dans « Paramètres ».": "Create the year in \"Settings\".",
+  "Créer les niveaux dans « Niveaux ».": "Create the levels in \"Levels\".",
+  "Créer les matières dans « Matières ».": "Create the subjects in \"Subjects\".",
+  "Créer les classes dans « Classes ».": "Create the classes in \"Classes\".",
+  "Créer un administrateur dans « Gestion Admins ».": "Create an administrator in \"Admin management\".",
+  "Vérifier le barème dans « Appréciations ».": "Check the scale in \"Remarks\".",
+  "Téléverser et activer le logo dans « Branding & Logo » (sinon : aucun logo, jamais celui d'une autre académie).": "Upload and activate the logo in \"Branding & Logo\" (otherwise: no logo, never another academy's).",
+  "Sélectionnez une académie pour créer un niveau.": "Select an academy to create a level.",
+  "Cycle · barème": "Cycle · scale",
+  "Cycle scolaire*": "School cycle*",
+  "Maternelle": "Nursery",
+  "Primaire": "Primary",
+  "Collège": "Middle school",
+  "Lycée": "High school",
+  "bulletin sur": "report card out of",
+  "Le cycle fixe le barème du bulletin : maternelle et primaire sur 10, collège et lycée sur 20.": "The cycle sets the report card scale: nursery and primary out of 10, middle and high school out of 20.",
   "Masculin": "Male",
   "Féminin": "Female",
   "Adresse": "Address",
@@ -622,7 +796,6 @@ export const EN = {
   "Garçon": "Boy",
   "Gestion Admins": "Admin Management",
   "Gestion Utilisateurs": "User Management",
-  "Gestion centralisée du logo officiel de l'école FEBA — propagé automatiquement dans toute l'application": "Centralized management of the official FEBA school logo — automatically propagated throughout the application",
   "Gestion complète — accès Super Admin": "Full management — Super Admin access",
   "Gestion des Administrateurs": "Administrator Management",
   "Gestion des frais scolaires": "School fees management",
@@ -680,7 +853,6 @@ export const EN = {
   "La ressource demandée est introuvable — elle a peut-être été supprimée, ou le lien utilisé n'est plus valide. Vous êtes toujours connecté.": "The requested resource cannot be found — it may have been deleted, or the link used is no longer valid. You are still signed in.",
   "Lancer le passage de niveau": "Run the grade-level promotion",
   "Langue": "Language",
-  "Le logo FEBA par défaut est utilisé.": "The default FEBA logo is in use.",
   "Le nouveau logo sera immédiatement visible sur la page de connexion, les tableaux de bord, et tous les bulletins PDF générés après cet upload.": "The new logo will be immediately visible on the login page, dashboards, and all PDF report cards generated after this upload.",
   "Les bulletins sont générés par l'administration après chaque trimestre.": "Report cards are generated by the administration after each term.",
   "Les deux années doivent être différentes.": "The two years must be different.",
@@ -688,7 +860,6 @@ export const EN = {
   "Libellé de la version": "Version label",
   "Liste": "List",
   "Logo & Branding": "Logo & Branding",
-  "Logo FEBA par défaut": "Default FEBA logo",
   "Logo actif": "Active logo",
   "Logo activé avec succès !": "Logo activated successfully!",
   "Logo actuellement actif": "Currently active logo",
@@ -952,7 +1123,6 @@ export const EN = {
   "Supprimée par": "Deleted by",
   "Supprimée.": "Deleted.",
   "Supprimées": "Deleted",
-  "Système Bilingue FEBA": "FEBA Bilingual System",
   "Sélectionner la matière…": "Select the subject…",
   "Sélectionner un enseignant…": "Select a teacher…",
   "Sélectionner une année…": "Select a year…",
@@ -976,8 +1146,6 @@ export const EN = {
   "Total confirmé": "Confirmed total",
   "Total encaissé": "Total collected",
   "Détail par devise": "Breakdown by currency",
-  "Équivalent FEBA FHA :": "FEBA FHA equivalent:",
-  "FEBA :": "FEBA:",
   "Taux utilisé :": "Rate used:",
   "taux par défaut, à confirmer": "default rate, to confirm",
   "Certains montants n'ont pas pu être convertis et sont exclus du total : ":
@@ -1035,6 +1203,23 @@ export const EN = {
   "Ville": "City",
   "Virement": "Bank transfer",
   "Visioconférence intégrée (Jitsi Meet) — cours en ligne, réunions parents-professeurs…": "Built-in video conferencing (Jitsi Meet) — online classes, parent-teacher meetings…",
+  "Rouvrir": "Reopen",
+  "SMS non envoyé": "SMS not sent",
+  "segment(s)": "SMS segment(s)",
+  "Notifications par SMS": "SMS notifications",
+  "J'accepte les SMS": "I accept text messages",
+  "Je refuse les SMS": "I decline text messages",
+  "Aucun choix enregistré : aucun SMS ne vous est envoyé.": "No choice recorded: no text messages are sent to you.",
+  "Numéro utilisé": "Number used",
+  "Préférence SMS enregistrée.": "SMS preference saved.",
+  "Aucun numéro de téléphone n'est enregistré.": "No phone number on file.",
+  "Le numéro enregistré n'est pas valide : saisissez-le avec l'indicatif du pays (ex. +229 01 …).": "The phone number on file is not valid: enter it with the country code (e.g. +229 01 …).",
+  "Le numéro enregistré est une ligne fixe : il ne peut pas recevoir de SMS.": "The phone number on file is a landline: it cannot receive text messages.",
+  "Enregistrements": "Recordings",
+  "Salle d'attente : j'admets moi-même les participants": "Waiting room: I admit participants myself",
+  "Autoriser l'enregistrement du cours": "Allow recording of the class",
+  "L'enregistrement n'est proposé que si le service d'enregistrement est installé sur le serveur.": "Recording is only offered when the recording service is installed on the server.",
+  "Aucun enregistrement pour cette salle.": "No recordings for this room.",
   "Voir l'historique": "View history",
   "Voir le détail": "View details",
   "Voir le détail par matière": "View details by subject",
@@ -1268,16 +1453,11 @@ export const EN = {
   "Non accordé": "Not granted",
   "Répondre sur WhatsApp": "Reply on WhatsApp",
   "Copier le texte intégral": "Copy the full text",
-  "FEBA Academy": "FEBA Academy",
   "Mode « Toutes les Académies » — chaque ligne porte son académie.": "All Academies mode — every row carries its academy.",
-  "Visioconférence dégradée — instance FEBA injoignable": "Video conferencing degraded — FEBA instance unreachable",
-  "Visioconférence indisponible — instance FEBA non configurée": "Video conferencing unavailable — FEBA instance not configured",
-  "Les cours en direct ne peuvent pas démarrer pour le moment. Aucune session n'est basculée vers un service public : les échanges restent sur l'infrastructure FEBA.": "Live lessons cannot start at the moment. No session is redirected to a public service: all exchanges stay on FEBA infrastructure.",
   "Diagnostic": "Diagnostics",
   "Relancez l'instance avec": "Restart the instance with",
   "puis vérifiez avec": "then check with",
   "PNG, JPG, SVG — Max 5MB": "PNG, JPG, SVG — max 5 MB",
-  "Admissions FEBA French Heritage Academy": "FEBA French Heritage Academy admissions",
   "Fiches d'inscription et demandes de test de placement.": "Enrolment forms and placement-test requests.",
   "Fiches d'inscription": "Enrolment forms",
   "Tests de placement": "Placement tests",
@@ -1287,7 +1467,6 @@ export const EN = {
   "Reçue le": "Received on",
 
   // ── P3 — Rapports mensuels FEBA FHA ───────────────────────────────────
-  "Rapports mensuels FEBA FHA": "FEBA FHA monthly reports",
   "Rapports mensuels": "Monthly reports",
   "Rapport mensuel": "Monthly report",
   "Suivi mensuel des élèves de l'académie en ligne.":
@@ -1415,18 +1594,14 @@ export const EN = {
   "Rechercher un dossier, un enfant, un parent…": "Search for a file, a child, a parent…",
   "résultat(s)": "result(s)",
   "Exporter CSV": "Export CSV",
-  "FEBA — cours présentiels": "FEBA — on-campus lessons",
   "Classe, salle physique, heure de Cotonou": "Class, physical room, Cotonou time",
-  "FEBA FHA — séances en ligne": "FEBA FHA — online sessions",
   "Groupe en ligne, salle virtuelle, heure UTC": "Online group, virtual room, UTC time",
   "Sélectionnez une académie pour créer un créneau.": "Select an academy to create a time slot.",
   "Séance planifiée.": "Session scheduled.",
   "Séance modifiée.": "Session updated.",
   "Séance supprimée.": "Session deleted.",
   "Les séances en ligne n'existent pas pour cette académie.": "Online sessions do not exist for this academy.",
-  "FEBA Cotonou est une école présentielle : ses cours se planifient dans l'onglet FEBA, avec une classe et une salle physique.": "FEBA Cotonou is an on-campus school: its lessons are scheduled in the FEBA tab, with a class and a physical room.",
   "{n} séance(s) en direct": "{n} live session(s)",
-  "Sélectionnez FEBA FHA pour planifier une séance.": "Select FEBA FHA to schedule a session.",
   "Nouvelle séance": "New session",
   "Groupe :": "Group:",
   "Aucune séance en direct planifiée.": "No live session scheduled.",
@@ -1494,7 +1669,6 @@ export const EN = {
   "Enregistrer les paramètres": "Save settings",
   "Site vitrine": "Public website",
   "Contenu public : messages, préinscriptions, actualités et paramètres": "Public content: messages, pre-registrations, news and settings",
-  "Préinscriptions FEBA": "FEBA pre-registrations",
   "Slides du carrousel et galerie : gérables via l'admin Django (/django-admin/) ou l'API /api/website/admin/.": "Carousel slides and gallery: managed through the Django admin (/django-admin/) or the /api/website/admin/ API.",
   "Endpoint": "Endpoint",
   "Nom obligatoire.": "Name is required.",
@@ -1591,7 +1765,6 @@ export const EN = {
   // Sigles, périodes et noms propres : identiques dans les deux langues,
   // référencés explicitement pour que le test de couverture les valide.
 
-  "FEBA": "FEBA",
   "PDF": "PDF",
   "Dossier": "File",
   "Enfant": "Child",
@@ -1777,4 +1950,851 @@ export const EN = {
     "Setup complete — {n} French subject(s)",
   "Configuration complète — {n} matière(s) anglaise(s)":
     "Setup complete — {n} English subject(s)",
+  "Date invalide":
+    "Invalid date",
+  "{n} an":
+    "{n} year old",
+  "{n} ans":
+    "{n} years old",
+  "Date de naissance dans le futur ou invraisemblable : à corriger dans la fiche élève.":
+    "Date of birth in the future or implausible: please correct it in the student record.",
+  "Date et heure":
+    "Date and time",
+  "Heure non enregistrée pour ce paiement":
+    "Time not recorded for this payment",
+  "heure n.e.":
+    "time n/r",
+  "heure non enregistrée":
+    "time not recorded",
+  "Heure locale de l'académie. Laissez vide si elle n'est pas connue.":
+    "Academy local time. Leave empty if unknown.",
+  "Envoi mis en file : {n} destinataire(s).":
+    "Sending queued: {n} recipient(s).",
+  "E-mails groupés":
+    "Group e-mails",
+  "Envoi par académie et par type de profil":
+    "Send by academy and profile type",
+  "Aucun serveur de messagerie réel n'est configuré : les messages seront journalisés mais ne partiront pas sur Internet.":
+    "No real mail server is configured: messages will be logged but will not leave the server.",
+  "Types de profil":
+    "Profile types",
+  "Rechercher une personne…":
+    "Search for a person…",
+  "Filtrer par profil":
+    "Filter by profile",
+  "Cocher la liste affichée":
+    "Select displayed list",
+  "Décocher la liste affichée":
+    "Unselect displayed list",
+  "Aucun compte pour ce filtre.":
+    "No account for this filter.",
+  "Sélectionner":
+    "Select",
+  "{n} destinataire(s) sélectionné(s)":
+    "{n} recipient(s) selected",
+  "Objet":
+    "Subject",
+  "Chaque destinataire reçoit un message individuel : aucune adresse n'est visible des autres.":
+    "Each recipient receives an individual message: no address is visible to the others.",
+  "{n} destinataire(s) recevront ce message.":
+    "{n} recipient(s) will receive this message.",
+  "{n} ignoré(s).":
+    "{n} skipped.",
+  "Aperçu du message":
+    "Message preview",
+  "Envoyer à {n} destinataire(s)":
+    "Send to {n} recipient(s)",
+  "Envois récents":
+    "Recent sends",
+  "Aucun envoi groupé pour cette académie.":
+    "No group send for this academy.",
+  "Remis":
+    "Delivered",
+  "Échecs":
+    "Failures",
+  "Ignorés":
+    "Skipped",
+  "Rapport":
+    "Report",
+  "Confirmer l'envoi":
+    "Confirm sending",
+  "Vous allez envoyer « {subject} » à {n} destinataire(s) de {academy}. Cette action ne peut pas être annulée.":
+    "You are about to send “{subject}” to {n} recipient(s) of {academy}. This cannot be undone.",
+  "{n} envoi(s) en échec remis en file.":
+    "{n} failed send(s) queued again.",
+  "Rapport d'envoi":
+    "Sending report",
+  "« Remis au serveur » signifie que le serveur de messagerie a accepté le message ; la réception dans la boîte du destinataire ne peut pas être garantie.":
+    "“Handed to server” means the mail server accepted the message; arrival in the recipient's inbox cannot be guaranteed.",
+  "Relancer uniquement les échecs ({n})":
+    "Retry failures only ({n})",
+  "Relances de paiement":
+    "Payment reminders",
+  "Échéanciers, retards et relances automatiques par e-mail et notification":
+    "Payment schedules, arrears and automatic reminders by e-mail and notification",
+  "Règles enregistrées.":
+    "Rules saved.",
+  "État du service":
+    "Service status",
+  "Relances automatiques opérationnelles.":
+    "Automatic reminders are operational.",
+  "Interrupteur serveur":
+    "Server switch",
+  "Activé":
+    "Enabled",
+  "Désactivé":
+    "Disabled",
+  "Serveur SMTP":
+    "SMTP server",
+  "Configuré":
+    "Configured",
+  "Non configuré":
+    "Not configured",
+  "Dernière planification":
+    "Last scheduled run",
+  "Dernier envoi réel":
+    "Last real sending",
+  "Règles de relance":
+    "Reminder rules",
+  "Suspendu manuellement":
+    "Manually paused",
+  "Suspendre les envois automatiques":
+    "Pause automatic sending",
+  "Activer les envois automatiques":
+    "Enable automatic sending",
+  "Délai de grâce (jours)":
+    "Grace period (days)",
+  "Intervalle entre relances (jours)":
+    "Interval between reminders (days)",
+  "Relances maximum par échéance":
+    "Maximum reminders per installment",
+  "Solde minimum relancé":
+    "Minimum balance reminded",
+  "Notification interne":
+    "In-app notification",
+  "Modalités de paiement rappelées":
+    "Payment options recalled",
+  "Coordonnées de contact":
+    "Contact details",
+  "Relances lancées : le résultat apparaîtra dans l'historique.":
+    "Reminders started: the result will appear in the history.",
+  "Situation au":
+    "Situation as of",
+  "Afficher aussi les échéances réglées et à venir":
+    "Also show paid and upcoming installments",
+  "Envoi réel désactivé sur ce serveur (PAYMENT_REMINDERS_ENABLED).":
+    "Real sending disabled on this server (PAYMENT_REMINDERS_ENABLED).",
+  "Envoyer les relances dues ({n})":
+    "Send due reminders ({n})",
+  "Simulation : cet écran ne crée aucune relance et n'envoie rien.":
+    "Simulation: this screen creates no reminder and sends nothing.",
+  "Anomalies — aucune relance n'est envoyée pour les éléments concernés :":
+    "Anomalies — no reminder is sent for the items concerned:",
+  "Aucune échéance en retard.":
+    "No overdue installment.",
+  "{n} j":
+    "{n} d",
+  "Relance n°{n}":
+    "Reminder #{n}",
+  "Confirmer l'envoi des relances":
+    "Confirm sending reminders",
+  "{n} relance(s) vont être envoyées maintenant (e-mail et notification interne). Les relances déjà envoyées ne seront pas renvoyées.":
+    "{n} reminder(s) will be sent now (e-mail and in-app notification). Reminders already sent will not be sent again.",
+  "Échéancier enregistré.":
+    "Schedule saved.",
+  "Nouvel échéancier":
+    "New schedule",
+  "Aucun tarif configuré.":
+    "No fee configured.",
+  "Obligatoire":
+    "Mandatory",
+  "Abonnés uniquement":
+    "Subscribers only",
+  "Somme des tranches ≠ total":
+    "Installments ≠ total",
+  "Élèves (abonnements, exonérations…)":
+    "Students (subscriptions, exemptions…)",
+  "Supprimer ce tarif et ses échéances ?":
+    "Delete this fee and its installments?",
+  "échéances":
+    "installments",
+  "Modifier l'échéancier":
+    "Edit schedule",
+  "Type de frais":
+    "Fee type",
+  "Libellé":
+    "Label",
+  "Tous les niveaux":
+    "All levels",
+  "Montant total":
+    "Total amount",
+  "Tranches (somme = total)":
+    "Installments (sum = total)",
+  "Récurrent (ex. mensuel)":
+    "Recurring (e.g. monthly)",
+  "Dû par tous les élèves du périmètre (sinon : élèves abonnés uniquement)":
+    "Due by all students in scope (otherwise: subscribed students only)",
+  "Échéances":
+    "Installments",
+  "Ajouter une échéance":
+    "Add an installment",
+  "Enregistré.":
+    "Saved.",
+  "Choisir un élève":
+    "Choose a student",
+  "Abonnement au service":
+    "Service subscription",
+  "Exonération totale":
+    "Full exemption",
+  "Réduction / bourse (montant fixe)":
+    "Discount / scholarship (fixed amount)",
+  "Montant de la réduction":
+    "Discount amount",
+  "Début":
+    "Start",
+  "Fin":
+    "End",
+  "Aucune disposition pour ce tarif.":
+    "No arrangement for this fee.",
+  "Relances envoyées":
+    "Reminders sent",
+  "Aucune relance.":
+    "No reminder.",
+  "Exécutions du moteur":
+    "Engine runs",
+  "Garderie":
+    "Daycare",
+  "État et règles":
+    "Status and rules",
+  "Échéanciers":
+    "Schedules",
+  "Frais":
+    "Fee",
+  "Échéance":
+    "Installment",
+  "Prévu":
+    "Expected",
+  "Reste dû":
+    "Balance due",
+  "Relance prévue":
+    "Planned reminder",
+  "Destinataire":
+    "Recipient",
+  "N°":
+    "No.",
+  "Remis au serveur":
+    "Handed to server",
+  "Aucune adresse":
+    "No address",
+  "Adresse invalide":
+    "Invalid address",
+  "Compte inactif":
+    "Inactive account",
+  "Adresse en double":
+    "Duplicate address",
+  "Non joignable":
+    "Unreachable",
+  "En file d'attente":
+    "Queued",
+  "Envoi en cours":
+    "Sending",
+  "Terminé avec des échecs":
+    "Completed with failures",
+  "Remis au serveur de messagerie":
+    "Handed to mail server",
+  "Nouvel essai programmé":
+    "Retry scheduled",
+  "Ignoré — aucune adresse":
+    "Skipped — no address",
+  "Ignoré — adresse invalide":
+    "Skipped — invalid address",
+  "Ignoré — compte inactif":
+    "Skipped — inactive account",
+  "Ignoré — adresse en double":
+    "Skipped — duplicate address",
+  "E-mail remis au serveur de messagerie":
+    "E-mail handed to mail server",
+  "Notification interne uniquement (pas d'e-mail)":
+    "In-app notification only (no e-mail)",
+  "E-mail : nouvel essai programmé":
+    "E-mail: retry scheduled",
+  "Échec de l'e-mail":
+    "E-mail failed",
+  "Aucun canal disponible":
+    "No channel available",
+  "En cours de traitement":
+    "Processing",
+  "À venir":
+    "Upcoming",
+  "Réglée":
+    "Paid",
+  "Échue — impayée":
+    "Overdue — unpaid",
+  "Échue — partiellement payée":
+    "Overdue — partly paid",
+  "Exonérée":
+    "Exempted",
+  "Planification automatique":
+    "Automatic schedule",
+  "Lancement manuel":
+    "Manual run",
+  "Simulation sans envoi":
+    "Simulation (no sending)",
+  "Terminée":
+    "Completed",
+  "Non exécutée (désactivée)":
+    "Not run (disabled)",
+  "{sent} envoyé(s), {n} non envoyé(s) : voir la colonne « E-mail parent ».":
+    "{sent} sent, {n} not sent: see the “Parent e-mail” column.",
+  "{sent} confirmation(s) envoyée(s).":
+    "{sent} confirmation(s) sent.",
+  "Sélectionner les {n} dossiers affichés":
+    "Select the {n} displayed applications",
+  "Tout désélectionner":
+    "Unselect all",
+  "{n} dossier(s) sélectionné(s)":
+    "{n} application(s) selected",
+  "{n} masqué(s) par le filtre, non inclus":
+    "{n} hidden by the filter, not included",
+  "Relancer les échecs ({n})":
+    "Retry failures ({n})",
+  "Envoyer les confirmations aux lignes sélectionnées ({n})":
+    "Send confirmations to selected rows ({n})",
+  "Confirmer l'envoi groupé":
+    "Confirm group sending",
+  "L'accusé de réception va être envoyé aux responsables de {n} dossier(s) sélectionné(s). Chaque dossier est traité séparément ; le résultat s'affiche sur sa ligne.":
+    "The acknowledgement will be sent to the guardians of {n} selected application(s). Each application is processed separately; the result is shown on its row.",
+  "Ne pas renvoyer aux dossiers dont la confirmation est déjà partie":
+    "Do not resend to applications whose confirmation was already sent",
+  "Envoyer ({n})":
+    "Send ({n})",
+  "Sélectionner toutes les lignes de ce tableau":
+    "Select all rows of this table",
+  "Sélectionner le dossier":
+    "Select application",
+  "Échec temporaire — nouvel essai programmé":
+    "Temporary failure — retry scheduled",
+  "Destinataire manquant ou invalide":
+    "Missing or invalid recipient",
+  "Déjà envoyé — non renvoyé":
+    "Already sent — not resent",
+  "Envoi déjà en cours ou tout juste effectué":
+    "Sending already in progress or just done",
+  "Dossier introuvable dans votre académie":
+    "Application not found in your academy",
+  "Journalisé — aucun fournisseur réel":
+    "Logged — no real provider",
+  "Mode test : les messages sont capturés par Mailpit et n'atteignent aucune boîte réelle.":
+    "Test mode: messages are captured by Mailpit and never reach a real inbox.",
+  "Ouvrir Mailpit":
+    "Open Mailpit",
+  "« {name} » : format non autorisé.":
+    "“{name}”: format not allowed.",
+  "« {name} » dépasse {n} Mo.":
+    "“{name}” exceeds {n} MB.",
+  "Au plus {n} pièces jointes.":
+    "At most {n} attachments.",
+  "Taille totale supérieure à {n} Mo.":
+    "Total size exceeds {n} MB.",
+  "Formats acceptés : {list}. Au plus {n} Mo par fichier, {total} Mo au total.":
+    "Accepted formats: {list}. At most {n} MB per file, {total} MB in total.",
+  "Boîte d'envoi":
+    "Outbox",
+  "Recherche":
+    "Search",
+  "Objet, destinataire, contenu…":
+    "Subject, recipient, content…",
+  "Origine":
+    "Origin",
+  "Toutes les origines":
+    "All origins",
+  "Du":
+    "From",
+  "Au":
+    "To",
+  "Aucun e-mail pour ces critères.":
+    "No e-mail matches these criteria.",
+  "Ouvrir":
+    "Open",
+  "{n} e-mail(s)":
+    "{n} message(s)",
+  "Nouvelle tentative : {s}":
+    "New attempt: {s}",
+  "Détail de l'e-mail":
+    "E-mail details",
+  "Expéditeur":
+    "Sender",
+  "prochain essai":
+    "next attempt",
+  "Suivi":
+    "Tracking",
+  "Relancer cet envoi":
+    "Retry this sending",
+  "Contenu texte":
+    "Text content",
+  "Version HTML":
+    "HTML version",
+  "Aucune pièce jointe.":
+    "No attachment.",
+  "fichier introuvable":
+    "file not found",
+  "relance manuelle":
+    "manual retry",
+  "Transport e-mail":
+    "E-mail transport",
+  "Masquer le diagnostic":
+    "Hide diagnostics",
+  "Diagnostic et test d'envoi":
+    "Diagnostics and test sending",
+  "Serveur":
+    "Server",
+  "défini (masqué)":
+    "set (hidden)",
+  "vide":
+    "empty",
+  "Réseau":
+    "Network",
+  "Adresse de test":
+    "Test address",
+  "Envoyer un message de test":
+    "Send a test message",
+  "Enregistré — en file d'attente":
+    "Recorded — queued",
+  "Accepté par le serveur de messagerie":
+    "Accepted by the mail server",
+  "Échec définitif":
+    "Permanent failure",
+  "Accepté par le serveur":
+    "Accepted by the server",
+  "Capturé par le serveur de test (Mailpit) — non distribué sur Internet":
+    "Captured by the test server (Mailpit) — not delivered on the Internet",
+  "Écrit localement — aucun envoi réel":
+    "Written locally — no real sending",
+  "Accepté par le serveur de messagerie (réception non garantie)":
+    "Accepted by the mail server (receipt not guaranteed)",
+  "Contenu non archivé pour cet envoi historique.":
+    "Content not archived for this historical sending.",
+  "E-mail groupé":
+    "Group e-mail",
+  "Relance de paiement":
+    "Payment reminder",
+  "Test de configuration SMTP":
+    "SMTP configuration test",
+  "Diagnostic (ligne de commande)":
+    "Diagnostics (command line)",
+  "Envoi hors couche centrale (tracé automatiquement)":
+    "Sent outside the central layer (traced automatically)",
+  "Serveur de test (Mailpit) — capturé, non distribué":
+    "Test server (Mailpit) — captured, not delivered",
+  "Serveur SMTP réel":
+    "Real SMTP server",
+  "Console du serveur (aucun envoi)":
+    "Server console (no sending)",
+  "Mémoire (tests, aucun envoi)":
+    "Memory (tests, no sending)",
+  "Non enregistré (envoi historique)":
+    "Not recorded (historical sending)",
+  "Capturé (Mailpit)":
+    "Captured (Mailpit)",
+  // Gabarits des documents (diplômes, certificats) — 26/10/2026
+  "(attribué à la délivrance)":
+    "(assigned on issue)",
+  "Alignement":
+    "Alignment",
+  "Aperçu PDF":
+    "PDF preview",
+  "Aperçu du document":
+    "Document preview",
+  "Aperçu rendu par le serveur (valeurs d'exemple, cadres des zones en pointillés)":
+    "Preview rendered by the server (sample values, field frames dotted)",
+  "Aucun gabarit actif : aucun document de ce type ne peut être produit pour cette académie.":
+    "No active template: no document of this type can be produced for this academy.",
+  "Aucun gabarit disponible":
+    "No template available",
+  "Aucun gabarit téléversé actif : le gabarit intégré « {l} » (livré avec l'application) est utilisé.":
+    "No active uploaded template: the built-in template “{l}” (shipped with the application) is used.",
+  "C'est la version ACTIVE : après suppression, plus aucun document de ce type ne pourra être produit avec un gabarit téléversé.":
+    "This is the ACTIVE version: once deleted, no document of this type can be produced with an uploaded template.",
+  "Centré":
+    "Centred",
+  "Certificat":
+    "Certificate",
+  "Cette version est en lecture seule. Créez une nouvelle version pour modifier sa configuration.":
+    "This version is read-only. Create a new version to change its configuration.",
+  "Champ à placer":
+    "Field to place",
+  "Champ à placer…":
+    "Field to place…",
+  "Chaque document est produit sur le gabarit ACTIF de l'académie de l'élève (rubrique « Gabarits des documents »), à défaut sur le gabarit intégré prévu pour elle. Un document délivré garde son fichier et sa version de gabarit, même après un remplacement.":
+    "Each document is produced on the ACTIVE template of the student's academy (“Document templates” section), otherwise on the built-in template intended for it. An issued document keeps its file and template version, even after a replacement.",
+  "Choisir…":
+    "Choose…",
+  "Configuration enregistrée. Vérifiez le gabarit avant de l'activer.":
+    "Configuration saved. Check the template before activating it.",
+  "Couleur":
+    "Colour",
+  "Date d'obtention (si le gabarit l'affiche)":
+    "Award date (if the template shows it)",
+  "Date d'obtention":
+    "Award date",
+  "Diplôme et certificat officiels de {a}":
+    "Official diploma and certificate of {a}",
+  "Diplôme":
+    "Diploma",
+  "Diplômes et certificats officiels":
+    "Official diplomas and certificates",
+  "Donnée obligatoire manquante : {m}":
+    "Missing required data: {m}",
+  "Droite":
+    "Right",
+  "Délivrer les {n} brouillon(s)":
+    "Issue the {n} draft(s)",
+  "Enregistrer et vérifier":
+    "Save and check",
+  "Fichier (PDF, PNG ou JPEG — 10 Mo au plus)":
+    "File (PDF, PNG or JPEG — 10 MB max.)",
+  "Fichier accepté (version {v}). Placez les champs puis vérifiez le gabarit.":
+    "File accepted (version {v}). Place the fields, then check the template.",
+  "Fond du gabarit":
+    "Template background",
+  "Format de la page imprimée":
+    "Printed page format",
+  "Formats acceptés : PDF (fond vectoriel, une page utilisée), PNG ou JPEG (au moins 600 px). Taille maximale : 10 Mo.":
+    "Accepted formats: PDF (vector background, one page used), PNG or JPEG (at least 600 px). Maximum size: 10 MB.",
+  "Gabarit du certificat":
+    "Certificate template",
+  "Gabarit du diplôme":
+    "Diploma template",
+  "Gabarit désactivé. Les documents déjà délivrés restent consultables.":
+    "Template disabled. Documents already issued remain available.",
+  "Gabarit intégré « {l} »":
+    "Built-in template “{l}”",
+  "Gabarit téléversé de l'académie — version {v}":
+    "Academy's uploaded template — version {v}",
+  "Gabarit vérifié : rendu d'essai conforme. Il peut être activé.":
+    "Template checked: test rendering compliant. It can be activated.",
+  "Gabarits des documents":
+    "Document templates",
+  "Gauche":
+    "Left",
+  "Historique des versions ({n})":
+    "Version history ({n})",
+  "L'image est inscrite dans la page sans être déformée.":
+    "The image is fitted into the page without distortion.",
+  "La version active reste utilisée tant que la nouvelle n'est pas vérifiée puis activée.":
+    "The active version stays in use until the new one is checked and activated.",
+  "La version et son fichier seront supprimés. Une version qui a servi à des documents ne peut pas l'être : désactivez-la.":
+    "The version and its file will be deleted. A version used for documents cannot be: disable it instead.",
+  "La vérification a échoué.":
+    "The check failed.",
+  "Le document remis ne contient que cette page. Enregistrez puis rouvrez l'éditeur pour voir son fond.":
+    "The issued document contains only this page. Save, then reopen the editor to see its background.",
+  "Le nom de l'élève doit être placé.":
+    "The student's name must be placed.",
+  "Les documents Word (DOCX) ne sont pas acceptés : exportez-les en PDF depuis Word.":
+    "Word documents (DOCX) are not accepted: export them to PDF from Word.",
+  "Lignes":
+    "Lines",
+  "Moyenne minimale, sur 20 (convertie sur 10 pour le primaire)":
+    "Minimum average, out of 20 (converted to /10 for primary)",
+  "Nouvelle version créée à partir de celle-ci (brouillon).":
+    "New version created from this one (draft).",
+  "Objet du certificat (facultatif, sinon celui du gabarit)":
+    "Certificate purpose (optional, otherwise the template's)",
+  "Obligatoire (production refusée si la donnée manque)":
+    "Required (production refused if the data is missing)",
+  "Original":
+    "Original file",
+  "Page du PDF utilisée comme fond":
+    "PDF page used as background",
+  "Page {n} sur {c}":
+    "Page {n} of {c}",
+  "Page {w} × {h} mm. Faites glisser une zone pour la déplacer, sa poignée pour la redimensionner.":
+    "Page {w} × {h} mm. Drag a field to move it, its handle to resize it.",
+  "Placer ce champ":
+    "Place this field",
+  "Placer les champs":
+    "Place the fields",
+  "Police":
+    "Font",
+  "Production par classe":
+    "Production by class",
+  "Produire les brouillons":
+    "Produce the drafts",
+  "Rendu d'essai vérifié le {d}":
+    "Test rendering checked on {d}",
+  "Rendu…":
+    "Rendering…",
+  "Reprendre la configuration de la version {v} (champs, textes, règle)":
+    "Reuse the configuration of version {v} (fields, texts, rule)",
+  "Retirer ce champ":
+    "Remove this field",
+  "Règle d'émission":
+    "Issuing rule",
+  "Supprimer une version":
+    "Delete a version",
+  "Sélectionnez une académie dans le sélecteur en haut de page : chaque académie a ses propres gabarits, et ils ne se partagent pas.":
+    "Select an academy in the selector at the top of the page: each academy has its own templates, and they are not shared.",
+  "Textes du gabarit":
+    "Template texts",
+  "Téléverser le gabarit du certificat":
+    "Upload the certificate template",
+  "Téléverser le gabarit du diplôme":
+    "Upload the diploma template",
+  "Téléversé le {d}":
+    "Uploaded on {d}",
+  "Un brouillon est produit pour chaque élève de la classe, sur le gabarit de son académie. Les élèves qui ne remplissent pas la règle d'émission ou dont une donnée obligatoire manque sont listés avec le motif.":
+    "A draft is produced for each student of the class, on their academy's template. Students who do not meet the issuing rule or lack required data are listed with the reason.",
+  "Version activée : elle sert désormais à produire les documents.":
+    "Version activated: it is now used to produce documents.",
+  "Version en préparation":
+    "Version in preparation",
+  "Version en service":
+    "Version in use",
+  "Version vérifiée et réactivée.":
+    "Version checked and reactivated.",
+  "Voir la configuration":
+    "View the configuration",
+  "Vérification des données…":
+    "Checking the data…",
+  "Vérification…":
+    "Checking…",
+  "Vérifier":
+    "Check",
+  "Zone hors de la page : {l}":
+    "Field outside the page: {l}",
+  "Zones superposées : {l}":
+    "Overlapping fields: {l}",
+  "activé le {d}":
+    "activated on {d}",
+  "gabarit intégré":
+    "built-in template",
+  "gabarit v{v}":
+    "template v{v}",
+  "page {n} sur {c}":
+    "page {n} of {c}",
+  "par":
+    "by",
+  "paysage":
+    "landscape",
+  "portrait":
+    "portrait orientation",
+  "{c} brouillon(s) produit(s), {r} refusé(s).":
+    "{c} draft(s) produced, {r} refused.",
+  "{k} — version n° {v}":
+    "{k} — version no. {v}",
+  "{n} champ(s) positionné(s)":
+    "{n} field(s) placed",
+  "{n} document(s) délivré(s).":
+    "{n} document(s) issued.",
+  "{n} document(s) produit(s)":
+    "{n} document(s) produced",
+  "Étapes : téléverser → placer les champs → vérifier → activer. Une nouvelle version ne remplace l'ancienne qu'à son activation ; les documents déjà délivrés ne changent jamais.":
+    "Steps: upload → place the fields → check → activate. A new version replaces the old one only when activated; documents already issued never change.",
+  "Téléversé, non validé":
+    "Uploaded, not validated",
+  "Valide, prêt à être activé":
+    "Valid, ready to be activated",
+  "Actif — utilisé pour les documents":
+    "Active — used for documents",
+  "Actif — remplacement en préparation":
+    "Active — replacement in preparation",
+  "Invalide ou incompatible":
+    "Invalid or incompatible",
+  "Remplacé par une version plus récente":
+    "Replaced by a newer version",
+  "Automatique (A4, selon l'orientation de l'image)":
+    "Automatic (A4, based on the image orientation)",
+  "A4 paysage":
+    "A4 landscape",
+  "A4 portrait":
+    "A4 portrait orientation",
+  "A5 paysage":
+    "A5 landscape",
+  "A5 portrait":
+    "A5 portrait orientation",
+  "Lettre US paysage":
+    "US Letter landscape",
+  "Lettre US portrait":
+    "US Letter portrait orientation",
+  "Serif (Crimson Pro)":
+    "Serif font (Crimson Pro)",
+  "Serif italique (Crimson Pro)":
+    "Serif italic (Crimson Pro)",
+  "Sans serif (Helvetica)":
+    "Sans-serif (Helvetica)",
+  "Sans serif gras (Helvetica)":
+    "Sans-serif bold (Helvetica)",
+  "Times":
+    "Times font",
+  "Décision de l'administration (aucune condition automatique)":
+    "Administration decision (no automatic condition)",
+  "Moyenne annuelle minimale":
+    "Minimum annual average",
+  "Élève inscrit dans une classe pour l'année":
+    "Student enrolled in a class for the year",
+  "Intitulé du document":
+    "Document title",
+  "Nom du signataire":
+    "Signatory name",
+  "Fonction du signataire":
+    "Signatory title",
+  "Objet du certificat":
+    "Certificate purpose",
+  "X (mm)":
+    "X position (mm)",
+  "Y (mm)":
+    "Y position (mm)",
+  "Largeur (mm)":
+    "Width (mm)",
+  "Hauteur (mm)":
+    "Height (mm)",
+  "Taille (pt)":
+    "Size (pt)",
+  "Taille min. (pt)":
+    "Min. size (pt)",
+  "PDF (fond vectoriel)":
+    "PDF (vector background)",
+  "Image PNG":
+    "PNG image",
+  "Image JPEG":
+    "JPEG image",
+  "Nom complet de l'élève":
+    "Student full name",
+  "Nom officiel de l'académie":
+    "Academy official name",
+  "Ville de l'académie (« Fait à »)":
+    "Academy city (“Issued at”)",
+  "Mention (barème de l'académie)":
+    "Distinction (academy scale)",
+  "Date d'obtention (saisie à la production)":
+    "Award date (entered at production)",
+  "Date de délivrance":
+    "Issue date",
+  "Numéro de référence (attribué à la délivrance)":
+    "Reference number (assigned on issue)",
+  "Aucun gabarit actif : téléversez-le, vérifiez-le et activez-le dans « Gabarits des documents ».":
+    "No active template: upload, check and activate it in “Document templates”.",
+  "Version {v} en préparation : {s}":
+    "Version {v} in preparation: {s}",
+  // Gabarits multiformats — 27/10/2026
+  "Conversion bureautique indisponible sur ce serveur (LibreOffice absent) : Word, OpenDocument, RTF et PowerPoint sont refusés ici.":
+    "Office conversion unavailable on this server (LibreOffice missing): Word, OpenDocument, RTF and PowerPoint are refused here.",
+  "Conversion en cours…":
+    "Converting…",
+  "Fichier : {f} — {n} Mo au plus":
+    "File: {f} — {n} MB max.",
+  "Le document sera converti en PDF par le serveur (jusqu'à {s} s). Si plusieurs pages, vous choisirez celle qui sert de fond.":
+    "The document will be converted to PDF by the server (up to {s} s). If it has several pages, you will choose the one used as background.",
+  "Marqueurs repérés dans le document : {m}":
+    "Markers found in the document: {m}",
+  "Taille maximale : {n} Mo.":
+    "Maximum size: {n} MB.",
+  "Word, OpenDocument, RTF et PowerPoint sont convertis en PDF ; les marqueurs {{ nom_du_champ }} qu'ils contiennent deviennent des champs déjà placés. L'original est conservé.":
+    "Word, OpenDocument, RTF and PowerPoint files are converted to PDF; the {{ field_name }} markers they contain become pre-placed fields. The original is kept.",
+  "conversion {s} s":
+    "converted in {s} s",
+  "fond normalisé {f}":
+    "normalised background {f}",
+  "{n} champ(s) placé(s) automatiquement":
+    "{n} field(s) placed automatically",
+  "Image TIFF":
+    "TIFF image",
+  "Image WEBP":
+    "WEBP image",
+  "Word (DOCX)":
+    "Word document (DOCX)",
+  "Word 97-2003 (DOC)":
+    "Word 97-2003 document (DOC)",
+  "OpenDocument texte (ODT)":
+    "OpenDocument text (ODT)",
+  "Texte enrichi (RTF)":
+    "Rich text (RTF)",
+  "PowerPoint (PPTX)":
+    "PowerPoint presentation (PPTX)",
+  "PowerPoint 97-2003 (PPT)":
+    "PowerPoint 97-2003 (PPT) presentation",
+  "OpenDocument présentation (ODP)":
+    "OpenDocument presentation (ODP)",
+  // Programme linguistique et identité des académies (sans nom en dur)
+  "Fonctionnalité non activée": "Feature not enabled",
+  "Cette fonctionnalité n'est pas activée pour {nom}.": "This feature is not enabled for {nom}.",
+  "cette académie": "this academy",
+  "Visioconférence dégradée — instance de la plateforme injoignable": "Video conferencing degraded — the platform's server cannot be reached",
+  "Visioconférence indisponible — instance de la plateforme non configurée": "Video conferencing unavailable — the platform's server is not configured",
+  "Les cours en direct ne peuvent pas démarrer pour le moment. Aucune session n'est basculée vers un service public : les échanges restent sur l'infrastructure de la plateforme.": "Live classes cannot start for now. No session is moved to a public service: exchanges stay on the platform's infrastructure.",
+  "Recevoir aussi par SMS le texte des e-mails et des rappels de paiement que votre académie vous adresse.": "Also receive by SMS the text of the emails and payment reminders your academy sends you.",
+  "Gestion centralisée du logo officiel de chaque académie — propagé automatiquement dans toute l'application": "Central management of each academy's official logo — applied automatically across the application",
+  "Gestion centralisée du logo officiel de {nom} — propagé automatiquement dans toute l'application": "Central management of the official logo of {nom} — applied automatically across the application",
+  "Logo officiel par défaut": "Default official logo",
+  "Le logo par défaut de l'académie est utilisé.": "The academy's default logo is used.",
+  "Matières communes (bilingues)": "Common (bilingual) subjects",
+  "Comptées une seule fois dans la moyenne générale, hors moyennes française et anglaise.": "Counted once in the overall average, outside the French and English averages.",
+  "Cette classe n'admet pas de matière commune.": "This class does not accept common subjects.",
+  "Aucune matière commune. Créez-en dans l'onglet Matières.": "No common subject. Create some in the Subjects tab.",
+  "Formats acceptés, téléversés tels quels — la plateforme les convertit elle-même :": "Accepted formats, uploaded as they are — the platform converts them itself:",
+  "Admissions en ligne": "Online admissions",
+  "Admissions en ligne — {nom}": "Online admissions — {nom}",
+  "Système bilingue": "Bilingual system",
+  "Rapports mensuels — {nom}": "Monthly reports — {nom}",
+  "Tous les e-mails envoyés depuis la plateforme, avec leur contenu et leurs pièces jointes": "All emails sent from the platform, with their content and attachments",
+  "Montants en {devise} :": "Amounts in {devise}:",
+  "{noms} et {n} autres": "{noms} and {n} others",
+  "cours présentiels": "in-person classes",
+  "Classe, salle physique, heure locale": "Class, physical room, local time",
+  "séances en ligne": "online sessions",
+  "{n} académie(s)": "{n} academy(ies)",
+  "Autres emplois du temps ({type}) : sélectionnez {noms} dans le sélecteur d'académie.": "Other timetables ({type}): select {noms} in the academy selector.",
+  "Commune (bilingue)": "Common (bilingual)",
+  "Préinscriptions du site": "Website pre-registrations",
+  "{nom} est une académie présentielle : ses cours se planifient dans l'onglet « cours présentiels », avec une classe et une salle physique.": "{nom} is an in-person academy: its classes are scheduled in the “in-person classes” tab, with a class and a physical room.",
+  "Cette académie": "This academy",
+  "Sélectionnez une académie en ligne pour planifier une séance.": "Select an online academy to schedule a session.",
+  "Visioconférence (plugNmeet) — cours en ligne, tableau blanc, sous-groupes, sondages, réunions parents-professeurs…": "Video conferencing (plugNmeet) — online classes, whiteboard, breakout rooms, polls, parent-teacher meetings…",
+  "Aucune matière ni classe existante n'est en conflit avec ce programme.": "No existing subject or class conflicts with this curriculum.",
+  "Données existantes incompatibles avec ce programme (rien ne sera supprimé) :": "Existing data incompatible with this curriculum (nothing will be deleted):",
+  "Notes rattachées à ces matières": "Grades attached to these subjects",
+  "Ces données restent consultables mais ne pourront plus recevoir de notes ni de créneaux. Corrigez-les dans « Matières » et « Classes », ou confirmez le changement.": "This data stays viewable but can no longer receive grades or time slots. Fix it in “Subjects” and “Classes”, or confirm the change.",
+  "Programme linguistique": "Curriculum language",
+  "À configurer": "To be configured",
+  "Programme linguistique*": "Curriculum language*",
+  "Langues des matières, des parcours et des bulletins — distinct de la langue de l'interface.": "Language of subjects, tracks and report cards — separate from the interface language.",
+  "Langue de l'interface et des documents": "Interface and document language",
+  "Analyse des données existantes…": "Checking existing data…",
+  "Je confirme le changement : les données listées sont conservées telles quelles.": "I confirm the change: the listed data is kept as it is.",
+  "Cette classe n'admet pas de matière commune (bilingue) : {noms}.": "This class does not accept common (bilingual) subjects: {noms}.",
+  "Français uniquement": "French only",
+  "Anglais uniquement": "English only",
+  "Bilingue français-anglais": "French-English bilingual",
+  "Matières en français seulement. Bulletin : une section française, sans moyenne 60/40.": "Subjects in French only. Report card: one French section, no 60/40 average.",
+  "Matières en anglais seulement. Bulletin : une section anglaise.": "Subjects in English only. Report card: one English section.",
+  "Matières françaises, anglaises et communes. Bulletin à deux sections, moyenne bilingue 60/40.": "French, English and common subjects. Two-section report card, 60/40 bilingual average.",
+  "🇫🇷 Française (moyenne FR)": "🇫🇷 French (FR average)",
+  "🇬🇧 Anglaise (moyenne EN)": "🇬🇧 English (EN average)",
+  "🌐 Commune (bilingue) — moyenne générale seulement": "🌐 Common (bilingual) — overall average only",
+  // Catégories d'e-mails du parcours d'admission en ligne (libellés servis par le serveur)
+  "Notification admissions FHA":
+    "FHA admissions notification",
+  "Accusé de réception FHA (parent)":
+    "FHA acknowledgement (parent)",
+  "Alerte admissions FHA (équipe)":
+    "FHA admissions alert (team)",
+  "Cours à distance : tests de placement, cours et devoirs en ligne. Les groupes sont à créer selon le programme.": "Remote teaching: placement tests, online lessons and assignments. Groups are created to suit the programme.",
+  // Libellés visibles auparavant codés en dur (audit du 28/10/2026)
+  "Visioconférence indisponible": "Video conferencing unavailable",
+  "-- Sélectionner un établissement --": "-- Select a school --",
+  "— Moi-même —": "— Myself —",
+  "— Pas encore affecté —": "— Not yet assigned —",
+  "+ Ajouter cette décision": "+ Add this decision",
+  "— Sélectionner —": "— Select —",
+  "— Sélectionner un élève —": "— Select a student —",
+  "Impossible de rejoindre la salle": "Unable to join the room",
+  "Fermer cet onglet": "Close this tab",
+  "Vous avez quitté la réunion": "You have left the meeting",
+  "Connexion à la salle de classe…": "Connecting to the classroom…",
+  "Ouverture de la salle…": "Opening the room…",
+  "Votre session sur la plateforme est toujours ouverte.": "Your session on the platform is still open.",
+  "Rejoindre à nouveau": "Join again",
+  "Retour à l'accueil": "Back to home",
+  "Chargement": "Loading",
 };

@@ -179,3 +179,41 @@ def ratelimit_or_503(*, key, rate, method, group=None):
         return enveloppe
 
     return decorateur
+
+
+# ── Adresse du client derrière le reverse proxy ───────────────────────
+#
+# DÉFAUT CORRIGÉ : en production, le backend n'est joignable que par
+# nginx ; REMOTE_ADDR y vaut donc l'adresse du CONTENEUR nginx, la même
+# pour tout le monde. Les limites « par IP » (connexion 20/min, formulaires
+# publics 5/min) étaient en réalité GLOBALES : quelques familles qui
+# s'inscrivent en même temps bloquaient toutes les autres, et un attaquant
+# n'était pas isolé. nginx transmet l'adresse réelle dans X-Real-IP
+# (`proxy_set_header X-Real-IP $remote_addr`, qui écrase toute valeur
+# fournie par le client).
+import ipaddress as _ipaddress
+
+_TRUSTED_PROXY_NETWORKS = [_ipaddress.ip_network(n) for n in (
+    "127.0.0.0/8", "10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16", "::1/128", "fc00::/7",
+)]
+
+
+def client_ip(request):
+    """
+    X-Real-IP si la requête arrive d'un proxy du réseau privé (nginx dans
+    Docker) ; sinon REMOTE_ADDR. Un client qui joindrait directement le
+    backend ne peut donc pas choisir son adresse.
+    """
+    remote = request.META.get("REMOTE_ADDR", "") or ""
+    forwarded = (request.META.get("HTTP_X_REAL_IP", "") or "").strip()
+    try:
+        from_proxy = any(_ipaddress.ip_address(remote) in net for net in _TRUSTED_PROXY_NETWORKS)
+    except ValueError:
+        from_proxy = False
+    if forwarded and from_proxy:
+        try:
+            _ipaddress.ip_address(forwarded)
+            return forwarded
+        except ValueError:
+            pass
+    return remote or "0.0.0.0"

@@ -226,6 +226,11 @@ class FHAApplicationViewSet(viewsets.ModelViewSet):
     ISOLATION : le queryset est filtré par l'entité courante. Un admin FEBA
     ne voit AUCUN dossier FHA (son entité n'en possède pas), et un accès
     direct par identifiant renvoie 404 plutôt que d'exposer l'objet.
+
+    MENU : l'entrée « Admissions en ligne » suit la capacité calculée
+    `online_admissions` (School.features) — l'académie rattachée au site
+    public. Pas de 403 ici : une autre académie reçoit une liste vide et
+    404 par identifiant, ce qui ne révèle pas l'existence des dossiers.
     """
     permission_classes = [IsAuthenticated, IsAdminOrAbove]
     http_method_names = ['get', 'patch', 'post', 'delete', 'head', 'options']
@@ -409,11 +414,25 @@ class FHAApplicationViewSet(viewsets.ModelViewSet):
         pouvoir agir. Un échec sans action de rattrapage laisse une famille
         sans nouvelle et une équipe sans moyen.
         """
-        from .fha_enrollment import resend_parent_acknowledgement
+        from .fha_enrollment import (
+            RESULT_LABELS, RESULT_MISSING_RECIPIENT, RESULT_RECENTLY_SENT, send_confirmation,
+        )
 
         application = self.get_object()
-        delivery = resend_parent_acknowledgement(application, user=request.user)
+        # Envoi individuel explicite : un renvoi à un dossier déjà confirmé
+        # est permis (c'est l'objet du bouton), mais pas deux envois dans
+        # la fenêtre anti-doublon (double clic, double requête).
+        result, delivery = send_confirmation(application, user=request.user, skip_sent=False)
+        payload = {"id": application.pk, "reference": application.reference,
+                   "result": result, "result_label": RESULT_LABELS[result]}
+        if result == RESULT_MISSING_RECIPIENT:
+            return Response({**payload, "detail": RESULT_LABELS[result]},
+                            status=status.HTTP_400_BAD_REQUEST)
+        if result == RESULT_RECENTLY_SENT:
+            return Response({**payload, "detail": RESULT_LABELS[result]},
+                            status=status.HTTP_409_CONFLICT)
         return Response({
+            **payload,
             "status": delivery.status,
             "status_display": delivery.get_status_display(),
             "accepted": delivery.is_delivered_to_provider,
@@ -421,6 +440,62 @@ class FHAApplicationViewSet(viewsets.ModelViewSet):
             "error": delivery.last_error,
             "used_real_provider": delivery.used_real_provider,
         })
+
+    @action(detail=False, methods=['post'], url_path='bulk-resend-confirmation')
+    def bulk_resend_confirmation(self, request):
+        """
+        Envoi GROUPÉ des accusés de réception aux dossiers sélectionnés.
+
+        Les identifiants viennent du navigateur mais sont revalidés ici, dans
+        `get_queryset()` (portée de l'académie) : un dossier d'une autre
+        académie répond « introuvable », exactement comme un identifiant
+        inexistant. Chaque dossier est traité indépendamment : un échec
+        n'arrête pas les autres. Par défaut (`skip_sent`), un dossier dont
+        l'accusé est déjà parti n'est pas renvoyé — c'est ce qui permet de
+        reprendre les seuls échecs sans doubler les succès.
+        """
+        from .fha_enrollment import (
+            CONFIRMATION_BULK_MAX, RESULT_LABELS, RESULT_NOT_FOUND, send_confirmation,
+        )
+
+        raw_ids = request.data.get('ids')
+        if not isinstance(raw_ids, list) or not raw_ids:
+            return Response({'ids': "Liste d'identifiants requise."}, status=status.HTTP_400_BAD_REQUEST)
+        ids = []
+        for value in raw_ids:
+            try:
+                value = int(value)
+            except (TypeError, ValueError):
+                return Response({'ids': f"Identifiant invalide : {value!r}."}, status=status.HTTP_400_BAD_REQUEST)
+            if value not in ids:
+                ids.append(value)
+        if len(ids) > CONFIRMATION_BULK_MAX:
+            return Response(
+                {'ids': f"{len(ids)} dossiers : au plus {CONFIRMATION_BULK_MAX} par envoi groupé."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        skip_sent = request.data.get('skip_sent', True) is not False
+        visible = {a.pk: a for a in self.get_queryset().filter(pk__in=ids)}
+
+        results, summary = [], {}
+        for pk in ids:
+            application = visible.get(pk)
+            if application is None:
+                result, delivery = RESULT_NOT_FOUND, None
+            else:
+                result, delivery = send_confirmation(application, user=request.user, skip_sent=skip_sent)
+            summary[result] = summary.get(result, 0) + 1
+            results.append({
+                'id': pk,
+                'reference': getattr(application, 'reference', None),
+                'result': result,
+                'result_label': RESULT_LABELS[result],
+                'error': getattr(delivery, 'last_error', '') if result not in ('already_sent', 'recently_sent') else '',
+                'tracking_id': str(delivery.tracking_id) if delivery is not None else None,
+                'used_real_provider': bool(delivery and delivery.used_real_provider),
+            })
+        logger.info("FHA — envoi groupé des accusés par %s : %s", request.user.email, summary)
+        return Response({'results': results, 'summary': summary})
 
     # ── P4 : export CSV complet ──────────────────────────────────────
 

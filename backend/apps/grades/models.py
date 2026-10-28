@@ -66,38 +66,30 @@ APPRECIATION_SCALE = [
 ]
 
 
-def get_appreciation(value, max_value=20):
+def get_appreciation(value, max_value=20, *, academy=None, cycle=None,
+                     language='fr', cache=None):
     """
     Appréciation officielle d'une note.
 
     value      : note obtenue (None → '—', l'absence de note n'est pas une erreur)
-    max_value  : barème de la note (20 par défaut) ; toute note sur un autre
-                 barème est normalisée sur 20 avant classification :
-                 note_normalisée = note / barème × 20 (ex. 45/50 → 18 → TRÈS SATISFAISANT)
+    max_value  : barème de la note (20 par défaut). Les seuils étant des
+                 POURCENTAGES de la note maximale, 45/50, 18/20 et 9/10
+                 reçoivent la même appréciation.
+    academy    : académie dont le barème s'applique (AppreciationRule).
+                 Sans académie : barème historique ci-dessus.
+    cycle      : cycle du niveau (« college »…) si l'académie a un barème
+                 propre à ce cycle.
 
     Une valeur non numérique, un barème nul/négatif ou une note hors
     [0, barème] lèvent ValueError : les données invalides doivent être
     rejetées par la validation, jamais converties en appréciation trompeuse.
+
+    Calcul délégué à apps.grades.appreciations (source unique).
     """
-    if value is None:
-        return '—'
-    from decimal import InvalidOperation
-    try:
-        v = Decimal(str(value))
-        m = Decimal(str(max_value))
-    except (InvalidOperation, ValueError, TypeError):
-        raise ValueError(f'Note ou barème non numérique : {value!r} / {max_value!r}')
-    if m <= 0:
-        raise ValueError(f'Barème invalide : {max_value!r} (doit être strictement positif)')
-    if v < 0:
-        raise ValueError(f'Note négative : {value!r}')
-    if v > m:
-        raise ValueError(f'Note {value!r} supérieure au barème {max_value!r}')
-    normalized = v if m == 20 else v / m * Decimal('20')
-    for threshold, label in APPRECIATION_SCALE:
-        if normalized >= threshold:
-            return label
-    return 'TRÈS FAIBLE'
+    from .appreciations import appreciation_for
+
+    return appreciation_for(value, max_value, academy=academy, cycle=cycle,
+                            language=language, cache=cache)
 
 
 # ─── Grade Model ─────────────────────────────────────────────────────────────
@@ -560,3 +552,74 @@ class GradeHistory(models.Model):
 
     def __str__(self):
         return f'{self.grade} — {self.action} par {self.changed_by} le {self.changed_at}'
+
+
+# ─── Appréciations administrables (P0 du 26/10/2026) ─────────────────────────
+
+class AppreciationRule(models.Model):
+    """
+    Un palier du barème d'appréciations d'UNE académie.
+
+    REPRÉSENTATION RETENUE : seuil BAS INCLUSIF en POURCENTAGE de la note
+    maximale. Une note n sur un barème m reçoit le libellé du palier actif le
+    plus élevé tel que n / m × 100 ≥ seuil. Le pourcentage ne dépend pas du
+    barème d'affichage : 9,5/10, 19/20 et 47,5/50 reçoivent la même
+    appréciation, sans multiplier ni diviser arbitrairement une note. C'est
+    exactement le barème historique (seuils sur 20 : 19 ↔ 95 %, 17 ↔ 85 %…).
+
+    Déterminisme : les paliers actifs ont des seuils DISTINCTS et le plus bas
+    vaut 0 ; chaque note tombe donc dans un et un seul intervalle
+    [seuil, seuil suivant[ — une note exactement sur une borne prend le
+    palier dont c'est le seuil.
+
+    Portée : `cycle` vide = toute l'académie ; un cycle (« college »,
+    « lycee »…) = barème propre à ce cycle, prioritaire s'il est défini. Les
+    paliers appartiennent à UNE académie : modifier ceux de l'une ne touche
+    jamais les autres (copie à la création, jamais de référence partagée).
+
+    Les bulletins déjà produits gardent le libellé qu'ils portaient
+    (`Bulletin.appreciation` et le PDF sont figés à la génération).
+    """
+    CYCLE_SCOPE_CHOICES = [
+        ('', 'Tous les cycles'),
+        ('maternelle', 'Maternelle'),
+        ('primaire', 'Primaire'),
+        ('college', 'Collège'),
+        ('lycee', 'Lycée'),
+    ]
+
+    school = models.ForeignKey(
+        'schools.School', on_delete=models.CASCADE, related_name='appreciation_rules',
+    )
+    cycle = models.CharField(max_length=20, choices=CYCLE_SCOPE_CHOICES, blank=True, default='')
+    min_percent = models.DecimalField(
+        max_digits=5, decimal_places=2,
+        validators=[MinValueValidator(0), MaxValueValidator(100)],
+        help_text="Seuil bas inclusif, en % de la note maximale (95 = 19/20 = 9,5/10).",
+    )
+    label_fr = models.CharField(max_length=80)
+    label_en = models.CharField(max_length=80, blank=True)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    updated_by = models.ForeignKey(
+        'accounts.CustomUser', null=True, blank=True, on_delete=models.SET_NULL,
+        related_name='+',
+    )
+
+    class Meta:
+        verbose_name = "Palier d'appréciation"
+        verbose_name_plural = "Paliers d'appréciation"
+        ordering = ['school_id', 'cycle', '-min_percent']
+        constraints = [
+            # Garde ultime du déterminisme : deux paliers actifs d'un même
+            # barème ne peuvent pas partager un seuil.
+            models.UniqueConstraint(
+                fields=['school', 'cycle', 'min_percent'],
+                condition=models.Q(is_active=True),
+                name='uniq_active_appreciation_threshold',
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.label_fr} (≥ {self.min_percent} %)"

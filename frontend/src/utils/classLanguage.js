@@ -69,9 +69,15 @@ export function allowedLanguages(classe) {
   return TRACK_LANGUAGES[effectiveTrack(classe)];
 }
 
-/** Langues dont au moins une matière est obligatoire. */
+/**
+ * Langues dont au moins une matière est obligatoire : celles du parcours
+ * (`expected_languages` du backend). Une matière COMMUNE (« bilingual »)
+ * peut être admise sans jamais être exigée.
+ */
 export function requiredLanguages(classe) {
-  return allowedLanguages(classe);
+  const attendues = classe?.expected_languages;
+  if (Array.isArray(attendues) && attendues.length > 0) return attendues;
+  return TRACK_LANGUAGES[effectiveTrack(classe)];
 }
 
 /** Vrai si cette classe peut porter des matières de cette langue. */
@@ -103,7 +109,9 @@ export function validateSelection(classe, matieresSelectionnees) {
     // à partir de fragments traduits séparément donne un anglais bancal,
     // l'ordre des mots n'étant pas le même.
     erreurs.push(
-      langue === "fr"
+      langue === "bilingual"
+        ? t("Cette classe n'admet pas de matière commune (bilingue) : {noms}.", { noms })
+        : langue === "fr"
         ? (parLangue[langue].length > 1
             ? t("Cette classe n'enseigne pas les matières françaises : {noms}.", { noms })
             : t("Cette classe n'enseigne pas la matière française {noms}.", { noms }))
@@ -146,4 +154,34 @@ export function summarize(classe, comptes) {
   return langue === "fr"
     ? t("Configuration complète — {n} matière(s) française(s)", { n })
     : t("Configuration complète — {n} matière(s) anglaise(s)", { n });
+}
+
+/**
+ * Parcours proposés à la création ou à la modification d'une classe : ceux
+ * que le serveur admet pour l'académie active (`class_tracks` du contexte
+ * d'entité). Sans académie précise (mode « Toutes les Académies »), les
+ * trois — le serveur tranche pour l'académie de l'année choisie.
+ */
+export function trackOptions(academy) {
+  const admis = academy?.class_tracks;
+  const tous = [TRACK_BILINGUAL, TRACK_FRANCOPHONE, TRACK_ANGLOPHONE];
+  return Array.isArray(admis) && admis.length > 0 ? tous.filter((x) => admis.includes(x)) : tous;
+}
+
+export const SUBJECT_LANGUAGE_OPTIONS = [
+  { value: "fr", label: "🇫🇷 Française (moyenne FR)" },
+  { value: "en", label: "🇬🇧 Anglaise (moyenne EN)" },
+  { value: "bilingual", label: "🌐 Commune (bilingue) — moyenne générale seulement" },
+];
+
+/**
+ * Catégories de matière proposées : celles que le programme linguistique
+ * de l'académie active admet (`subject_languages` du contexte d'entité).
+ * Une valeur déjà enregistrée reste affichée pour ne pas la changer en
+ * silence ; le serveur refuse tout ce qui n'est pas admis.
+ */
+export function subjectLanguageOptions(academy, current) {
+  const admises = academy?.subject_languages;
+  if (!Array.isArray(admises) || admises.length === 0) return SUBJECT_LANGUAGE_OPTIONS;
+  return SUBJECT_LANGUAGE_OPTIONS.filter((o) => admises.includes(o.value) || o.value === current);
 }

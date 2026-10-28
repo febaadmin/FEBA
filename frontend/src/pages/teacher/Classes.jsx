@@ -8,6 +8,7 @@ import DataTable from "../../components/ui/DataTable";
 import Modal from "../../components/ui/Modal";
 import { t } from "../../i18n";
 
+import { ageColumn } from "../../utils/age";
 export default function TeacherClasses() {
   const [selectedClass, setSelectedClass] = useState(null);
   const { data, isLoading } = useQuery({ queryKey: ["teacher-classes-list"], queryFn: () => classesAPI.list() });
@@ -22,6 +23,7 @@ export default function TeacherClasses() {
 
   const cols = [
     { key: "name", label: t("Nom"), accessor: "full_name" },
+    ageColumn(),
     { key: "matricule", label: t("Matricule"), accessor: "matricule" },
     { key: "gender", label: t("Genre"), accessor: "gender", render: r => r.gender === "M" ? "M" : "F" },
   ];

@@ -87,10 +87,17 @@ verifier() {
 
 printf '%sFichiers Docker Compose%s\n\n' "$BOLD" "$OFF"
 verifier "développement"            -f docker-compose.yml
-verifier "production"               -f docker-compose.prod.yml
+# Production : validée COMME ELLE EST LANCÉE (--env-file .env.prod). Le
+# .env.prod réel n'existe pas dans le dépôt : un répertoire de projet
+# temporaire contient une copie de l'exemple, jamais un vrai secret.
+PROD_DIR="$(mktemp -d)"
+cp .env.prod.example "$PROD_DIR/.env.prod"
+verifier "production"               --project-directory "$PROD_DIR" --env-file .env.prod.example -f "$PWD/docker-compose.prod.yml"
+rm -rf "$PROD_DIR"
 verifier "Jitsi (base)"             --env-file "$JITSI_ENV" -f docker-compose.jitsi.yml
 verifier "Jitsi + serveur dédié"    --env-file "$JITSI_ENV" -f docker-compose.jitsi.yml -f docker-compose.jitsi.prod.yml
 verifier "Jitsi + derrière le proxy" --env-file "$JITSI_ENV" -f docker-compose.jitsi.yml -f docker-compose.jitsi.behind-proxy.yml
+verifier "plugNmeet (+ proxy edge)"  --env-file plugnmeet/plugnmeet.env.example -f plugnmeet/docker-compose.plugnmeet.yml --profile edge
 
 printf '\n'
 if [ "$FAILURES" -gt 0 ]; then

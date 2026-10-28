@@ -242,6 +242,9 @@ class JitsiAccessControlTests(TestCase):
         )
 
 
+# Moteur de RETOUR ARRIÈRE (VIDEO_PROVIDER=jitsi) : son refus de repli
+# public reste garanti tant qu'il peut être réactivé.
+@override_settings(VIDEO_PROVIDER="jitsi")
 class JitsiUnconfiguredTests(TestCase):
     """Sans instance configurée : 503 explicite, jamais de session publique."""
 

@@ -1,6 +1,35 @@
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useEffect } from "react";
+import { t } from "../i18n";
 import { Routes, Route, Navigate } from "react-router-dom";
 import { useAuthStore } from "../store/authStore";
+import { authAPI } from "../api";
+import FeatureGate from "../components/FeatureGate";
+
+/**
+ * Jeton présent mais utilisateur absent (connexion interrompue entre
+ * l'obtention du jeton et `/auth/me`, rechargement pendant la connexion,
+ * `/auth/me` en échec) : on recharge l'utilisateur UNE fois ; en cas
+ * d'échec, on revient à la connexion. Auparavant, l'écran restait
+ * indéfiniment sur « Chargement… ».
+ */
+let restoring = null;
+export function useRestoreUser() {
+  const { user, accessToken, refreshToken, _hasHydrated, setAuth, clearAuth } = useAuthStore();
+  useEffect(() => {
+    if (!_hasHydrated || !accessToken || user?.role || restoring) return;
+    restoring = authAPI.me()
+      // Jetons relus APRÈS la réponse : un renouvellement a pu avoir lieu
+      // pendant l'appel (intercepteur 401), ne pas réécrire l'ancien.
+      .then((me) => {
+        const now = useAuthStore.getState();
+        setAuth(me.data, now.accessToken, now.refreshToken);
+      })
+      // Seul un refus d'authentification efface la session ; une coupure
+      // réseau la conserve (elle sera rechargée au prochain rendu).
+      .catch((e) => { if (e?.response?.status === 401) clearAuth(); })
+      .finally(() => { restoring = null; });
+  }, [_hasHydrated, accessToken, refreshToken, user, setAuth, clearAuth]);
+}
 
 // ── Site vitrine public (P4 v4) — chargé en lazy pour ne pas alourdir le
 // bundle de l'ERP (code splitting : le chunk "site" n'est téléchargé que
@@ -30,7 +59,7 @@ function SiteFallback() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#F7F2E8]">
       <div className="w-8 h-8 border-2 border-[#071D49] border-t-transparent rounded-full animate-spin"
-        role="status" aria-label="Chargement" />
+        role="status" aria-label={t("Chargement")} />
     </div>
   );
 }
@@ -62,6 +91,7 @@ const AdminGrades = lazy(() => import("../pages/admin/Grades"));
 const AdminPayments = lazy(() => import("../pages/admin/Payments"));
 const AdminCardTransactions = lazy(() => import("../pages/admin/CardTransactions"));
 const AdminOfficialDocuments = lazy(() => import("../pages/admin/OfficialDocuments"));
+const AdminDocumentTemplates = lazy(() => import("../pages/admin/DocumentTemplates"));
 const AdminAttendance = lazy(() => import("../pages/admin/Attendance"));
 const AdminHomework = lazy(() => import("../pages/admin/Homework"));
 const AdminAnnouncements = lazy(() => import("../pages/admin/Announcements"));
@@ -73,9 +103,14 @@ const AdminUserFiles = lazy(() => import("../pages/admin/UserFiles"));
 const AdminUsers = lazy(() => import("../pages/admin/Users"));
 const AdminLevels = lazy(() => import("../pages/admin/Levels"));
 const AdminBranding = lazy(() => import("../pages/admin/Branding"));
+const AdminAppreciations = lazy(() => import("../pages/admin/Appreciations"));
+const SuperAdminAcademies = lazy(() => import("../pages/superadmin/Academies"));
 const AdminEnrollments = lazy(() => import("../pages/admin/Enrollments"));
 const AdminProfile = lazy(() => import("../pages/admin/Profile"));
 const FhaAdmissions = lazy(() => import("../pages/admin/FhaAdmissions"));
+const MassEmail = lazy(() => import("../pages/admin/MassEmail"));
+const Outbox = lazy(() => import("../pages/admin/Outbox"));
+const PaymentReminders = lazy(() => import("../pages/admin/PaymentReminders"));
 const MonthlyReports = lazy(() => import("../pages/admin/MonthlyReports"));
 const AdminWebsite = lazy(() => import("../pages/admin/Website"));
 
@@ -115,11 +150,13 @@ const StudentProfile = lazy(() => import("../pages/student/Profile"));
 const SharedAnnouncements = lazy(() => import("../pages/shared/Announcements"));
 const VirtualRooms = lazy(() => import("../pages/shared/VirtualRooms"));
 const VirtualRoomSession = lazy(() => import("../pages/shared/VirtualRoomSession"));
+const VirtualRoomEnded = lazy(() => import("../pages/shared/VirtualRoomEnded"));
 const ForcePasswordChange = lazy(() => import("../pages/shared/ForcePasswordChange"));
 
 // ── Guard: vérifie l'authentification et le rôle ──────────────────────────
 function ProtectedRoute({ children, allowedRoles }) {
   const { user, accessToken, _hasHydrated } = useAuthStore();
+  useRestoreUser();
 
   // FIX v25: Wait until Zustand has rehydrated from localStorage.
   // Without this, the first render always sees user=null → redirect to /login
@@ -129,7 +166,7 @@ function ProtectedRoute({ children, allowedRoles }) {
       <div className="min-h-screen flex items-center justify-center bg-slate-50">
         <div className="flex flex-col items-center gap-3 text-slate-400">
           <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-          <span className="text-sm">Chargement…</span>
+          <span className="text-sm">{t("Chargement…")}</span>
         </div>
       </div>
     );
@@ -146,7 +183,7 @@ function ProtectedRoute({ children, allowedRoles }) {
       <div className="min-h-screen flex items-center justify-center bg-slate-50">
         <div className="flex flex-col items-center gap-3 text-slate-400">
           <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-          <span className="text-sm">Chargement…</span>
+          <span className="text-sm">{t("Chargement…")}</span>
         </div>
       </div>
     );
@@ -190,6 +227,7 @@ function ProtectedRoute({ children, allowedRoles }) {
 // n'oriente pas quelqu'un sur une supposition.
 function RoleRedirect() {
   const { user, accessToken, _hasHydrated } = useAuthStore();
+  useRestoreUser();
   if (!_hasHydrated) return null;
   if (!accessToken) return <Navigate to="/login" replace />;
   // Jeton présent, utilisateur pas encore chargé : on patiente.
@@ -242,6 +280,12 @@ export default function AppRouter() {
           <VirtualRoomSession />
         </ProtectedRoute>
       } />
+      {/* Retour de plugNmeet (logout_url) : la session FEBA est intacte. */}
+      <Route path="/virtual-room/:id/ended" element={
+        <ProtectedRoute allowedRoles={["superadmin", "admin", "teacher", "student", "parent"]}>
+          <VirtualRoomEnded />
+        </ProtectedRoute>
+      } />
 
       {/* ── Site vitrine public (P4) : « / » est désormais le site public.
           La connexion à l'ERP se fait via le bouton « Connexion » du menu.
@@ -285,6 +329,7 @@ export default function AppRouter() {
         <Route path="dashboard"     element={<SuperAdminDashboard />} />
         <Route path="users"         element={<SuperAdminUsers />} />
         <Route path="admins"        element={<SuperAdminAdmins />} />
+        <Route path="academies"     element={<SuperAdminAcademies />} />
         <Route path="messages"      element={<AdminMessages />} />
         <Route path="students"      element={<AdminStudents />} />
         <Route path="teachers"      element={<AdminTeachers />} />
@@ -296,6 +341,7 @@ export default function AppRouter() {
         <Route path="payments"      element={<AdminPayments />} />
         <Route path="card-transactions" element={<AdminCardTransactions />} />
         <Route path="official-documents" element={<AdminOfficialDocuments />} />
+        <Route path="document-templates" element={<AdminDocumentTemplates />} />
         <Route path="attendance"    element={<AdminAttendance />} />
         <Route path="homework"      element={<AdminHomework />} />
         <Route path="schedule"      element={<AdminSchedule />} />
@@ -303,16 +349,20 @@ export default function AppRouter() {
         <Route path="settings"      element={<AdminSettings />} />
         <Route path="user-files"    element={<AdminUserFiles />} />
         <Route path="branding"      element={<AdminBranding />} />
+        <Route path="appreciations" element={<AdminAppreciations />} />
         <Route path="enrollments"   element={<AdminEnrollments />} />
         <Route path="virtual"       element={<VirtualRooms />} />
         <Route path="website"       element={<AdminWebsite />} />
         {/* P2 : les dossiers FHA étaient enregistrés sans écran pour
             les consulter — voici leur back-office dédié. */}
-        <Route path="fha-admissions" element={<FhaAdmissions />} />
+        <Route path="fha-admissions" element={<FeatureGate feature="online_admissions"><FhaAdmissions /></FeatureGate>} />
+        <Route path="emails" element={<MassEmail />} />
+        <Route path="outbox" element={<Outbox />} />
+        <Route path="payment-reminders" element={<PaymentReminders />} />
         {/* P3 : rapports mensuels — académie en ligne uniquement. Le
             backend refuse toute autre académie, l'entrée de menu ne fait
             que suivre. */}
-        <Route path="monthly-reports" element={<MonthlyReports />} />
+        <Route path="monthly-reports" element={<FeatureGate feature="monthly_reports"><MonthlyReports /></FeatureGate>} />
         <Route path="incidents"     element={<SuperAdminIncidents />} />
         <Route path="incidents/:id" element={<SuperAdminIncidents />} />
         <Route path="profile"       element={<SuperAdminProfile />} />
@@ -334,6 +384,7 @@ export default function AppRouter() {
         <Route path="payments"      element={<AdminPayments />} />
         <Route path="card-transactions" element={<AdminCardTransactions />} />
         <Route path="official-documents" element={<AdminOfficialDocuments />} />
+        <Route path="document-templates" element={<AdminDocumentTemplates />} />
         <Route path="attendance"    element={<AdminAttendance />} />
         <Route path="homework"      element={<AdminHomework />} />
         <Route path="announcements" element={<AdminAnnouncements />} />
@@ -344,16 +395,20 @@ export default function AppRouter() {
         <Route path="users"         element={<AdminUsers />} />
         <Route path="user-files"    element={<AdminUserFiles />} />
         <Route path="branding"      element={<AdminBranding />} />
+        <Route path="appreciations" element={<AdminAppreciations />} />
         <Route path="enrollments"   element={<AdminEnrollments />} />
         <Route path="virtual"       element={<VirtualRooms />} />
         <Route path="website"       element={<AdminWebsite />} />
         {/* P2 : les dossiers FHA étaient enregistrés sans écran pour
             les consulter — voici leur back-office dédié. */}
-        <Route path="fha-admissions" element={<FhaAdmissions />} />
+        <Route path="fha-admissions" element={<FeatureGate feature="online_admissions"><FhaAdmissions /></FeatureGate>} />
+        <Route path="emails" element={<MassEmail />} />
+        <Route path="outbox" element={<Outbox />} />
+        <Route path="payment-reminders" element={<PaymentReminders />} />
         {/* P3 : rapports mensuels — académie en ligne uniquement. Le
             backend refuse toute autre académie, l'entrée de menu ne fait
             que suivre. */}
-        <Route path="monthly-reports" element={<MonthlyReports />} />
+        <Route path="monthly-reports" element={<FeatureGate feature="monthly_reports"><MonthlyReports /></FeatureGate>} />
         <Route path="profile"       element={<AdminProfile />} />
       </Route>
       <Route path="/teacher" element={

@@ -431,10 +431,14 @@ class IdorParLApiTests(BaseSalles):
 
     def test_la_visio_est_refusee_a_une_academie_qui_ne_l_a_pas_activee(self):
         """
-        FEBA est une académie de type « campus » : `video_conferencing` y
-        est désactivé par défaut. Le refus est donc la bonne réponse — et
-        c'est une isolation plus forte encore qu'une liste vide.
+        Depuis le 26/10/2026, la visio est activée pour toutes les académies,
+        FEBA comprise. Le drapeau reste vérifié côté API : une académie pour
+        laquelle l'administration la DÉSACTIVE explicitement reçoit 403.
         """
+        self.feba.settings = {**(self.feba.settings or {}), "features": {
+            **((self.feba.settings or {}).get("features") or {}),
+            "virtual_classrooms": False, "video_conferencing": False}}
+        self.feba.save(update_fields=["settings"])
         client = APIClient()
         client.force_authenticate(self.admin_feba)
         response = client.get("/api/virtual-rooms/", {"page_size": 1000})

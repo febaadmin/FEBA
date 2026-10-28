@@ -3,7 +3,8 @@ FROM node:20-alpine AS builder
 WORKDIR /app
 
 COPY package*.json ./
-RUN npm install
+# npm ci : exactement les versions du package-lock.json (build reproductible).
+RUN npm ci
 
 COPY . .
 RUN npm run build

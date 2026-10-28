@@ -27,7 +27,7 @@ from rest_framework.response import Response
 
 from apps.accounts.permissions import IsAdminOrAbove
 from apps.core.tenancy import get_request_school
-from apps.schools.models import School
+from apps.schools.models import School, public_site_online_academy_code
 
 from .models import MonthlyReportStatus, MonthlyStudentReport
 from .serializers import (
@@ -53,7 +53,7 @@ class MonthlyReportViewSet(viewsets.ModelViewSet):
     # ── Portée ───────────────────────────────────────────────────────
 
     def _fha(self):
-        return School.objects.filter(code=School.CODE_FEBA_FHA).first()
+        return School.objects.filter(code=public_site_online_academy_code()).first()
 
     def initial(self, request, *args, **kwargs):
         super().initial(request, *args, **kwargs)
@@ -63,16 +63,15 @@ class MonthlyReportViewSet(viewsets.ModelViewSet):
         if user.is_superadmin():
             return
         academy = getattr(user, "school", None)
-        if academy is None or academy.code != School.CODE_FEBA_FHA:
+        if academy is None or not academy.has_feature("monthly_reports"):
             raise PermissionDenied(
-                "Les rapports mensuels sont propres à FEBA French Heritage "
-                "Academy. Cette académie ne dispose pas de ce module."
+                "Les rapports mensuels ne sont pas activés pour cette académie."
             )
 
     def get_queryset(self):
         fha = self._fha()
         base = (MonthlyStudentReport.objects
-                .select_related("academy", "student", "school_year")
+                .select_related("academy", "student__school", "school_year")
                 .prefetch_related("attempts"))
         if fha is None:
             return base.none()
@@ -83,7 +82,7 @@ class MonthlyReportViewSet(viewsets.ModelViewSet):
         queryset = base.filter(academy=fha)
 
         scope = get_request_school(self.request)
-        if scope is not None and scope.code != School.CODE_FEBA_FHA:
+        if scope is not None and not scope.has_feature("monthly_reports"):
             # Le super administrateur regarde une AUTRE académie : la page
             # doit obéir au sélecteur placé au-dessus d'elle.
             return queryset.none()

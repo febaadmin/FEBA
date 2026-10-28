@@ -163,8 +163,8 @@ class Command(BaseCommand):
         # ── Différence sur les zones STATIQUES ────────────────────────
         difference = ImageChops.difference(rendered, original)
         tolerance = options["tolerance"]
-        diff_data = difference.getdata()
-        mask_data = variable.getdata()
+        diff_data = difference.get_flattened_data()
+        mask_data = variable.get_flattened_data()
 
         total_static = 0
         differing = 0

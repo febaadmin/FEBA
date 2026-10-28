@@ -42,6 +42,7 @@ def valid_application(**overrides):
         "child_last_name": "Doe",
         "child_first_name": "Ama",
         "child_birth_date": "2016-05-04",
+        "child_gender": "F",
         "child_city": "Philadelphia",
         "child_state_province": "PA",
         "child_country": "United States",
@@ -460,7 +461,10 @@ class PreRegistrationVisibilityTests(TestCase):
         auth(client, "pr.fha@test.io")
         resp = client.get("/api/website/admin/preregistrations/")
         self.assertEqual(resp.status_code, status.HTTP_403_FORBIDDEN)
-        self.assertIn("Admissions FEBA FHA", str(resp.data))
+        # Le message oriente vers le module des dossiers en ligne, désigné
+        # par sa fonction (le libellé ne nomme plus une académie en dur).
+        self.assertIn("Admissions en ligne", str(resp.data))
+        self.assertNotIn("FEBA", str(resp.data))
 
     def test_superadmin_keeps_access(self):
         client = APIClient()

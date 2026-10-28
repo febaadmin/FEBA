@@ -111,7 +111,11 @@ USE_TZ = True
 
 STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
-STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+# Django 5.1 a supprimé STATICFILES_STORAGE : déclaration par STORAGES.
+STORAGES = {
+    'default': {'BACKEND': 'django.core.files.storage.FileSystemStorage'},
+    'staticfiles': {'BACKEND': 'whitenoise.storage.CompressedManifestStaticFilesStorage'},
+}
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = config('MEDIA_ROOT', default=str(BASE_DIR / 'media'))
@@ -122,6 +126,16 @@ MEDIA_ROOT = config('MEDIA_ROOT', default=str(BASE_DIR / 'media'))
 # L'accès passe obligatoirement par /api/documents/<id>/download/, qui
 # vérifie l'appartenance avant de diffuser l'octet.
 PRIVATE_MEDIA_ROOT = config('PRIVATE_MEDIA_ROOT', default=str(BASE_DIR / 'private_media'))
+# Conversion des gabarits bureautiques (DOCX, ODT, RTF, PPTX…) par LibreOffice
+# sans interface — installé dans l'image Docker (backend/Dockerfile.prod).
+# Académie alimentée par les formulaires publics « en ligne » du site
+# (inscription, test de placement) — voir School.features.
+PUBLIC_SITE_ONLINE_ACADEMY_CODE = config('PUBLIC_SITE_ONLINE_ACADEMY_CODE', default='FEBA_FHA')
+# Académie présentielle alimentée par les formulaires publics du site
+# (contact, préinscriptions).
+PUBLIC_SITE_CAMPUS_ACADEMY_CODE = config('PUBLIC_SITE_CAMPUS_ACADEMY_CODE', default='FEBA')
+DOCUMENT_CONVERSION_TIMEOUT = config('DOCUMENT_CONVERSION_TIMEOUT', default=90, cast=int)
+LIBREOFFICE_BINARY = config('LIBREOFFICE_BINARY', default='')
 DOCUMENT_TEMPLATES_ROOT = config(
     'DOCUMENT_TEMPLATES_ROOT', default=str(BASE_DIR / 'document_templates'))
 
@@ -226,6 +240,44 @@ def jitsi_is_configured():
         return False
     return bool(JITSI_APP_ID and JITSI_APP_SECRET)
 
+
+# ── Visioconférence : plugNmeet auto-hébergé (remplace Jitsi) ─────────
+#
+# VIDEO_PROVIDER choisit le moteur : « plugnmeet » (par défaut) ou
+# « jitsi ». Jitsi ne reste sélectionnable que pour le RETOUR ARRIÈRE,
+# tant que plugNmeet n'a pas été validé en production (voir
+# PLUGNMEET_DEPLOYMENT_GUIDE.md § Retour arrière). Aucun repli
+# automatique : un moteur mal configuré produit une erreur explicite.
+VIDEO_PROVIDER = config('VIDEO_PROVIDER', default='plugnmeet').strip().lower()
+
+# Adresse publique du serveur plugNmeet (navigateur ET backend), par ex.
+# https://meet.globalfeba.com. Clé et secret de l'API : côté serveur
+# UNIQUEMENT — ils ne sont jamais transmis au frontend.
+PLUGNMEET_SERVER_URL = config('PLUGNMEET_SERVER_URL', default='').rstrip('/')
+# Adresse utilisée par le BACKEND s'il ne joint pas l'URL publique
+# (réseau Docker interne). Vide = PLUGNMEET_SERVER_URL.
+PLUGNMEET_INTERNAL_URL = config('PLUGNMEET_INTERNAL_URL', default='').rstrip('/')
+PLUGNMEET_API_KEY = config('PLUGNMEET_API_KEY', default='')
+PLUGNMEET_API_SECRET = config('PLUGNMEET_API_SECRET', default='')
+PLUGNMEET_TIMEOUT = config('PLUGNMEET_TIMEOUT', default=10, cast=int)
+# URL publique de FEBA à laquelle plugNmeet envoie ses webhooks
+# (présences, début et fin de réunion). Vide = pas de webhook : les
+# présences reposent alors sur les appels « rejoindre / quitter ».
+PLUGNMEET_WEBHOOK_URL = config('PLUGNMEET_WEBHOOK_URL', default='')
+# Fonctions dépendant d'un service SUPPLÉMENTAIRE : désactivées tant que
+# ce service n'est pas déployé et vérifié. Les activer sans lui afficherait
+# un bouton qui ne fait rien.
+PLUGNMEET_RECORDING_ENABLED = config('PLUGNMEET_RECORDING_ENABLED', default=False, cast=bool)
+PLUGNMEET_RTMP_ENABLED = config('PLUGNMEET_RTMP_ENABLED', default=False, cast=bool)
+PLUGNMEET_INSIGHTS_ENABLED = config('PLUGNMEET_INSIGHTS_ENABLED', default=False, cast=bool)
+# Durée maximale d'une réunion en minutes (0 = illimitée).
+PLUGNMEET_MAX_ROOM_MINUTES = config('PLUGNMEET_MAX_ROOM_MINUTES', default=0, cast=int)
+
+
+def plugnmeet_is_configured():
+    """True si l'URL, la clé et le secret de l'API plugNmeet sont fournis."""
+    return bool(PLUGNMEET_SERVER_URL and PLUGNMEET_API_KEY and PLUGNMEET_API_SECRET)
+
 # Channels
 CHANNEL_LAYERS = {
     'default': {
@@ -263,7 +315,57 @@ MONTHLY_REPORTS_MINUTE = config('MONTHLY_REPORTS_MINUTE', default=0, cast=int)
 MONTHLY_REPORTS_AUTO_SEND = config('MONTHLY_REPORTS_AUTO_SEND',
                                    default=False, cast=bool)
 
+# ── Envois d'e-mails groupés (P1 — octobre 2026) ──────────────────────
+# Garde-fous contre l'envoi massif involontaire. Valeurs prudentes par
+# défaut ; un établissement plus grand les relève explicitement.
+MASS_EMAIL_MAX_RECIPIENTS = config('MASS_EMAIL_MAX_RECIPIENTS', default=2000, cast=int)
+MASS_EMAIL_MAX_CAMPAIGNS_PER_HOUR = config('MASS_EMAIL_MAX_CAMPAIGNS_PER_HOUR', default=10, cast=int)
+MASS_EMAIL_BATCH_SIZE = config('MASS_EMAIL_BATCH_SIZE', default=50, cast=int)
+
+# ── Relances de paiement (P1 — octobre 2026) ──────────────────────────
+# Interrupteur GLOBAL : faux par défaut, et donc en développement et en
+# test. Aucune relance réelle ne part tant qu'il n'est pas explicitement
+# mis à True dans l'environnement de production ET que la politique de
+# l'académie n'est pas activée depuis l'écran « Relances de paiement ».
+PAYMENT_REMINDERS_ENABLED = config('PAYMENT_REMINDERS_ENABLED', default=False, cast=bool)
+PAYMENT_REMINDERS_HOUR = config('PAYMENT_REMINDERS_HOUR', default=8, cast=int)
+PAYMENT_REMINDERS_MINUTE = config('PAYMENT_REMINDERS_MINUTE', default=30, cast=int)
+
 CELERY_BEAT_SCHEDULE = {
+    'relances-paiements-quotidiennes': {
+        'task': 'payments.run_payment_reminders',
+        'schedule': crontab(hour=str(PAYMENT_REMINDERS_HOUR), minute=str(PAYMENT_REMINDERS_MINUTE)),
+        # Pas de rattrapage tardif : une relance « du matin » exécutée le
+        # soir après une panne attendra le lendemain.
+        'options': {'expires': 6 * 3600},
+    },
+    # Reprise des envois groupés interrompus (broker indisponible au moment
+    # de la création, worker redémarré pendant l'envoi).
+    'envois-groupes-reprise': {
+        'task': 'notifications.process_pending_campaigns',
+        'schedule': crontab(minute='*/5'),
+        'options': {'expires': 240},
+    },
+    # Nouvelles tentatives des envois en « nouvel essai programmé ». Sans
+    # cette entrée, `next_retry_at` était calculé et jamais relu.
+    'envois-email-nouvelles-tentatives': {
+        'task': 'notifications.retry_due_deliveries',
+        'schedule': crontab(minute='*/10'),
+        'options': {'expires': 540},
+    },
+    # Filet de sécurité de la visioconférence : une salle « en cours » dont
+    # la réunion n'existe plus côté plugNmeet (webhook perdu) est close.
+    # SMS : nouvelles tentatives et reprise après arrêt d'un worker.
+    'sms-nouvelles-tentatives': {
+        'task': 'notifications.retry_due_sms',
+        'schedule': crontab(minute='*/5'),
+        'options': {'expires': 240},
+    },
+    'visio-reconciliation-salles': {
+        'task': 'virtualclass.reconcile_live_rooms',
+        'schedule': crontab(minute='*/10'),
+        'options': {'expires': 540},
+    },
     'rapports-mensuels-feba-fha': {
         'task': 'monthly_reports.generate_month',
         'schedule': crontab(
@@ -271,7 +373,7 @@ CELERY_BEAT_SCHEDULE = {
             hour=str(MONTHLY_REPORTS_HOUR),
             minute=str(MONTHLY_REPORTS_MINUTE),
         ),
-        'kwargs': {'academy_code': 'FEBA_FHA'},
+        'kwargs': {'academy_code': PUBLIC_SITE_ONLINE_ACADEMY_CODE},
         'options': {
             # Si le worker n'a pas pris la tâche dans l'heure, elle est
             # abandonnée plutôt que rejouée tardivement : un rapport
@@ -282,7 +384,26 @@ CELERY_BEAT_SCHEDULE = {
 }
 
 # Email
-EMAIL_BACKEND = config('EMAIL_BACKEND', default='django.core.mail.backends.console.EmailBackend')
+# Le TRANSPORT (SMTP, console…) se choisit toujours par la variable
+# d'environnement EMAIL_BACKEND. Django, lui, passe par le backend de
+# traçage, qui journalise tout envoi échappant à apps/notifications/mailer.py
+# avant de le confier à ce transport.
+EMAIL_TRANSPORT_BACKEND = config('EMAIL_BACKEND', default='django.core.mail.backends.console.EmailBackend')
+EMAIL_BACKEND = 'apps.notifications.backends.TrackingEmailBackend'
+# auto : un hôte de capture connu (mailpit, mailhog…) est signalé « capturé,
+# non distribué » ; capture / real forcent la qualification.
+EMAIL_DELIVERY_MODE = config('EMAIL_DELIVERY_MODE', default='auto')
+EMAIL_CAPTURE_HOSTS = config('EMAIL_CAPTURE_HOSTS', default='')
+# Interface web du serveur de capture (indiquée à l'utilisateur).
+MAILPIT_UI_URL = config('MAILPIT_UI_URL', default='http://localhost:8025')
+# Pièces jointes (validation serveur, voir apps/notifications/attachments.py).
+EMAIL_ATTACHMENT_ALLOWED_EXTENSIONS = config('EMAIL_ATTACHMENT_ALLOWED_EXTENSIONS', default='')
+EMAIL_ATTACHMENT_MAX_FILE_MB = config('EMAIL_ATTACHMENT_MAX_FILE_MB', default=10, cast=int)
+EMAIL_ATTACHMENT_MAX_TOTAL_MB = config('EMAIL_ATTACHMENT_MAX_TOTAL_MB', default=20, cast=int)
+EMAIL_ATTACHMENT_MAX_FILES = config('EMAIL_ATTACHMENT_MAX_FILES', default=10, cast=int)
+# Test SMTP depuis l'écran d'administration : nombre maximal par heure et
+# par utilisateur (protection contre l'usage abusif).
+EMAIL_TEST_MAX_PER_HOUR = config('EMAIL_TEST_MAX_PER_HOUR', default=5, cast=int)
 EMAIL_HOST = config('EMAIL_HOST', default='')
 EMAIL_PORT = config('EMAIL_PORT', default=587, cast=int)
 EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='')
@@ -293,7 +414,14 @@ EMAIL_USE_SSL = config('EMAIL_USE_SSL', default=False, cast=bool)
 # défaut du système. Une famille qui envoie une fiche d'inscription
 # attendait alors la page de confirmation pendant des minutes.
 EMAIL_TIMEOUT = config('EMAIL_TIMEOUT', default=10, cast=int)
-DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='noreply@feba.bj')
+# Adresse d'expédition officielle : noreply@globalfeba.com (domaine dont le
+# SPF autorise le serveur SMTP Hostinger, DKIM « hostingermail-a »). L'ancienne
+# adresse noreply@feba.bj est retirée : si un environnement la contient
+# encore, apps.notifications.mailer la remplace et `manage.py check` le signale.
+DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='noreply@globalfeba.com')
+# Expéditeur des alertes d'erreur de Django (mail_admins). Sans lui, Django
+# écrit depuis « root@localhost », refusé par tout serveur SMTP sérieux.
+SERVER_EMAIL = config('SERVER_EMAIL', default=DEFAULT_FROM_EMAIL)
 
 # Expéditeur PROPRE À CHAQUE ACADÉMIE. Un parent de l'académie en ligne ne
 # doit pas recevoir un message venant de l'adresse de l'école de Cotonou :
@@ -301,6 +429,38 @@ DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='noreply@feba.bj')
 FEBA_FROM_EMAIL = config('FEBA_FROM_EMAIL', default='')
 FHA_FROM_EMAIL = config('FHA_FROM_EMAIL', default='')
 EMAIL_REPLY_TO = config('EMAIL_REPLY_TO', default='')
+
+# ── SMS : copie textuelle des e-mails et des relances ─────────────────
+# Voir SMS_CONFIGURATION_GUIDE.md. Désactivé par défaut : aucun SMS ne part
+# tant que SMS_ENABLED n'est pas vrai ET que le fournisseur n'est pas
+# configuré. Les secrets (jeton Twilio) ne sont lus QUE dans l'environnement.
+SMS_ENABLED = config('SMS_ENABLED', default=False, cast=bool)
+# twilio : envoi réel ; capture : enregistré dans FEBA, jamais envoyé
+# (développement et tests) ; console : écrit dans le journal, jamais envoyé.
+SMS_PROVIDER = config('SMS_PROVIDER', default='capture').strip().lower()
+# Numéro d'expédition au format E.164. Il doit appartenir au compte du
+# fournisseur et être autorisé pour l'envoi de SMS (`manage.py sms_check`).
+SMS_FROM_NUMBER = config('SMS_FROM_NUMBER', default='')
+TWILIO_ACCOUNT_SID = config('TWILIO_ACCOUNT_SID', default='')
+TWILIO_AUTH_TOKEN = config('TWILIO_AUTH_TOKEN', default='')
+# Adresse publique de FEBA à laquelle Twilio notifie la remise (delivered,
+# undelivered…). Vide = pas de suivi de remise : le statut s'arrête à
+# « accepté par le fournisseur ».
+SMS_STATUS_CALLBACK_URL = config('SMS_STATUS_CALLBACK_URL', default='')
+# Consentement : True = seuls les destinataires ayant ACCEPTÉ les SMS en
+# reçoivent (valeur prudente). False = tous sauf ceux qui ont REFUSÉ —
+# à n'activer qu'après validation juridique (clause du contrat de
+# scolarité, par exemple).
+SMS_REQUIRE_EXPLICIT_CONSENT = config('SMS_REQUIRE_EXPLICIT_CONSENT', default=True, cast=bool)
+# Indicatif présumé d'un numéro saisi SANS « + », par académie
+# (« CODE:PAYS,… »). Une académie absente de la liste : le numéro sans
+# indicatif est refusé plutôt que deviné.
+SMS_DEFAULT_REGIONS = config('SMS_DEFAULT_REGIONS', default='FEBA:BJ')
+# Un message trop long pour un seul SMS concaténé (1 600 caractères chez
+# Twilio) est découpé en plusieurs SMS numérotés, sans rien retrancher ;
+# au-delà de ce nombre de SMS, l'envoi échoue explicitement.
+SMS_MAX_MESSAGES_PER_NOTIFICATION = config('SMS_MAX_MESSAGES_PER_NOTIFICATION', default=5, cast=int)
+SMS_TIMEOUT = config('SMS_TIMEOUT', default=15, cast=int)
 
 # File upload
 FILE_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024  # 10MB
@@ -375,6 +535,9 @@ STRIPE_WEBHOOK_SECRET = config('STRIPE_WEBHOOK_SECRET', default='')
 # d'envoyer des événements en clair, et une redirection non chiffrée
 # exposerait l'identifiant de session.
 PUBLIC_BASE_URL = config('PUBLIC_BASE_URL', default='http://localhost:5173')
+# production : transports de test refusés au démarrage ; staging :
+# préproduction, tolérés en avertissement (apps/core/preflight.py).
+DEPLOYMENT_STAGE = config('DEPLOYMENT_STAGE', default='production')
 STRIPE_SUCCESS_URL = config(
     'STRIPE_SUCCESS_URL', default=f'{PUBLIC_BASE_URL}/parent/payments?paiement=succes',
 )

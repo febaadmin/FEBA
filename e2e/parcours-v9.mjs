@@ -20,12 +20,13 @@
  * étrangle les minuteries des pages non visibles, et une seconde connexion
  * dans le même processus se figeait quarante secondes.
  */
+import { fileURLToPath } from 'node:url';  // chemins avec espaces (« New Version »)
 import fs from 'node:fs';
 import { chromium } from './playwright.mjs';
 
 const BASE = process.env.E2E_BASE_URL || 'http://127.0.0.1:5173';
 const API = process.env.E2E_API_URL || 'http://127.0.0.1:8000';
-const SHOTS = process.env.E2E_SHOTS || new URL('./captures', import.meta.url).pathname;
+const SHOTS = process.env.E2E_SHOTS || fileURLToPath(new URL('./captures', import.meta.url));
 fs.mkdirSync(SHOTS, { recursive: true });
 
 const OUT = [];
@@ -50,7 +51,7 @@ async function shot(page, name) {
 /** Un navigateur neuf, une page, et le nettoyage garanti. */
 async function withBrowser(fn) {
   const browser = await chromium.launch({
-    executablePath: '/opt/pw-browsers/chromium',
+    executablePath: process.env.CHROMIUM_PATH || '/opt/pw-browsers/chromium',
     args: ['--no-sandbox', '--disable-dev-shm-usage'],
   });
   try {
@@ -132,7 +133,7 @@ async function parcoursPublicFha() {
     // navigation entre les étapes (couverte par les tests de composants).
     const payload = {
       child_last_name: 'Gbêdjissi', child_first_name: 'Élisabeth',
-      child_birth_date: '2015-04-12', child_country: 'United States',
+      child_birth_date: '2015-04-12', child_gender: 'F', child_country: 'United States',
       parent1_last_name: 'Gbêdjissi', parent1_first_name: 'Ahouéfa',
       parent1_phone: '+1 215 555 0100', parent1_whatsapp: '+1 215 555 0199',
       parent1_email: `parcours.${uniq}@example.test`,

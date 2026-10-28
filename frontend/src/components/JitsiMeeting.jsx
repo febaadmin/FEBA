@@ -34,6 +34,7 @@
  * la parole à quelqu'un.
  */
 import { useEffect, useRef, useState } from "react";
+import { t } from "../i18n";
 
 /** Scripts `external_api.js` déjà chargés, par domaine. */
 const loadedScripts = {};
@@ -181,7 +182,7 @@ export default function JitsiMeeting({
     return (
       <div className="w-full h-full flex items-center justify-center bg-slate-900 p-6">
         <div className="max-w-md text-center text-slate-200">
-          <p className="font-semibold mb-2">Visioconférence indisponible</p>
+          <p className="font-semibold mb-2">{t("Visioconférence indisponible")}</p>
           <p className="text-sm opacity-90">{error}</p>
         </div>
       </div>
@@ -192,7 +193,7 @@ export default function JitsiMeeting({
     <div className="relative w-full h-full bg-slate-900">
       {loading && (
         <div className="absolute inset-0 flex items-center justify-center text-slate-300 text-sm">
-          Connexion à la salle…
+          {t("Connexion à la salle…")}
         </div>
       )}
       <div ref={containerRef} className="w-full h-full" data-testid="jitsi-container" />

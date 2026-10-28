@@ -1,198 +1,125 @@
-# Rapport de livraison — FEBA **V9**
+# FEBA — Audit du 28 octobre 2026 : bulletin sur une page, conversions, sécurité, CI/CD
 
-Base : **V8** (`feba_v6_version_finale_corrigee`), telle que livrée et
-auditée par la QA externe.
+Branche `fix/audit-bulletin-ci-deploiement`.
 
----
-
-## 1. Le blocker principal, reproduit puis corrigé
-
-### Reproduction
-
-La disposition du conteneur a été reconstituée à l'identique — `backend/`
-seul, plus le montage nommé de `KNOWN_LIMITATIONS.md` — et la commande de
-la QA rejouée :
-
-```
-5 failed, 84 passed, 1 skipped        ← identique au rapport de QA
-tests/test_env_dev_email_config.py :  4 skipped
-```
-
-### Cause racine
-
-Cinq fichiers de tests répondaient chacun à leur façon à une seule
-question — « où est la racine du dépôt ? » :
-
-| Fichier | Mécanisme | Comportement dans le conteneur |
-|---|---|---|
-| `test_env_dev_email_config.py` | `parent.parent.parent` puis `skipTest` | **4 skipped silencieux** |
-| `test_jitsi_production_domain.py` | `dirname` × 3 | 4 échecs |
-| `test_production_settings.py` | `skipUnless(os.path.exists(...))` | **1 skipped silencieux** |
-| `test_diploma_ready_after_install.py` | `dirname` × 3 | **faux positif** (voir §3) |
-| `test_academy_identity_separation.py` | remontée + montage nommé | passait, seul |
-
-Deux d'entre eux répondaient **en se taisant**. C'est le pire des deux
-mondes : `pytest` affichait « skipped », qui se lit comme un succès, alors
-que ni Mailpit ni le modèle de production n'étaient vérifiés. Un
-`.env.dev.example` revenu au backend console serait passé inaperçu —
-c'est-à-dire exactement le défaut que ce fichier surveille.
-
-### Correction
-
-Deux pièces qui ne valent qu'ensemble :
-
-1. **`backend/tests/repo_root.py`** — résolution unique, trois chemins
-   indépendants : `FEBA_REPO_ROOT`, remontée d'arborescence (marqueurs
-   `backend/manage.py` + `frontend/package.json`), puis `/repo`. Si aucun
-   n'aboutit, elle **lève** avec un message qui nomme le geste. Aucun
-   chemin absolu propre à une machine.
-2. **`docker-compose.yml`** — le dépôt entier monté **en lecture seule**
-   sur `/repo`, plus `FEBA_REPO_ROOT=/repo`. Le montage fichier par
-   fichier disparaît : c'était le défaut, pas la solution.
-
-### Vérification
-
-| Disposition | Avant | Après |
-|---|---|---|
-| Commande de QA, conteneur | 5 failed, 84 passed, 1 skipped | **88 passed** |
-| `test_env_dev_email_config.py` | **4 skipped** | **4 passed** |
-| Suite complète, conteneur | 5 failed, 1 156 passed, 5 skipped | **1 196 passed, 0 skipped** |
-
-Le montage a aussi été retiré volontairement : les tests concernés passent
-alors de « skipped » à **32 échecs bruyants**. Le silence a disparu.
-
----
-
-## 2. Jitsi — conflit de ports (§9)
-
-**Mesuré sur les fichiers livrés, pas supposé :**
-
-| Service | Fichier | Ports de l'hôte |
-|---|---|---|
-| `nginx-prod` | `docker-compose.prod.yml` | 80, 443 |
-| `jitsi-web` | `docker-compose.jitsi.prod.yml` | **80, 443** |
-
-Sur le serveur qui sert déjà `globalfeba.com`, la pile Jitsi était
-**indéployable** : soit « port is already allocated », soit — si Jitsi
-démarrait en premier — le site principal qui ne redémarre plus. La V8
-documentait « serveur dédié » sans jamais vérifier cette hypothèse.
-
-**Corrigé en livrant la seconde topologie, pas en renonçant à la première :**
-
-- `docker-compose.jitsi.behind-proxy.yml` — Jitsi n'écoute que sur
-  `127.0.0.1`, TLS terminé par le nginx de FEBA, pas de client ACME
-  concurrent. `ENABLE_AUTH=1`, `ENABLE_GUESTS=0`, `AUTH_TYPE=jwt`,
-  `JWT_ALLOW_EMPTY=0` et `JVB_ADVERTISE_IPS` **conservés**.
-- `nginx/sites-available/meet.globalfeba.com.conf` — vhost complet
-  (WebSocket XMPP, `colibri-ws`, BOSH, `X-Forwarded-Proto`,
-  `frame-ancestors` au lieu de `X-Frame-Options: DENY`, l'application
-  affichant la salle en iframe). **Livré mais NON activé** : il référence
-  un certificat absent, et nginx refuserait de démarrer — ce nginx servant
-  aussi le site principal.
-- `make jitsi-proxy-up` / `-down` / `-logs`, et `make jitsi-config-check`
-  qui signale désormais le conflit.
-
-**Éprouvé, pas seulement écrit :** le vhost a été servi par un vrai nginx
-1.24 contre un serveur qui rejoue les en-têtes reçus. Deux défauts réels
-ont été trouvés et corrigés à ce moment — `http2 on;` (syntaxe nginx ≥ 1.25
-qui aurait empêché le démarrage) et des en-têtes manquants sur
-`colibri-ws`.
-
----
-
-## 3. Deux tests qui passaient sans rien vérifier
-
-- **`test_5_le_fond_neutralise_est_versionne`** interrogeait `git
-  check-ignore` sur `/app/...` en travaillant depuis la racine du dépôt.
-  Git répondait « is outside repository » (code 128) et l'assertion
-  « code ≠ 0 » s'en satisfaisait. Le test interroge désormais le chemin
-  **relatif au dépôt**, et refuse un code autre que 0 ou 1.
-- **`test_le_modele_de_production_documente_les_variables_requises`**
-  était gardé par un `skipUnless` toujours faux dans le conteneur.
-
----
-
-## 4. Migration `schools.0015` (§10)
-
-**Auditée, jugée sûre, non modifiée.** Réécrire une migration déjà
-appliquée la ferait diverger entre les bases qui l'ont passée et les
-autres.
-
-11 tests (`test_migration_0015_data_safety.py`) exécutent la vraie
-fonction sur une base peuplée :
-
-| Propriété | Résultat |
+| | |
 |---|---|
-| Numéro hors service remplacé sur l'entité | ✅ |
-| Numéro recopié dans l'adresse retiré | ✅ |
-| Numéro d'entité **légitime** conservé | ✅ |
-| Colonne vide **laissée vide** (ne remplit pas) | ✅ |
-| **Coordonnées personnelles intactes** (parent, contact, préinscription) | ✅ |
-| Idempotente (3 exécutions) | ✅ |
-| Base vide traversée sans erreur | ✅ |
-| L'inverse ne restaure pas le numéro retiré | ✅ |
+| Départ | `705468c` (= version V2 `FEBA_LAST_VERSION`, vérifiée fichier par fichier ; seuls les deux workflows différaient, modifications reprises) |
+| Base GitHub | `main` = `d3bc137` (ancêtre de `705468c` : provenance linéaire) |
+| Commit final | voir `git log -1` ; les campagnes de référence ont tourné sur `1e464ff`, la documentation a été ajoutée ensuite |
 
-Le contrôle qui compte : parents, visiteurs et candidats portent les mêmes
-noms de colonnes que l'entité. On leur a donné **délibérément** le numéro
-retiré ; la migration n'y touche pas.
+Statuts utilisés :
+- **CORRIGÉ ET TESTÉ** ;
+- **NON VÉRIFIABLE** (environnement indisponible) ;
+- **NON CORRIGÉ** ;
+- **BLOQUÉ** (accès ou autorisation) ;
+- **RECOMMANDÉ**.
 
 ---
 
-## 5. Intégration continue (§17)
+## 1. Bulletin sur une seule page — CORRIGÉ ET TESTÉ
 
-**Constat : il n'existait AUCUN workflow de Pull Request.** Le dépôt ne
-contenait que `deploy.yml`, déclenché par un push sur `main` — une Pull
-Request n'était donc validée par rien, et les tests s'exécutaient pour la
-première fois *après* la fusion, au moment du déploiement.
+**Cause racine.** La mise en page ReportLab était rigide : logo de 2 cm, intertitres de 11 à 14 pt, marges internes des lignes, bloc commentaire et cachet de 3 cm. Elle ne vérifiait jamais la hauteur disponible. Mesuré : dès 6 matières françaises et 4 anglaises, les signatures, le cachet et le pied de page passaient en page 2. Les tests existants n'utilisaient que 2 à 4 matières.
 
-`.github/workflows/ci.yml` est ajouté : suites backend PostgreSQL **et**
-SQLite, `manage.py check`, `makemigrations --check`, tests/lint/build
-frontend, validité des cinq assemblages Compose, cohérence Jitsi, syntaxe
-Nginx (vhost Jitsi activé compris), sûreté du dépôt.
+**Correction** (`apps/bulletins/pdf_generator.py`). Quatre densités de mise en page sont essayées, de « standard » à « très compact ». Elles ne changent que les espacements, les marges internes, la taille du logo et du cachet, puis la police, jamais sous 7 pt. Le moteur conserve la première densité dont le PDF **produit** compte exactement une page.
 
-Aucun secret de production n'est requis. **`deploy.yml` n'est pas
-modifié.**
+Ni matière, ni note, ni appréciation, ni calcul ne sont retirés ou modifiés. Au-delà de la densité la plus compacte : `BulletinLayoutError`, HTTP 422 sur l'aperçu et la génération, ancien PDF conservé. Le bulletin de maternelle utilise le même mécanisme.
 
----
+**Capacité mesurée** : 28 matières, ou 22 avec le commentaire maximal de 1 200 caractères. Les données réelles de développement comptent au plus 10 matières par classe.
 
-## 6. Non-régression production (§19)
+**Défaut découvert pendant l'audit** : les lettres hors Windows-1252 étaient imprimées en carrés noirs (« Ìyábọ̀ » sortait « Ìyáb■■ »). Cela touche ɖ, ɛ, ɔ, ŋ, les voyelles pointées et les tons des noms en fon et en yoruba. Correction : repli glyphe par glyphe sur DejaVu Sans, police libre embarquée avec sa licence (`apps/core/pdf_longtext.py`).
 
-| Fichier | Diff V8 → V9 | Pourquoi | Risque | Vérifié par |
-|---|---|---|---|---|
-| `.github/workflows/deploy.yml` | **inchangé** | — | — | — |
-| `backend/feba_project/settings/prod.py` | **inchangé** | — | — | — |
-| `docker-compose.jitsi.prod.yml` | **inchangé** | topologie A conservée | — | — |
-| `scripts/backup.sh`, `restore.sh` | **inchangé** | — | — | — |
-| `docker-compose.prod.yml` | **+4, −0** | monter `sites-enabled/` (vide) | nul — répertoire vide | `docker compose config` |
-| `nginx/nginx.prod.conf` | **+14, −0** | `include sites-enabled/*.conf` | nul — un motif sans correspondance n'est pas une erreur nginx | `nginx -t` vide **et** vhost activé |
-| `frontend/nginx.prod.conf` | **+11, −0** | `/images/` répond `404` sur fichier absent | faible — aucune route SPA sous `/images/` | 6 requêtes HTTP réelles |
-| `docker-compose.yml` (dev) | **+22, −9** | montage `/repo` en lecture seule | dev uniquement | suite complète en disposition conteneur |
+**Preuves** :
+- `tests/test_bulletin_one_page.py`, sur la base et l'API réelles, vérifie :
+  - exactement une page A4, chaque matière et chaque information d'identité ;
+  - la moyenne pondérée sur /10 et sur /20, et toutes les périodes ;
+  - les notes manquantes, le commentaire maximal, les noms longs et accentués (fon et yoruba), deux académies ;
+  - qu'aucun caractère ne sort de la page et qu'aucune police n'est sous 7 pt ;
+  - l'aperçu, la génération, le fichier téléchargé et une classe entière ;
+  - le refus explicite au-delà de la capacité.
+- Navigateur réel (`e2e/parcours-bulletin-une-page.mjs`) : l'aperçu et 6 PDF officiels font une page chacun, avec les sections FR et EN et les signatures.
 
-Aucun changement silencieux : les trois fichiers de production touchés le
-sont de façon **purement additive**, et leur comportement par défaut est
-strictement celui de la V8.
+## 2. Délai de conversion des documents — CORRIGÉ ET TESTÉ
 
----
+**Cause racine.** Le contrat, tel que l'annoncent le réglage et le message d'erreur, est un délai **global** par téléversement. Or `convert_office` enchaîne jusqu'à trois appels LibreOffice, et chacun recevait le délai entier. Avec un délai de 1 s, une conversion de 2,43 s était donc acceptée.
 
-## 7. Ce qui n'a pas pu être exécuté
+**Correction** (`apps/documents/conversion.py`) :
+- un objet `Deadline` transmet à chaque étape le temps **restant** ;
+- le relevé et le retrait des marqueurs comptent dans le délai ;
+- le groupe de processus (LibreOffice et ses descendants détachés) est tué dans tous les cas ;
+- les répertoires temporaires sont supprimés et aucun gabarit partiel n'est enregistré.
 
-- **`docker compose up` — NON EXÉCUTÉ.** Le démon Docker n'est pas
-  disponible dans cet environnement (`docker info` échoue). Le client
-  fonctionne : `docker compose config` est validé pour les cinq
-  assemblages. Healthchecks, démarrage des services et `/api/health/`
-  n'ont donc **pas** été rejoués — ils l'avaient été par la QA sur V8.
-- **Appel Jitsi réel — NON EXÉCUTÉ.** L'infrastructure n'existe pas :
-  `meet.globalfeba.com` ne résout toujours pas.
-- **Envoi d'e-mail réel — NON EXÉCUTÉ.** Backend en mémoire pendant les
-  tests ; la configuration Mailpit est vérifiée sur les fichiers.
-- **Parcours navigateur — non rejoués.** Ils avaient été exécutés en V8 ;
-  aucun code de parcours utilisateur n'a changé en V9.
+**Preuves** :
+- `GlobalDeadlineTests` utilise un faux convertisseur à durée maîtrisée. Contre-épreuve : 2 échecs sur l'ancien code, 4 réussites sur le nouveau.
+- `test_delai_de_conversion_depasse` (LibreOffice réel) a réussi 5 fois sur 5 dans l'image Python 3.12.
+- Le test réel n'a été ni supprimé ni affaibli, et le délai n'a pas été relevé.
 
----
+## 3. Données, migrations, retour arrière — CORRIGÉ ET TESTÉ (en local) ; production NON VÉRIFIABLE
 
-## 8. Aucun résultat inventé
+- **96 migrations** séparent `main` de cette version, toutes non destructives.
+- Copie peuplée par le code `main` (2 400 notes, 276 paiements, 120 bulletins…), puis migrée : effectifs, empreintes des identifiants et sommes **identiques** (`scripts/audit/data_counts.py`).
+- **Défaut trouvé** : sept colonnes NOT NULL ajoutées sans défaut en base. Revenir à l'ancien code **sans restaurer la base** cassait la création de paiements (IntegrityError). Correction : `db_default` (migrations `notifications 0008`, `payments 0015`, `website 0013`). Avec le code `main` sur le schéma migré, les écritures fonctionnent (`scripts/audit/rollback_columns_check.py` → `RISKY []`).
 
-Tous les chiffres de ce rapport et de `TEST_REPORT.md` proviennent de
-commandes réellement exécutées dans cet environnement, dont les sorties
-figurent dans la transcription. Ce qui n'a pas pu l'être est marqué
-**NON EXÉCUTÉ** avec sa raison, jamais remplacé par un PASS.
+## 4. Sécurité — CORRIGÉ ET TESTÉ
+
+| Composant | Avant → après | Constat |
+|---|---|---|
+| Django | 5.0.4 → **5.2.18 LTS** | branche 5.0 non maintenue, 43 vulnérabilités publiées |
+| DRF / simplejwt | 3.15.1 → 3.18.3 / 5.3.1 → 5.5.1 | 7 + 2 vulnérabilités |
+| Pillow | 10.3.0 → 13.0.0 | 66 vulnérabilités |
+| pypdf | 6.14.2 → 6.21.4 | 27 vulnérabilités |
+| gunicorn / sentry-sdk | 21.2.0 → 23.0.0 / 1.45.0 → 1.45.1 | vulnérabilités publiées |
+| WeasyPrint | **retiré** | inutilisé (6 vulnérabilités) |
+| axios, follow-redirects, zod (+ resolvers) | 1.18 → 1.21, 1.16.0 → 1.16.2, 3 → 4 | sévérité haute |
+
+Changements liés :
+- `STATICFILES_STORAGE` → `STORAGES` (supprimé en Django 5.1).
+- `fontTools` est déclaré : utilisé directement, il n'était présent que par WeasyPrint (158 tests échouaient sans lui).
+- DRF ≥ 3.16 rendait `school` obligatoire au téléversement d'un logo : le validateur généré pour une contrainte conditionnelle est désactivé, avec justification.
+
+Résultat de `pip-audit` après correction : aucune vulnérabilité (base et production). `npm audit --omit=dev --audit-level=high` : aucune haute ni critique. Reste React Router 6, avis **modéré**, atténué par la garde `safeInternalPath` (voir `KNOWN_LIMITATIONS.md`).
+
+## 5. CI/CD — CORRIGÉ ; exécution GitHub : voir la pull request
+
+**CI** :
+- Python **3.12**, comme les images Docker (la CI testait en 3.11).
+- LibreOffice et polices installés, et exigés (`FEBA_REQUIRE_LIBREOFFICE=1`). Les tests de conversion étaient auparavant **ignorés en silence**.
+- Service Mailpit, et `-rs` pour lister chaque test ignoré.
+- Contrôle bloquant explicite du bulletin sur une page et du délai de conversion.
+- `pip-audit` et `npm audit`.
+- Construction des images de production.
+
+**Déploiement** : le commit **testé** (`GITHUB_SHA`) est déployé, et non plus `origin/main` au moment de l'exécution. Le commit précédent est enregistré pour le retour arrière. La fusion dans `main` déclenche **automatiquement** le déploiement en production.
+
+## 6. Autres corrections
+
+- Pagination ordonnée (enseignants, parents, académie).
+- `CheckConstraint(check=)` → `condition=`.
+- pypdf 7 : la page est rattachée au writer avant rotation et fusion.
+- 39 libellés visibles codés en dur passent par `t()` (16 traductions anglaises).
+- Liens de notification filtrés par `safeInternalPath`.
+
+## 7. Tests exécutés (résultats exacts) — voir `TEST_REPORT.md`
+
+| Suite | Résultat |
+|---|---|
+| Backend PostgreSQL 16, image Python 3.12 + LibreOffice, commit exporté `1e464ff` | **1959 passed**, 0 failed, 4 skipped |
+| Backend SQLite, même image | **1948 passed**, 0 failed, 15 skipped |
+| `manage.py check`, `makemigrations --check` | aucun problème, aucune migration manquante |
+| Vitest | **413 passed** |
+| ESLint | 0 erreur (74 avertissements préexistants) |
+| Build Vite ; images Docker de production | réussis |
+| E2E navigateur (Chrome) : bulletin, langues/identité (2 phases), académies, espaces anglais, préinscription, site public anglais | **tous verts** |
+
+## 8. BLOQUÉ — production et intégration
+
+- **Accès production** : la lecture de la production (SSH vers `62.238.38.111`, sondes de `globalfeba.com`) a été **refusée par la politique de permissions** de cette session. N'ont donc pas pu être vérifiés : la version en service, les volumes, les sauvegardes Restic, le TLS, Jitsi et les services. Aucun déploiement n'a eu lieu.
+- **Fusion** : non effectuée. Elle déclenche le déploiement automatique, qui exige votre accord explicite et les contrôles de `MANUAL_PRODUCTION_ACTIONS.md` § 000000000.
+- **plugNmeet réel** : NOT RUN.
+
+## 9. Recommandé
+
+- Protéger `main` : contrôles obligatoires, environnement GitHub `production` avec approbation.
+- Épingler l'empreinte SSH du serveur, au lieu de `ssh-keyscan`.
+- Vérifier que le dépôt doit bien rester public.
+- Prévoir React Router 7 et ReportLab ≥ 4.4.

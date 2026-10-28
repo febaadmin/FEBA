@@ -17,13 +17,14 @@
 #   make diagnose                        → diagnostic en cas de problème
 #   make prod                              → démarre l'environnement de production
 
-.PHONY: install bootstrap dev migrate migrations-plan superuser seed seed-reset seed-check init-academies \
+.PHONY: prod prod-rollback prod-preflight prod-logs prod-down plugnmeet-setup-local plugnmeet-up plugnmeet-down plugnmeet-logs plugnmeet-health install bootstrap dev migrate migrations-plan superuser seed seed-reset seed-check init-academies \
         test-sqlite test-postgres test-frontend test-e2e test-install \
         payments-setup payments-check payments-test payments-webhook-check \
         documents-check documents-install documents-ready documents-calibrate documents-compare \
         branding-check \
         jitsi-up jitsi-down jitsi-restart jitsi-logs jitsi-health jitsi-config-check \
         jitsi-network jitsi-prod-restart \
+        deploy-check deploy-production deploy-rollback production-health \
         jitsi-prod-up jitsi-prod-down jitsi-prod-logs \
         jitsi-proxy-up jitsi-proxy-down jitsi-proxy-logs \
         health logs logs-all ps down reset \
@@ -122,6 +123,29 @@ bootstrap:
 # Démarre l'instance Jitsi AUTO-HÉBERGÉE. Les secrets manquants sont
 # générés automatiquement : plus aucune étape manuelle, et surtout aucun
 # repli vers une instance publique.
+# ── plugNmeet (remplace Jitsi) — voir PLUGNMEET_DEPLOYMENT_GUIDE.md ──────
+PNM_COMPOSE = docker compose -p feba-pnm-local -f plugnmeet/docker-compose.plugnmeet.yml --env-file plugnmeet/runtime/plugnmeet.env
+
+plugnmeet-setup-local:
+	@bash scripts/plugnmeet_setup.sh --local
+
+plugnmeet-up:
+	@test -f plugnmeet/runtime/plugnmeet.env || bash scripts/plugnmeet_setup.sh --local
+	$(PNM_COMPOSE) up -d
+
+plugnmeet-down:
+	$(PNM_COMPOSE) down
+
+plugnmeet-logs:
+	$(PNM_COMPOSE) logs -f plugnmeet pnm-livekit
+
+plugnmeet-health:
+	@if docker compose ps --status running backend-dev 2>/dev/null | grep -q backend-dev; then \
+		docker compose exec -T backend-dev python manage.py plugnmeet_health; \
+	else \
+		cd backend && python3 manage.py plugnmeet_health; \
+	fi
+
 jitsi-up:
 	@bash scripts/jitsi_up.sh
 
@@ -200,9 +224,28 @@ jitsi-proxy-logs:
 # `scripts/jitsi_up.sh` le créait déjà pour le démarrage de développement.
 # Les démarrages de PRODUCTION ne passent pas par ce script : ils
 # tombaient sur l'erreur, sur le serveur, au pire moment.
+# ── Production : contrôle et déploiement ─────────────────────────────
+# `deploy-check` ne modifie RIEN : il dit si le serveur est en état de
+# recevoir le déploiement. `deploy-production` sauvegarde d'abord, et
+# vérifie ce qu'il a fait plutôt que de l'affirmer.
+deploy-check:
+	@bash scripts/deploy_production.sh --check
+
+deploy-production:
+	@bash scripts/deploy_production.sh
+
+deploy-rollback:
+	@bash scripts/deploy_production.sh --rollback
+
 jitsi-prod-restart: jitsi-network
 	docker compose $(JITSI_PROD_COMPOSE) restart
 	@echo "Pile redémarrée — vérifiez : make jitsi-health JITSI_TARGET=$${JITSI_DOMAIN:-meet.globalfeba.com}"
+
+# État de bout en bout : l'application ET la visioconférence. Les deux
+# répondent séparément, et une seule des deux en panne se diagnostique
+# différemment.
+production-health:
+	@bash scripts/production_health.sh
 
 jitsi-network:
 	@docker network inspect feba_jitsi_shared >/dev/null 2>&1 || \
@@ -362,11 +405,19 @@ install-check:
 repair:
 	bash scripts/repair.sh
 
+# Déploiement vérifié (sauvegarde, contrôle de pré-démarrage, fumée,
+# retour arrière automatique) — voir scripts/deploy_feba.sh.
 prod:
-	docker compose -f docker-compose.prod.yml up --build -d
+	bash scripts/deploy_feba.sh
+
+prod-rollback:
+	bash scripts/deploy_feba.sh --rollback
+
+prod-preflight:
+	docker compose --env-file .env.prod -f docker-compose.prod.yml run --rm --no-deps -T backend-prod python manage.py production_preflight
 
 prod-logs:
-	docker compose -f docker-compose.prod.yml logs -f backend-prod
+	docker compose --env-file .env.prod -f docker-compose.prod.yml logs -f backend-prod celery-prod celery-beat
 
 prod-down:
-	docker compose -f docker-compose.prod.yml down
+	docker compose --env-file .env.prod -f docker-compose.prod.yml down

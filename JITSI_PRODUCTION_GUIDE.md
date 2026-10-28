@@ -1,5 +1,9 @@
 # Visioconférence FEBA — instance auto-hébergée `meet.globalfeba.com`
 
+> **RETOUR ARRIÈRE UNIQUEMENT** — la visioconférence de production est plugNmeet
+> (`PLUGNMEET_DEPLOYMENT_GUIDE.md`). Ce document ne sert qu'à maintenir ou rétablir Jitsi
+> (`VIDEO_PROVIDER=jitsi`) ; ne jamais activer les deux moteurs à la fois.
+
 Guide de déploiement, d'exploitation et de dépannage de l'instance Jitsi
 du groupe FEBA.
 

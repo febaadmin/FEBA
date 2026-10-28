@@ -1,5 +1,8 @@
 # Limites connues — V9
 
+> **DOCUMENT HISTORIQUE** — il décrit une version antérieure de FEBA ; ses résultats n'ont pas été
+> rejoués tels quels sur cette version. Références à jour : `DOCUMENTATION_INDEX.md`, `FINAL_REPORT.md`.
+
 Ce fichier ne recycle pas des fonctionnalités inachevées en « limites ».
 Chaque point ci-dessous dépend d'une ressource que l'établissement seul
 peut fournir, ou d'un choix assumé qui est expliqué. Tout ce qui pouvait

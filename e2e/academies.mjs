@@ -3,9 +3,10 @@
  * Produit un rapport texte + des captures, et sort en échec si un point
  * du cahier des charges n'est pas satisfait.
  */
+import { fileURLToPath } from 'node:url';  // chemins avec espaces (« New Version »)
 import { chromium } from './playwright.mjs';
 const BASE = process.env.E2E_BASE_URL || 'http://127.0.0.1:5173';
-const SHOTS = process.env.E2E_SHOTS || new URL('./captures', import.meta.url).pathname;
+const SHOTS = process.env.E2E_SHOTS || fileURLToPath(new URL('./captures', import.meta.url));
 import fs from 'node:fs';
 fs.mkdirSync(SHOTS, { recursive: true });
 const OUT = [];
@@ -88,12 +89,19 @@ async function currentAcademyLabel() {
   return (await page.locator('button[aria-haspopup=listbox]').innerText()).trim();
 }
 
-async function switchAcademy(label) {
+async function switchAcademy(label, { endpoint = null } = {}) {
   const before = await currentAcademyLabel();
   if (before.includes(label)) return 0;      // déjà sur cette académie
   await page.click('button[aria-haspopup=listbox]');
   await page.waitForSelector('li[role=option]');
   const t0 = Date.now();
+  // Synchronisation sur un fait observable : la PREMIÈRE réponse de
+  // l'écran affiché qui suit la bascule (et non un délai fixe, qui lisait
+  // la réponse de l'académie précédente quand le réseau était plus lent).
+  const served = endpoint
+    ? page.waitForResponse((r) => new URL(r.url()).pathname === endpoint
+        && r.request().method() === 'GET' && r.status() === 200, { timeout: 30000 })
+    : null;
   await page.click(`li[role=option]:has-text("${label}")`);
   // Attente active plutôt que waitForFunction : on veut pouvoir dire ce
   // que le sélecteur affichait si la bascule n'aboutit pas.
@@ -107,9 +115,15 @@ async function switchAcademy(label) {
     await page.screenshot({ path: `${SHOTS}/echec-bascule-${label.slice(0, 10).replace(/\W/g, '')}.png` });
     throw new Error(`bascule vers « ${label} » non aboutie — sélecteur = « ${seen} »`);
   }
+  if (served) {
+    const response = await served;
+    // `lastPayload` est rempli par le gestionnaire « response », qui lit le
+    // corps de façon asynchrone : attendre que CETTE réponse y soit rangée.
+    const rows = await response.json().then((j) => (Array.isArray(j) ? j : j?.results) || []);
+    lastPayload.set(endpoint, rows);
+  }
   await page.waitForLoadState('networkidle');
   const ms = Date.now() - t0;
-  await page.waitForTimeout(500);
   return ms;
 }
 
@@ -126,16 +140,27 @@ const nFeba0 = (await servedRows('/api/students/')).length;
 const badgesFeba = await visibleAcademies();
 netlog.length = 0;
 
-const msFha = await switchAcademy('FEBA French Heritage Academy');
+const msFha = await switchAcademy('FEBA French Heritage Academy', { endpoint: '/api/students/' });
 const nFha = (await servedRows('/api/students/')).length;
 const badgesFha = await visibleAcademies();
 
-const msAll = await switchAcademy('Toutes les Académies');
+const msAll = await switchAcademy('Toutes les Académies', { endpoint: '/api/students/' });
 const nAll = (await servedRows('/api/students/')).length;
 const badgesAll = await visibleAcademies();
 
-const msFeba = await switchAcademy('Faith & Excellence');
-const nFeba = (await servedRows('/api/students/')).length;
+const msFeba = await switchAcademy('Faith & Excellence', { endpoint: '/api/students/' });
+// Effectif AFFICHÉ (compteur de la page) : au retour sur une académie déjà
+// visitée, l'écran peut être servi par le cache (aucune nouvelle réponse
+// réseau) — juger sur la « dernière réponse réseau » rendait ce contrôle
+// instable (succès / échec selon le moment), alors que l'écran était juste.
+const shownCount = async () => Number(((await page.innerText('main')).match(/(\d+)\s+(élève|student)/i) || [])[1]);
+// Le compteur est rendu après la réponse : attendre qu'il affiche les
+// lignes effectivement servies pour FEBA (et non l'état de chargement).
+const servedFeba = (await servedRows('/api/students/')).length;
+await page.waitForFunction((n) => new RegExp(`\\b${n}\\s+(élève|student)`, 'i')
+  .test(document.querySelector('main')?.innerText || ''), servedFeba, { timeout: 15000 }).catch(() => {});
+const nFeba = await shownCount();
+const badgesBack = await visibleAcademies();
 
 log(`  Élèves servis : FEBA=${nFeba0} → FHA=${nFha} (${msFha} ms) → TOUTES=${nAll} (${msAll} ms) → FEBA=${nFeba} (${msFeba} ms)`);
 log(`  Badges affichés : FEBA=${JSON.stringify(badgesFeba)} · FHA=${JSON.stringify(badgesFha)} · TOUTES=${JSON.stringify(badgesAll)}`);
@@ -154,8 +179,8 @@ const mismatched = netlog.filter((r) => r.sent && r.served && r.sent !== r.serve
                                        && !r.url.includes('entity-context/switch'));
 check(mismatched.length === 0, 'aucune réponse servie sous une portée périmée',
       mismatched.length ? JSON.stringify(mismatched.slice(0, 3)) : '');
-const lastScope = netlog.filter(r => r.served && r.url.includes('/students/')).slice(-1)[0]?.served;
-check(lastScope === 'FEBA', 'dernières données élèves servies sous la bonne académie', `portée=${lastScope}`);
+check(badgesBack.length === 0, "retour sur FEBA : aucune ligne d'une autre académie affichée",
+      JSON.stringify(badgesBack));
 
 /* ═══ 2. Mode consolidé : badges partout ═════════════════════════════ */
 log('\n═══ 2. MODE « TOUTES LES ACADÉMIES » — IDENTIFICATION ═══');
@@ -188,28 +213,39 @@ log('\n═══ 3. EMPLOIS DU TEMPS SÉPARÉS ═══');
 await switchAcademy('Faith & Excellence');
 await page.goto(BASE + '/superadmin/schedule', { waitUntil: 'networkidle' });
 await page.waitForTimeout(1200);
+// Onglets nommés d'après l'académie ACTIVE (donnée servie par l'API) —
+// plus « FEBA » / « FEBA FHA » écrits en dur. Un super administrateur sur
+// FEBA voit SON emploi du temps et la liste des académies en ligne
+// sélectionnables ; l'ancien second onglet « FEBA FHA », qui ouvrait un
+// écran refusé (403) pour l'académie active, n'existe plus.
 let tabs = await page.locator('[role=tab]').allInnerTexts();
-check(tabs.length === 2, 'deux onglets nommés FEBA et FEBA FHA', JSON.stringify(tabs.map(x => x.split('\n')[0])));
-check(tabs.some(x => /^FEBA — /.test(x)) && tabs.some(x => /^FEBA FHA — /.test(x)),
-      'onglets nommés en toutes lettres (pas de simple couleur)');
+check(tabs.length === 1 && /^FEBA — cours présentiels/.test(tabs[0]),
+      'un onglet, au nom de l\'académie active', JSON.stringify(tabs.map(x => x.split('\n')[0])));
+const others = await page.getByTestId('schedule-other-academies').innerText().catch(() => '');
+check(/FEBA FHA/.test(others), 'les académies en ligne sélectionnables sont nommées', others);
 await page.screenshot({ path: `${SHOTS}/v7-03-emploi-du-temps-onglets.png` });
 
 // Onglet FEBA : créneaux présentiels avec salle physique
 const febaBody = await page.locator('main, body').first().innerText();
 check(/Nouveau créneau/.test(febaBody), 'création de créneau proposée sur l\'onglet FEBA');
 
-// Onglet FEBA FHA depuis le superadmin sur FEBA : le serveur doit refuser
-await page.click('[role=tab]:has-text("FEBA FHA")');
-await page.waitForTimeout(1200);
-const onlineBody = await page.locator('body').innerText();
-check(/n'existent pas pour cette académie|do not exist for this academy/.test(onlineBody),
-      'séances en ligne refusées pour une académie présentielle (403 serveur)');
+// Séances en ligne demandées pour FEBA (présentielle) : le serveur refuse.
+const refused = await page.evaluate(async () => {
+  const token = JSON.parse(localStorage.getItem('feba-auth') || '{}')?.state?.accessToken;
+  const r = await fetch('/api/schedule/online-sessions/', { headers: { Authorization: `Bearer ${token}` } });
+  return r.status;
+});
+check(refused === 403, 'séances en ligne refusées pour une académie présentielle (403 serveur)', `HTTP ${refused}`);
 await page.screenshot({ path: `${SHOTS}/v7-03-seances-refusees-feba.png` });
 
 // Admin FEBA FHA : CRUD réel des séances en ligne
 await login('admin@febafha.org', 'Admin@2024');
 await page.goto(BASE + '/admin/schedule', { waitUntil: 'networkidle' });
 await page.waitForTimeout(1400);
+// La vue par défaut est désormais la GRILLE (parité avec FEBA) ; les
+// colonnes métier (UTC, heure locale, salle, rappel) sont dans la LISTE.
+await page.locator('button:text-matches("^(Liste|List)$")').first().click();
+await page.waitForTimeout(600);
 const fhaHeaders = await page.locator('table thead th').allInnerTexts();
 check(fhaHeaders.some(h => /UTC/i.test(h)), 'colonne heure UTC sur les séances FEBA FHA', JSON.stringify(fhaHeaders));
 check(fhaHeaders.some(h => /locale|local/i.test(h)), 'colonne heure locale');

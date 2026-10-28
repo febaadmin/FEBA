@@ -1,5 +1,8 @@
 # Audit de sécurité — livraison FEBA
 
+> **DOCUMENT HISTORIQUE** — il décrit une version antérieure de FEBA ; ses résultats n'ont pas été
+> rejoués tels quels sur cette version. Références à jour : `DOCUMENTATION_INDEX.md`, `FINAL_REPORT.md`.
+
 Portée : les correctifs de cette livraison et l'audit transversal demandé.
 Les limites de profondeur sont énoncées en section 6 — un audit qui tait
 ce qu'il n'a pas regardé n'est pas un audit.

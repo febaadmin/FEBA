@@ -98,7 +98,7 @@ def signature_visuelle(image, taille=16):
     fond = PILImage.new("RGBA", image.size, (255, 255, 255, 255))
     gris = PILImage.alpha_composite(fond, image).convert("L").resize(
         (taille + 1, taille), PILImage.LANCZOS)
-    pixels = list(gris.getdata())
+    pixels = list(gris.get_flattened_data())
     return "".join(
         "1" if pixels[y * (taille + 1) + x] > pixels[y * (taille + 1) + x + 1]
         else "0"

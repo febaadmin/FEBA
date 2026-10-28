@@ -26,6 +26,7 @@
  * compte précédent — un contrôle d'isolation passerait alors pour de
  * mauvaises raisons.
  */
+import { fileURLToPath } from 'node:url';  // chemins avec espaces (« New Version »)
 import fs from 'node:fs';
 import { chromium } from './playwright.mjs';
 
@@ -35,7 +36,7 @@ const BASE = process.env.E2E_BASE_URL || 'http://127.0.0.1:5173';
 // ferait échouer chaque appel sur la politique d'origine du navigateur —
 // ce qui ne prouverait rien sur l'application, seulement sur le scénario.
 const API = process.env.E2E_API_URL || BASE + '/api';
-const SHOTS = process.env.E2E_SHOTS || new URL('./captures', import.meta.url).pathname;
+const SHOTS = process.env.E2E_SHOTS || fileURLToPath(new URL('./captures', import.meta.url));
 fs.mkdirSync(SHOTS, { recursive: true });
 
 const OUT = [];
@@ -267,18 +268,17 @@ async function choisirEleve(page, nomEleve) {
 async function produire(page, motifGabarit, nomEleve) {
   await page.locator('button', { hasText: 'Produire un document' }).first().click();
   await page.waitForTimeout(600);
-  // Le libellé du gabarit porte le nom de l'académie (« Diplôme FEBA »,
-  // « Diplôme FEBA French Heritage Academy ») : on sélectionne par
-  // IDENTIFIANT, qui ne bouge pas quand le libellé est retraduit.
-  const valeurs = await page.$$eval('#doc-template option',
-                                    (o) => o.map((x) => x.value));
-  const cible = valeurs.find((v) => v.startsWith(motifGabarit));
-  if (!cible) throw new Error(`Aucun gabarit « ${motifGabarit} » parmi ${valeurs}`);
-  await page.selectOption('#doc-template', cible);
+  // Le TYPE est choisi ; le gabarit est résolu par le serveur pour
+  // l'académie de l'élève (« certificate_feba » → certificat).
+  const type = motifGabarit.split('_')[0];
+  await page.selectOption('#doc-kind', type);
   await page.waitForTimeout(300);
 
   await choisirEleve(page, nomEleve);
 
+  // La vérification préalable (gabarit résolu, données) doit être là
+  // avant de confirmer l'académie : c'est elle qui l'annonce.
+  await page.waitForSelector('[data-testid="document-check"]', { timeout: 15000 });
   const confirmation = page.locator('input[type=checkbox]').first();
   if (await confirmation.count()) await confirmation.check();
   await page.waitForTimeout(200);
@@ -608,6 +608,6 @@ const total = OUT.filter((l) => /^\s+(OK|ÉCHEC)/.test(l)).length;
 log(`\n${total - FAIL}/${total} contrôles passés.`);
 log(`Captures : ${SHOTS}`);
 
-fs.writeFileSync(new URL('./rapport-documents-officiels.txt', import.meta.url).pathname,
+fs.writeFileSync(fileURLToPath(new URL('./rapport-documents-officiels.txt', import.meta.url)),
                  OUT.join('\n') + '\n');
 process.exit(FAIL === 0 ? 0 : 1);

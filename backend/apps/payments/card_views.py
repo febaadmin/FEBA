@@ -617,6 +617,9 @@ class CardTransactionListView(APIView):
                 "failure_reason": tx.failure_reason,
                 "created_at": tx.created_at,
                 "succeeded_at": tx.succeeded_at,
+                # Fuseau de l'académie : l'écran affiche l'heure locale de
+                # la transaction, pas celle du navigateur.
+                "academy_timezone": tx.academy.timezone,
                 "payment_id": tx.payment_id,
             }
             for tx in queryset[:500]

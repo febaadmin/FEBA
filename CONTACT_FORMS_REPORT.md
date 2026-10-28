@@ -1,5 +1,8 @@
 # Formulaires de contact — le WhatsApp ne disparaît plus, le message n'est plus coupé
 
+> **DOCUMENT HISTORIQUE** — il décrit une version antérieure de FEBA ; ses résultats n'ont pas été
+> rejoués tels quels sur cette version. Références à jour : `DOCUMENTATION_INDEX.md`, `FINAL_REPORT.md`.
+
 ## Les deux défauts signalés
 
 La capture annotée montrait un message de contact dont le numéro WhatsApp

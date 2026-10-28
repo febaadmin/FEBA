@@ -153,7 +153,7 @@ const STEP_META = [
 const STEP_TITLES = STEP_META.map(([fr, en]) => [fr, en]);
 
 const EMPTY = {
-  child_last_name: "", child_first_name: "", child_birth_date: "",
+  child_last_name: "", child_first_name: "", child_birth_date: "", child_gender: "",
   child_city: "", child_state_province: "", child_country: "",
   child_current_school: "", child_grade: "",
   family_origin_country: "", home_main_language: "", other_languages: "",
@@ -332,6 +332,8 @@ export default function FhaEnrollPage() {
         e.child_birth_date = t("Date de naissance obligatoire.", "Date of birth is required.");
       else if (new Date(form.child_birth_date) > new Date())
         e.child_birth_date = t("Date dans le futur.", "Date is in the future.");
+      if (!["F", "M"].includes(form.child_gender))
+        e.child_gender = t("Sexe obligatoire.", "Sex is required.");
     }
     if (index === 5) {
       if (!form.parent1_first_name.trim())
@@ -374,7 +376,16 @@ export default function FhaEnrollPage() {
   };
 
   function submit() {
-    if (!validateStep(11)) return;
+    // Un brouillon repris peut dater d'avant un champ obligatoire (le sexe,
+    // par exemple) : chaque étape à champs obligatoires est revérifiée et
+    // la famille est ramenée sur la première incomplète.
+    for (const index of [0, 5, 11]) {
+      if (!validateStep(index)) {
+        setStep(index);
+        window.scrollTo({ top: 0, behavior: "smooth" });
+        return;
+      }
+    }
     // `entity` n'est volontairement PAS transmis : le serveur l'impose.
     mutation.mutate(form);
   }
@@ -540,6 +551,18 @@ export default function FhaEnrollPage() {
                 <div className={`${inputClass} bg-feba-cream font-semibold`}>
                   {age === null ? "—" : `${age} ${t("ans", "years")}`}
                 </div>
+              </Field>
+              <Field label={t("Sexe", "Sex")} required error={errors.child_gender}>
+                <select
+                  value={form.child_gender}
+                  onChange={(e) => set("child_gender", e.target.value)}
+                  className={inputClass}
+                  data-testid="child-gender"
+                >
+                  <option value="">{t("— Choisir —", "— Select —")}</option>
+                  <option value="F">{t("Féminin", "Female")}</option>
+                  <option value="M">{t("Masculin", "Male")}</option>
+                </select>
               </Field>
               <Field label={t("Ville", "City")}>
                 <Text value={form.child_city} onChange={(v) => set("child_city", v)} />
@@ -987,6 +1010,10 @@ export default function FhaEnrollPage() {
                 {[
                   [t("Enfant", "Child"), `${form.child_first_name} ${form.child_last_name}`],
                   [t("Âge", "Age"), age === null ? "—" : `${age}`],
+                  [
+                    t("Sexe", "Sex"),
+                    { F: t("Féminin", "Female"), M: t("Masculin", "Male") }[form.child_gender] || "—",
+                  ],
                   [t("Ville", "City"), form.child_city || "—"],
                   [t("Pays", "Country"), form.child_country || "—"],
                   [t("Langue principale", "Main language"), form.home_main_language || "—"],

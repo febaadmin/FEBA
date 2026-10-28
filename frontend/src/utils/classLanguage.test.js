@@ -18,7 +18,9 @@ import {
   allowedLanguages,
   effectiveTrack,
   requiredLanguages,
+  subjectLanguageOptions,
   summarize,
+  trackOptions,
   validateSelection,
   TRACK_ANGLOPHONE,
   TRACK_BILINGUAL,
@@ -180,5 +182,42 @@ describe("l'affichage et la soumission ne peuvent plus diverger", () => {
       };
       expect(summarize(c, comptes)).toMatch(/complète/i);
     }
+  });
+});
+
+describe("programme linguistique de l'académie", () => {
+  const COMMUNE = { id: 900, name: "Éducation physique", language: "bilingual" };
+
+  it("matière commune admise dans une classe bilingue d'académie bilingue, jamais exigée", () => {
+    const c = classe(TRACK_BILINGUAL, { allowed_languages: ["fr", "en", "bilingual"],
+      expected_languages: ["fr", "en"] });
+    expect(requiredLanguages(c)).toEqual(["fr", "en"]);
+    expect(validateSelection(c, [FR(1), EN(1), COMMUNE])).toEqual([]);
+    expect(validateSelection(c, [COMMUNE])).toEqual([
+      "Sélectionnez au moins une matière française.",
+      "Sélectionnez au moins une matière anglaise.",
+    ]);
+  });
+
+  it("matière commune refusée dans une classe qui ne l'admet pas, avec un message dédié", () => {
+    const c = classe(TRACK_FRANCOPHONE, { allowed_languages: ["fr"], expected_languages: ["fr"] });
+    expect(validateSelection(c, [FR(1), COMMUNE])).toEqual([
+      "Cette classe n'admet pas de matière commune (bilingue) : Éducation physique.",
+    ]);
+  });
+
+  it("parcours proposés = ceux servis par l'API pour l'académie", () => {
+    expect(trackOptions({ class_tracks: ["FRANCOPHONE"] })).toEqual([TRACK_FRANCOPHONE]);
+    expect(trackOptions({ class_tracks: ["BILINGUAL"] })).toEqual([TRACK_BILINGUAL]);
+    expect(trackOptions(null)).toEqual([TRACK_BILINGUAL, TRACK_FRANCOPHONE, TRACK_ANGLOPHONE]);
+  });
+
+  it("catégories de matière = langues admises ; une valeur enregistrée reste visible", () => {
+    const fr = { subject_languages: ["fr"] };
+    expect(subjectLanguageOptions(fr).map((o) => o.value)).toEqual(["fr"]);
+    expect(subjectLanguageOptions(fr, "en").map((o) => o.value)).toEqual(["fr", "en"]);
+    expect(subjectLanguageOptions({ subject_languages: ["en"] }).map((o) => o.value)).toEqual(["en"]);
+    expect(subjectLanguageOptions({ subject_languages: ["fr", "en", "bilingual"] }).map((o) => o.value))
+      .toEqual(["fr", "en", "bilingual"]);
   });
 });

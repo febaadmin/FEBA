@@ -14,7 +14,12 @@ permissions:
   contents: read
 
 jobs:
+  ci:
+    name: CI — tests et contrôles avant production
+    uses: ./.github/workflows/ci.yml
+
   deploy:
+    needs: ci
     name: Deploy to Hetzner
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -43,11 +48,14 @@ jobs:
           SERVER_HOST: ${{ secrets.SERVER_HOST }}
           SERVER_USER: ${{ secrets.SERVER_USER }}
           SERVER_PORT: ${{ secrets.SERVER_PORT }}
+          # Le commit EXACT validé par le job « ci » ci-dessus.
+          DEPLOY_SHA: ${{ github.sha }}
         run: |
+          case "$DEPLOY_SHA" in (*[!0-9a-f]*|"") echo "SHA invalide"; exit 1;; esac
           ssh \
             -i ~/.ssh/feba_deploy \
             -p "$SERVER_PORT" \
-            "$SERVER_USER@$SERVER_HOST" <<'REMOTE'
+            "$SERVER_USER@$SERVER_HOST" "DEPLOY_SHA=$DEPLOY_SHA bash -s" <<'REMOTE'
           set -Eeuo pipefail
 
           cd /opt/feba/app/FEBA
@@ -102,8 +110,18 @@ jobs:
           fi
 
           echo "==> Récupération du code"
+          # On déploie le commit TESTÉ, pas « origin/main » au moment de
+          # l'exécution : un push arrivé pendant la CI aurait sinon été mis
+          # en production sans avoir été validé.
           git fetch origin main
-          git reset --hard origin/main
+          if ! git merge-base --is-ancestor "$DEPLOY_SHA" origin/main; then
+            echo "ERREUR : $DEPLOY_SHA n'appartient pas à origin/main."
+            exit 1
+          fi
+          previous_sha="$(git rev-parse HEAD)"
+          echo "Version en service : $previous_sha → version déployée : $DEPLOY_SHA"
+          echo "$previous_sha" > .previous_deploy_sha
+          git reset --hard "$DEPLOY_SHA"
 
           echo "==> Validation de Docker Compose"
           docker compose \

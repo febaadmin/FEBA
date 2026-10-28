@@ -23,7 +23,8 @@ from apps.classes.models import Class
 from apps.schools.models import Level, School, SchoolYear
 from apps.virtualclass.services import build_jitsi_jwt
 
-SECRET = "secret-de-test-uniquement"
+# ≥ 32 octets : longueur minimale recommandée pour HMAC-SHA256 (RFC 7518 § 3.2).
+SECRET = "secret-de-test-uniquement-32-octets-min"
 DOMAINE = "meet.globalfeba.com"
 EMETTEUR = "feba_prod"
 
@@ -178,7 +179,7 @@ class VerificationDuJetonTests(BaseJeton):
             jwt.decode(perime, SECRET, algorithms=["HS256"], audience="jitsi")
 
 
-@override_settings(JITSI_DOMAIN=DOMAINE, JITSI_APP_ID=EMETTEUR,
+@override_settings(VIDEO_PROVIDER="jitsi", JITSI_DOMAIN=DOMAINE, JITSI_APP_ID=EMETTEUR,
                    JITSI_APP_SECRET=SECRET)
 class LeClientNeChoisitPasSonRoleTests(BaseJeton):
     """

@@ -12,6 +12,7 @@ affichait autre chose.
 |---|---|
 | `academies.mjs` | Bascule FEBA / FEBA FHA / Toutes les Académies : délai réel, absence de rechargement, absence de réponse tardive, badge d'académie sur douze écrans, séparation des deux emplois du temps. |
 | `espaces-anglais.mjs` | L'application privée en anglais pour les profils enseignant, parent et élève — aucun libellé français résiduel. |
+| `parcours-gabarits.mjs` | Gabarits téléversés : faux PNG et PDF corrompu refusés, diplôme PDF placé à la souris, vérifié, activé, produit, délivré et téléchargé ; certificat PNG portrait ; remplacement sans altérer le document délivré ; accès croisés de l'administrateur FHA en 404. Exige `E2E_TEMPLATE_DIR`, rempli par `python e2e/fabriquer_gabarits_test.py <dossier>`. |
 | `site-public-anglais.mjs` | Les treize pages du site vitrine en anglais après un clic sur « EN », carrousel et galerie compris. |
 
 ## Lancer

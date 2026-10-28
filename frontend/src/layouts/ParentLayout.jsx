@@ -1,10 +1,11 @@
 import { NavLink, useNavigate } from "react-router-dom";
 import { Home, Users, ClipboardList, Calendar, FileText, MessageSquare, DollarSign, BookOpen, User, LogOut, School, Menu, X, Bell, Megaphone, Video } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
-import { useBranding } from "../hooks/useBranding";
+import AcademyLogo from "../components/AcademyLogo";
+import AcademyName from "../components/AcademyName";
+import { safeInternalPath } from "../utils/safePath";
 import { clsx } from "clsx";
 import { useState, useEffect } from "react";
-import logoFeba from "../assets/logo_feba.jpeg";
 import { motion, AnimatePresence } from "framer-motion";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { notificationsAPI, conversationsAPI } from "../api";
@@ -54,7 +55,6 @@ export default function ParentLayout() {
   const visibleNav = nav.filter((item) => !item.feature || hasFeature(item.feature));
 
   const { user, logout } = useAuth();
-  const { logoSrc } = useBranding();
   const qc = useQueryClient();
   const isMobile = useIsMobile();
   const [open, setOpen] = useState(window.innerWidth >= 768);
@@ -91,10 +91,10 @@ export default function ParentLayout() {
             className={clsx("w-64 bg-[#0F172A] flex flex-col h-full shrink-0 z-20 shadow-2xl", isMobile && "fixed inset-y-0 left-0")}>
             <div className="p-5 flex items-center gap-3 border-b border-white/10">
               <div className="w-9 h-9 rounded-xl overflow-hidden bg-white border-2 border-amber-400 flex items-center justify-center shrink-0">
-                <img src={logoSrc} alt={t("FEBA")} className="w-full h-full object-contain" />
+                <AcademyLogo />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-white font-bold text-sm">{t("FEBA")}</p>
+                <AcademyName className="text-white font-bold text-sm" />
                 <p className="text-slate-400 text-xs">{t("Espace Parent")}</p>
               </div>
               {isMobile && <button onClick={() => setOpen(false)} className="text-slate-400 hover:text-white"><X className="w-5 h-5" /></button>}
@@ -151,7 +151,7 @@ export default function ParentLayout() {
                   <div className="max-h-72 overflow-y-auto divide-y divide-slate-50">
                     {notifications.length === 0 ? <p className="text-center text-slate-400 py-8 text-sm">{t("Aucune notification")}</p>
                       : notifications.slice(0, 10).map(n => (
-                        <div key={n.id} onClick={() => { setNotifOpen(false); if (n.related_url) navigate(n.related_url); }}
+                        <div key={n.id} onClick={() => { setNotifOpen(false); const to = safeInternalPath(n.related_url); if (to) navigate(to); }}
                           className={`px-4 py-3 cursor-pointer hover:bg-slate-50 ${!n.is_read ? "bg-primary-50/30" : ""}`}>
                           <p className="text-sm font-medium">{n.title}</p>
                           <p className="text-xs text-slate-500 mt-0.5 line-clamp-2">{n.message}</p>

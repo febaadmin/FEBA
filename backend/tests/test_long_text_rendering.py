@@ -179,6 +179,11 @@ class TestModulePartage:
             rendu = sans_coupures(pdf_paragraph(valeur).text)
             # On recompose le texte source tel que ReportLab l'a reçu.
             attendu = normalize(valeur)
+            # Le repli de glyphes (ɖ, ɛ, ɔ, ŋ, tons…) entoure certains
+            # caractères d'une balise <font> : la balise n'est pas du texte,
+            # les caractères qu'elle entoure, si — ils sont comparés.
+            import re
+            rendu = re.sub(r'</?font(?: name="FEBA-Fallback(?:-Bold)?")?>', "", rendu)
             visible = (
                 rendu.replace("<br/>", "\n")
                 .replace("&amp;", "&").replace("&lt;", "<").replace("&gt;", ">")

@@ -1,9 +1,12 @@
+from apps.core.tenancy import TenantRelationsMixin
 from rest_framework import serializers
 from .models import Class
 from apps.core.academy_serializers import ACADEMY_FIELDS, AcademyMetadataMixin
 
 
-class ClassSerializer(AcademyMetadataMixin, serializers.ModelSerializer):
+class ClassSerializer(TenantRelationsMixin, AcademyMetadataMixin, serializers.ModelSerializer):
+    #: Isolation des relations écrites (voir apps.core.tenancy.TenantRelationsMixin).
+    tenant_relations = {"level": "school", "school_year": "school"}
     # P3 : chaque objet expose son académie, sans quoi la vue
     # « Toutes les Académies » ne peut pas étiqueter ses lignes.
     academy_source = "school_year.school"
@@ -97,6 +100,28 @@ class ClassSerializer(AcademyMetadataMixin, serializers.ModelSerializer):
 
     def get_en_subject_count(self, obj):
         return obj.get_en_subjects().count()
+
+    def validate(self, attrs):
+        """
+        Parcours de classe admis par le programme linguistique de
+        l'académie (`subject_rules.track_error`) : une académie « français
+        uniquement » n'a que des classes francophones, etc. Une classe
+        créée sans parcours reçoit celui de son académie.
+        """
+        attrs = super().validate(attrs)
+        from .subject_rules import default_track, track_error
+
+        year = attrs.get("school_year") or getattr(self.instance, "school_year", None)
+        school = getattr(year, "school", None)
+        if school is None:
+            return attrs
+        if "language_track" in attrs:
+            refus = track_error(school, attrs["language_track"])
+            if refus:
+                raise serializers.ValidationError({"language_track": refus})
+        elif self.instance is None:
+            attrs["language_track"] = default_track(school)
+        return attrs
 
     def to_representation(self, instance):
         """Ajoute subject_ids (liste d'entiers) dans la réponse GET."""

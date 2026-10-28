@@ -1,0 +1,20 @@
+# Contexte de construction de l'image backend.
+#
+# Sans ce fichier, « docker build » copiait TOUT le dossier backend/ dans
+# l'image, y compris media/ et private_media/ d'un poste de travail :
+# diplômes délivrés, gabarits, dossiers d'inscription, pièces jointes —
+# des données personnelles figées dans une image qui peut circuler (registre,
+# sauvegarde, autre serveur). Ces fichiers vivent dans des VOLUMES, jamais
+# dans l'image.
+media/
+private_media/
+staticfiles/
+**/__pycache__/
+**/*.pyc
+.pytest_cache/
+.ruff_cache/
+*.sqlite3
+db.sqlite3*
+.env
+.env.*
+*.log

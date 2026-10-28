@@ -25,6 +25,7 @@ import { gradesAPI } from "../../api";
 import Modal from "../ui/Modal";
 import SearchableSelect from "../ui/SearchableSelect";
 import { appreciationPreview } from "../../utils/appreciation";
+import { useAppreciationScale } from "../../hooks/useAppreciationScale";
 import { normalizeGradeInput, isValidGrade } from "../../utils/gradeInput";
 import { t } from "../../i18n";
 
@@ -58,6 +59,8 @@ export default function BulkGradeModal({
   const [rows, setRows] = useState([emptyRow(periodDefault)]);
   const [rowErrors, setRowErrors] = useState({}); // { index: { field: msg } }
   const [topError, setTopError] = useState("");
+  // Barème de l'académie active (aperçu seulement : le serveur fait foi).
+  const appreciationScale = useAppreciationScale();
 
   const visibleStudents = useMemo(() => {
     if (!classFilter) return studentOptions;
@@ -188,7 +191,7 @@ export default function BulkGradeModal({
         <div className="space-y-3">
           {rows.map((r, i) => {
             const err = rowErrors[i] || {};
-            const appr = appreciationPreview(r.value);
+            const appr = appreciationPreview(r.value, appreciationScale);
             return (
               <div key={i}
                 className="lg:grid lg:grid-cols-[1.4fr_0.9fr_0.7fr_1.1fr_1.2fr_auto] lg:gap-2 lg:items-start

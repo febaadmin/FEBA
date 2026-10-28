@@ -1,5 +1,8 @@
 # Audit global multi-académies
 
+> **DOCUMENT HISTORIQUE** — il décrit une version antérieure de FEBA ; ses résultats n'ont pas été
+> rejoués tels quels sur cette version. Références à jour : `DOCUMENTATION_INDEX.md`, `FINAL_REPORT.md`.
+
 Portée : l'ensemble du dépôt, après P0, P2 et P3. Chaque ligne de ce
 rapport correspond à une commande réellement exécutée ; les nombres sont
 ceux qu'elle a affichés.

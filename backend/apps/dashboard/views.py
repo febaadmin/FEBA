@@ -1,7 +1,7 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
-from django.db.models import Sum, Count
+from django.db.models import F, Q, Sum, Count
 from django.utils import timezone
 import logging
 
@@ -60,6 +60,9 @@ class AdminDashboardView(APIView):
                 payment_date__year=now.year,
                 payment_date__month=m,
                 is_deleted=False,
+                # Paiements ANNULÉS exclus, comme dans l'écran Paiements :
+                # une recette annulée n'est pas une recette.
+                is_confirmed=True,
             )
             if active_year:
                 pay_qs = pay_qs.filter(school_year=active_year)
@@ -86,7 +89,7 @@ class AdminDashboardView(APIView):
         # FIX v20: Filtrer les élèves par année active (school_year field)
         if active_year:
             student_qs = student_qs.filter(school_year=active_year)
-        payment_qs = Payment.objects.filter(student__school=school, is_deleted=False)
+        payment_qs = Payment.objects.filter(student__school=school, is_deleted=False, is_confirmed=True)
         if active_year:
             # Élèves avec une inscription dans la classe courante (année active)
             payment_qs = payment_qs.filter(school_year=active_year)
@@ -130,7 +133,9 @@ class AdminDashboardView(APIView):
                 "total_revenue_ytd_minor": int(ytd_minor),
                 "total_revenue_ytd_display": Money(
                     int(ytd_minor), currency_code).formatted(),
-                "announcements": Announcement.objects.filter(is_published=True, author__school=school).count(),
+                "announcements": Announcement.objects.filter(is_published=True).filter(
+                    Q(school_year__school=school) | Q(school_year__isnull=True, author__school=school)
+                ).count(),
                 "total_bulletins": bulletin_count,
             },
             "monthly_revenue": monthly_revenue,
@@ -146,9 +151,18 @@ class AdminDashboardView(APIView):
                     "type": p.get_payment_type_display(),
                     "payment_type": p.payment_type,
                     "date": str(p.payment_date),
+                    "paid_at": p.paid_at.isoformat() if p.paid_at else None,
+                    "paid_at_display": (
+                        p.local_paid_at().strftime("%d/%m/%Y %H:%M") if p.paid_at
+                        else p.payment_date.strftime("%d/%m/%Y")
+                    ),
+                    "has_time": p.paid_at is not None,
                     "reference_number": p.reference_number,
                 }
-                for p in payment_qs.select_related("student__current_class").order_by("-payment_date")[:5]
+                # Ordre chronologique RÉEL : à date égale, l'heure départage
+                # (et l'ordre de saisie quand l'heure est inconnue).
+                for p in payment_qs.select_related("student__current_class", "student__school")
+                .order_by("-payment_date", F("paid_at").desc(nulls_last=True), "-created_at")[:5]
             ],
             "recent_students": [
                 {
@@ -280,6 +294,7 @@ class ParentDashboardView(APIView):
             avg_t1 = Grade.calculate_average(child, school_year, "T1") if school_year else None
             avg_t2 = Grade.calculate_average(child, school_year, "T2") if school_year else None
             avg_t3 = Grade.calculate_average(child, school_year, "T3") if school_year else None
+            from apps.grades.appreciations import cycle_of_class
             from apps.grades.models import get_appreciation
 
             # FIX (moyennes tableau de bord parent) : le tableau de bord
@@ -335,7 +350,9 @@ class ParentDashboardView(APIView):
                 "average_t3": safe_float(avg_t3) if avg_t3 is not None else None,
                 "subject_averages": subject_averages,
                 "bilingual": bilingual,
-                "appreciation": get_appreciation(avg) if avg is not None else None,
+                "appreciation": get_appreciation(
+                    avg, academy=child.school, cycle=cycle_of_class(child.current_class),
+                ) if avg is not None else None,
                 "progression": (
                     round(safe_float(avg_t2) - safe_float(avg_t1), 2)
                     if avg_t1 is not None and avg_t2 is not None else None
@@ -383,6 +400,7 @@ class StudentDashboardView(APIView):
         grades_t1 = Grade.calculate_average(student, school_year, "T1") if school_year else None
         grades_t2 = Grade.calculate_average(student, school_year, "T2") if school_year else None
         grades_t3 = Grade.calculate_average(student, school_year, "T3") if school_year else None
+        from apps.grades.appreciations import cycle_of_class
         from apps.grades.models import get_appreciation
 
         # FIX (moyennes tableau de bord élève) : même bug de câblage que le
@@ -448,7 +466,9 @@ class StudentDashboardView(APIView):
                 "annual_average": safe_float(avg) if avg is not None else None,
                 "subject_averages": subject_averages,
                 "bilingual": bilingual,
-                "appreciation": get_appreciation(avg) if avg is not None else None,
+                "appreciation": get_appreciation(
+                    avg, academy=student.school, cycle=cycle_of_class(student.current_class),
+                ) if avg is not None else None,
                 "progression": (
                     round(safe_float(grades_t2) - safe_float(grades_t1), 2)
                     if grades_t1 is not None and grades_t2 is not None else None

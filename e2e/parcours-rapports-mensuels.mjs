@@ -13,11 +13,12 @@
 import { chromium } from "./playwright.mjs";
 import fs from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 const FRONT = process.env.FRONT_URL || "http://localhost:5174";
 const API = process.env.API_URL || "http://localhost:8000";
 const MAILPIT = process.env.MAILPIT_URL || "http://localhost:8025";
-const SORTIE = path.join(process.cwd(), "e2e", "captures");
+const SORTIE = path.join(path.dirname(fileURLToPath(import.meta.url)), "captures");
 fs.mkdirSync(SORTIE, { recursive: true });
 
 const LARGEURS = [375, 768, 1024, 1440, 1920];
@@ -89,7 +90,7 @@ async function mailpit(chemin, methode = "GET") {
 
 (async () => {
   const navigateur = await chromium.launch({
-    executablePath: "/opt/pw-browsers/chromium",
+    executablePath: process.env.CHROMIUM_PATH || "/opt/pw-browsers/chromium",
   });
 
   // Boîte vide : compter dans une boîte déjà pleine ne prouverait rien.

@@ -105,11 +105,15 @@ class Command(BaseCommand):
                 "currency_code": "XOF",
                 "default_language": "fr",
                 "matricule_prefix": "FEBA",  # matricules FEBA-26-0001
+                "curriculum_language_mode": School.CURRICULUM_BILINGUAL,
             },
         )
         if not school.matricule_prefix:
             school.matricule_prefix = "FEBA"
             school.save(update_fields=["matricule_prefix"])
+        # Barème d'appréciations propre à l'académie (copie du barème par défaut).
+        from apps.grades.appreciations import install_default_rules
+        install_default_rules(school)
         self.stdout.write("  ✅ Établissement")
 
         # ── 3 ANNÉES SCOLAIRES (dynamiques : N-2, N-1, N) ────────────────
@@ -403,7 +407,7 @@ class Command(BaseCommand):
                             continue
                         # Barème officiel centralisé — jamais de seuils locaux.
                         from apps.grades.models import get_appreciation
-                        appreciation = get_appreciation(avg)
+                        appreciation = get_appreciation(avg, academy=student.school)
                         Bulletin.objects.get_or_create(
                             student=student, school_year=sy, period=period,
                             defaults={
@@ -569,6 +573,7 @@ class Command(BaseCommand):
                 "currency_code": "USD",
                 "default_language": "en",
                 "matricule_prefix": "FHA",
+                "curriculum_language_mode": School.CURRICULUM_BILINGUAL,
                 "settings": {
                     "tagline": "From English Speakers to Confident French Speakers",
                     # Non validé par la direction → reste nul.
@@ -582,6 +587,8 @@ class Command(BaseCommand):
                 },
             },
         )
+        from apps.grades.appreciations import install_default_rules
+        install_default_rules(fha)
         self.stdout.write("  ✅ Académie FEBA FHA")
 
         today = timezone.now().date()
@@ -847,6 +854,7 @@ class Command(BaseCommand):
             child_last_name="Kponou",
             child_birth_date=datetime.date(2015, 5, 4),
             defaults={
+                "child_gender": "F",
                 "child_country": "United States", "child_state_province": "PA",
                 "child_city": "Philadelphia",
                 "family_origin_country": "Bénin",

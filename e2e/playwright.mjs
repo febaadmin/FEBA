@@ -7,12 +7,13 @@
  * et donne un message clair quand il manque, plutôt qu'une trace
  * MODULE_NOT_FOUND illisible.
  */
+import { fileURLToPath } from 'node:url';  // chemins avec espaces (« New Version »)
 import { createRequire } from 'node:module';
 
 const CANDIDATES = [
   'playwright-core',
-  new URL('../frontend/node_modules/playwright-core/index.js', import.meta.url).pathname,
-  new URL('../node_modules/playwright-core/index.js', import.meta.url).pathname,
+  fileURLToPath(new URL('../frontend/node_modules/playwright-core/index.js', import.meta.url)),
+  fileURLToPath(new URL('../node_modules/playwright-core/index.js', import.meta.url)),
 ];
 
 const require = createRequire(import.meta.url);

@@ -1,5 +1,8 @@
 # OFFICIAL_NAMING_REPORT.md — Noms officiels (V7-P1/P2, 25/07/2026)
 
+> **DOCUMENT HISTORIQUE** — il décrit une version antérieure de FEBA ; ses résultats n'ont pas été
+> rejoués tels quels sur cette version. Références à jour : `DOCUMENTATION_INDEX.md`, `FINAL_REPORT.md`.
+
 ## Source de vérité centralisée
 
 `backend/feba_project/branding.py` :

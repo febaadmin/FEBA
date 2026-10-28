@@ -8,6 +8,7 @@ import PageHeader from "../../components/ui/PageHeader";
 import { Save, Lock, Eye, EyeOff } from "lucide-react";
 import { extractApiError } from "../../utils/errors";
 import { t } from "../../i18n";
+import SmsPreferencesCard from "../../components/SmsPreferencesCard";
 
 /**
  * FIX (mot de passe administrateur/super administrateur) : les rôles
@@ -72,6 +73,7 @@ export default function AccountProfile({ roleLabel }) {
   return (
     <div className="space-y-6">
       <PageHeader title={t("Mon profil")} subtitle={user?.email} />
+      <SmsPreferencesCard />
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="card flex flex-col items-center pb-6 border-b border-slate-100 mb-4">
           <AvatarUpload user={user} onUpdate={() => qc.invalidateQueries({ queryKey: ["me"] })} size="lg" />

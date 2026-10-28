@@ -108,7 +108,7 @@ export default function SuperAdminUsers() {
           label: t("Académie"),
           accessor: "academy_code",
           sortable: false,
-          render: r => <AcademyBadge code={r.academy_code} name={r.academy_name} />,
+          render: r => <AcademyBadge code={r.academy_code} name={r.academy_name} shortName={r.academy_short_name} />,
         }]
       : []),
     { key: "name",  label: t("Nom"),   accessor: "first_name", render: r => `${r.first_name} ${r.last_name}` },
@@ -171,7 +171,7 @@ export default function SuperAdminUsers() {
             <div>
               <label className="label">{t("Établissement*")}</label>
               <select {...register("school", { required: needsSchool })} className="input">
-                <option value="">-- Sélectionner un établissement --</option>
+                <option value="">{t("-- Sélectionner un établissement --")}</option>
                 {schools.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
               </select>
               {errors.school && <p className="text-danger text-xs mt-1">{t("Un établissement est requis pour ce rôle")}</p>}

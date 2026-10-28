@@ -1,5 +1,8 @@
 # CORRECTIF — Moyennes absentes sur la page « Notes » du profil Parent
 
+> **DOCUMENT HISTORIQUE** — il décrit une version antérieure de FEBA ; ses résultats n'ont pas été
+> rejoués tels quels sur cette version. Références à jour : `DOCUMENTATION_INDEX.md`, `FINAL_REPORT.md`.
+
 Périmètre de cette itération : **un seul problème prioritaire**, signalé
 avec capture d'écran — sur `/parent/grades`, les 4 cartes de moyenne
 (Générale, Française, Anglaise, Bilingue) affichent un tiret `—` pour

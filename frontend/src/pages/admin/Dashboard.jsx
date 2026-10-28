@@ -90,7 +90,7 @@ export default function AdminDashboard() {
               <div key={i} className="flex items-center justify-between py-2 border-b border-slate-50 last:border-0">
                 <div>
                   <p className="text-sm font-medium text-slate-800">{p.student}</p>
-                  <p className="text-xs text-slate-400">{t(p.type)} • {p.date} • {p.reference_number}</p>
+                  <p className="text-xs text-slate-400">{t(p.type)} • {p.paid_at_display || p.date} • {p.reference_number}</p>
                 </div>
                 <span className="text-sm font-bold text-success">{money.amountOf(p)}</span>
               </div>

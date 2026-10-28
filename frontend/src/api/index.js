@@ -1,6 +1,7 @@
 import axios from "axios";
 import { useAuthStore } from "../store/authStore";
 import { getLang } from "../i18n";
+import { SessionExpiredError, readStoredTokens, refreshAccessToken } from "./tokenRefresh";
 import {
   HEADER as ACADEMY_SCOPE_HEADER,
   StaleAcademyResponse,
@@ -13,6 +14,12 @@ import {
 const API_URL = import.meta.env.VITE_API_URL || "/api";
 
 const api = axios.create({ baseURL: API_URL, headers: { "Content-Type": "application/json" } });
+
+// Client des ressources PUBLIQUES (identité visuelle) : ni jeton, ni portée
+// d'académie. Passée par `api`, la réponse du branding était rejetée comme
+// « périmée » pendant l'amorçage de la portée : la barre latérale retombait
+// sur le logo embarqué alors que le serveur avait répondu 200.
+const publicApi = axios.create({ baseURL: API_URL });
 
 // Attach JWT + langue courante (LocaleMiddleware côté Django localise les
 // messages du framework selon cet en-tête)
@@ -72,49 +79,60 @@ const NON_CRITICAL_ENDPOINTS = [
   "/messages/inbox",
 ];
 
+// Requêtes d'authentification : un 401 y est une réponse métier (mauvais
+// mot de passe, jeton de renouvellement refusé), pas un jeton expiré.
+const AUTH_ENDPOINTS = ["/auth/login/", "/auth/refresh/"];
+
+const postRefresh = async (refresh) => {
+  const { data } = await axios.post(`${API_URL}/auth/refresh/`, { refresh });
+  return data;
+};
+
+/** Renouvellement préventif (voir hooks/useSessionKeepAlive). */
+export const refreshSession = () => refreshAccessToken(null, postRefresh);
+
 api.interceptors.response.use(
   (r) => r,
   async (error) => {
     const orig = error.config;
-    if (error.response?.status === 401 && !orig._retry) {
-      // Si l'URL est non-critique ET qu'il n'y a pas de refreshToken, ne pas déconnecter
-      const url = orig.url || "";
-      const isNonCritical = NON_CRITICAL_ENDPOINTS.some(ep => url.includes(ep));
-      const rt = useAuthStore.getState().refreshToken;
+    if (error.response?.status !== 401 || !orig || orig._retry) return Promise.reject(error);
+    const url = orig.url || "";
+    if (AUTH_ENDPOINTS.some((ep) => url.includes(ep))) return Promise.reject(error);
 
-      if (!rt && isNonCritical) {
-        // Pas de token du tout — laisse React Query gérer l'erreur silencieusement
-        return Promise.reject(error);
+    const isNonCritical = NON_CRITICAL_ENDPOINTS.some((ep) => url.includes(ep));
+    const { refreshToken } = useAuthStore.getState();
+    if (!refreshToken && !readStoredTokens().refreshToken) {
+      // Aucune session : un visiteur, ou une session déjà close ailleurs.
+      if (!isNonCritical) {
+        useAuthStore.getState().clearAuth();
+        window.location.href = "/login";
       }
-
-      orig._retry = true;
-      if (rt) {
-        try {
-          const { data } = await axios.post(`${API_URL}/auth/refresh/`, { refresh: rt });
-          useAuthStore.getState().setAuth(useAuthStore.getState().user, data.access, data.refresh || rt);
-          orig.headers.Authorization = `Bearer ${data.access}`;
-          // Le contrôleur d'annulation de la tentative précédente est
-          // consommé : on le retire pour que le rejeu soit à son tour
-          // annulable en cas de bascule d'académie.
-          delete orig.signal;
-          delete orig.__academyController;
-          return api(orig);
-        } catch {
-          // Refresh échoué — déconnecter seulement si l'endpoint était critique
-          if (!isNonCritical) {
-            useAuthStore.getState().clearAuth();
-            window.location.href = "/login";
-          }
-        }
-      } else {
-        // Pas de refreshToken → déconnecter (sauf endpoint non-critique)
-        if (!isNonCritical) {
-          useAuthStore.getState().clearAuth();
-          window.location.href = "/login";
-        }
-      }
+      return Promise.reject(error);
     }
-    return Promise.reject(error);
+
+    orig._retry = true;
+    const failed = (orig.headers?.Authorization || "").replace(/^Bearer\s+/, "") || null;
+    try {
+      // UN seul renouvellement pour toutes les requêtes refusées en même
+      // temps, et pour tous les onglets (voir api/tokenRefresh.js).
+      const access = await refreshAccessToken(failed, postRefresh);
+      orig.headers.Authorization = `Bearer ${access}`;
+      // Le contrôleur d'annulation de la tentative précédente est
+      // consommé : on le retire pour que le rejeu soit à son tour
+      // annulable en cas de bascule d'académie.
+      delete orig.signal;
+      delete orig.__academyController;
+      return api(orig);
+    } catch (refreshError) {
+      if (refreshError instanceof SessionExpiredError) {
+        // Le serveur a REFUSÉ le renouvellement : la session est finie
+        // (expirée ou révoquée). Seul cas où l'on renvoie à la connexion.
+        if (!isNonCritical) window.location.href = "/login";
+      }
+      // Erreur réseau : la session est conservée ; la requête échoue et
+      // sera rejouée plus tard (React Query), sans déconnexion.
+      return Promise.reject(error);
+    }
   }
 );
 
@@ -165,6 +183,10 @@ export const websiteAdminAPI = {
   fhaApplicationSheet: (id)   => api.get(`/website/admin/fha-applications/${id}/sheet/`, { responseType: "blob" }),
   fhaRegenerateSheet: (id)    => api.post(`/website/admin/fha-applications/${id}/regenerate-sheet/`),
   fhaResendConfirmation: (id) => api.post(`/website/admin/fha-applications/${id}/resend-confirmation/`),
+  // Envoi groupé : le serveur revalide chaque identifiant dans la portée de
+  // l'académie et renvoie un résultat PAR LIGNE.
+  fhaBulkResendConfirmation: (ids, skipSent = true) =>
+    api.post("/website/admin/fha-applications/bulk-resend-confirmation/", { ids, skip_sent: skipSent }),
   exportFhaApplications: ()   => api.get("/website/admin/fha-applications/export/", { responseType: "blob" }),
 
   fhaPlacementTests: (params) => api.get("/website/admin/fha-placement-tests/", { params: { ...BIG, ...params } }),
@@ -209,10 +231,23 @@ export const monthlyReportsAPI = {
   generateMonth: (d)      => api.post("/monthly-reports/reports/generate-month/", d),
 };
 
+// Barème d'appréciations de l'académie active (apps.grades.appreciations).
+export const appreciationsAPI = {
+  get:     (cycle = "")         => api.get("/grades/appreciations/", { params: { cycle } }),
+  save:    (cycle, rules)       => api.put("/grades/appreciations/", { cycle, rules }),
+  preview: (d)                  => api.post("/grades/appreciations/preview/", d),
+  reset:   (cycle = "")         => api.post("/grades/appreciations/reset/", { cycle, confirm: true }),
+};
+
 export const schoolsAPI = {
   list: ()           => api.get("/schools/schools/"),
   get: (id)          => api.get(`/schools/schools/${id}/`),
   update: (id, d)    => api.patch(`/schools/schools/${id}/`, d),
+  // Académies (super administrateur) : création typée et initialisée côté serveur.
+  createAcademy: (d)  => api.post("/schools/schools/", d),
+  deleteAcademy: (id) => api.delete(`/schools/schools/${id}/`),
+  setupStatus: (id)   => api.get(`/schools/schools/${id}/setup-status/`),
+  languageDiagnostic: (id, mode) => api.get(`/schools/schools/${id}/language-diagnostic/`, { params: { mode } }),
   years: ()          => api.get("/schools/years/", { params: BIG }),
   createYear: (d)    => api.post("/schools/years/", d),
   updateYear: (id,d) => api.patch(`/schools/years/${id}/`, d),
@@ -235,6 +270,8 @@ export const schoolsAPI = {
   // Branding / Logo management
   listBranding:     (p)      => api.get("/schools/branding/", { params: { ...BIG, ...p } }),
   activeBranding:   (p)      => api.get("/schools/branding/active/", { params: p }),
+  // Identité publique (sans authentification) : logo effectif, favicons, titre visio.
+  publicBranding:   (code)   => publicApi.get(`/schools/public-branding/${encodeURIComponent(code)}/`),
   uploadBranding:   (fd)     => api.post("/schools/branding/", fd, { headers: { "Content-Type": "multipart/form-data" } }),
   activateBranding: (id)     => api.post(`/schools/branding/${id}/activate/`),
   deleteBranding:   (id)     => api.delete(`/schools/branding/${id}/`),
@@ -283,11 +320,10 @@ export const studentsAPI = {
   enrollAllFromYear: (d)         => api.post("/students/enroll-all-from-year/", d),
   enrollClass:       (d)         => api.post("/students/enroll-class/", d),
   promote:           (d)         => api.post("/students/promote/", d),
-  grades: (id)      => api.get(`/students/${id}/grades/`),
-  attendance: (id)  => api.get(`/students/${id}/attendance/`),
-  payments: (id)    => api.get(`/students/${id}/payments/`),
+  // Retirés (audit oct. 2026) : grades / attendance / payments / bulletins
+  // pointaient vers /students/<id>/… qui n'existe pas (404) et n'étaient
+  // appelés par aucun écran. Utiliser gradesAPI, attendanceAPI, etc.
   checkDuplicate: (p) => api.get("/students/check_duplicate/", { params: p }),
-  bulletins: (id)   => api.get(`/students/${id}/bulletins/`),
   history: (id)     => api.get(`/students/${id}/history/`),
   endOfYearAssistant: (d) => api.post("/students/end-of-year-assistant/", d),
 };
@@ -484,7 +520,27 @@ export const documentsAPI = {
   replace:   (id, d)  => api.post(`/documents/${id}/replace/`, d || {}),
   history:   (id)     => api.get(`/documents/${id}/history/`),
   download:  (id)     => api.get(`/documents/${id}/download/`, { responseType: "blob" }),
+  check:     (d)      => api.post("/documents/check/", d),
+  preview:   (d)      => api.post("/documents/preview/", d, { responseType: "blob" }),
+  batch:     (d)      => api.post("/documents/batch/", d),
+  batchIssue: (ids)   => api.post("/documents/batch-issue/", { ids }),
 };
+
+/** Gabarits officiels téléversés par l'académie active (diplôme, certificat). */
+export const documentTemplatesAPI = {
+  list:       ()          => api.get("/documents/academy-templates/"),
+  get:        (id)        => api.get(`/documents/academy-templates/${id}/`),
+  upload:     (formData)  => api.post("/documents/academy-templates/", formData,
+                                     { headers: { "Content-Type": "multipart/form-data" } }),
+  configure:  (id, d)     => api.patch(`/documents/academy-templates/${id}/`, d),
+  remove:     (id, confirm = false) =>
+    api.delete(`/documents/academy-templates/${id}/`, { params: confirm ? { confirm: 1 } : {} }),
+  action:     (id, name)  => api.post(`/documents/academy-templates/${id}/${name}/`),
+  background: (id)        => api.get(`/documents/academy-templates/${id}/background/`, { responseType: "blob" }),
+  original:   (id)        => api.get(`/documents/academy-templates/${id}/original/`, { responseType: "blob" }),
+  preview:    (id, d)     => api.post(`/documents/academy-templates/${id}/preview/`, d || {}, { responseType: "blob" }),
+};
+
 
 export const conversationsAPI = {
   list:     ()        => api.get("/messages/conversations/"),
@@ -505,12 +561,9 @@ export const messagesAPI = {
   inbox: ()         => api.get("/messages/inbox/"),
   sent: ()          => api.get("/messages/sent/"),
   unreadCount: ()   => api.get("/messages/unread-count/"),
-  send: (d) => {
-    if (d instanceof FormData) {
-      return api.post("/messages/", d, { headers: { "Content-Type": "multipart/form-data" } });
-    }
-    return api.post("/messages/", d);
-  },
+  // `send` et `delete` retirés (audit oct. 2026) : /messages/ est en lecture
+  // seule côté serveur (405) et aucun écran ne les appelait. L'envoi passe
+  // par conversationsAPI.
   reply: (id, d) => {
     if (d instanceof FormData) {
       return api.post(`/messages/${id}/reply/`, d, { headers: { "Content-Type": "multipart/form-data" } });
@@ -518,7 +571,6 @@ export const messagesAPI = {
     return api.post(`/messages/${id}/reply/`, d);
   },
   markRead: (id)    => api.put(`/messages/${id}/read/`),
-  delete: (id)      => api.delete(`/messages/${id}/`),
 };
 
 export const announcementsAPI = {
@@ -555,6 +607,15 @@ export const bulletinsAPI = {
   generate: (d)      => api.post("/bulletins/generate/", d),
   generateClass: (d) => api.post("/bulletins/generate-class/", d),
   generateAll: (d)   => api.post("/bulletins/generate-all/", d),
+  // Commentaire du directeur : un bulletin (PDF régénéré) ou une portée.
+  comment: (id, d)   => api.post(`/bulletins/${id}/comment/`, d),
+  commentTarget: (d) => api.post("/bulletins/comment-target/", d),
+  // Aperçu PDF (moteur officiel, aucune écriture) : renvoyé en mémoire.
+  preview: (d)       => api.post("/bulletins/preview/", d, { responseType: "blob" }),
+  commentPreview: (d) => api.post("/bulletins/comment-preview/", d),
+  createOperation: (d) => api.post("/bulletins/operations/", d),
+  operation: (id)    => api.get(`/bulletins/operations/${id}/`),
+  operations: ()     => api.get("/bulletins/operations/"),
   delete: (id)       => api.delete(`/bulletins/${id}/`),
   bulkDelete: (ids)  => api.post(`/bulletins/bulk-delete/`, { ids }),
 };
@@ -615,7 +676,68 @@ export const virtualAPI = {
   delete: (id)       => api.delete(`/virtual-rooms/${id}/`),
   bulkDelete: (ids)  => api.post(`/virtual-rooms/bulk-delete/`, { ids }),
   join: (id)         => api.post(`/virtual-rooms/${id}/join/`),
+  meetingStatus: (id) => api.get(`/virtual-rooms/${id}/meeting-status/`),
+  recordings: (id)   => api.get(`/virtual-rooms/${id}/recordings/`),
+  recordingDownload: (id, recordId) => api.post(`/virtual-rooms/${id}/recordings/${encodeURIComponent(recordId)}/download/`),
   end: (id)          => api.post(`/virtual-rooms/${id}/end/`),
   leave: (id)        => api.post(`/virtual-rooms/${id}/leave/`),
   participants: (id) => api.get(`/virtual-rooms/${id}/participants/`),
+};
+
+/* ── Envois d'e-mails groupés par académie (P1) ────────────────────────
+   Le navigateur n'envoie que des RÈGLES d'audience : la liste des
+   destinataires est recalculée et revalidée par le serveur. */
+export const massEmailAPI = {
+  options:    (academyId)        => api.get("/mass-email/options/", { params: { academy_id: academyId || undefined } }),
+  recipients: (academyId, p)     => api.get("/mass-email/recipients/", { params: { academy_id: academyId || undefined, ...p } }),
+  preview:    (d)                => api.post("/mass-email/preview/", d),
+  campaigns:  (academyId)        => api.get("/mass-email/campaigns/", { params: { academy_id: academyId || undefined } }),
+  // Avec pièces jointes : multipart (`payload` JSON + fichiers). Le
+  // serveur revalide formats, signatures et tailles.
+  create:     (d, files = [])    => {
+    if (!files.length) return api.post("/mass-email/campaigns/", d);
+    const form = new FormData();
+    form.append("payload", JSON.stringify(d));
+    files.forEach((f) => form.append("attachments", f));
+    return api.post("/mass-email/campaigns/", form, { headers: { "Content-Type": "multipart/form-data" } });
+  },
+  campaign:   (id, academyId)    => api.get(`/mass-email/campaigns/${id}/`, { params: { academy_id: academyId || undefined } }),
+  retryFailed:(id, academyId)    => api.post(`/mass-email/campaigns/${id}/retry-failed/`, { academy_id: academyId || undefined }),
+};
+
+/* ── Échéanciers et relances de paiement (P1) ──────────────────────── */
+export const feeSchedulesAPI = {
+  list:   ()       => api.get("/payments/fee-schedules/"),
+  create: (d)      => api.post("/payments/fee-schedules/", d),
+  update: (id, d)  => api.patch(`/payments/fee-schedules/${id}/`, d),
+  delete: (id)     => api.delete(`/payments/fee-schedules/${id}/`),
+  arrangements:      (feeId) => api.get("/payments/fee-arrangements/", { params: { fee_schedule: feeId } }),
+  createArrangement: (d)     => api.post("/payments/fee-arrangements/", d),
+  deleteArrangement: (id)    => api.delete(`/payments/fee-arrangements/${id}/`),
+};
+
+export const remindersAPI = {
+  status:  ()      => api.get("/payments/reminders/status/"),
+  policy:  ()      => api.get("/payments/reminders/policy/"),
+  updatePolicy: (d) => api.patch("/payments/reminders/policy/", d),
+  preview: (p)     => api.get("/payments/reminders/preview/", { params: p }),
+  run:     ()      => api.post("/payments/reminders/run/", { confirm: true }),
+  history: (p)     => api.get("/payments/reminders/history/", { params: p }),
+  runs:    ()      => api.get("/payments/reminders/runs/"),
+};
+
+/* ── Boîte d'envoi et diagnostic SMTP ──────────────────────────────── */
+export const outboxAPI = {
+  list:       (p)        => api.get("/notifications/outbox/", { params: p }),
+  detail:     (id, p)    => api.get(`/notifications/outbox/${id}/`, { params: p }),
+  retry:      (id, p)    => api.post(`/notifications/outbox/${id}/retry/`, {}, { params: p }),
+  // Fichier récupéré AVEC le jeton (jamais par une URL publique).
+  attachment: (id, attId, inline = false, p = {}) =>
+    api.get(`/notifications/outbox/${id}/attachments/${attId}/`, {
+      params: { ...p, inline: inline ? 1 : undefined }, responseType: "blob",
+    }),
+  config:     (check = false) => api.get("/notifications/email-config/", { params: { check: check ? 1 : undefined } }),
+  testSend:   (to)       => api.post("/notifications/email-config/test/", { to }),
+  smsList:    (p)        => api.get("/notifications/sms/", { params: p }),
+  smsRetry:   (id, p)    => api.post(`/notifications/sms/${id}/retry/`, {}, { params: p }),
 };

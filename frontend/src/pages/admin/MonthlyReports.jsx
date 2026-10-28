@@ -31,10 +31,11 @@ import DataTable from "../../components/ui/DataTable";
 import DetailField from "../../components/ui/DetailField";
 import Modal from "../../components/ui/Modal";
 import PageHeader from "../../components/ui/PageHeader";
-import { useAcademyKey } from "../../hooks/useEntityContext";
+import { useAcademyKey, useEntityContext } from "../../hooks/useEntityContext";
 import { t } from "../../i18n";
 import { extractApiError } from "../../utils/errors";
 
+import { ageColumn } from "../../utils/age";
 const MOIS = [
   "", "janvier", "février", "mars", "avril", "mai", "juin",
   "juillet", "août", "septembre", "octobre", "novembre", "décembre",
@@ -116,6 +117,7 @@ function EtatEnvoi({ ligne }) {
 
 export default function MonthlyReports() {
   const academyKey = useAcademyKey();
+  const { activeEntity } = useEntityContext();
   const qc = useQueryClient();
   const maintenant = new Date();
 
@@ -180,6 +182,7 @@ export default function MonthlyReports() {
   const colonnes = [
     { key: "reference", label: t("Référence"), accessor: "reference" },
     { key: "student", label: t("Élève"), accessor: "student_name" },
+    ageColumn("student_age"),
     { key: "period", label: t("Période"), accessor: "period_label" },
     { key: "version", label: t("Version"), render: (r) => `v${r.version}` },
     { key: "pdf", label: t("PDF"), sortable: false, render: (r) =>
@@ -194,7 +197,9 @@ export default function MonthlyReports() {
   return (
     <div className="space-y-5">
       <PageHeader
-        title={t("Rapports mensuels FEBA FHA")}
+        title={activeEntity?.name
+          ? t("Rapports mensuels — {nom}", { nom: activeEntity.name })
+          : t("Rapports mensuels")}
         subtitle={t("Suivi mensuel des élèves de l'académie en ligne.")}
       />
 

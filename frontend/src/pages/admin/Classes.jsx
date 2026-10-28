@@ -11,7 +11,8 @@ import ConfirmDialog from "../../components/ui/ConfirmDialog";
 import SearchableSelect from "../../components/ui/SearchableSelect";
 import { extractApiError } from "../../utils/errors";
 import { t } from "../../i18n";
-import { acceptsLanguage, summarize, validateSelection } from "../../utils/classLanguage";
+import { acceptsLanguage, summarize, trackOptions, validateSelection } from "../../utils/classLanguage";
+import { useAcademy } from "../../context/AcademyContext";
 import { useSchoolYearScope } from "../../hooks/useSchoolYearScope";
 
 export default function AdminClasses() {
@@ -22,6 +23,14 @@ export default function AdminClasses() {
   const [deleteItem, setDeleteItem] = useState(null);
   const [selectedSubjects, setSelectedSubjects] = useState([]);
   const { register, handleSubmit, reset, control } = useForm();
+  const { activeAcademy } = useAcademy();
+  // Parcours admis par le programme linguistique de l'académie (serveur).
+  const tracks = trackOptions(activeAcademy);
+  const TRACK_LABELS = {
+    BILINGUAL: t("Bilingue (français et anglais)"),
+    FRANCOPHONE: t("Francophone"),
+    ANGLOPHONE: t("Anglophone"),
+  };
 
   // FIX v34/v39 : la page gère les classes PAR ANNÉE (espace de travail isolé).
   // yearFilter "" = suivre l'année active ; on RÉSOUT toujours vers un id
@@ -50,6 +59,9 @@ export default function AdminClasses() {
   const allSubjects = subjectsData?.data?.results || subjectsData?.data || [];
   const frSubjects = allSubjects.filter(s => s.language === "fr");
   const enSubjects = allSubjects.filter(s => s.language === "en");
+  // Matières communes : comptées une fois dans la moyenne générale, hors
+  // groupes FR/EN et hors 60/40 (voir subject_rules).
+  const commonSubjects = allSubjects.filter(s => s.language === "bilingual");
 
   const createMut = useMutation({
     mutationFn: classesAPI.create,
@@ -114,7 +126,7 @@ export default function AdminClasses() {
   const openCreate = () => {
     // FIX v38 : l'année scolaire est pré-sélectionnée (année filtrée sur la
     // page, sinon année active) — la modale ne s'ouvre plus avec un champ vide.
-    reset({ max_students: 30, language_track: "BILINGUAL", school_year: yearFilter || activeYearId || "" });
+    reset({ max_students: 30, language_track: tracks[0], school_year: yearFilter || activeYearId || "" });
     setEditItem(null);
     setModalOpen(true);
   };
@@ -126,7 +138,7 @@ export default function AdminClasses() {
       level: c.level,
       school_year: c.school_year,
       max_students: c.max_students,
-      language_track: c.language_track || "BILINGUAL",
+      language_track: c.effective_language_track || c.language_track || tracks[0],
     });
     setModalOpen(true);
   };
@@ -153,6 +165,7 @@ export default function AdminClasses() {
     const parId = new Map();
     for (const m of frSubjects) parId.set(m.id, { ...m, language: "fr" });
     for (const m of enSubjects) parId.set(m.id, { ...m, language: "en" });
+    for (const m of commonSubjects) parId.set(m.id, { ...m, language: "bilingual" });
     return selectedSubjects.map((id) => parId.get(id)).filter(Boolean);
   };
 
@@ -272,13 +285,13 @@ export default function AdminClasses() {
               <label className="label">{t("Année source *")}</label>
               <SearchableSelect
                 options={years.filter(y => String(y.id) !== String(copyTarget)).map(y => ({ value: y.id, label: y.name }))}
-                value={copySource} onChange={setCopySource} placeholder="— Sélectionner —" />
+                value={copySource} onChange={setCopySource} placeholder={t("— Sélectionner —")} />
             </div>
             <div>
               <label className="label">{t("Année cible *")}</label>
               <SearchableSelect
                 options={years.map(y => ({ value: y.id, label: `${y.name}${y.is_current ? " ✓ Active" : ""}` }))}
-                value={copyTarget} onChange={setCopyTarget} placeholder="— Sélectionner —" />
+                value={copyTarget} onChange={setCopyTarget} placeholder={t("— Sélectionner —")} />
             </div>
           </div>
           <div className="flex gap-3 justify-end pt-2">
@@ -326,10 +339,8 @@ export default function AdminClasses() {
             </div>
             <div>
               <label className="label">{t("Parcours linguistique")}</label>
-              <select {...register("language_track")} className="input">
-                <option value="BILINGUAL">{t("Bilingue (français et anglais)")}</option>
-                <option value="FRANCOPHONE">{t("Francophone")}</option>
-                <option value="ANGLOPHONE">{t("Anglophone")}</option>
+              <select {...register("language_track")} className="input" data-testid="class-track">
+                {tracks.map((track) => <option key={track} value={track}>{TRACK_LABELS[track]}</option>)}
               </select>
               <p className="text-xs text-slate-500 mt-1">
                 {t("Détermine les matières attendues et la forme du bulletin.")}
@@ -352,7 +363,7 @@ export default function AdminClasses() {
               on lui reprochait sans fin l'absence d'une langue qu'elle
               n'enseigne pas, et le reproche ne pouvait jamais être levé. */}
           {subjectModal && (() => {
-            const track = subjectModal.language_track || "BILINGUAL";
+            const track = subjectModal.effective_language_track || subjectModal.language_track || "BILINGUAL";
             const libelle = {
               BILINGUAL: t("Cette classe est bilingue : une matière française et une matière anglaise sont attendues."),
               FRANCOPHONE: t("Cette classe est francophone : seules les matières françaises sont attendues."),
@@ -480,6 +491,40 @@ export default function AdminClasses() {
               );
             })()}
           </div>
+
+          {/* Matières communes (« bilingues ») : admises seulement dans une
+              classe bilingue d'une académie bilingue, jamais exigées. */}
+          {subjectModal && (commonSubjects.length > 0 || acceptsLanguage(subjectModal, "bilingual")) && (() => {
+            const admise = acceptsLanguage(subjectModal, "bilingual");
+            return (
+              <div data-testid="colonne-commune" data-admise={admise ? "oui" : "non"}>
+                <h4 className={`font-semibold text-sm mb-2 ${admise ? "text-violet-700" : "text-slate-400"}`}>
+                  {t("Matières communes (bilingues)")}
+                </h4>
+                <p className="text-xs text-slate-500 mb-2">
+                  {admise
+                    ? t("Comptées une seule fois dans la moyenne générale, hors moyennes française et anglaise.")
+                    : t("Cette classe n'admet pas de matière commune.")}
+                </p>
+                <div className={`grid sm:grid-cols-2 gap-1.5 ${admise ? "" : "opacity-50"}`}>
+                  {commonSubjects.map(s => (
+                    <label key={s.id} className={`flex items-center gap-2.5 p-2.5 rounded-lg border ${
+                      !admise ? "border-slate-200 text-slate-400 cursor-not-allowed"
+                        : selectedSubjects.includes(s.id) ? "bg-violet-50 border-violet-300 text-violet-800 cursor-pointer"
+                          : "border-slate-200 hover:bg-slate-50 text-slate-600 cursor-pointer"}`}>
+                      <input type="checkbox" className="rounded" disabled={!admise}
+                             checked={selectedSubjects.includes(s.id)} onChange={() => toggleSubject(s.id)} />
+                      <span className="text-sm font-medium">{s.name}</span>
+                      <span className="ml-auto text-xs text-slate-400">coeff {s.coefficient}</span>
+                    </label>
+                  ))}
+                  {commonSubjects.length === 0 && (
+                    <p className="text-xs text-slate-400 p-2">{t("Aucune matière commune. Créez-en dans l'onglet Matières.")}</p>
+                  )}
+                </div>
+              </div>
+            );
+          })()}
 
           <div className="flex gap-3 justify-end pt-2 border-t border-slate-100">
             <button type="button" onClick={() => setSubjectModal(null)} className="btn-secondary">{t("Annuler")}</button>

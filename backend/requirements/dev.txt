@@ -2,7 +2,6 @@
 django-debug-toolbar==4.3.0
 factory-boy==3.3.0
 Faker==24.11.0
-pypdf==6.14.2
 PyMuPDF==1.28.0          # « fitz » : inspection des PDF générés (tests documents)
 # Mesure de la géométrie des fonds (document_probe) et comparaison pixel à
 # pixel. Outillage de calibrage et de vérification : l'application tourne

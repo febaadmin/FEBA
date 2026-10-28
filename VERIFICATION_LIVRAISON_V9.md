@@ -1,5 +1,8 @@
 # Vérification de la livraison V9
 
+> **DOCUMENT HISTORIQUE** — il décrit une version antérieure de FEBA ; ses résultats n'ont pas été
+> rejoués tels quels sur cette version. Références à jour : `DOCUMENTATION_INDEX.md`, `FINAL_REPORT.md`.
+
 L'archive n'est pas déclarée valide parce qu'elle a été construite. Elle
 est **extraite**, puis éprouvée, hors du dépôt de travail, sur une base
 de données neuve. Les résultats ci-dessous sont ceux de cette

@@ -275,8 +275,8 @@ class AdminPreRegistrationViewSet(viewsets.ModelViewSet):
             academy = getattr(user, 'school', None)
             if academy is not None and academy.entity_type == 'online':
                 raise PermissionDenied(
-                    "Cette académie ne gère pas de préinscriptions FEBA. "
-                    "Utilisez le module « Admissions FEBA FHA »."
+                    "Cette académie ne reçoit pas les préinscriptions du site. "
+                    "Ses dossiers sont dans « Admissions en ligne »."
                 )
 
     def get_queryset(self):

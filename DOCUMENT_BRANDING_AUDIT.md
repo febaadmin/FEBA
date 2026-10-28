@@ -1,4 +1,7 @@
 # Audit de l'identité des documents — une seule source par académie
+
+> **DOCUMENT HISTORIQUE** — il décrit une version antérieure de FEBA ; ses résultats n'ont pas été
+> rejoués tels quels sur cette version. Références à jour : `DOCUMENTATION_INDEX.md`, `FINAL_REPORT.md`.
 ## V9-bis — vérification reconduite après le recalibrage
 
 Le recalibrage des gabarits FEBA FHA touche des coordonnées, pas des

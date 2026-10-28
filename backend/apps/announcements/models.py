@@ -22,3 +22,15 @@ class Announcement(models.Model):
 
     def __str__(self):
         return self.title
+
+    @property
+    def academy(self):
+        """
+        Académie de l'annonce : celle de son année scolaire, à défaut celle
+        de l'auteur. Le super-administrateur n'a pas d'académie : déduire la
+        portée de l'auteur seul rendait ses annonces invisibles partout.
+        """
+        year = self.school_year
+        if year is not None:
+            return year.school
+        return getattr(self.author, "school", None)

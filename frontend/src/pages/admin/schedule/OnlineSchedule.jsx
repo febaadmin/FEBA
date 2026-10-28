@@ -1,5 +1,5 @@
 /**
- * OnlineSchedule — emploi du temps FEBA French Heritage Academy.
+ * OnlineSchedule — emploi du temps des académies en ligne.
  *
  * MÉTIER DIFFÉRENT DE CELUI DE FEBA (P3)
  * --------------------------------------
@@ -186,9 +186,9 @@ export default function OnlineSchedule() {
           {t("Les séances en ligne n'existent pas pour cette académie.")}
         </p>
         <p className="mt-1">
-          {t(
-            "FEBA Cotonou est une école présentielle : ses cours se planifient dans l'onglet FEBA, avec une classe et une salle physique.",
-          )}
+          {t("{nom} est une académie présentielle : ses cours se planifient dans l'onglet « cours présentiels », avec une classe et une salle physique.", {
+            nom: activeAcademy?.short_name || activeAcademy?.name || t("Cette académie"),
+          })}
         </p>
       </div>
     );
@@ -212,11 +212,11 @@ export default function OnlineSchedule() {
           </div>
           {isAllAcademies ? (
             <span className="text-xs text-slate-500 self-center max-w-xs">
-              {t("Sélectionnez FEBA FHA pour planifier une séance.")}
+              {t("Sélectionnez une académie en ligne pour planifier une séance.")}
             </span>
           ) : (
             <button onClick={openCreate} className="btn-primary flex items-center gap-2">
-              <Plus className="w-4 h-4" />{t("Nouvelle séance")} — {activeAcademy?.short_name || "FEBA FHA"}
+              <Plus className="w-4 h-4" />{t("Nouvelle séance")} — {activeAcademy?.short_name || activeAcademy?.name || ""}
             </button>
           )}
         </div>
@@ -256,14 +256,16 @@ export default function OnlineSchedule() {
                   </div>
                 ))}
                 {gridTimeSlots.map((slot) => {
-                  const [start] = slot.split("-");
+                  const [start, end] = slot.split("-");
                   return [
                     <div key={`label-${slot}`} className="bg-slate-50 border border-slate-100 p-2 text-xs text-slate-500 text-center font-mono">
-                      {start}
+                      {start}<br />{end}
                     </div>,
                     ...DAYS.map((_, di) => {
                       const items = sessions.filter(
-                        (s) => s.day_of_week === di && s.start_time_utc?.slice(0, 5) === start,
+                        // Créneau COMPLET : voir CampusSchedule (doublons à la même heure).
+                        (s) => s.day_of_week === di && s.start_time_utc?.slice(0, 5) === start
+                          && String(s.end_time_utc) === end,
                       );
                       return (
                         <div key={`${slot}-${di}`} className="border border-slate-100 p-1 min-h-[64px]">
@@ -328,7 +330,7 @@ export default function OnlineSchedule() {
                 <tr key={s.id} className={clsx(!s.is_active && "opacity-50")}>
                   {isAllAcademies && (
                     <td className="py-3 pr-3">
-                      <AcademyBadge code={s.academy_code} name={s.academy_name} />
+                      <AcademyBadge code={s.academy_code} name={s.academy_name} shortName={s.academy_short_name} />
                     </td>
                   )}
                   <td className="py-3 pr-3 font-semibold text-slate-800">{s.group_name}</td>

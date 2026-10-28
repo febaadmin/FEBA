@@ -25,9 +25,13 @@ class EntityFeatureMatrixTests(TestCase):
         feba = School.objects.create(
             name="FEBA campus", address="Cotonou", entity_type="campus",
         )
-        self.assertFalse(feba.has_feature("virtual_classrooms"))
-        self.assertFalse(feba.has_feature("video_conferencing"))
+        # Décision du 26/10/2026 : la visioconférence est ouverte à TOUTES
+        # les académies, FEBA comprise.
+        self.assertTrue(feba.has_feature("virtual_classrooms"))
+        self.assertTrue(feba.has_feature("video_conferencing"))
+        # Les fonctions propres à l'enseignement en ligne restent fermées.
         self.assertFalse(feba.has_feature("placement_tests"))
+        self.assertFalse(feba.has_feature("online_lessons"))
         # Les fonctions scolaires classiques restent actives.
         self.assertTrue(feba.has_feature("payments"))
         self.assertTrue(feba.has_feature("messaging"))
@@ -45,12 +49,13 @@ class EntityFeatureMatrixTests(TestCase):
             self.assertTrue(fha.has_feature(flag), flag)
 
     def test_settings_override_is_administrable(self):
-        """Un drapeau peut être surchargé par l'administration."""
+        """Un drapeau peut être surchargé par l'administration, dans les deux sens."""
         school = School.objects.create(
             name="Mixte", address="X", entity_type="campus",
-            settings={"features": {"virtual_classrooms": True}},
+            settings={"features": {"placement_tests": True, "virtual_classrooms": False}},
         )
-        self.assertTrue(school.has_feature("virtual_classrooms"))
+        self.assertTrue(school.has_feature("placement_tests"))
+        self.assertFalse(school.has_feature("virtual_classrooms"))
 
     def test_unknown_flag_in_settings_is_ignored(self):
         """Une clé inconnue ne peut pas injecter une fonctionnalité."""
@@ -89,11 +94,23 @@ class EntityFeatureMatrixTests(TestCase):
 
 
 class VirtualRoomFeatureEnforcementTests(TestCase):
-    """L'API refuse les salles virtuelles à une entité présentielle."""
+    """
+    L'API refuse les salles virtuelles à une entité où la fonctionnalité est
+    DÉSACTIVÉE. Depuis le 26/10/2026, elle est active par défaut partout
+    (FEBA comprise) : la désactivation est donc explicite ici.
+    """
 
     def setUp(self):
         self.campus = School.objects.create(
             name="FEBA Campus", address="Cotonou", entity_type="campus",
+            settings={"features": {"virtual_classrooms": False, "video_conferencing": False}},
+        )
+        self.campus_open = School.objects.create(
+            name="FEBA Campus ouvert", address="Cotonou", entity_type="campus",
+        )
+        CustomUser.objects.create_user(
+            username="co", email="campus.open@test.bj", password="Pass1234!",
+            role="admin", school=self.campus_open, first_name="C", last_name="O",
         )
         self.online = School.objects.create(
             name="FHA Test", address="En ligne", entity_type="online",
@@ -127,6 +144,13 @@ class VirtualRoomFeatureEnforcementTests(TestCase):
         auth(client, "online.admin@test.bj")
         resp = client.get("/api/virtual-rooms/")
         self.assertEqual(resp.status_code, status.HTTP_200_OK)
+
+    def test_campus_admin_uses_virtual_rooms_by_default(self):
+        client = APIClient()
+        auth(client, "campus.open@test.bj")
+        self.assertEqual(client.get("/api/virtual-rooms/").status_code, status.HTTP_200_OK)
+        resp = client.post("/api/virtual-rooms/", {"name": "Salle FEBA"}, format="json")
+        self.assertEqual(resp.status_code, status.HTTP_201_CREATED, resp.data)
 
 
 class EntityContextEndpointTests(TestCase):
@@ -245,11 +269,13 @@ class EntityContextEndpointTests(TestCase):
         client.post("/api/auth/entity-context/switch/",
                     {"entity_id": self.feba.id}, format="json")
         ctx = client.get("/api/auth/entity-context/")
-        self.assertFalse(ctx.data["features"]["virtual_classrooms"])
+        self.assertFalse(ctx.data["features"]["placement_tests"])
+        self.assertTrue(ctx.data["features"]["virtual_classrooms"])
 
         client.post("/api/auth/entity-context/switch/",
                     {"entity_id": self.fha.id}, format="json")
         ctx = client.get("/api/auth/entity-context/")
+        self.assertTrue(ctx.data["features"]["placement_tests"])
         self.assertTrue(ctx.data["features"]["virtual_classrooms"])
 
 

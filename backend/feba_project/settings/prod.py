@@ -60,3 +60,14 @@ SECURE_BROWSER_XSS_FILTER = True
 SECURE_CONTENT_TYPE_NOSNIFF = True
 X_FRAME_OPTIONS = 'DENY'
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+# Le contrôle de santé Docker interroge http://localhost:8000/api/health/
+# DEPUIS le conteneur, sans proxy : redirigé vers https://localhost:8000,
+# il échouait toujours — backend « unhealthy », et nginx, le worker et
+# Beat (qui en dépendent) ne démarraient JAMAIS (constaté en démarrant la
+# pile de production). Seule cette route, qui ne renvoie aucune donnée
+# personnelle, est exemptée de la redirection HTTPS.
+SECURE_REDIRECT_EXEMPT = [r'^api/health/$']
+# Limites de débit PAR CLIENT : l'adresse réelle vient de X-Real-IP posé par
+# nginx (voir apps/core/ratelimit.client_ip). Sans ce réglage, toutes les
+# requêtes partageaient l'adresse du conteneur nginx.
+RATELIMIT_IP_META_KEY = 'apps.core.ratelimit.client_ip'

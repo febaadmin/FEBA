@@ -20,6 +20,7 @@ est vérifiée ici plutôt que supposée :
    un backend qui écrit dans la console non plus. Le statut ne bascule
    que si un fournisseur externe a accepté le message.
 """
+import os
 from datetime import date, timedelta
 
 import fitz  # PyMuPDF
@@ -417,6 +418,17 @@ class TestEnvoi:
         assert mimetype == "application/pdf"
         assert contenu[:5] == b"%PDF-"
 
+    def test_expediteur_officiel_globalfeba(self, eleve_fha, settings):
+        """noreply@feba.bj est retiré : le rapport part de noreply@globalfeba.com."""
+        settings.EMAIL_BACKEND = "django.core.mail.backends.locmem.EmailBackend"
+        settings.DEFAULT_FROM_EMAIL = "noreply@feba.bj"   # ancienne valeur restée en place
+        settings.FHA_FROM_EMAIL = ""
+        settings.FEBA_FROM_EMAIL = ""
+        self._avec_parent(eleve_fha)
+        report, _ = generate_report(eleve_fha, ANNEE, MOIS)
+        send_report(report)
+        assert [m.from_email for m in mail.outbox] == ["noreply@globalfeba.com"]
+
     def test_la_langue_du_parent_est_respectee(self, eleve_fha, settings):
         settings.EMAIL_BACKEND = "django.core.mail.backends.locmem.EmailBackend"
         self._avec_parent(eleve_fha, langue="en")
@@ -425,10 +437,27 @@ class TestEnvoi:
         assert "Monthly report" in mail.outbox[0].subject
         assert "Please find attached" in mail.outbox[0].body
 
+    def test_un_rapport_capture_par_mailpit_n_est_pas_envoye(
+            self, eleve_fha, settings, monkeypatch):
+        """
+        Mailpit ACCEPTE le message mais ne le distribue jamais : le rapport
+        ne doit pas être présenté comme envoyé (défaut signalé en octobre
+        2026 — l'hôte « mailpit » était pris pour un fournisseur réel).
+        """
+        settings.EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+        settings.EMAIL_HOST = "mailpit"
+        self._avec_parent(eleve_fha)
+        report, _ = generate_report(eleve_fha, ANNEE, MOIS)
+        monkeypatch.setattr(
+            "django.core.mail.EmailMultiAlternatives.send", lambda self, **k: 1)
+        report = send_report(report)
+        assert report.status != MonthlyReportStatus.SENT
+        assert report.really_sent is False
+
     def test_un_fournisseur_externe_permet_le_statut_envoye(
             self, eleve_fha, settings, monkeypatch):
         settings.EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
-        settings.EMAIL_HOST = "mailpit"
+        settings.EMAIL_HOST = "smtp.fournisseur.test"
         self._avec_parent(eleve_fha)
         report, _ = generate_report(eleve_fha, ANNEE, MOIS)
 
@@ -445,7 +474,7 @@ class TestEnvoi:
             self, eleve_fha, settings, monkeypatch):
         """Garde-fou anti-doublon : la tâche peut être rejouée."""
         settings.EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
-        settings.EMAIL_HOST = "mailpit"
+        settings.EMAIL_HOST = "smtp.fournisseur.test"
         self._avec_parent(eleve_fha)
         report, _ = generate_report(eleve_fha, ANNEE, MOIS)
         appels = []
@@ -766,8 +795,13 @@ class TestDefautsVusSurLeDocument:
 
         from apps.schools.branding import get_branding
 
+        from apps.schools.branding import STATIC_FILES_DIR
+
         feba, fha = academies
-        source = Image.open(get_branding(feba).document_logo).convert("RGB")
+        # L'ORIGINAL du blason est `logo_feba.jpeg` (ancien logo FEBA). Depuis
+        # le 26/10/2026, FEBA a pour logo de repli le logo fourni : la
+        # comparaison porte donc directement sur le fichier d'origine.
+        source = Image.open(os.path.join(STATIC_FILES_DIR, "logo_feba.jpeg")).convert("RGB")
         derive = Image.open(get_branding(fha).document_logo).convert("RGB")
 
         assert derive.width == source.width, "le blason a été redimensionné"
@@ -776,7 +810,7 @@ class TestDefautsVusSurLeDocument:
         # blason (recompression, filtre, redimensionnement) l'abîmerait
         # sans que personne ne le remarque avant l'impression.
         haut_source = source.crop((0, 0, source.width, derive.height))
-        assert list(haut_source.getdata()) == list(derive.getdata()), (
+        assert list(haut_source.get_flattened_data()) == list(derive.get_flattened_data()), (
             "les pixels conservés du blason ont été altérés")
 
     def test_un_texte_non_redige_ne_pretend_pas_a_un_defaut_de_saisie(

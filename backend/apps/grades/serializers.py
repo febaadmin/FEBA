@@ -1,8 +1,11 @@
+from apps.core.tenancy import TenantRelationsMixin
 from decimal import Decimal
 from rest_framework import serializers
 from .grading import ASSESSMENT_WEIGHT
 from .models import Grade, GradeHistory, get_letter_grade, get_appreciation
-from apps.core.academy_serializers import ACADEMY_FIELDS, AcademyMetadataMixin
+from apps.core.academy_serializers import (
+    ACADEMY_FIELDS, STUDENT_AGE_FIELDS, AcademyMetadataMixin, StudentAgeMixin,
+)
 
 
 class GradeHistorySerializer(serializers.ModelSerializer):
@@ -18,7 +21,9 @@ class GradeHistorySerializer(serializers.ModelSerializer):
         return obj.changed_by.get_full_name() if obj.changed_by else None
 
 
-class GradeSerializer(AcademyMetadataMixin, serializers.ModelSerializer):
+class GradeSerializer(TenantRelationsMixin, AcademyMetadataMixin, StudentAgeMixin, serializers.ModelSerializer):
+    #: Isolation des relations écrites (voir apps.core.tenancy.TenantRelationsMixin).
+    tenant_relations = {"student": "school", "subject": "school", "teacher": "user.school", "school_year": "school"}
     #: Chemin ORM vers l'académie propriétaire de l'objet.
     academy_source = "student.school"
 
@@ -50,7 +55,23 @@ class GradeSerializer(AcademyMetadataMixin, serializers.ModelSerializer):
             'is_deleted', 'deleted_at', 'deleted_by', 'deleted_by_name',
             'created_at', 'updated_at',
             'history',
-        ] + ACADEMY_FIELDS
+        ] + ACADEMY_FIELDS + STUDENT_AGE_FIELDS
+
+    def validate(self, attrs):
+        """Programme linguistique de l'académie et parcours de la classe."""
+        attrs = super().validate(attrs)
+        if self.instance is not None and not ({"student", "subject"} & set(attrs)):
+            return attrs
+        from apps.classes.subject_rules import grade_subject_error
+
+        student = attrs.get("student") or getattr(self.instance, "student", None)
+        subject = attrs.get("subject") or getattr(self.instance, "subject", None)
+        year = attrs.get("school_year") or getattr(self.instance, "school_year", None)
+        if student is not None:
+            refus = grade_subject_error(student, subject, year)
+            if refus:
+                raise serializers.ValidationError({"subject": refus})
+        return attrs
 
     def get_note_type_label(self, obj):
         return obj.get_note_type_display()
@@ -59,8 +80,24 @@ class GradeSerializer(AcademyMetadataMixin, serializers.ModelSerializer):
         return obj.subject.coefficient if obj.subject else 1
 
     def get_appreciation(self, obj):
+        """
+        Appréciation de la note selon le barème de l'académie de l'élève (et
+        du cycle de sa classe). Les barèmes résolus sont mémorisés pour la
+        durée de la réponse : une liste de notes ne relit pas la table à
+        chaque ligne.
+        """
+        from .appreciations import cycle_of_class
         from .models import get_appreciation
-        return get_appreciation(obj.value)
+
+        memo = self.context.setdefault('_appreciation_memo', {'scales': {}, 'cycles': {}})
+        enrollment = getattr(obj, 'enrollment', None)
+        klass = getattr(enrollment, 'class_obj', None) if enrollment else None
+        klass = klass or getattr(obj.student, 'current_class', None)
+        key = getattr(klass, 'pk', None)
+        if key not in memo['cycles']:
+            memo['cycles'][key] = cycle_of_class(klass)
+        return get_appreciation(obj.value, academy=obj.student.school,
+                                cycle=memo['cycles'][key], cache=memo['scales'])
 
     def get_deleted_by_name(self, obj):
         if obj.deleted_by:
