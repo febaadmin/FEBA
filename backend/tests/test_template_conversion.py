@@ -610,3 +610,137 @@ class MarkerNeighbourTests(MarkerLayoutTests):
         self.assertLessEqual(academy["x_mm"] + academy["width_mm"], tiret[0] / 72 * 25.4)
         nom = char_span(pdf, self.A.school.legal_name or self.A.school.name)
         self.assertLessEqual(nom[1], tiret[0] + 0.5, (nom, tiret))
+
+
+# ── Délai GLOBAL de conversion (faux LibreOffice, durées maîtrisées) ──────
+#
+# Le test réel `test_delai_de_conversion_depasse` dépend de la vitesse de la
+# machine : sur un poste rapide, chaque appel à LibreOffice durait moins de
+# 1 s alors que la conversion entière en prenait 2,43 — et passait, parce
+# que chaque appel recevait le délai entier. Ces tests fixent le CONTRAT
+# indépendamment de la machine, avec un convertisseur dont on choisit la
+# durée et les processus descendants.
+
+FAKE_SOFFICE = r"""#!/bin/sh
+# Faux soffice : dort, puis écrit le résultat demandé (--convert-to, --outdir).
+target=""; outdir=""; prev=""; src=""
+for arg in "$@"; do
+  [ "$prev" = "--convert-to" ] && target="$arg"
+  [ "$prev" = "--outdir" ] && outdir="$arg"
+  prev="$arg"; src="$arg"
+done
+if [ -n "@PIDFILE@" ]; then
+  sleep 60 &
+  echo $$ $! > "@PIDFILE@"
+fi
+sleep @DELAY@
+cp "@RESULT@" "$outdir/source.$target"
+"""
+
+
+class GlobalDeadlineTests(TemplateTestBase):
+    """Contrat : DOCUMENT_CONVERSION_TIMEOUT borne la conversion ENTIÈRE d'un téléversement."""
+
+    stored_files = OfficeErrorTests.stored_files
+
+    def setUp(self):
+        super().setUp()
+        self.tmp = tempfile.mkdtemp(prefix="fake-soffice-")
+        # Résultat écrit par le faux convertisseur : un PDF qui CONTIENT un
+        # marqueur, ce qui oblige la conversion à enchaîner les étapes.
+        from reportlab.pdfgen import canvas
+
+        self.marker_pdf = os.path.join(self.tmp, "marqueur.pdf")
+        pdf = canvas.Canvas(self.marker_pdf)
+        pdf.drawString(100, 700, "Nom : {{ student_name }}")
+        pdf.save()
+
+    def tearDown(self):
+        import shutil
+
+        shutil.rmtree(self.tmp, ignore_errors=True)
+        super().tearDown()
+
+    def fake(self, delay, pidfile=""):
+        path = os.path.join(self.tmp, "soffice")
+        with open(path, "w") as handle:
+            handle.write(FAKE_SOFFICE.replace("@DELAY@", str(delay)).replace("@PIDFILE@", pidfile)
+                         .replace("@RESULT@", self.marker_pdf))
+        os.chmod(path, 0o755)
+        return path
+
+    def test_delai_global_sur_plusieurs_etapes(self):
+        """
+        Étapes de 1,5 s avec un délai de 2 s : refusé à l'échéance globale.
+        Avant : chaque étape recevait 2 s entières, la conversion enchaînait
+        les étapes (≥ 3 s) et échouait plus loin, pour une autre raison.
+        Marges larges : lancer un sous-processus depuis la suite de tests
+        coûte déjà plusieurs dixièmes de seconde.
+        """
+        import time
+
+        with override_settings(LIBREOFFICE_BINARY=self.fake(1.5), DOCUMENT_CONVERSION_TIMEOUT=2):
+            started = time.monotonic()
+            with self.assertRaises(conversion.ConversionError) as ctx:
+                conversion.convert_office(b"PK fake docx", "docx", ".docx")
+            elapsed = time.monotonic() - started
+        self.assertIn("délai maximal (2 s)", str(ctx.exception))
+        # Interrompu à l'échéance globale (2 s), pas après deux étapes entières (3 s).
+        self.assertLess(elapsed, 2.9)
+
+    def test_une_seule_etape_dans_le_delai_reste_acceptee(self):
+        """Pas de faux positif : une conversion sans marqueur sous le délai réussit."""
+        from reportlab.pdfgen import canvas
+
+        plain = os.path.join(self.tmp, "simple.pdf")
+        pdf = canvas.Canvas(plain)
+        pdf.drawString(100, 700, "Diplôme")
+        pdf.save()
+        self.marker_pdf = plain
+        with override_settings(LIBREOFFICE_BINARY=self.fake(0.2), DOCUMENT_CONVERSION_TIMEOUT=2):
+            content, report = conversion.convert_office(b"PK fake docx", "docx", ".docx")
+        self.assertTrue(content.startswith(b"%PDF"))
+        self.assertEqual(report["markers"], [])
+
+    @unittest.skipUnless(os.name == "posix", "groupes de processus POSIX")
+    def test_processus_et_descendants_arretes_repertoires_supprimes(self):
+        import signal
+
+        pidfile = os.path.join(self.tmp, "pids")
+        before = conversion_dirs()
+        with override_settings(LIBREOFFICE_BINARY=self.fake(30, pidfile), DOCUMENT_CONVERSION_TIMEOUT=1):
+            with self.assertRaises(conversion.ConversionError):
+                conversion.soffice_convert(b"x", ".docx", "pdf")
+        with open(pidfile) as handle:
+            pids = [int(p) for p in handle.read().split()]
+        self.assertEqual(len(pids), 2)
+        for pid in pids:   # le faux soffice ET son descendant détaché
+            alive = True
+            for _ in range(50):
+                try:
+                    os.kill(pid, 0)
+                except ProcessLookupError:
+                    alive = False
+                    break
+                try:
+                    os.waitpid(pid, os.WNOHANG)
+                except ChildProcessError:
+                    pass
+                import time
+                time.sleep(0.05)
+            self.assertFalse(alive, f"processus {pid} toujours vivant")
+        self.assertEqual(conversion_dirs() - before, set())
+        del signal
+
+    def test_televersement_refuse_sans_gabarit_partiel(self):
+        files_before = self.stored_files()
+        before = conversion_dirs()
+        with override_settings(LIBREOFFICE_BINARY=self.fake(1.5), DOCUMENT_CONVERSION_TIMEOUT=2):
+            response = self.client_for(self.A.admin).post(
+                BASE, {"kind": "diploma", "file": upload("lent.docx", fixture("diplome_paysage_marqueurs.docx"),
+                                                         "application/octet-stream")}, format="multipart")
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("délai maximal", response.data["detail"])
+        self.assertFalse(AcademyDocumentTemplate.objects.filter(academy=self.A.school).exists())
+        self.assertEqual(self.stored_files(), files_before)
+        self.assertEqual(conversion_dirs() - before, set())

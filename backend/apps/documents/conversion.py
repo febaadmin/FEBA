@@ -391,6 +391,40 @@ def conversion_timeout():
     return int(getattr(settings, "DOCUMENT_CONVERSION_TIMEOUT", DEFAULT_TIMEOUT))
 
 
+def _timeout_error(timeout):
+    return ConversionError(
+        f"La conversion a dépassé le délai maximal ({timeout} s) et a été interrompue. "
+        f"Le document est peut-être trop lourd (images très volumineuses) : allégez-le "
+        f"ou exportez-le en PDF."
+    )
+
+
+class Deadline:
+    """
+    Échéance GLOBALE d'une conversion.
+
+    CONTRAT : `DOCUMENT_CONVERSION_TIMEOUT` borne la conversion d'UN
+    téléversement, toutes étapes comprises (conversion directe, passage par
+    OpenDocument, rendu avec marqueurs isolés, relevé et retrait des
+    marqueurs) — c'est ce qu'annoncent le réglage et le message d'erreur.
+
+    DÉFAUT CORRIGÉ : chaque appel à LibreOffice recevait le délai ENTIER. Un
+    document à marqueurs en enchaîne trois : avec un délai de 1 s, une
+    conversion de 2,43 s était acceptée (mesuré lors de l'audit).
+    """
+
+    def __init__(self, timeout):
+        self.timeout = timeout
+        self.end = time.monotonic() + timeout
+
+    def remaining(self):
+        """Secondes restantes ; lève l'erreur de délai si l'échéance est passée."""
+        left = self.end - time.monotonic()
+        if left <= 0:
+            raise _timeout_error(self.timeout)
+        return left
+
+
 #: Profil imposé à chaque conversion : macros interdites (niveau de sécurité
 #: maximal, exécution désactivée), liens externes jamais mis à jour.
 _PROFILE_XCU = """<?xml version="1.0" encoding="UTF-8"?>
@@ -413,16 +447,21 @@ def _limits():  # pragma: no cover — exécuté dans le processus enfant
     resource.setrlimit(resource.RLIMIT_FSIZE, (300 * 1024 * 1024, 300 * 1024 * 1024))
 
 
-def soffice_convert(data, source_ext, target, *, timeout=None):
+def soffice_convert(data, source_ext, target, *, timeout=None, deadline=None):
     """
     Convertit `data` (extension `source_ext`) vers `target` (« pdf », « odt »,
     « odp ») avec LibreOffice, dans un environnement jetable. Renvoie
     `(octets, rapport)`. Lève ConversionError, avec une raison lisible.
+
+    `deadline` (Deadline) : le processus ne reçoit que le temps RESTANT de
+    l'échéance globale ; le message cite le délai global configuré.
     """
     binary = soffice_path()
     if binary is None:
         raise ConversionError("Le convertisseur bureautique (LibreOffice) n'est pas installé.")
-    timeout = timeout or conversion_timeout()
+    if deadline is None:
+        deadline = Deadline(timeout or conversion_timeout())
+    budget = deadline.remaining()
     filters = {"pdf": "pdf", "odt": "odt", "odp": "odp"}
     workdir = tempfile.mkdtemp(prefix="feba-conversion-")
     started = time.monotonic()
@@ -449,18 +488,19 @@ def soffice_convert(data, source_ext, target, *, timeout=None):
             start_new_session=True, preexec_fn=_limits if os.name == "posix" else None,
         )
         try:
-            _stdout, stderr = process.communicate(timeout=timeout)
+            _stdout, stderr = process.communicate(timeout=budget)
         except subprocess.TimeoutExpired:
-            try:
-                os.killpg(process.pid, signal.SIGKILL)
-            except (ProcessLookupError, PermissionError):
-                pass
-            process.communicate()
-            raise ConversionError(
-                f"La conversion a dépassé le délai maximal ({timeout} s) et a été interrompue. "
-                f"Le document est peut-être trop lourd (images très volumineuses) : allégez-le "
-                f"ou exportez-le en PDF."
-            )
+            _kill_group(process)
+            raise _timeout_error(deadline.timeout)
+        except BaseException:
+            # Interruption inattendue (signal, erreur) : aucun LibreOffice
+            # ne doit survivre à la requête.
+            _kill_group(process)
+            raise
+        finally:
+            # Un descendant détaché (soffice.bin) peut survivre au parent :
+            # le groupe entier est arrêté dans tous les cas.
+            _kill_group(process, wait=False)
         result = os.path.join(output, f"source.{target}")
         if process.returncode != 0 or not os.path.isfile(result) or os.path.getsize(result) == 0:
             detail = (stderr or b"").decode("utf-8", "replace").strip().splitlines()[-1:]
@@ -475,6 +515,19 @@ def soffice_convert(data, source_ext, target, *, timeout=None):
                          "seconds": round(time.monotonic() - started, 2)}
     finally:
         shutil.rmtree(workdir, ignore_errors=True)
+
+
+def _kill_group(process, wait=True):
+    """Arrête le processus et TOUS ses descendants (session dédiée)."""
+    try:
+        os.killpg(process.pid, signal.SIGKILL)
+    except (ProcessLookupError, PermissionError):
+        pass
+    if wait:
+        try:
+            process.communicate(timeout=10)
+        except Exception:  # pragma: no cover — processus déjà récolté
+            pass
 
 
 # ── Marqueurs {{ champ }} dans un document OpenDocument ───────────────
@@ -800,19 +853,23 @@ def convert_office(data, fmt, extension):
     chaque marqueur est isolé ; un seul rendu PDF sert à relever leurs
     positions PUIS, privé de leurs objets texte, de fond.
     """
-    pdf, report = soffice_convert(data, extension, "pdf")
+    deadline = Deadline(conversion_timeout())
+    pdf, report = soffice_convert(data, extension, "pdf", deadline=deadline)
     report["markers"] = []
     if not MARKER.search(pdf_text(pdf)):
+        deadline.remaining()
         return pdf, report
 
     odf_format = FORMATS[fmt]["odf"]
     odf, odf_report = (data, {"seconds": 0}) if fmt == odf_format else \
-        soffice_convert(data, extension, odf_format)
+        soffice_convert(data, extension, odf_format, deadline=deadline)
     isolated, count = isolate_markers_odf(odf)
-    with_markers, rendered = soffice_convert(isolated, f".{odf_format}", "pdf")
+    with_markers, rendered = soffice_convert(isolated, f".{odf_format}", "pdf", deadline=deadline)
     report["markers"] = locate_markers(with_markers)
     clean, removed = remove_marker_objects(with_markers)
     _line_neighbours(report["markers"], clean)
+    # Le relevé et le retrait des marqueurs comptent dans le délai global.
+    deadline.remaining()
     report["markers_erased"] = removed
     report["seconds"] = round(report["seconds"] + odf_report["seconds"] + rendered["seconds"], 2)
     report["via"] = odf_format
