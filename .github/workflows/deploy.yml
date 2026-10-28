@@ -129,11 +129,57 @@ jobs:
             -f docker-compose.prod.yml \
             config >/dev/null
 
-          echo "==> Construction et démarrage"
-          docker compose \
-            --env-file .env.prod \
-            -f docker-compose.prod.yml \
-            up -d --build --remove-orphans
+          # Incident du 28/10/2026 : « up --build » remplaçait les conteneurs
+          # AVANT de savoir si la nouvelle image acceptait la configuration
+          # (.env.prod). Le nouveau backend s'arrêtait au contrôle de
+          # configuration, nginx ne redémarrait pas : site hors ligne, et
+          # « set -e » quittait avant d'afficher les journaux du backend.
+          # Désormais : construire, contrôler la configuration dans un
+          # conteneur jetable, et ne basculer qu'ensuite.
+          compose() {
+            docker compose --env-file .env.prod -f docker-compose.prod.yml "$@"
+          }
+
+          restore_previous() {
+            echo "==> Version précédente conservée : $previous_sha"
+            git reset --hard "$previous_sha"
+            for image in feba-backend feba-frontend; do
+              if docker image inspect "$image:previous" >/dev/null 2>&1; then
+                docker tag "$image:previous" "$image:current"
+              fi
+            done
+          }
+
+          echo "==> Image en service conservée sous le tag « previous »"
+          for image in feba-backend feba-frontend; do
+            if docker image inspect "$image:current" >/dev/null 2>&1; then
+              docker tag "$image:current" "$image:previous"
+            fi
+          done
+
+          echo "==> Construction des images (les conteneurs en service restent actifs)"
+          if ! compose build; then
+            echo "ERREUR : construction impossible. Rien n'a été remplacé."
+            restore_previous
+            exit 1
+          fi
+
+          echo "==> Contrôle de la configuration de production avec la nouvelle image"
+          if ! compose run --rm --no-deps -T backend-prod \
+              python manage.py production_preflight --network </dev/null; then
+            echo "ERREUR : la nouvelle version refuse la configuration de .env.prod."
+            echo "Rien n'a été remplacé ; corriger .env.prod puis relancer le déploiement."
+            restore_previous
+            exit 1
+          fi
+
+          echo "==> Démarrage de la nouvelle version"
+          if ! compose up -d --remove-orphans; then
+            echo "ERREUR : la nouvelle version n'a pas démarré."
+            compose ps || true
+            compose logs backend-prod --tail=200 || true
+            exit 1
+          fi
 
           echo "==> Attente du backend"
           for attempt in $(seq 1 30); do
