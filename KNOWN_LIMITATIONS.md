@@ -5,6 +5,17 @@ Rien ici n'est présenté comme fonctionnel sans preuve.
 
 ---
 
+## 0000000000. Audit du 28 octobre 2026
+
+- **Capacité du bulletin sur une page** (mesurée) : 28 matières sans commentaire, 22 avec le commentaire maximal (1 200 caractères). Au-delà, la génération est **refusée** avec un message (HTTP 422) et l'ancien PDF est conservé ; il n'y a jamais de seconde page silencieuse. Données réelles de développement : 10 matières au plus par classe.
+- **Densité « très compact »** : le logo est réduit à 1 cm et le cachet à 1,5 cm ; aucune police sous 7 pt (le pied de page et la clé de notation restent à 6 pt, valeur historique).
+- **React Router 6** : un avis modéré (redirection ouverte, SSR) n'est corrigé qu'en v7, une montée majeure non faite. Atténuation : les seules navigations vers une adresse non fixe (liens de notification, produits par le serveur, API en lecture seule) passent par `safeInternalPath`.
+- **ReportLab 4.2.2** : avertissement interne (`ast.NameConstant`), sans effet en Python 3.12, bloquant en Python 3.14. À mettre à jour avant toute montée de Python.
+- **Avertissements de test conservés** : « Overriding setting DATABASES » (tests du contrôle de pré-production, voulu) et « No directory at staticfiles » (les tests ne lancent pas `collectstatic` ; l'image de production le fait).
+- **Production** : aucune vérification n'a pu être faite (accès refusé). La version en service, les volumes, les sauvegardes Restic et Jitsi sont **non vérifiés** par cet audit.
+- **plugNmeet réel** : `test_plugnmeet_integration` n'est pas exécuté (aucun serveur plugNmeet de test).
+- **Commandes de diagnostic** `document_analyze`, `document_compare` et `document_probe` : elles importent numpy et PyMuPDF, absents de l'image de production. Ce sont des outils de développement.
+
 ## 000000000. Programme linguistique et identités dynamiques (27 octobre 2026)
 
 - **Académies « À configurer »** : tant que leur programme est vide, elles gardent **exactement** leur fonctionnement historique. Les nouvelles restrictions (langue des matières, notes, créneaux) ne s'y appliquent pas. Le super administrateur doit les configurer (`academy_languages_report`).

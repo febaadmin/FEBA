@@ -18,7 +18,7 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-NOM="${1:-FEBA_LANGUES_IDENTITE_ACADEMIES_VALIDEE}"
+NOM="${1:-FEBA_AUDIT_BULLETIN_CICD_VALIDEE}"
 SORTIE="${2:-$(dirname "$ROOT")}"
 STAGE="$(mktemp -d)"
 # Le dossier racine porte le MÊME nom que l'archive. En V8 il était
@@ -290,7 +290,12 @@ for requis in backend/manage.py frontend/package.json Makefile \
               frontend/src/pages/admin/Schedule.tabs.test.jsx frontend/src/components/AcademyBadge.test.jsx \
               e2e/parcours-langues-identite.mjs \
               docs/historique/FINAL_REPORT_2026-10-27_gabarits_multiformats.md \
-              docs/historique/TEST_REPORT_2026-10-27_gabarits_multiformats.md; do
+              docs/historique/TEST_REPORT_2026-10-27_gabarits_multiformats.md \
+              backend/tests/test_bulletin_one_page.py e2e/parcours-bulletin-une-page.mjs \
+              backend/feba_project/static_files/fonts/DejaVuSans.ttf \
+              backend/feba_project/static_files/fonts/DejaVu-LICENSE.txt \
+              scripts/audit/data_counts.py scripts/audit/rollback_columns_check.py \
+              docs/historique/FINAL_REPORT_2026-10-27_langues_identite.md; do
   [ -e "$CIBLE/$requis" ] || { echo "  ÉCHEC : « $requis » manquant"; exit 1; }
 done
 echo "  OK    tous les fichiers attendus sont présents"

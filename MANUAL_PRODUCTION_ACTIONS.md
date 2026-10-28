@@ -14,6 +14,40 @@
 ---
 
 
+## 000000000. Audit du 28/10/2026 : bulletin sur une page, dépendances, CI/CD
+
+**Rien n'a été déployé.** L'accès en lecture à la production (SSH Hetzner, sondes du domaine) a été refusé par la politique de permissions de la session. La fusion dans `main` **déclenche automatiquement** le déploiement (`.github/workflows/deploy.yml`) : elle ne doit être faite qu'avec votre accord explicite, après les contrôles ci-dessous.
+
+### Avant la fusion (à faire par l'exploitant, sur le serveur)
+
+1. Version en service : `cd /opt/feba/app/FEBA && git rev-parse HEAD`. L'audit suppose `main` = `d3bc137`.
+2. Sauvegarde Restic récente et lisible : `sudo restic snapshots --repo /opt/feba/backups/restic-repository --password-file /root/.feba-restic-password --latest 3`. Le workflow en crée une neuve et vérifie qu'elle existe avant tout changement.
+3. Restauration de la base testée sur une copie isolée : `scripts/restore_backup.sh`, voir `RESTORE_GUIDE.md`. **Jamais par-dessus la production.**
+4. Comptages de référence, en lecture seule, sur la production : `docker compose --env-file .env.prod -f docker-compose.prod.yml exec -T backend-prod python manage.py shell < scripts/audit/data_counts.py > /root/counts_avant.txt`.
+5. Secret Jitsi : `JITSI_APP_SECRET` d'au moins 32 caractères, si la visio Jitsi est utilisée (HMAC-SHA256, RFC 7518).
+
+### Recommandé dans GitHub (réglages du dépôt, à faire par un administrateur)
+
+- Protéger `main` : pull request obligatoire, contrôles « CI » exigés (Backend, Frontend, Sécurité des dépendances, Images Docker, Configuration).
+- Créer un environnement GitHub `production` avec approbation requise, et y rattacher le job `deploy`. Aujourd'hui, toute fusion déploie sans validation humaine.
+- Remplacer `ssh-keyscan` (confiance au premier contact) par une empreinte d'hôte enregistrée en secret (`SERVER_KNOWN_HOSTS`).
+- Le dépôt est **public** : vérifier que c'est voulu.
+
+### Migrations de cette version (depuis `main`)
+
+96 migrations, aucune destructive (pas de `RemoveField`, `DeleteModel`, `RunSQL`). Elles ont été appliquées sur une copie peuplée par `main` : effectifs, empreintes des identifiants et sommes (notes, paiements) sont identiques avant et après (`scripts/audit/data_counts.py`).
+
+### Retour arrière sans restauration de la base
+
+Les migrations sont **compatibles avec l'ancien code**. Les colonnes NOT NULL ajoutées ont une valeur par défaut en base (migrations `notifications 0008`, `payments 0015`, `website 0013`). Avec le code `main` sur le schéma migré, la création d'élève, de note, de paiement, de matière et d'école a été vérifiée (`scripts/audit/rollback_columns_check.py` → `RISKY []`).
+
+Procédure :
+1. `cd /opt/feba/app/FEBA && git reset --hard "$(cat .previous_deploy_sha)"` : le commit précédent est enregistré par le workflow à chaque déploiement.
+2. `docker compose --env-file .env.prod -f docker-compose.prod.yml up -d --build --remove-orphans`.
+3. `curl -fsS https://globalfeba.com/api/health/`.
+
+Ne **pas** défaire les migrations (`migrate <app> <précédente>`) sans analyse : les données saisies depuis le déploiement seraient perdues dans les colonnes retirées. La restauration Restic est le **dernier recours**, et seulement avec votre autorisation, car elle remplace les données saisies depuis la sauvegarde.
+
 ## 00000000. Programme linguistique des académies, identités dynamiques (27/10/2026)
 
 Rien n'a été déployé ni migré en production (SSH Hetzner refusé). Toutes les validations sont locales, y compris une montée de version sur une pile de production locale construite **depuis l'archive** (voir `TEST_REPORT.md`).

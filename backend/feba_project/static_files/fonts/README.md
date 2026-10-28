@@ -12,6 +12,7 @@ serveur — et personne ne s'en apercevrait avant l'impression.
 |---|---|---|
 | `CrimsonPro-Italic.ttf` | nom de l'élève sur le diplôme et le certificat | SIL OFL 1.1 (`CrimsonPro-OFL.txt`) |
 | `CrimsonPro-Regular.ttf` | date, mentions de signature | SIL OFL 1.1 |
+| `DejaVuSans.ttf`, `DejaVuSans-Bold.ttf` | **repli glyphe par glyphe** des textes saisis (noms, matières, appréciations) : lettres hors Windows-1252 — ɖ, ɛ, ɔ, ŋ, voyelles pointées, tons du fon et du yoruba — que Helvetica imprimait en carrés noirs (`apps/core/pdf_longtext.py`) | licence libre DejaVu / Bitstream Vera (`DejaVu-LICENSE.txt`), copiée du paquet Debian `fonts-dejavu-core` |
 
 ## Ce que ces polices ne sont PAS
 
