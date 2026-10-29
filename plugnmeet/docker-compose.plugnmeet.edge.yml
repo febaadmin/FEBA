@@ -1,7 +1,17 @@
 # pnm-web derrière l'aiguilleur : ses ports passent en boucle locale.
 # À ajouter avec --profile edge, une fois l'aiguilleur en place.
+#
+# Alias réseau = domaine public : le serveur plugNmeet joint LiveKit par
+# https://<domaine>/livekit (livekit_info.host). Avec l'alias, ce trafic
+# reste dans le réseau Docker et atteint pnm-web directement, quel que soit
+# le routage public de l'aiguilleur (avant la bascule de meet, ce domaine
+# mène encore à Jitsi).
 services:
   pnm-web:
     ports: !override
       - "127.0.0.1:9080:80"
       - "127.0.0.1:9443:443"
+    networks:
+      default:
+        aliases:
+          - "${PNM_DOMAIN:?domaine manquant}"
