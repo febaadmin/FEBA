@@ -124,6 +124,21 @@ try {
 res.partage_ecran = { videos_eleve_avant: avant, videos_eleve_apres: apres };
 const boutonEleve = await eleve.page.getByRole('button', { name: "Partager l'écran" }).count();
 
+// Coupure réseau de l'élève (12 s), puis reprise : les flux doivent repartir
+// dans les deux sens, sans recharger la page.
+const avantCoupure = { prof: await mesure(prof), eleve: await mesure(eleve) };
+await eleve.page.context().setOffline(true);
+await eleve.page.waitForTimeout(12000);
+await eleve.page.context().setOffline(false);
+await eleve.page.waitForTimeout(25000);
+const apresCoupure = { prof: await mesure(prof), eleve: await mesure(eleve) };
+res.reconnexion = {
+  eleve_video_recue: apresCoupure.eleve.entrant.video - avantCoupure.eleve.entrant.video,
+  prof_audio_recu: apresCoupure.prof.entrant.audio - avantCoupure.prof.entrant.audio,
+  eleve_videos: apresCoupure.eleve.videos,
+};
+await eleve.page.screenshot({ path: `${OUT}/eleve-apres-coupure.png` });
+
 // Fin de réunion décidée par FEBA.
 if (process.env.FIN_CMD) {
   res.fin = JSON.parse(execSync(process.env.FIN_CMD).toString().trim().split('\n').pop());
@@ -146,6 +161,9 @@ for (const n of ['enseignant', 'eleve']) {
 }
 c["partage d'écran de l'enseignant reçu par l'élève"] = apres > avant;
 c["l'élève n'a pas de bouton de partage d'écran"] = boutonEleve === 0;
+// Compteurs cumulés : après la reprise, de nouveaux octets doivent arriver.
+c["reconnexion : l'élève reçoit de nouveau la vidéo"] = res.reconnexion.eleve_video_recue > SEUIL;
+c["reconnexion : l'enseignant reçoit de nouveau l'audio de l'élève"] = res.reconnexion.prof_audio_recu > SEUIL;
 if (res.fin) {
   c['fin de réunion par FEBA'] = res.fin.actif_avant && res.fin.end_room && !res.fin.actif_apres;
   for (const n of ['enseignant', 'eleve']) {
