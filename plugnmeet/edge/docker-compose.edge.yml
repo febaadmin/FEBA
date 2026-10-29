@@ -10,8 +10,12 @@ services:
     restart: unless-stopped
     mem_limit: 64m
     memswap_limit: 64m
+    # Le DOSSIER est monté, pas le fichier : un « git pull » remplace
+    # nginx.conf par un nouveau fichier (nouvel inode) qu'un montage de
+    # fichier ne verrait jamais. Prise en compte : nginx -t puis reload.
+    command: ["nginx", "-c", "/etc/nginx/feba/nginx.conf", "-g", "daemon off;"]
     volumes:
-      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./:/etc/nginx/feba:ro
       - /var/www/certbot:/var/www/certbot:ro
     healthcheck:
       test: ["CMD-SHELL", "nc -z 127.0.0.1 443 && nc -z 127.0.0.1 80"]

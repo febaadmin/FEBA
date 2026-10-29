@@ -214,7 +214,9 @@ class AiguilleurTests(SimpleTestCase):
         self.assertRegex(edge["image"], r"@sha256:[0-9a-f]{64}$")
         self.assertEqual(edge["network_mode"], "host")
         self.assertEqual(edge["mem_limit"], edge["memswap_limit"])
-        self.assertIn("./nginx.conf:/etc/nginx/nginx.conf:ro", edge["volumes"])
+        # Dossier monté (un fichier monté ne verrait pas les mises à jour git).
+        self.assertIn("./:/etc/nginx/feba:ro", edge["volumes"])
+        self.assertEqual(edge["command"][:3], ["nginx", "-c", "/etc/nginx/feba/nginx.conf"])
 
 
 class ComposeLimitsTests(SimpleTestCase):

@@ -61,8 +61,8 @@ attendre_sains() {
   return 1
 }
 recharger_aiguilleur() {  # nginx -t sur le fichier monté, puis rechargement
-  docker exec feba-edge nginx -t 2>&1 | tail -1 | grep -q successful || return 1
-  docker exec feba-edge nginx -s reload && sleep 2
+  docker exec feba-edge nginx -t -c /etc/nginx/feba/nginx.conf 2>&1 | tail -1 | grep -q successful || return 1
+  docker exec feba-edge nginx -s reload -c /etc/nginx/feba/nginx.conf && sleep 2
 }
 aiguillage_meet() {
   sed -n '/map \$ssl_preread_server_name/,/}/p' "$EDGE/nginx.conf" | awk -v d="$DOMAINE" '$1==d {print $2}' | tr -d ';'
@@ -146,7 +146,7 @@ aiguilleur)
     [ "$(direct "https://$DOMAINE/healthCheck")" = Healthy ] && tls_ok 127.0.0.1:9443 \
       || { echo "ARRÊT : plugNmeet injoignable ou certificat invalide en direct"; exit 1; }
     cp -p "$EDGE/nginx.conf" "$DIAG/nginx.avant.conf"
-    cat "$EDGE/nginx.plugnmeet.conf" > "$EDGE/nginx.conf"   # même inode
+    cat "$EDGE/nginx.plugnmeet.conf" > "$EDGE/nginx.conf"
     if ! recharger_aiguilleur; then
       cat "$DIAG/nginx.avant.conf" > "$EDGE/nginx.conf"; echo "ARRÊT : nginx -t refuse l'état plugNmeet ; aiguilleur inchangé"; exit 1
     fi
