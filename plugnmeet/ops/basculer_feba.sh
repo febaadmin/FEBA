@@ -27,6 +27,10 @@ CANDIDAT='set -u; umask 077; cd /opt/feba/app/FEBA
 T=$(mktemp ~/.candidat-env.XXXXXX); O=$(mktemp ~/.candidat-compose.XXXXXX.yml)
 grep -vE "^(VIDEO_PROVIDER|PLUGNMEET_[A-Z_]+)=" .env.prod > "$T"; cat >> "$T"
 printf "VIDEO_PROVIDER=plugnmeet\nPLUGNMEET_SERVER_URL=%s\nPLUGNMEET_WEBHOOK_URL=%s\n" "'"$PNM_URL"'" "'"$HOOK"'" >> "$T"
+# Le client plugNmeet appelle l API FEBA (habillage) depuis son origine : CORS.
+if grep -q "^CORS_ALLOWED_ORIGINS=" "$T" && ! grep -qE "^CORS_ALLOWED_ORIGINS=(.*,)?'"$PNM_URL"'(,|\$)" "$T"; then
+  sed -i "s#^CORS_ALLOWED_ORIGINS=\(.*\)#CORS_ALLOWED_ORIGINS=\1,'"$PNM_URL"'#" "$T"
+fi
 printf "services:\n  backend-prod:\n    env_file: !override\n      - %s\n" "$T" > "$O"
 docker compose --env-file .env.prod -f docker-compose.prod.yml -f "$O" run --rm --no-deps -T backend-prod \
   python manage.py production_preflight --network </dev/null 2>&1 | tail -4
