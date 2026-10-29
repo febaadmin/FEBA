@@ -178,7 +178,7 @@ export default function AdminUserFiles() {
           <div>
             <label className="label">{t("Utilisateur cible")}</label>
             <select {...register("user")} className="input">
-              <option value="">— Moi-même —</option>
+              <option value="">{t("— Moi-même —")}</option>
               {users.map(u => <option key={u.id} value={u.id}>{u.first_name} {u.last_name} ({u.role})</option>)}
             </select>
           </div>

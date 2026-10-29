@@ -1,6 +1,8 @@
 """Sérialisation des rapports mensuels."""
 from rest_framework import serializers
 
+from apps.core.academy_serializers import STUDENT_AGE_FIELDS, StudentAgeMixin
+
 from .models import MonthlyReportAttempt, MonthlyStudentReport
 
 
@@ -13,7 +15,7 @@ class MonthlyReportAttemptSerializer(serializers.ModelSerializer):
         fields = "__all__"
 
 
-class MonthlyReportListSerializer(serializers.ModelSerializer):
+class MonthlyReportListSerializer(StudentAgeMixin, serializers.ModelSerializer):
     student_name = serializers.SerializerMethodField()
     academy_code = serializers.CharField(source="academy.code", read_only=True)
     academy_name = serializers.CharField(source="academy.name", read_only=True)
@@ -40,7 +42,7 @@ class MonthlyReportListSerializer(serializers.ModelSerializer):
             "provider_message_id", "pdf_sha256", "pdf_available",
             "really_sent", "is_editable", "archived_at", "created_at",
             "updated_at",
-        ]
+        ] + STUDENT_AGE_FIELDS
 
     def get_student_name(self, obj):
         return f"{obj.student.first_name} {obj.student.last_name}".strip()

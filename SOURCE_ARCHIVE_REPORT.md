@@ -1,5 +1,8 @@
 # SOURCE_ARCHIVE_REPORT — provenance de l'archive de travail
 
+> **DOCUMENT HISTORIQUE** — il décrit une version antérieure de FEBA ; ses résultats n'ont pas été
+> rejoués tels quels sur cette version. Références à jour : `DOCUMENTATION_INDEX.md`, `FINAL_REPORT.md`.
+
 Ce document établit la traçabilité de la source utilisée. Aucun fichier ne
 provient de GitHub, d'une copie locale préexistante ni d'une autre version.
 

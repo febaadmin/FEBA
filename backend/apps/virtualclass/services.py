@@ -154,9 +154,40 @@ def assert_can_join(user, room):
     if not room.is_active or room.status == "cancelled":
         raise JitsiAccessDenied("Cette salle n'est plus disponible.")
 
-    # 5. Appartenance au groupe / à la classe.
+    # 5. Ciblage par RÔLE.
+    #
+    # Une salle réservée à l'équipe pédagogique ne doit pas être ouverte à
+    # tous les élèves de l'académie parce qu'elle n'est rattachée à aucune
+    # classe. Liste vide = aucun filtre, comportement historique.
+    target_roles = list(getattr(room, "target_roles", None) or [])
+    if target_roles and not user.is_superadmin():
+        if user.role not in target_roles:
+            raise JitsiAccessDenied(
+                "Cette salle est réservée à d'autres profils "
+                f"({', '.join(sorted(target_roles))})."
+            )
+
+    # 6. Appartenance au groupe / à la classe.
     if room.class_obj_id is not None:
-        if user.role == "student":
+        # UN ENSEIGNANT N'EST PAS AUTOMATIQUEMENT CHEZ LUI.
+        #
+        # Le contrôle ne portait que sur les élèves et les parents : tout
+        # enseignant de l'académie pouvait donc entrer dans le cours d'une
+        # classe qui ne lui est pas confiée. Un enseignant reste
+        # modérateur, mais des classes qu'on lui a réellement affectées.
+        if user.role == "teacher":
+            teacher = getattr(user, "teacher_profile", None)
+            assigned = False
+            if teacher is not None:
+                assigned = teacher.classes.filter(pk=room.class_obj_id).exists()
+            # Le créateur de la salle y garde accès : il l'a ouverte pour
+            # une classe qu'il encadre ponctuellement (remplacement,
+            # soutien) sans en être titulaire.
+            if not assigned and room.created_by_id != user.id:
+                raise JitsiAccessDenied(
+                    "Cette classe ne vous est pas affectée."
+                )
+        elif user.role == "student":
             student = getattr(user, "student_profile", None)
             if student is None or student.current_class_id != room.class_obj_id:
                 raise JitsiAccessDenied(
@@ -177,15 +208,50 @@ def assert_can_join(user, room):
     return True
 
 
-def jitsi_health():
+def jitsi_probe_url():
     """
-    État de l'infrastructure de visioconférence, pour l'écran
-    d'administration : « operational », « degraded » ou « unavailable ».
+    URL que le BACKEND doit interroger pour joindre Jitsi.
 
-    Ne lève jamais : un incident d'infrastructure ne doit pas casser la
-    page qui sert justement à le diagnostiquer.
+    Deux adresses coexistent légitimement : celle du NAVIGATEUR
+    (`JITSI_DOMAIN`, ex. « meet.globalfeba.com ») et celle du RÉSEAU
+    INTERNE (`JITSI_INTERNAL_URL`, ex. « http://jitsi-web:80 »). Sonder la
+    première depuis un conteneur qui ne sort pas, ou la seconde depuis un
+    serveur qui n'a pas ce réseau, produit un « dégradé » permanent qui ne
+    dit rien de l'état réel de l'instance.
     """
+    internal = (getattr(settings, "JITSI_INTERNAL_URL", "") or "").strip()
+    if internal:
+        return internal.rstrip("/") + "/"
+    domain = (getattr(settings, "JITSI_DOMAIN", "") or "").strip()
+    host = domain.split(":")[0].lower()
+    is_local = host in ("localhost", "127.0.0.1") or host.startswith("127.")
+    scheme = "http" if is_local else "https"
+    return f"{scheme}://{domain}/"
+
+
+def jitsi_health(timeout=5):
+    """
+    État de l'infrastructure de visioconférence : « operational »,
+    « degraded » ou « unavailable ».
+
+    Ne lève JAMAIS : un incident d'infrastructure ne doit pas casser la
+    page qui sert justement à le diagnostiquer.
+
+    P6 — Le rapport ne se contente plus de « joignable / injoignable ». Un
+    « injoignable » a au moins quatre causes qui appellent quatre gestes
+    différents : le domaine ne résout pas (DNS à créer), il résout mais
+    refuse la connexion (pare-feu, service arrêté), le certificat est
+    invalide (Let's Encrypt à renouveler), ou l'instance répond mais n'est
+    pas Jitsi (mauvais vhost). `checks` porte ce détail ; les clés
+    historiques (`status`, `configured`, `reachable`, `token_signing`,
+    `domain`, `detail`) sont conservées telles quelles pour la bannière et
+    les tests existants.
+    """
+    import socket
+    import ssl
+    import urllib.error
     import urllib.request
+    from urllib.parse import urlparse
 
     result = {
         "status": "unavailable",
@@ -195,53 +261,267 @@ def jitsi_health():
         "token_signing": False,
         "probed_url": "",
         "detail": "",
+        # P6 — chaque contrôle porte son verdict et son explication.
+        "checks": [],
     }
 
+    def record(name, ok, detail=""):
+        result["checks"].append({"name": name, "ok": bool(ok), "detail": detail})
+        return ok
+
+    # 1. Configuration backend : domaine renseigné, non public, secrets là.
     try:
         assert_jitsi_configured()
         result["configured"] = True
         result["domain"] = jitsi_domain()
+        record("configuration", True,
+               f"Domaine « {result['domain'] } », identifiants JWT présents.")
     except JitsiNotConfigured as exc:
         result["detail"] = str(exc)
+        record("configuration", False, str(exc))
         return result
 
-    # Signature d'un jeton de test : valide la présence et la forme du secret.
+    domain = result["domain"]
+    host = domain.split(":")[0]
+
+    # 2. Aucun domaine public. Déjà garanti par `jitsi_domain()` ; répété
+    #    ici pour que le rapport l'affirme explicitement plutôt que de le
+    #    laisser déduire de l'absence d'erreur.
+    record("domaine_non_public", True,
+           f"« {host} » n'est pas une instance publique interdite.")
+
+    # 3. Signature d'un jeton : valide la présence ET la forme du secret.
     try:
         import jwt
         jwt.encode({"test": 1}, settings.JITSI_APP_SECRET, algorithm="HS256")
         result["token_signing"] = True
+        record("signature_jeton", True, "Un jeton de test a été signé.")
     except Exception as exc:  # pragma: no cover - dépend de l'environnement
         result["detail"] = f"Signature de jeton impossible : {exc}"
+        record("signature_jeton", False, result["detail"])
         return result
 
-    # Joignabilité HTTP de l'instance.
-    #
-    # P7 — On sonde JITSI_INTERNAL_URL (http://jitsi-web:80 en dev), PAS
-    # `domain` (JITSI_DOMAIN, ex. localhost:8443) : cette dernière est
-    # l'adresse du NAVIGATEUR. Depuis l'intérieur de CE conteneur,
-    # « localhost » ne désigne jamais Jitsi — avant ce correctif, cette
-    # vérification échouait systématiquement même quand Jitsi tournait
-    # parfaitement, un faux « dégradé » permanent.
-    internal_url = (getattr(settings, "JITSI_INTERNAL_URL", "") or "").strip()
-    if internal_url:
-        url = internal_url.rstrip("/") + "/"
-    else:
-        # Repli : pas d'URL interne distincte configurée (cas légitime en
-        # production, où backend et Jitsi partagent la même adresse
-        # publique). On reste alors sur l'ancien comportement.
-        domain = result["domain"]
-        is_local = domain.startswith("localhost") or domain.startswith("127.")
-        scheme = "http" if is_local else "https"
-        url = f"{scheme}://{domain}/"
+    url = jitsi_probe_url()
     result["probed_url"] = url
+    parsed = urlparse(url)
+    probe_host = parsed.hostname or host
+    probe_port = parsed.port or (443 if parsed.scheme == "https" else 80)
+
+    # ── Diagnostics réseau ───────────────────────────────────────────
+    #
+    # ORDRE ET AUTORITÉ. DNS et TLS sont contrôlés AVANT la requête HTTP,
+    # mais ils ne décident pas du verdict : c'est la réponse HTTP qui fait
+    # foi. Un premier jet faisait l'inverse — retour immédiat dès que
+    # `getaddrinfo` échouait — et se trompait dans un cas réel : derrière
+    # un proxy sortant, le backend ne résout pas lui-même le domaine et
+    # joint pourtant l'instance parfaitement. L'instance était déclarée
+    # « dégradée » alors que les cours fonctionnaient.
+    #
+    # DNS et TLS servent donc à EXPLIQUER un échec HTTP, pas à l'anticiper :
+    # « injoignable » ne dit pas quoi faire, « le domaine ne résout pas »
+    # envoie chez l'hébergeur DNS et « le certificat a expiré » chez
+    # Let's Encrypt.
+
+    # 4. Résolution DNS.
+    dns_detail = ""
+    try:
+        addresses = sorted({
+            info[4][0] for info in socket.getaddrinfo(probe_host, None)
+        })
+        record("dns", True, f"{probe_host} → {', '.join(addresses)}")
+    except OSError as exc:
+        dns_detail = (
+            f"Le domaine « {probe_host} » ne résout pas ({exc}). "
+            "Créez l'enregistrement DNS A vers l'IP du serveur Jitsi "
+            "(voir MANUAL_PRODUCTION_ACTIONS.md)."
+        )
+        record("dns", False, dns_detail)
+
+    # 5. Certificat TLS — uniquement en HTTPS. Un certificat expiré rend
+    #    l'instance inutilisable dans un navigateur alors que le service
+    #    tourne : sans ce contrôle, le rapport dirait « injoignable » et
+    #    on chercherait au mauvais endroit.
+    tls_detail = ""
+    if parsed.scheme == "https":
+        try:
+            context = ssl.create_default_context()
+            with socket.create_connection((probe_host, probe_port),
+                                          timeout=timeout) as raw:
+                with context.wrap_socket(raw, server_hostname=probe_host) as tls:
+                    certificate = tls.getpeercert()
+            expiry = (certificate or {}).get("notAfter", "")
+            record("tls", True,
+                   f"Certificat valide pour {probe_host}"
+                   + (f", expire le {expiry}." if expiry else "."))
+        except ssl.SSLCertVerificationError as exc:
+            tls_detail = (
+                f"Certificat TLS refusé pour « {probe_host} » : "
+                f"{getattr(exc, 'verify_message', exc)}. Renouvelez le "
+                "certificat (voir JITSI_PRODUCTION_GUIDE.md)."
+            )
+            record("tls", False, tls_detail)
+        except OSError as exc:
+            tls_detail = (
+                f"Connexion TLS impossible vers {probe_host}:{probe_port} "
+                f"({exc}). Vérifiez que le service tourne et que le "
+                "pare-feu laisse passer le port 443."
+            )
+            record("tls", False, tls_detail)
+        except Exception as exc:  # noqa: BLE001 — voir ci-dessous
+            # CETTE FONCTION NE DOIT JAMAIS LEVER, c'est sa raison d'être :
+            # elle alimente la page qui sert à diagnostiquer une panne. Une
+            # exception inattendue ici (bibliothèque TLS d'une plateforme,
+            # environnement de test) ferait tomber l'écran de diagnostic au
+            # moment précis où l'on en a besoin.
+            tls_detail = f"Contrôle TLS impossible pour {probe_host} : {exc}."
+            record("tls", False, tls_detail)
+
+    # 6. Réponse HTTP de l'instance — LE contrôle qui fait autorité.
     try:
         request = urllib.request.Request(url, method="GET")
-        with urllib.request.urlopen(request, timeout=5) as response:
-            result["reachable"] = 200 <= response.status < 500
+        with urllib.request.urlopen(request, timeout=timeout) as response:
+            status_code = response.status
+            try:
+                body = response.read(65536).decode("utf-8", "replace")
+            except Exception:
+                body = ""
+        result["reachable"] = 200 <= status_code < 500
+        record("http", result["reachable"], f"HTTP {status_code} sur {url}")
     except Exception as exc:
-        result["detail"] = f"Instance injoignable sur {url} : {exc}"
+        # Le motif le plus PRÉCIS l'emporte : dire « injoignable » quand on
+        # sait déjà que le domaine ne résout pas fait chercher une panne de
+        # service là où il manque un enregistrement DNS.
+        detail = dns_detail or tls_detail or f"Instance injoignable sur {url} : {exc}"
+        record("http", False, f"Requête échouée sur {url} : {exc}")
+        result["detail"] = detail
         result["status"] = "degraded"
         return result
+
+    # 7. C'est bien Jitsi qui répond, pas un vhost par défaut. Une page
+    #    « Welcome to nginx » satisfait le contrôle HTTP et ne permet
+    #    d'ouvrir aucune salle.
+    #
+    #    Un corps VIDE ne prouve rien dans un sens ni dans l'autre (réponse
+    #    tronquée, sonde interne minimale) : on ne transforme pas une
+    #    absence de preuve en preuve d'absence.
+    if body:
+        signature = any(
+            marker in body.lower()
+            for marker in ("jitsi", "lib-jitsi-meet", "meet.jitsi")
+        )
+        record("endpoint_jitsi", signature,
+               "La page servie est celle de Jitsi Meet." if signature else
+               f"L'hôte répond sur {url} mais la page ne semble pas être "
+               "celle de Jitsi Meet : vérifiez le vhost du reverse proxy.")
+        if not signature:
+            result["status"] = "degraded"
+            result["detail"] = result["checks"][-1]["detail"]
+            return result
+
+    # 8. `external_api.js` — le fichier que le navigateur charge pour
+    #    ouvrir une conférence. La page d'accueil peut répondre 200 sans
+    #    que ce script soit servi (mauvaise racine, build incomplet) :
+    #    l'utilisateur voit alors « Visioconférence indisponible » alors
+    #    que tous les contrôles précédents sont au vert.
+    # L'URL de sonde est la MÊME que pour le contrôle principal : depuis
+    # un conteneur, `meet.globalfeba.com` n'est pas forcément joignable, et
+    # `JITSI_INTERNAL_URL` existe précisément pour cela (régression P7).
+    # Coder « https://<domaine public> » en dur ici referait ce bug.
+    base = url.rstrip("/")
+    api_url = f"{base}/external_api.js"
+    try:
+        request = urllib.request.Request(api_url, method="GET")
+        with urllib.request.urlopen(request, timeout=timeout) as response:
+            api_status = response.status
+            api_type = (response.headers.get("Content-Type") or "").lower()
+            api_len = len(response.read(4096))
+        servi = api_status == 200 and api_len > 0 and "javascript" in api_type
+        record("external_api", servi,
+               f"external_api.js servi ({api_status}, {api_type or 'type inconnu'})."
+               if servi else
+               f"external_api.js répond {api_status} avec le type "
+               f"« {api_type or 'inconnu'} » : le navigateur ne pourra pas "
+               "ouvrir de conférence.")
+        if not servi:
+            result["status"] = "degraded"
+            result["detail"] = result["checks"][-1]["detail"]
+            return result
+    except Exception as exc:
+        record("external_api", False, f"external_api.js injoignable : {exc}")
+        result["status"] = "degraded"
+        result["detail"] = result["checks"][-1]["detail"]
+        return result
+
+    # 9. Point d'entrée de la signalisation. On ne peut pas établir une
+    #    vraie liaison WebSocket ici — cela demande une négociation XMPP
+    #    complète — mais on peut vérifier que le chemin EXISTE : un 404
+    #    signifie que le reverse proxy n'a pas de règle pour lui, et c'est
+    #    la panne classique « tout le monde entre et personne ne se voit ».
+    ws_url = f"{base}/xmpp-websocket"
+    try:
+        request = urllib.request.Request(ws_url, method="GET")
+        with urllib.request.urlopen(request, timeout=timeout) as response:
+            ws_status = response.status
+    except urllib.error.HTTPError as exc:
+        ws_status = exc.code
+    except Exception as exc:
+        ws_status = None
+        record("signalisation", False,
+               f"Le chemin {ws_url} est injoignable : {exc}")
+    if ws_status is not None:
+        # 404 = aucune règle de proxy. Tout le reste (101, 200, 400, 426,
+        # 501…) prouve qu'une règle existe et répond.
+        route = ws_status != 404
+        record("signalisation", route,
+               f"Le chemin /xmpp-websocket répond ({ws_status}) : le reverse "
+               "proxy a bien une règle pour la signalisation."
+               if route else
+               "Le chemin /xmpp-websocket renvoie 404 : le reverse proxy n'a "
+               "aucune règle pour lui. Les participants entreront dans la "
+               "salle sans jamais se voir.")
+        if not route:
+            result["status"] = "degraded"
+            result["detail"] = result["checks"][-1]["detail"]
+            return result
+
+    # 10. EN-TÊTES RÉELLEMENT SERVIS — pas ceux du dépôt.
+    #
+    # Un fichier nginx correct dans le dépôt ne prouve RIEN sur ce que
+    # l'instance renvoie : `meet.globalfeba.com` est servi par le nginx du
+    # conteneur `jitsi/web`, pas par la configuration hôte du dépôt (qui
+    # appartient à l'autre topologie, « derrière le proxy »). C'est
+    # exactement l'écart que ce contrôle mesure, plutôt que de le
+    # supposer résolu.
+    #
+    # Aucun de ces manques n'empêche une conférence de fonctionner : ils
+    # ne dégradent donc pas l'état global. Ils sont signalés, pas
+    # transformés en panne.
+    attendus = {
+        "strict-transport-security": "HSTS",
+        "x-content-type-options": "X-Content-Type-Options",
+        "referrer-policy": "Referrer-Policy",
+        "content-security-policy": "Content-Security-Policy (frame-ancestors)",
+    }
+    try:
+        request = urllib.request.Request(url, method="GET")
+        with urllib.request.urlopen(request, timeout=timeout) as response:
+            servis = {k.lower(): v for k, v in response.headers.items()}
+        manquants = [nom for cle, nom in attendus.items() if cle not in servis]
+        result["security_headers"] = {
+            cle: servis.get(cle) for cle in attendus
+        }
+        record(
+            "entetes_securite", not manquants,
+            "Tous les en-têtes de sécurité attendus sont servis."
+            if not manquants else
+            "En-têtes absents de la réponse RÉELLE de l'instance : "
+            + ", ".join(manquants)
+            + ". La configuration du dépôt ne les impose pas ici : voir "
+            "JITSI_PRODUCTION_ACTIONS.md.",
+        )
+    except Exception as exc:
+        record("entetes_securite", False,
+               f"En-têtes non lisibles sur {url} : {exc}")
 
     result["status"] = "operational" if result["reachable"] else "degraded"
     if result["status"] == "operational":

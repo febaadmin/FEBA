@@ -100,7 +100,7 @@ export default function SuperAdminAdmins() {
           <div>
             <label className="label">{t("Établissement*")}</label>
             <select {...register("school", { required: true })} className="input">
-              <option value="">-- Sélectionner un établissement --</option>
+              <option value="">{t("-- Sélectionner un établissement --")}</option>
               {schools.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
             </select>
           </div>

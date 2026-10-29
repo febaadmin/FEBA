@@ -14,7 +14,12 @@ import { extractApiError } from "../../utils/errors";
 import { t } from "../../i18n";
 import { useSchoolYearScope } from "../../hooks/useSchoolYearScope";
 
+import { ageColumn, studentOptionLabel } from "../../utils/age";
+import { useAcademy } from "../../context/AcademyContext";
+import { academyNowParts } from "../../utils/datetime";
 export default function AdminAttendance() {
+  // Date du jour de l'ACADÉMIE (et non la date UTC du navigateur).
+  const { activeAcademy } = useAcademy();
   const qc = useQueryClient();
   const [modalOpen, setModalOpen] = useState(false);
   const [editItem, setEditItem] = useState(null);
@@ -39,7 +44,7 @@ export default function AdminAttendance() {
   const { data: studData } = useQuery({ queryKey: ["students-all"], queryFn: () => studentsAPI.list() });
   const records = data?.data?.results || data?.data || [];
   const students = studData?.data?.results || studData?.data || [];
-  const studentOpts = students.map(s => ({ value: s.id, label: `${s.full_name} — ${s.class_name || "?"}` }));
+  const studentOpts = students.map(s => ({ value: s.id, label: studentOptionLabel(s) }));
 
   const buildPayload = (d) => {
     if (justFile) {
@@ -66,12 +71,13 @@ export default function AdminAttendance() {
   });
 
   const closeModal = () => { setModalOpen(false); setEditItem(null); setJustFile(null); reset(); };
-  const openCreate = () => { reset({ date: new Date().toISOString().slice(0, 10), status: "present", school_year: currentYear?.id || "" }); setJustFile(null); setModalOpen(true); };
+  const openCreate = () => { reset({ date: academyNowParts(activeAcademy?.timezone).date, status: "present", school_year: currentYear?.id || "" }); setJustFile(null); setModalOpen(true); };
   const openEdit = (r) => { setEditItem(r); reset({ status: r.status, justification: r.justification }); setModalOpen(true); };
   const onSubmit = (d) => { if (editItem) updateMut.mutate({ id: editItem.id, data: d }); else createMut.mutate(d); };
 
   const cols = [
     { key: "student", label: t("Élève"), accessor: "student_name" },
+    ageColumn("student_age"),
     { key: "date", label: t("Date"), accessor: "date" },
     { key: "status", label: t("Statut"), render: r => <StatusBadge status={r.status} /> },
     { key: "justification", label: t("Justification"), render: r => r.justification || "—" },
@@ -132,7 +138,7 @@ export default function AdminAttendance() {
           <div>
             <label className="label">{t("Année scolaire")}</label>
             <select {...register("school_year")} className="input">
-              <option value="">-- Sélectionner --</option>
+              <option value="">{t("-- Sélectionner --")}</option>
               {years.map(y => <option key={y.id} value={y.id}>{y.name}{y.is_current ? " (active)" : ""}</option>)}
             </select>
           </div>

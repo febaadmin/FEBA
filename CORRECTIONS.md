@@ -1,5 +1,8 @@
 # CORRECTIONS — cycle d'audit et de correction V6
 
+> **DOCUMENT HISTORIQUE** — il décrit une version antérieure de FEBA ; ses résultats n'ont pas été
+> rejoués tels quels sur cette version. Références à jour : `DOCUMENTATION_INDEX.md`, `FINAL_REPORT.md`.
+
 Source : `feba_multi_academies_v9_application_CORRIGE.zip`
 (SHA-256 `8ee116a9066314b57fbe964b351c0410fd52da0da2058bb35596f0daee59bff4`).
 Voir `SOURCE_ARCHIVE_REPORT.md` pour la traçabilité complète.

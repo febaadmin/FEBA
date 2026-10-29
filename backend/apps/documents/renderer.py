@@ -24,6 +24,7 @@ par diverger du document remis à l'élève — et l'écart se découvrirait à
 l'impression, une fois le diplôme signé.
 """
 import os
+import threading
 
 from django.core.exceptions import ValidationError
 from reportlab.lib.colors import HexColor
@@ -48,6 +49,15 @@ __all__ = [
 ]
 
 _fonts_loaded = False
+
+#: VERROU DE RENDU. ReportLab partage entre les documents l'objet de chaque
+#: police TrueType, et son découpage (« subset ») n'est pas sûr entre fils
+#: d'exécution : sous charge, deux rendus simultanés faisaient échouer l'un
+#: d'eux (IndexError dans ttfonts.makeSubset — reproduit à 12 fils). Les
+#: processus gunicorn ne partagent rien, mais un serveur à fils (gthread,
+#: serveur de développement) ou une tâche multithread, si. Un rendu dure
+#: quelques dizaines de millisecondes : le sérialiser ne coûte rien.
+RENDER_LOCK = threading.RLock()
 
 
 def ensure_fonts():
@@ -327,6 +337,11 @@ def _draw_asset(pdf, layout, asset, branding=None):
     approchée ou un cachet ressemblant ne sont pas des solutions de repli :
     ce sont des faux.
     """
+    cover = getattr(asset, "cover", None)
+    if cover and not getattr(branding, "logo_is_uploaded", False):
+        # Aucun logo activé : le blason dessiné dans le fond EST le logo
+        # officiel ; rien n'est recouvert.
+        return False
     path = resolve_resource(asset.resource, branding)
     if path is None:
         if asset.required:
@@ -338,6 +353,20 @@ def _draw_asset(pdf, layout, asset, branding=None):
         return False
 
     box = asset.box
+
+    if cover:
+        # LOGO INCRUSTÉ DANS LE FOND (diplômes, certificats) : le blason fait
+        # partie des pixels du visuel ; changer de logo dans l'application ne
+        # le remplaçait donc jamais. Quand un logo est téléversé et activé, la
+        # zone du blason est recouverte (couleur du papier relevée sur le
+        # fond), puis le logo actif y est apposé.
+        from reportlab.lib.colors import HexColor as _Hex
+        x_pt, y_pt = layout.to_pdf(box.x_mm, box.y_mm + box.height_mm)
+        pdf.saveState()
+        pdf.setFillColor(_Hex(cover["color"]))
+        pdf.setStrokeColor(_Hex(cover["color"]))
+        pdf.rect(x_pt, y_pt, box.width_mm * mm, box.height_mm * mm, stroke=0, fill=1)
+        pdf.restoreState()
 
     # Certains sceaux officiels sont un tracé foncé sur fond blanc : posés
     # tels quels sur un médaillon marine, ils seraient illisibles. Le
@@ -392,6 +421,12 @@ def render_document(template_id, values, *, branding=None, preview=False,
     `preview=False` refuse tout ce que le gabarit ne permet pas d'émettre —
     c'est le seul mode dont sort un document remis à un élève.
     """
+    with RENDER_LOCK:
+        return _render_document(template_id, values, branding=branding, preview=preview,
+                                calibration_grid=calibration_grid)
+
+
+def _render_document(template_id, values, *, branding, preview, calibration_grid):
     from io import BytesIO
 
     template = load_template(template_id)

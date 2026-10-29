@@ -23,6 +23,7 @@ import ConfirmDialog from "../../components/ui/ConfirmDialog";
 import { extractApiError } from "../../utils/errors";
 import { t, dateLocale } from "../../i18n";
 
+import { ageColumn, studentOptionLabel } from "../../utils/age";
 const NOTE_TYPES = [
   { value: "devoir",        label: "Devoir" },
   { value: "interrogation", label: "Interrogation / Devoir de classe" },
@@ -86,13 +87,13 @@ export default function TeacherGrades() {
     ? students.filter(s => String(s.current_class) === String(filterClass) || String(s.class_id) === String(filterClass))
     : students;
 
-  const studentOpts = filteredStudents.map(s => ({ value: s.id, label: `${s.full_name} — ${s.class_name || "?"}` }));
+  const studentOpts = filteredStudents.map(s => ({ value: s.id, label: studentOptionLabel(s) }));
   const subjectOpts = subjects.map(s => ({ value: s.id, label: `${s.name} (coeff ${s.coefficient})` }));
   const classOpts   = allClasses.map(c => ({ value: c.id, label: c.name }));
   // Options pour la saisie groupée : TOUS les élèves (filtre de classe interne
   // au modal), avec l'identifiant de classe pour ce filtre.
   const bulkStudentOpts = students.map(s => ({
-    value: s.id, label: `${s.full_name} — ${s.class_name || "?"}`,
+    value: s.id, label: studentOptionLabel(s),
     classId: s.current_class ?? s.class_id ?? "",
   }));
 
@@ -162,6 +163,7 @@ export default function TeacherGrades() {
 
   const cols = [
     { key: "student",          label: t("Élève"),        accessor: "student_name" },
+    ageColumn("student_age"),
     { key: "class",            label: t("Classe"),        render: r => r.student_class || r.class_name || "—" },
     { key: "subject",          label: t("Matière"),      accessor: "subject_name" },
     { key: "period",           label: t("Période"),      accessor: "period" },

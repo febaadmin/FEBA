@@ -74,13 +74,59 @@ class DiplomaShippedReadyTests(SimpleTestCase):
         """Le fichier doit être suivi par git, pas seulement présent."""
         import subprocess
 
-        repo = os.path.dirname(os.path.dirname(os.path.dirname(
-            os.path.abspath(__file__))))
+        from tests.repo_root import repo_root
+
+        repo = repo_root()
+
+        # FAUX POSITIF SILENCIEUX CORRIGÉ.
+        #
+        # Le répertoire de travail était calculé par une remontée
+        # d'arborescence qui, dans le conteneur, désignait « / » — pas un
+        # dépôt git. `git check-ignore` y sortait 128 (« not a git
+        # repository »), l'assertion « code de sortie ≠ 0 » était donc
+        # satisfaite… sans que rien n'ait été vérifié. Le test passait au
+        # vert précisément là où il ne pouvait rien voir.
+        if not (repo / ".git").exists():
+            # Cas légitime, et SANS RAPPORT avec l'arborescence : une
+            # archive livrée ne contient pas .git. La question « ce
+            # fichier est-il suivi par git ? » ne se pose alors pas. On
+            # vérifie ce qui reste vérifiable : le fond est bien là.
+            self.assertTrue(
+                os.path.exists(self.template.derived_path),
+                "Le fond neutralisé est absent de la livraison.")
+            self.skipTest(
+                f"{repo} n'est pas un dépôt git (archive extraite) : le "
+                "suivi git n'a pas de sens ici. La présence du fond a été "
+                "vérifiée à la place.")
+
+        # ON INTERROGE GIT SUR LE CHEMIN RELATIF AU DÉPÔT, pas sur le
+        # chemin absolu du conteneur.
+        #
+        # `derived_path` est absolu sous BASE_DIR — « /app/... » dans le
+        # conteneur. Le dépôt, lui, est monté sur « /repo ». Ce sont les
+        # mêmes fichiers par deux montages, mais git ne peut pas le
+        # savoir : il répondait « is outside repository » (code 128), et
+        # l'assertion « code ≠ 0 » s'en satisfaisait. Le test passait au
+        # vert sans avoir rien vérifié — exactement le genre de silence
+        # que cette livraison corrige.
+        from django.conf import settings
+
+        relatif = os.path.relpath(self.template.derived_path, settings.BASE_DIR)
+        cible = repo / "backend" / relatif
+        self.assertTrue(
+            cible.exists(),
+            f"Le fond neutralisé est introuvable dans le dépôt : {cible}")
+
         result = subprocess.run(
-            ["git", "check-ignore", self.template.derived_path],
+            ["git", "check-ignore", str(cible)],
             cwd=repo, capture_output=True, text=True,
         )
-        # `git check-ignore` sort 0 quand le chemin EST ignoré.
+        # 0 = ignoré, 1 = suivi, 128 = erreur. Distinguer 1 de 128 est tout
+        # l'objet du correctif ci-dessus.
+        self.assertIn(
+            result.returncode, (0, 1),
+            f"git check-ignore n'a pas pu répondre (code "
+            f"{result.returncode}) : {result.stderr.strip()}")
         self.assertNotEqual(
             result.returncode, 0,
             "Le fond neutralisé est ignoré par git : il ne partirait pas "

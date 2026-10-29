@@ -1,5 +1,28 @@
 import logging
+import os
 logger = logging.getLogger("apps")
+
+
+def public_site_online_academy_code():
+    """
+    Code de l'académie que le site public alimente (formulaires
+    d'inscription et de test de placement « en ligne »). C'est un
+    RATTACHEMENT technique du site public, pas une règle métier : il se
+    règle par `PUBLIC_SITE_ONLINE_ACADEMY_CODE`.
+    """
+    from django.conf import settings
+
+    return getattr(settings, "PUBLIC_SITE_ONLINE_ACADEMY_CODE", "FEBA_FHA")
+
+
+def public_site_campus_academy_code():
+    """
+    Code de l'académie présentielle que le site public alimente (contact,
+    préinscriptions). Même nature que le précédent : `PUBLIC_SITE_CAMPUS_ACADEMY_CODE`.
+    """
+    from django.conf import settings
+
+    return getattr(settings, "PUBLIC_SITE_CAMPUS_ACADEMY_CODE", "FEBA")
 from django.db import models
 
 from apps.core.currency import (
@@ -34,6 +57,58 @@ class School(models.Model):
         ("online", "Académie en ligne"),
     ]
 
+    # ── Type d'académie (P0 du 26/10/2026) ───────────────────────────────
+    # Plus fin que `entity_type`, qui ne distingue que présentiel / en
+    # ligne : il dit QUEL ENSEIGNEMENT l'académie dispense, donc quels
+    # cycles (et par conséquent quels barèmes, voir apps.grades.grading)
+    # ses niveaux peuvent porter. `entity_type` en est DÉRIVÉ dès que le
+    # type est connu (save()), pour que la matrice des fonctionnalités ne
+    # puisse pas le contredire.
+    #
+    # NULL = « non classée » : académie antérieure dont les niveaux ne
+    # permettent pas de trancher (par exemple primaire ET collège). Elle
+    # fonctionne exactement comme avant ; le super administrateur la
+    # classe quand ses niveaux le permettent. On n'attribue jamais un type
+    # au hasard.
+    TYPE_ONLINE = "online"
+    TYPE_PHYSICAL_PRIMARY = "physical_primary"
+    TYPE_PHYSICAL_SECONDARY = "physical_secondary"
+    ACADEMY_TYPE_CHOICES = [
+        (TYPE_ONLINE, "Académie en ligne"),
+        (TYPE_PHYSICAL_PRIMARY, "Académie physique — primaire"),
+        (TYPE_PHYSICAL_SECONDARY, "Académie physique — secondaire (collège et lycée)"),
+    ]
+    #: Cycles de niveau admis par type. Une académie en ligne peut couvrir
+    #: tous les âges (FEBA FHA accueille des enfants de 6 à 17 ans).
+    ALLOWED_CYCLES = {
+        TYPE_ONLINE: ("maternelle", "primaire", "college", "lycee"),
+        TYPE_PHYSICAL_PRIMARY: ("maternelle", "primaire"),
+        TYPE_PHYSICAL_SECONDARY: ("college", "lycee"),
+    }
+    #: Cycle proposé par défaut à un nouveau niveau. Le défaut historique du
+    #: modèle (« primaire ») aurait noté sur 10 un niveau créé sans précision
+    #: dans un lycée.
+    # ── Programme linguistique (matières enseignées) ─────────────────────
+    # DISTINCT de `default_language` (langue de l'INTERFACE) : une académie
+    # peut afficher ses écrans en français et n'enseigner que des matières
+    # anglaises. Les règles qui en découlent vivent dans
+    # `apps/classes/subject_rules.py`, seule autorité (matières, parcours
+    # des classes, notes, emplois du temps, bulletins).
+    CURRICULUM_FRENCH = "french_only"
+    CURRICULUM_ENGLISH = "english_only"
+    CURRICULUM_BILINGUAL = "bilingual"
+    CURRICULUM_CHOICES = [
+        (CURRICULUM_FRENCH, "Français uniquement"),
+        (CURRICULUM_ENGLISH, "Anglais uniquement"),
+        (CURRICULUM_BILINGUAL, "Bilingue français-anglais"),
+    ]
+
+    DEFAULT_LEVEL_CYCLE = {
+        TYPE_ONLINE: "primaire",
+        TYPE_PHYSICAL_PRIMARY: "primaire",
+        TYPE_PHYSICAL_SECONDARY: "college",
+    }
+
     name = models.CharField(max_length=200)
     legal_name = models.CharField(
         max_length=250, blank=True,
@@ -49,6 +124,21 @@ class School(models.Model):
     entity_type = models.CharField(
         max_length=20, choices=ENTITY_TYPE_CHOICES, default="campus",
         help_text="Détermine les fonctionnalités par défaut (présentiel vs académie en ligne).",
+    )
+    academy_type = models.CharField(
+        max_length=24, choices=ACADEMY_TYPE_CHOICES, null=True, blank=True,
+        help_text=(
+            "En ligne, physique primaire ou physique secondaire. Fixe les cycles "
+            "admis pour les niveaux. Vide = académie antérieure non classée."
+        ),
+    )
+    curriculum_language_mode = models.CharField(
+        max_length=20, choices=CURRICULUM_CHOICES, null=True, blank=True,
+        help_text=(
+            "Programme linguistique : matières françaises seulement, anglaises "
+            "seulement, ou les deux. Obligatoire à la création ; vide = académie "
+            "antérieure à configurer (fonctionnement historique conservé)."
+        ),
     )
     slug = models.SlugField(
         max_length=80, unique=True, blank=True,
@@ -148,15 +238,29 @@ class School(models.Model):
         "messaging",
         "schedules",
         "support_tickets",
+        # Autorise les classes monolingues (francophone / anglophone).
+        # Faith & Excellence Bilingual Academy est bilingue par
+        # construction : c'est son identité, pas un réglage. FEBA French
+        # Heritage Academy accueille au contraire des enfants de la
+        # diaspora dont certains ne suivent qu'une langue.
+        #
+        # Porté par l'académie et non par la classe : sans cela, un
+        # `language_track` posté ou une donnée corrompue suffirait à
+        # rendre monolingue une classe de FEBA.
+        "monolingual_classes",
     ]
 
     # Valeurs par défaut selon le type d'entité.
-    # « campus » (FEBA Cotonou) : école présentielle — pas de salle virtuelle,
-    # pas de visioconférence, pas de test de placement en ligne.
+    # « campus » (FEBA, Cotonou) : école présentielle — pas de test de
+    # placement ni de cours en ligne. La VISIOCONFÉRENCE et les salles
+    # virtuelles sont en revanche ouvertes à TOUTES les académies (décision
+    # du 26/10/2026 : FEBA organise ses propres réunions, comme FEBA FHA).
+    # Chaque académie ne voit et ne rejoint que ses salles : l'isolation
+    # est assurée par la portée d'académie, pas par ce drapeau.
     DEFAULT_FEATURES = {
         "campus": {
-            "virtual_classrooms": False,
-            "video_conferencing": False,
+            "virtual_classrooms": True,
+            "video_conferencing": True,
             "placement_tests": False,
             "online_lessons": False,
             "online_assignments": False,
@@ -167,6 +271,7 @@ class School(models.Model):
             "messaging": True,
             "schedules": True,
             "support_tickets": False,
+            "monolingual_classes": False,
         },
         "online": {
             "virtual_classrooms": True,
@@ -181,6 +286,7 @@ class School(models.Model):
             "messaging": True,
             "schedules": True,
             "support_tickets": True,
+            "monolingual_classes": True,
         },
     }
 
@@ -189,12 +295,29 @@ class School(models.Model):
         """
         Matrice effective des fonctionnalités : valeurs par défaut du type
         d'entité, surchargées par `settings['features']` (administrable).
+
+        Deux capacités ne sont PAS des réglages mais des faits, calculés :
+          - `online_admissions` : l'académie reçoit des dossiers
+            d'inscription en ligne. Le seul canal qui en dépose est le
+            formulaire public du site (`/feba-fha/inscription`), rattaché à
+            l'académie désignée par `PUBLIC_SITE_ONLINE_ACADEMY_CODE` ;
+          - `monthly_reports` : les rapports mensuels aux familles, produits
+            pour cette même académie (apps/monthly_reports).
+        Le menu « Admissions FEBA FHA » s'affichait pour TOUTE académie en
+        ligne — y compris une académie nouvellement créée, qui n'a et
+        n'aura aucun dossier : un écran vide présenté comme une fonction.
         """
         base = dict(self.DEFAULT_FEATURES.get(self.entity_type, self.DEFAULT_FEATURES["campus"]))
         overrides = (self.settings or {}).get("features") or {}
         for key, value in overrides.items():
             if key in self.FEATURE_FLAGS:
                 base[key] = bool(value)
+        channel = self.code and self.code == public_site_online_academy_code()
+        base["online_admissions"] = bool(channel)
+        base["monthly_reports"] = bool(channel)
+        # Préinscriptions du site public : seule l'académie présentielle
+        # rattachée au site en reçoit (onglet « Site vitrine »).
+        base["public_preregistrations"] = bool(self.code and self.code == public_site_campus_academy_code())
         return base
 
     def has_feature(self, flag):
@@ -204,6 +327,34 @@ class School(models.Model):
     @property
     def is_online_academy(self):
         return self.entity_type == "online"
+
+    @classmethod
+    def entity_type_for(cls, academy_type):
+        """`entity_type` imposé par un type d'académie (None si non classée)."""
+        if not academy_type:
+            return None
+        return "online" if academy_type == cls.TYPE_ONLINE else "campus"
+
+    def allowed_cycles(self):
+        """Cycles de niveau admis ; une académie non classée les admet tous."""
+        return self.ALLOWED_CYCLES.get(
+            self.academy_type, ("maternelle", "primaire", "college", "lycee"))
+
+    def default_level_cycle(self):
+        return self.DEFAULT_LEVEL_CYCLE.get(self.academy_type, "primaire")
+
+    def incompatible_levels(self, academy_type=None):
+        """
+        Niveaux EXISTANTS dont le cycle est refusé par `academy_type`.
+
+        Sert à refuser un classement qui contredirait les données : un
+        lycée dont un niveau est en « primaire » serait noté sur 10.
+        """
+        target = academy_type if academy_type is not None else self.academy_type
+        if not target or not self.pk:
+            return []
+        allowed = self.ALLOWED_CYCLES[target]
+        return list(self.levels.exclude(cycle__in=allowed).order_by("order", "name"))
 
     @property
     def display_name(self):
@@ -260,6 +411,11 @@ class School(models.Model):
         return self.name
 
     def save(self, *args, **kwargs):
+        derived = self.entity_type_for(self.academy_type)
+        if derived and self.entity_type != derived:
+            self.entity_type = derived
+            if kwargs.get("update_fields") is not None:
+                kwargs["update_fields"] = set(kwargs["update_fields"]) | {"entity_type"}
         if not self.slug:
             base = slugify(self.name)[:70] or "ecole"
             slug = base
@@ -287,9 +443,24 @@ class School(models.Model):
         return None
 
 
+def branding_logo_path(instance, filename):
+    """
+    Nom de fichier UNIQUE par téléversement : `branding/<académie>/<uuid>.<ext>`.
+
+    Avec le nom d'origine, un nouveau « logo.png » pouvait reprendre l'URL
+    d'une version précédente, que navigateurs et proxys continuaient de
+    servir depuis leur cache.
+    """
+    import uuid
+    ext = os.path.splitext(filename or "")[1].lower()
+    if ext not in (".png", ".jpg", ".jpeg", ".webp"):
+        ext = ".png"
+    return f"branding/{instance.school_id or 'x'}/{uuid.uuid4().hex}{ext}"
+
+
 class SchoolBranding(models.Model):
     school = models.ForeignKey(School, on_delete=models.CASCADE, related_name="branding_versions")
-    logo = models.ImageField(upload_to="branding/", null=True, blank=True)
+    logo = models.ImageField(upload_to=branding_logo_path, null=True, blank=True)
     is_active = models.BooleanField(default=False)
     label = models.CharField(max_length=100, blank=True)
     uploaded_at = models.DateTimeField(auto_now_add=True)
@@ -302,15 +473,34 @@ class SchoolBranding(models.Model):
     class Meta:
         verbose_name = "Version branding"
         ordering = ["-uploaded_at"]
+        constraints = [
+            # Au plus UNE version active par académie : deux logos « actifs »
+            # rendaient le résultat dépendant de l'ordre des requêtes.
+            models.UniqueConstraint(fields=["school"], condition=models.Q(is_active=True),
+                                    name="uniq_active_branding_per_school"),
+        ]
 
     def __str__(self):
         status = "Active" if self.is_active else "Archive"
         return f"{self.school.name} [{status}]"
 
     def activate(self):
-        SchoolBranding.objects.filter(school=self.school, is_active=True).update(is_active=False)
-        self.is_active = True
-        self.save(update_fields=["is_active"])
+        """
+        Active cette version et désactive la précédente, ATOMIQUEMENT.
+
+        La ligne de l'académie est verrouillée : deux activations simultanées
+        sont sérialisées. Une erreur annule tout — l'académie garde son logo
+        actif précédent, jamais zéro ni deux.
+        """
+        from django.db import transaction
+        if not self.logo:
+            raise ValueError("Une version sans fichier ne peut pas être activée.")
+        with transaction.atomic():
+            School.objects.select_for_update().filter(pk=self.school_id).first()
+            SchoolBranding.objects.filter(school_id=self.school_id, is_active=True).exclude(
+                pk=self.pk).update(is_active=False)
+            self.is_active = True
+            self.save(update_fields=["is_active", "updated_at"])
 
     @classmethod
     def get_active_logo_path(cls, school):
@@ -353,6 +543,34 @@ class SchoolYear(models.Model):
     def save(self, *args, **kwargs):
         if self.is_current:
             SchoolYear.objects.filter(school=self.school, is_current=True).update(is_current=False)
+        else:
+            # FIX v41 — LA PREMIÈRE ANNÉE D'UNE ACADÉMIE EST ACTIVE.
+            #
+            # Sans cela, une académie pouvait avoir une année et AUCUNE
+            # année active : l'administrateur crée l'entité, ajoute
+            # « 2026-2027 », crée ses classes, et ne clique jamais sur
+            # « Activer » — rien ne le lui demande. Toutes les listes
+            # déroulantes de classes tombaient alors à zéro, en silence.
+            #
+            # DEUX GARDES, chacune indispensable :
+            #
+            #  1. `_state.adding` — uniquement à la CRÉATION. Une année qui
+            #     existe déjà et qu'on enregistre à is_current=False est
+            #     une année qu'on ferme DÉLIBÉRÉMENT (bouton « Clôturer »).
+            #     La réactiver ici rendait la clôture impossible : on la
+            #     fermait, elle se rouvrait dans le même appel.
+            #  2. aucune autre année active — créer une seconde année ne
+            #     doit pas déplacer l'année de travail sous les pieds de
+            #     l'établissement.
+            #
+            # Une académie dont toutes les années sont closes n'est PAS
+            # rattrapée ici, et c'est voulu : `academic_year.active_year()`
+            # se replie alors sur l'année la plus récente pour l'affichage,
+            # sans jamais rouvrir ce qu'un administrateur a fermé.
+            if self._state.adding and not SchoolYear.objects.filter(
+                school=self.school, is_current=True
+            ).exists():
+                self.is_current = True
         super().save(*args, **kwargs)
 
 

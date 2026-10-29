@@ -1,5 +1,8 @@
 # MONTHLY_REPORTS_FIX — envoi du rapport mensuel
 
+> **DOCUMENT HISTORIQUE** — il décrit une version antérieure de FEBA ; ses résultats n'ont pas été
+> rejoués tels quels sur cette version. Références à jour : `DOCUMENTATION_INDEX.md`, `FINAL_REPORT.md`.
+
 **Priorité n°8.** Page : `/superadmin/monthly-reports`.
 Statut : **déjà implémenté dans l'archive source — vérifié par exécution, aucune correction nécessaire.**
 

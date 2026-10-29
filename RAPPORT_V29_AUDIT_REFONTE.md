@@ -1,5 +1,8 @@
 # FEBA v29 — Rapport d'Audit et de Refonte Multi-Tenant
 
+> **DOCUMENT HISTORIQUE** — il décrit une version antérieure de FEBA ; ses résultats n'ont pas été
+> rejoués tels quels sur cette version. Références à jour : `DOCUMENTATION_INDEX.md`, `FINAL_REPORT.md`.
+
 **Date** : 30 juin 2026
 **Périmètre** : Transformation de FEBA (application mono-établissement) en plateforme SaaS multi-établissements, refonte de la gestion des années scolaires, durcissement sécurité.
 

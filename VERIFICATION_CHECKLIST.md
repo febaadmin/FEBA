@@ -1,5 +1,8 @@
 # VERIFICATION_CHECKLIST — mission bilinguisation + audit (16/07/2026)
 
+> **DOCUMENT HISTORIQUE** — il décrit une version antérieure de FEBA ; ses résultats n'ont pas été
+> rejoués tels quels sur cette version. Références à jour : `DOCUMENTATION_INDEX.md`, `FINAL_REPORT.md`.
+
 Statuts : ✅ corrigé/conforme · 🟢 vérifié, aucun problème détecté · 🟡 partiellement couvert (détail en note)
 
 ## Hotfix post-livraison — page blanche /parent/home

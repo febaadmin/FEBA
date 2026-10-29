@@ -1,5 +1,8 @@
 # Sécurité des documents officiels
 
+> **DOCUMENT HISTORIQUE** — il décrit une version antérieure de FEBA ; ses résultats n'ont pas été
+> rejoués tels quels sur cette version. Références à jour : `DOCUMENTATION_INDEX.md`, `FINAL_REPORT.md`.
+
 Un diplôme n'est pas un fichier : c'est une affirmation de l'établissement,
 opposable, qui circule hors de l'application. Ce rapport décrit ce qui le
 protège, et comment chaque protection a été vérifiée.

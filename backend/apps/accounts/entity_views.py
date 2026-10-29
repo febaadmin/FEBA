@@ -31,6 +31,8 @@ def _client_ip(request):
 
 
 def serialize_entity(school):
+    from apps.classes.subject_rules import CURRICULUM_LANGUAGES, academy_subject_languages, academy_tracks
+
     """Représentation publique d'une entité pour le frontend connecté."""
     if school is None:
         return None
@@ -45,6 +47,17 @@ def serialize_entity(school):
         "legal_name": school.legal_name or school.name,
         "slug": school.slug,
         "entity_type": school.entity_type,
+        "academy_type": school.academy_type,
+        # Programme linguistique (matières, parcours, bulletins) — distinct
+        # de `default_language`, qui n'est que la langue de l'interface.
+        "curriculum_language_mode": school.curriculum_language_mode,
+        # Parcours de classe admis (décidés par subject_rules, reflétés tels
+        # quels par l'écran « Classes »).
+        "class_tracks": list(academy_tracks(school)),
+        # Langues de matières admises (toutes tant que le programme n'est
+        # pas configuré : comportement historique).
+        "subject_languages": list(academy_subject_languages(school)
+                                  or CURRICULUM_LANGUAGES["bilingual"]),
         "timezone": school.timezone,
         "currency": school.currency_code,
         "currency_symbol": school.currency_symbol,

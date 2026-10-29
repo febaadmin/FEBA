@@ -18,7 +18,7 @@ import logging
 import re
 from rest_framework import serializers
 from django.contrib.auth.password_validation import validate_password
-from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer, TokenRefreshSerializer
 from django.contrib.auth import authenticate
 from .models import CustomUser
 from apps.core.academy_serializers import ACADEMY_FIELDS, AcademyMetadataMixin
@@ -83,6 +83,21 @@ class UserSerializer(AcademyMetadataMixin, serializers.ModelSerializer):
     # par le navigateur (ERR_NAME_NOT_RESOLVED). On renvoie un chemin RELATIF
     # (« /media/... ») qui se résout via le proxy Vite (dev) ou Nginx (prod).
     avatar = serializers.SerializerMethodField()
+    # Numéro tel que les SMS l'utiliseront (E.164) — ou la raison du refus,
+    # pour que l'erreur se corrige dans le dossier, pas à l'envoi.
+    sms_phone = serializers.SerializerMethodField()
+
+    def get_sms_phone(self, obj):
+        from apps.notifications.sms import normalize_phone
+        number, reason = normalize_phone(obj.phone, obj.school)
+        return {"e164": number, "problem": reason}
+
+    def update(self, instance, validated_data):
+        from django.utils import timezone
+        if "sms_consent" in validated_data and validated_data["sms_consent"] != instance.sms_consent:
+            # Horodaté par le SERVEUR : preuve du moment du choix.
+            validated_data["sms_consent_at"] = timezone.now()
+        return super().update(instance, validated_data)
 
     def get_avatar(self, obj):
         try:
@@ -96,9 +111,11 @@ class UserSerializer(AcademyMetadataMixin, serializers.ModelSerializer):
             "id", "email", "username", "first_name", "last_name",
             "full_name", "role", "role_level", "phone", "avatar",
             "school", "school_name", "preferred_language",
+            "sms_consent", "sms_consent_at", "sms_phone",
             "is_active", "must_change_password", "created_at", "updated_at",
         ] + ACADEMY_FIELDS
-        read_only_fields = ["id", "role_level", "must_change_password", "created_at", "updated_at"]
+        read_only_fields = ["id", "role_level", "must_change_password", "created_at", "updated_at",
+                            "sms_consent_at"]
 
     def get_full_name(self, obj):
         return obj.get_full_name()
@@ -397,3 +414,32 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
                     "Profil parent absent pour user %s lors du login : %s",
                     user.email, exc,
                 )
+
+
+# ── Renouvellement du jeton : la révocation fait foi ───────────────────────────
+
+class ActiveUserTokenRefreshSerializer(TokenRefreshSerializer):
+    """
+    DÉFAUT CORRIGÉ : le renouvellement standard ne vérifie pas le compte.
+    Un compte DÉSACTIVÉ (ou supprimé) obtenait encore de nouveaux jetons ;
+    ses requêtes étaient refusées une à une, mais le frontend, qui
+    renouvelle la session automatiquement, ne le renvoyait jamais à la
+    connexion. Désormais : 401, et le jeton présenté est mis en liste noire.
+    """
+
+    def validate(self, attrs):
+        from django.contrib.auth import get_user_model
+        from rest_framework_simplejwt.exceptions import AuthenticationFailed
+        from rest_framework_simplejwt.settings import api_settings
+        from rest_framework_simplejwt.tokens import RefreshToken
+
+        refresh = RefreshToken(attrs["refresh"])
+        user_id = refresh.payload.get(api_settings.USER_ID_CLAIM)
+        user = get_user_model().objects.filter(**{api_settings.USER_ID_FIELD: user_id}).first()
+        if user is None or not user.is_active:
+            try:
+                refresh.blacklist()
+            except Exception:  # liste noire indisponible : le refus reste
+                pass
+            raise AuthenticationFailed("Compte désactivé ou supprimé.", code="user_inactive")
+        return super().validate(attrs)

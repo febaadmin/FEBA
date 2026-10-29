@@ -280,7 +280,9 @@ class PreRegistrationAdminSerializer(serializers.ModelSerializer):
                             'child_name', 'child_age', 'child_birth_date',
                             'desired_level', 'school_year', 'message',
                             'created_at', 'sheet_path', 'sheet_sha256',
-                            'sheet_generated_at', 'sheet_error']
+                            'sheet_generated_at', 'sheet_error',
+                            # Académie de dépôt : jamais transférée par un PATCH.
+                            'entity']
 
     def get_sheet_available(self, obj):
         return obj.has_sheet

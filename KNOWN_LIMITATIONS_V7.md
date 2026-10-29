@@ -1,5 +1,8 @@
 # Limites connues — après l'itération V7
 
+> **DOCUMENT HISTORIQUE** — il décrit une version antérieure de FEBA ; ses résultats n'ont pas été
+> rejoués tels quels sur cette version. Références à jour : `DOCUMENTATION_INDEX.md`, `FINAL_REPORT.md`.
+
 Ce document ne sert pas à requalifier du travail inachevé. Les quatre
 priorités de l'itération (P0 à P3) sont **terminées et vérifiées** ; voir
 `RAPPORT_V7.md` et `VERIFICATION_V7.md`.

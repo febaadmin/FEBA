@@ -1,6 +1,7 @@
 from django.urls import path
 from rest_framework_simplejwt.views import TokenRefreshView
 from . import entity_views, views
+from .serializers import ActiveUserTokenRefreshSerializer
 
 urlpatterns = [
     # Contexte d'entité (multi-entités) — résolu côté serveur uniquement.
@@ -9,7 +10,9 @@ urlpatterns = [
     path("entity-context/log/", entity_views.EntitySwitchLogView.as_view(), name="entity_switch_log"),
     path("entity-context/memberships/", entity_views.MyMembershipsView.as_view(), name="my_memberships"),
     path("login/", views.LoginView.as_view(), name="login"),
-    path("refresh/", TokenRefreshView.as_view(), name="token_refresh"),
+    # Renouvellement refusé pour un compte désactivé (voir le sérialiseur).
+    path("refresh/", TokenRefreshView.as_view(serializer_class=ActiveUserTokenRefreshSerializer),
+         name="token_refresh"),
     path("logout/", views.LogoutView.as_view(), name="logout"),
     path("me/", views.MeView.as_view(), name="me"),
     path("change-password/", views.ChangePasswordView.as_view(), name="change_password"),

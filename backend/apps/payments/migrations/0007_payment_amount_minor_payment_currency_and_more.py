@@ -69,7 +69,7 @@ class Migration(migrations.Migration):
         migrations.AddConstraint(
             model_name="payment",
             constraint=models.CheckConstraint(
-                check=models.Q(("amount_minor__gte", 0)),
+                condition=models.Q(("amount_minor__gte", 0)),
                 name="payment_amount_minor_not_negative",
             ),
         ),

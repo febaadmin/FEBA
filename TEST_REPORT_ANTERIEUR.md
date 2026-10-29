@@ -1,5 +1,8 @@
 # TEST_REPORT.md — Missions V4 → V8 (26/07/2026)
 
+> **DOCUMENT HISTORIQUE** — il décrit une version antérieure de FEBA ; ses résultats n'ont pas été
+> rejoués tels quels sur cette version. Références à jour : `DOCUMENTATION_INDEX.md`, `FINAL_REPORT.md`.
+
 ## Résultats V8
 
 Résultats **rejoués intégralement après les derniers correctifs**

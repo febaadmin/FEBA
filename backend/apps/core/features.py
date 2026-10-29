@@ -5,9 +5,11 @@ PRINCIPE
 --------
 Chaque entité (`schools.School`) expose une matrice de drapeaux
 (`School.features`). Certaines fonctionnalités n'ont aucun sens pour une
-école présentielle : FEBA Cotonou n'a pas de salle virtuelle, pas de
-visioconférence, pas de test de placement en ligne. FEBA French Heritage
-Academy, académie 100 % en ligne, les a toutes.
+école présentielle : FEBA (Cotonou) n'a pas de test de placement ni de
+cours en ligne. FEBA French Heritage Academy, académie 100 % en ligne, les
+a toutes. Les salles virtuelles et la visioconférence sont activées pour
+TOUTES les académies (FEBA comprise) ; le drapeau reste vérifié, ce qui
+permet à l'administration de les désactiver explicitement pour une entité.
 
 RÈGLE DE SÉCURITÉ
 -----------------
@@ -18,8 +20,8 @@ permission `HasEntityFeature`, qui renvoie 403 lorsque l'entité courante
 n'a pas le droit.
 
 Le Super Administrateur n'échappe PAS à la règle lorsqu'il a sélectionné
-une entité : s'il consulte FEBA, il ne peut pas créer de salle virtuelle
-FEBA. En revanche, sans entité sélectionnée (mode plateforme), la
+une entité : si une fonctionnalité est désactivée pour cette entité, il ne
+peut pas l'y utiliser. En revanche, sans entité sélectionnée (mode plateforme), la
 vérification ne s'applique pas — il n'y a alors aucune entité à violer.
 """
 from rest_framework import permissions

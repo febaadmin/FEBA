@@ -25,8 +25,29 @@ class BulkDeleteMixin:
     Override `get_bulk_delete_queryset` for custom filtering.
     """
 
+    def get_bulk_delete_permissions(self):
+        """
+        Permissions EN PLUS de celles de la vue.
+
+        FAILLE CORRIGÉE (audit octobre 2026) : cette action n'était soumise
+        qu'aux permissions par défaut de la vue (« authentifié, même
+        académie ») — un parent ou un élève pouvait supprimer en masse les
+        paiements, notes ou absences qu'il voit. Par défaut : administrateurs
+        uniquement. Une vue qui gère déjà `bulk_delete` dans
+        `get_permissions()` peut renvoyer [] ici.
+        """
+        from apps.accounts.permissions import IsAdminOrAbove
+        return [IsAdminOrAbove()]
+
+    def perform_bulk_soft_delete(self, queryset, request):
+        """Suppression logique groupée. Surchargée pour tracer l'historique."""
+        queryset.update(is_deleted=True)
+
     @action(detail=False, methods=["post"], url_path="bulk-delete")
     def bulk_delete(self, request, *args, **kwargs):
+        for permission in self.get_bulk_delete_permissions():
+            if not permission.has_permission(request, self):
+                self.permission_denied(request, message=getattr(permission, "message", None))
         ids = request.data.get("ids", [])
         if not ids or not isinstance(ids, list):
             return Response({"error": "ids list required"}, status=status.HTTP_400_BAD_REQUEST)
@@ -43,7 +64,7 @@ class BulkDeleteMixin:
                 f.name for f in model._meta.get_fields()
             ]
             if has_soft:
-                qs.update(is_deleted=True)
+                self.perform_bulk_soft_delete(qs, request)
                 action_str = "soft-deleted"
             else:
                 qs.delete()

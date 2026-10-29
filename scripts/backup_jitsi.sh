@@ -23,7 +23,10 @@ tar czf "$ARCHIVE" -C "$TMP" .
 rm -rf "$TMP"
 sha256sum "$ARCHIVE" > "$ARCHIVE.sha256"
 
-ls -1t "$BACKUP_ROOT"/jitsi/feba_jitsi_*.tar.gz 2>/dev/null | tail -n +9 | xargs -r -I{} rm -f {} {}.sha256
+# `|| true` : avec `pipefail`, un dossier encore vide (aucune archive
+# hebdomadaire avant le premier dimanche, aucune mensuelle avant le 1er)
+# faisait échouer `ls`, et le script s'arrêtait AVANT la copie hors site.
+ls -1t "$BACKUP_ROOT"/jitsi/feba_jitsi_*.tar.gz 2>/dev/null | tail -n +9 | xargs -r -I{} rm -f {} {}.sha256 || true
 [ -n "${RCLONE_REMOTE:-}" ] && command -v rclone >/dev/null && \
     rclone copy "$BACKUP_ROOT/jitsi" "$RCLONE_REMOTE/jitsi" --include "feba_jitsi_${STAMP}*"
 echo "  ✔ $ARCHIVE"

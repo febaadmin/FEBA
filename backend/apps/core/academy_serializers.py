@@ -101,3 +101,38 @@ class AcademyMetadataMixin(serializers.Serializer):
 
 #: Champs à ajouter à un `Meta.fields` explicite.
 ACADEMY_FIELDS = ["academy_id", "academy_code", "academy_name", "academy_short_name"]
+
+
+class StudentAgeMixin(serializers.Serializer):
+    """
+    Ajoute `student_age` et `student_age_status` à un serializer d'objet
+    qui porte un élève (paiement, absence, note, bulletin, inscription…).
+
+    Le calcul est celui de `apps.core.age` — jamais une variante locale.
+    `age_student_source` est le chemin vers l'élève (par défaut `student`).
+    Aucune requête supplémentaire : l'élève et son académie sont déjà
+    chargés par le `select_related` des vues ; à défaut, Django les met en
+    cache sur l'instance après le premier accès.
+    """
+    age_student_source = "student"
+
+    student_age = serializers.SerializerMethodField()
+    student_age_status = serializers.SerializerMethodField()
+
+    def _student_age_info(self, obj):
+        from apps.core.age import age_info
+
+        student = resolve_academy(obj, self.age_student_source)
+        if student is None:
+            return {"age": None, "age_status": "missing"}
+        return age_info(student.date_of_birth, getattr(student, "school", None))
+
+    def get_student_age(self, obj):
+        return self._student_age_info(obj)["age"]
+
+    def get_student_age_status(self, obj):
+        return self._student_age_info(obj)["age_status"]
+
+
+#: Champs à ajouter à un `Meta.fields` explicite.
+STUDENT_AGE_FIELDS = ["student_age", "student_age_status"]

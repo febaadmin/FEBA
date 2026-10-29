@@ -1,5 +1,8 @@
 # MEDIA_DUPLICATES_REPORT.md — Déduplication des images (V6 + V6.1, 20/07/2026)
 
+> **DOCUMENT HISTORIQUE** — il décrit une version antérieure de FEBA ; ses résultats n'ont pas été
+> rejoués tels quels sur cette version. Références à jour : `DOCUMENTATION_INDEX.md`, `FINAL_REPORT.md`.
+
 ## V6.1 — audit des doublons APRÈS intégration des remplacements
 
 | Média | Emplacement(s) | Doublon ? | Décision | Remplacement |

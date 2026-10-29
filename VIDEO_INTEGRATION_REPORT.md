@@ -1,5 +1,8 @@
 # VIDEO_INTEGRATION_REPORT.md — Vidéo galerie (V7-P6, 25/07/2026)
 
+> **DOCUMENT HISTORIQUE** — il décrit une version antérieure de FEBA ; ses résultats n'ont pas été
+> rejoués tels quels sur cette version. Références à jour : `DOCUMENTATION_INDEX.md`, `FINAL_REPORT.md`.
+
 ## 1. Inspection de la source (ffprobe)
 
 | Propriété | Valeur |

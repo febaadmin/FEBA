@@ -1,5 +1,8 @@
 # SCHEDULE_PARITY_REPORT.md — P2, juillet-août 2026
 
+> **DOCUMENT HISTORIQUE** — il décrit une version antérieure de FEBA ; ses résultats n'ont pas été
+> rejoués tels quels sur cette version. Références à jour : `DOCUMENTATION_INDEX.md`, `FINAL_REPORT.md`.
+
 ## Ce que les captures montraient
 
 FEBA (`CampusSchedule.jsx`) : bascule Grille/Liste, filtre par classe,

@@ -19,10 +19,11 @@
 import { chromium } from "./playwright.mjs";
 import fs from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 const FRONT = process.env.FRONT_URL || "http://localhost:5173";
 const API = process.env.API_URL || "http://localhost:8000";
-const SORTIE = path.join(process.cwd(), "e2e", "captures");
+const SORTIE = path.join(path.dirname(fileURLToPath(import.meta.url)), "captures");
 fs.mkdirSync(SORTIE, { recursive: true });
 
 const LARGEURS = [375, 768, 1024, 1440, 1920];
@@ -115,7 +116,7 @@ async function connexion(page, email, motDePasse) {
     // Le binaire préinstallé de l'environnement : la version de
     // playwright-core résolue ne correspond pas toujours au dossier
     // qu'elle attend par défaut.
-    executablePath: '/opt/pw-browsers/chromium',
+    executablePath: process.env.CHROMIUM_PATH || '/opt/pw-browsers/chromium',
   });
 
   // ── 1. La famille dépose une demande complète ────────────────────

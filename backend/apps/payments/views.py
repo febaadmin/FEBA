@@ -52,6 +52,7 @@ class PaymentViewSet(BulkDeleteMixin, viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated, IsSameTenant]
     filterset_fields = ["student", "school_year", "payment_type", "payment_method", "is_confirmed"]
     search_fields = ["reference_number", "student__first_name", "student__last_name"]
+    ordering_fields = ["payment_date", "paid_at", "created_at", "amount_minor"]
     http_method_names = ["get", "post", "patch", "delete", "head", "options"]
     tenant_lookup = "student__school"
 
@@ -63,9 +64,13 @@ class PaymentViewSet(BulkDeleteMixin, viewsets.ModelViewSet):
     def get_queryset(self):
         user = self.request.user
         school = get_request_school(self.request)
-        show_deleted = self.request.query_params.get("show_deleted", "0") == "1"
+        # `restore` porte par définition sur un paiement SUPPRIMÉ : sans
+        # cette exception, get_object() ne le trouvait jamais et le bouton
+        # « Restaurer » répondait toujours 404.
+        restoring = getattr(self, "action", None) == "restore"
+        show_deleted = restoring or self.request.query_params.get("show_deleted", "0") == "1"
         qs = Payment.objects.select_related(
-            "student__current_class", "school_year", "received_by"
+            "student__current_class", "student__school", "school_year", "received_by"
         ).prefetch_related("history__performed_by")
 
         # --- Isolation multi-tenant (FIX CRITIQUE v29) ----------------------
@@ -82,11 +87,23 @@ class PaymentViewSet(BulkDeleteMixin, viewsets.ModelViewSet):
             qs = qs.filter(is_deleted=False)
 
         # FIX: Default to current active year to avoid inactive year data leaking
-        if not self.request.query_params.get("school_year") and self.request.query_params.get("all_years") != "1":
+        if (not restoring and not self.request.query_params.get("school_year")
+                and self.request.query_params.get("all_years") != "1"):
             from apps.core.tenancy import current_school_years
             current_years = current_school_years(school)
             if current_years.exists():
                 qs = qs.filter(school_year__in=current_years)
+
+        # Filtre par période (dates LOCALES de paiement, bornes incluses).
+        from django.utils.dateparse import parse_date
+        from rest_framework.exceptions import ValidationError
+        for param, lookup in (("date_from", "payment_date__gte"), ("date_to", "payment_date__lte")):
+            raw = self.request.query_params.get(param)
+            if raw:
+                parsed = parse_date(raw)
+                if parsed is None:
+                    raise ValidationError({param: "Date invalide : format attendu AAAA-MM-JJ."})
+                qs = qs.filter(**{lookup: parsed})
 
         if user.role_level >= 80:
             return qs
@@ -159,6 +176,28 @@ class PaymentViewSet(BulkDeleteMixin, viewsets.ModelViewSet):
                 )
         except Exception as exc:
             logger.warning("Erreur non bloquante ignorée : %s", exc, exc_info=True)
+    def perform_bulk_soft_delete(self, queryset, request):
+        """
+        Suppression groupée = même traitement que la suppression unitaire :
+        historique, annulation, date et auteur. Auparavant un simple
+        `update(is_deleted=True)` : aucune trace, paiement toujours
+        « confirmé », et restauration impossible à reconstituer.
+        """
+        justification = (request.data.get("justification") or "").strip() or "Suppression groupée"
+        now = timezone.now()
+        for payment in queryset.filter(is_deleted=False):
+            _log_payment_action(
+                payment=payment, action="cancel", performed_by=request.user,
+                justification=justification,
+                notes=f"Soft delete (groupée): {payment.reference_number}",
+                is_confirmed_before=payment.is_confirmed, is_confirmed_after=False,
+            )
+            payment.is_deleted = True
+            payment.deleted_at = now
+            payment.deleted_by = request.user
+            payment.is_confirmed = False
+            payment.save(update_fields=["is_deleted", "deleted_at", "deleted_by", "is_confirmed"])
+
     def destroy(self, request, *args, **kwargs):
         """Soft delete — keeps data, logs action."""
         instance = self.get_object()
@@ -193,12 +232,24 @@ class PaymentViewSet(BulkDeleteMixin, viewsets.ModelViewSet):
         payment = self.get_object()
         if not payment.is_deleted:
             return Response({"detail": "Ce paiement n'est pas supprimé."}, status=400)
+        # Restaurer rend l'état d'AVANT la suppression : un paiement annulé
+        # (avec justification) puis supprimé reste annulé. Le remettre
+        # « confirmé » d'office en refaisait une recette.
+        deletion = (
+            payment.history.filter(action="cancel", notes__startswith="Soft delete")
+            .order_by("-performed_at").first()
+        )
+        was_confirmed = (
+            deletion.is_confirmed_before
+            if deletion is not None and deletion.is_confirmed_before is not None else True
+        )
         payment.is_deleted = False
         payment.deleted_at = None
         payment.deleted_by = None
-        payment.is_confirmed = True
+        payment.is_confirmed = was_confirmed
         payment.save(update_fields=["is_deleted", "deleted_at", "deleted_by", "is_confirmed"])
-        _log_payment_action(payment, "update", request.user, justification="Restauration du paiement")
+        _log_payment_action(payment, "update", request.user, justification="Restauration du paiement",
+                            is_confirmed_before=False, is_confirmed_after=was_confirmed)
         return Response(PaymentSerializer(payment, context={"request": request}).data)
 
     @action(detail=True, methods=["post"])

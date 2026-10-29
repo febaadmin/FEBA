@@ -1,5 +1,8 @@
 # TECHNICAL_INCIDENTS_REPORT.md — Remontée des erreurs techniques (V8-P3)
 
+> **DOCUMENT HISTORIQUE** — il décrit une version antérieure de FEBA ; ses résultats n'ont pas été
+> rejoués tels quels sur cette version. Références à jour : `DOCUMENTATION_INDEX.md`, `FINAL_REPORT.md`.
+
 ## 1. Le problème : une promesse creuse
 
 L'interface affichait, sur toute erreur serveur :

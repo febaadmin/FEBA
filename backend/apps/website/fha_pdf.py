@@ -134,6 +134,7 @@ def build_sections(application):
             ("Date de naissance",
              a.child_birth_date.strftime("%d/%m/%Y") if a.child_birth_date else EMPTY),
             ("Âge", f"{a.child_age} ans" if a.child_age is not None else EMPTY),
+            ("Sexe", a.get_child_gender_display() if a.child_gender else "Non renseigné"),
             ("Ville", a.child_city),
             ("État / Province", a.child_state_province),
             ("Pays", a.child_country),

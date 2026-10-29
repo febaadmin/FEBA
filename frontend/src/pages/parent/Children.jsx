@@ -13,6 +13,7 @@ import { GraduationCap, Calendar, Users, Phone, Mail, UserCheck } from "lucide-r
 import { motion } from "framer-motion";
 import { t } from "../../i18n";
 
+import { ageText } from "../../utils/age";
 const RELATIONSHIP_LABELS = {
   father: "Père",
   mother: "Mère",
@@ -106,7 +107,7 @@ export default function ParentChildren() {
                     <p className="font-bold text-slate-800 text-lg">
                       {child.full_name || `${child.first_name || ""} ${child.last_name || ""}`.trim() || "—"}
                     </p>
-                    <p className="text-sm text-slate-500">{relLabel}</p>
+                    <p className="text-sm text-slate-500">{relLabel} · {t("Âge")} : {ageText(child.age, child.age_status)}</p>
                     {link.is_primary_contact && (
                       <span className="badge bg-amber-100 text-amber-700 mt-1 text-xs">{t("Contact principal")}</span>
                     )}

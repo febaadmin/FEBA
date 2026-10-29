@@ -207,3 +207,76 @@ def require_school_or_403(user):
             "Votre compte n'est rattaché à aucun établissement. "
             "Contactez votre administrateur."
         )
+
+
+def _academy_id_of(obj, path):
+    """Identifiant de l'académie atteinte par `path` ("" : l'objet EST l'académie)."""
+    current = obj
+    for part in filter(None, path.split(".")):
+        if current is None:
+            return None
+        current = getattr(current, part, None)
+    return getattr(current, "pk", None)
+
+
+class TenantRelationsMixin(serializers.Serializer):
+    """
+    Garde d'isolation sur les RELATIONS reçues par un serializer.
+
+    FAILLE CORRIGÉE (audit octobre 2026)
+    ------------------------------------
+    Les serializers exposaient leurs clés étrangères avec un queryset
+    global : un administrateur (ou un enseignant) d'une académie pouvait
+    créer une absence, une note, un devoir ou un créneau sur l'élève, la
+    matière ou la classe d'une AUTRE académie en envoyant son identifiant —
+    et déclencher au passage des notifications à ses parents. Le filtrage
+    des listes ne protège pas l'écriture.
+
+    `tenant_relations` associe chaque champ à son chemin vers l'académie :
+
+        tenant_relations = {"student": "school", "cls": "school_year.school"}
+
+    Règles :
+      - toute relation SOUMISE doit appartenir à l'académie de la requête ;
+      - toutes les relations de l'objet (soumises ou déjà enregistrées)
+        doivent appartenir à UNE même académie — y compris pour le
+        super-administrateur en vue « Toutes les académies ».
+
+    Le contrôle est accroché à `to_internal_value` (et non à `validate`)
+    pour s'appliquer même quand le serializer redéfinit `validate()`.
+    """
+    tenant_relations = {}
+
+    def to_internal_value(self, data):
+        attrs = super().to_internal_value(data)
+        request = self.context.get("request")
+        if request is None or not self.tenant_relations:
+            return attrs
+        school = get_request_school(request)
+        academies = {}
+        for field, path in self.tenant_relations.items():
+            submitted = field in attrs
+            value = attrs.get(field) if submitted else (
+                getattr(self.instance, field, None) if self.instance is not None else None
+            )
+            if value is None:
+                continue
+            objects = list(value) if isinstance(value, (list, tuple, set)) else (
+                list(value.all()) if hasattr(value, "all") and not hasattr(value, "_meta") else [value]
+            )
+            for obj in objects:
+                academy_id = _academy_id_of(obj, path)
+                if academy_id is None:
+                    continue
+                if submitted and school is not None and academy_id != school.pk:
+                    raise serializers.ValidationError({
+                        field: "Cet élément appartient à un autre établissement.",
+                    })
+                academies.setdefault(academy_id, field)
+        if len(academies) > 1:
+            raise serializers.ValidationError({
+                "non_field_errors": [
+                    "Les éléments liés appartiennent à des établissements différents."
+                ],
+            })
+        return attrs

@@ -314,6 +314,11 @@ class Asset:
         self.backdrop_shape = data.get("backdrop_shape", "circle")
         self.backdrop_diameter_mm = float(data.get("backdrop_diameter_mm", 0) or 0)
         self.bleed_mm = float(data.get("bleed_mm", 0.0))
+        # Recouvrement d'un logo INCRUSTÉ dans le fond (voir le rendu) :
+        # {"color": "#RRGGBB"} — appliqué uniquement quand l'académie a un
+        # logo téléversé et activé ; sinon l'asset n'est pas apposé et le
+        # visuel officiel du fond reste intact.
+        self.cover = data.get("cover")
 
 
 class DocumentTemplate:

@@ -1,5 +1,8 @@
 # MEDIA_INVENTORY.md — Inventaire des médias du site vitrine FEBA (V4 → V6.1)
 
+> **DOCUMENT HISTORIQUE** — il décrit une version antérieure de FEBA ; ses résultats n'ont pas été
+> rejoués tels quels sur cette version. Références à jour : `DOCUMENTATION_INDEX.md`, `FINAL_REPORT.md`.
+
 ## Delta V7 (25/07/2026)
 Ajoutés/optimisés : nouvelle façade FEBA → campus-facade-logo (webp 1600+800) ; vidéo
 feba-presentation.mp4 (H.264/AAC, 576×1024, 54 s, 6,6 Mo) + poster ; cachet officiel

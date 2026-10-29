@@ -1,0 +1,14 @@
+# Ports du TURN intégré à LiveKit — à ajouter UNIQUEMENT quand TURN est actif
+# (scripts/plugnmeet_setup.sh --turn on, certificat présent dans
+# runtime/certs). Sans TURN, ces ports ne sont pas publiés : rien n'y
+# écoute, et chaque port publié coûte un processus docker-proxy.
+#
+#   docker compose -p feba-pnm -f plugnmeet/docker-compose.plugnmeet.yml \
+#     -f plugnmeet/docker-compose.plugnmeet.limits.yml \
+#     -f plugnmeet/docker-compose.plugnmeet.turn.yml \
+#     --env-file plugnmeet/runtime/plugnmeet.env up -d
+services:
+  pnm-livekit:
+    ports:
+      - "3478:3478/udp"   # TURN/UDP
+      - "5349:5349/tcp"   # TURN/TLS (certificat de PNM_TURN_DOMAIN)

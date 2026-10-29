@@ -21,7 +21,9 @@ class AttendanceViewSet(BulkDeleteMixin, viewsets.ModelViewSet):
     def get_queryset(self):
         user = self.request.user
         school = get_request_school(self.request)
-        qs = Attendance.objects.select_related("student", "created_by", "school_year", "subject")
+        qs = Attendance.objects.select_related(
+            "student__school", "student__current_class", "created_by", "school_year", "subject",
+        )
 
         # --- Isolation multi-tenant (FIX v29) -------------------------------
         if school is not None:
@@ -55,6 +57,17 @@ class AttendanceViewSet(BulkDeleteMixin, viewsets.ModelViewSet):
             except Exception:
                 return qs.none()
         return qs.none()
+
+    def get_permissions(self):
+        """
+        FAILLE CORRIGÉE : aucune restriction de rôle sur les écritures. Un
+        parent pouvait transformer l'absence de son enfant en présence ou la
+        supprimer, un élève aussi. Écritures : administrateurs et enseignants.
+        """
+        if self.action in ("create", "update", "partial_update", "destroy", "bulk"):
+            from apps.accounts.permissions import IsAdminOrTeacher
+            return [IsAuthenticated(), IsAdminOrTeacher(), IsSameTenant()]
+        return super().get_permissions()
 
     def perform_create(self, serializer):
         # BUG FIX #2: Auto-assign school_year so records are never orphaned from the filter

@@ -1,0 +1,106 @@
+# ══════════════════════════════════════════════════════════════════════
+# FEBA — Jitsi DERRIÈRE le reverse proxy FEBA existant (MÊME serveur)
+#
+#   docker compose -f docker-compose.jitsi.yml \
+#                  -f docker-compose.jitsi.behind-proxy.yml \
+#                  --env-file .env.jitsi up -d
+#
+#   (ou « make jitsi-proxy-up »)
+#
+# LE PROBLÈME QUE CE FICHIER RÉSOUT
+# ---------------------------------
+# `docker-compose.jitsi.prod.yml` publie les ports 80 et 443 de l'hôte.
+# `docker-compose.prod.yml` (service nginx-prod) publie EXACTEMENT LES
+# MÊMES. Sur le serveur qui sert déjà globalfeba.com, les deux piles ne
+# peuvent pas coexister :
+#
+#   * si nginx-prod tourne déjà, « jitsi-prod-up » échoue sur
+#     « Bind for 0.0.0.0:443 failed: port is already allocated » ;
+#   * si Jitsi est démarré en premier, c'est le SITE PRINCIPAL qui ne
+#     redémarre plus.
+#
+# La surcouche `prod` reste valable — mais uniquement sur un serveur
+# DÉDIÉ à Jitsi, ce que sa documentation supposait sans le vérifier.
+# Ce fichier-ci couvre l'autre cas, celui d'un hébergement unique.
+#
+# CE QU'IL CHANGE
+# ---------------
+#   * Jitsi n'écoute QUE sur la boucle locale (127.0.0.1:8443). Aucun
+#     port public n'est pris : il devient inatteignable de l'extérieur
+#     autrement que par le proxy.
+#   * TLS est terminé par le nginx de FEBA, pas par Jitsi. Le conteneur
+#     ne demande donc aucun certificat : deux clients ACME sur le même
+#     port 80 se disputeraient la validation HTTP-01.
+#   * Le vhost à activer côté FEBA est livré prêt à l'emploi :
+#     nginx/sites-available/meet.globalfeba.com.conf
+#
+# CE QU'IL NE CHANGE PAS
+# ----------------------
+# L'authentification. `ENABLE_AUTH=1`, `ENABLE_GUESTS=0`, `AUTH_TYPE=jwt`
+# et `JWT_ALLOW_EMPTY=0` restent imposés : une instance ouverte sur le
+# domaine du groupe serait pire qu'une instance publique, parce qu'elle
+# porterait le nom de l'établissement.
+#
+# UDP 10000 reste publié tel quel : le pont vidéo ne passe pas par le
+# proxy HTTP, et aucun autre service FEBA n'utilise ce port.
+# ══════════════════════════════════════════════════════════════════════
+
+services:
+  jitsi-web:
+    ports:
+      # BOUCLE LOCALE UNIQUEMENT — c'est tout l'objet de ce fichier.
+      # L'adresse 127.0.0.1 est explicite : sans elle, Docker publierait
+      # sur 0.0.0.0 et exposerait une instance en clair sur Internet.
+      - "127.0.0.1:${JITSI_PROXY_PORT:-8443}:80"
+    environment:
+      - PUBLIC_URL=${JITSI_PUBLIC_URL:?JITSI_PUBLIC_URL est requis (https://meet.globalfeba.com)}
+      # TLS assuré par le nginx de FEBA, en amont.
+      - DISABLE_HTTPS=1
+      - ENABLE_HTTP_REDIRECT=0
+      - ENABLE_LETSENCRYPT=0
+      # Jitsi doit savoir qu'il est servi en HTTPS malgré un port 80 en
+      # clair côté conteneur : sans cela, il compose des URL « http:// »
+      # que le navigateur refuse depuis une page sécurisée (contenu
+      # mixte), et la salle reste noire.
+      - ENABLE_XMPP_WEBSOCKET=1
+      # ── Authentification : identique à la surcouche dédiée ──────────
+      - ENABLE_AUTH=1
+      - ENABLE_GUESTS=0
+      - AUTH_TYPE=jwt
+      - JWT_APP_ID=${JITSI_APP_ID:?JITSI_APP_ID est requis}
+      - JWT_APP_SECRET=${JITSI_APP_SECRET:?JITSI_APP_SECRET est requis}
+    restart: always
+    logging: &proxy_logging
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+  prosody:
+    environment:
+      - PUBLIC_URL=${JITSI_PUBLIC_URL}
+      - ENABLE_AUTH=1
+      - ENABLE_GUESTS=0
+      - AUTH_TYPE=jwt
+      - JWT_ALLOW_EMPTY=0
+      - JWT_ACCEPTED_ISSUERS=${JITSI_APP_ID}
+      - JWT_ACCEPTED_AUDIENCES=jitsi
+    restart: always
+    logging: *proxy_logging
+
+  jicofo:
+    restart: always
+    logging: *proxy_logging
+
+  jvb:
+    ports:
+      # Le média ne passe PAS par le proxy HTTP : ce port reste public.
+      - "${JVB_PORT:-10000}:10000/udp"
+    environment:
+      # SANS CETTE VALEUR, LE SON ET L'IMAGE NE PASSENT PAS : le pont
+      # annoncerait son adresse Docker interne (172.x), inatteignable
+      # depuis Internet. Les participants se voient et n'entendent rien.
+      - JVB_ADVERTISE_IPS=${JVB_ADVERTISE_IPS:?IP publique du serveur requise (voir MANUAL_PRODUCTION_ACTIONS.md)}
+      - JVB_PORT=${JVB_PORT:-10000}
+    restart: always
+    logging: *proxy_logging

@@ -9,6 +9,8 @@ import { Save, Lock, User, Eye, EyeOff, GraduationCap, Calendar } from "lucide-r
 import { extractApiError } from "../../utils/errors";
 import { t } from "../../i18n";
 
+import { ageText } from "../../utils/age";
+import SmsPreferencesCard from "../../components/SmsPreferencesCard";
 export default function ParentProfile() {
   const qc = useQueryClient();
   const { data, isLoading } = useQuery({ queryKey: ["me"], queryFn: authAPI.me });
@@ -52,6 +54,7 @@ export default function ParentProfile() {
   return (
     <div className="space-y-6">
       <PageHeader title={t("Mon Profil")} subtitle={t("Année scolaire {y}", { y: currentYear?.name || "" })} />
+      <SmsPreferencesCard />
 
       {/* Avatar */}
       <div className="card flex flex-col items-center gap-3 py-6">
@@ -105,7 +108,8 @@ export default function ParentProfile() {
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold text-slate-800">{link.student_name || `Élève #${link.student}`}</p>
                     <div className="flex items-center gap-3 mt-0.5 flex-wrap">
-                      <span className="text-xs text-slate-400">{link.relation_label || link.relation || "—"}</span>
+                      <span className="text-xs text-slate-400">{t(link.relationship_label || "—")}</span>
+                      <span className="text-xs text-slate-500">{ageText(link.student_age, link.student_age_status)}</span>
                       {link.class_name && (
                         <span className="text-xs bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded-md font-medium">
                           📚 {link.class_name}

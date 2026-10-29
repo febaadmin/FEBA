@@ -1,12 +1,13 @@
 import { NavLink, useNavigate } from "react-router-dom";
 import { useState, useEffect, useRef } from "react";
-import { FileBarChart,
-  LayoutDashboard, Users, GraduationCap, UserCheck, BookOpen,
-  ClipboardList, DollarSign, Calendar, FileText, Bell, MessageSquare,
-  Megaphone, Settings, LogOut, School, Menu, X, UserCog, Layers, FolderOpen,
-  ClipboardCheck, Video, Globe, CreditCard, Award } from "lucide-react";
+import {
+  Star, Stamp, FileBarChart, LayoutDashboard, Users, GraduationCap, UserCheck, BookOpen, ClipboardList, DollarSign, Calendar, FileText, Bell, MessageSquare, Megaphone, Settings, LogOut, School, Menu, X, UserCog, Layers, FolderOpen, ClipboardCheck, Video, Globe, CreditCard, Award, Mail, BellRing, Inbox,
+} from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
-import { useBranding } from "../hooks/useBranding";
+import AcademyLogo from "../components/AcademyLogo";
+import AcademyName from "../components/AcademyName";
+import { safeInternalPath } from "../utils/safePath";
+import { isNavItemVisible } from "./navFeatures";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { notificationsAPI, conversationsAPI } from "../api";
 import { motion, AnimatePresence } from "framer-motion";
@@ -14,7 +15,6 @@ import { clsx } from "clsx";
 import { useAuthStore } from "../store/authStore";
 import LanguageSwitcher from "../components/ui/LanguageSwitcher";
 import { t } from "../i18n";
-import logoFeba from "../assets/logo_feba.jpeg"; // fallback only
 import { useEntityContext } from "../hooks/useEntityContext";
 import EntitySwitcher from "../components/EntitySwitcher";
 import AcademyScopedOutlet from "../components/AcademyScopedOutlet";
@@ -29,6 +29,7 @@ const nav = [
   { label: "Niveaux",         icon: Layers,           to: "/admin/levels" },
   { label: "Notes",           icon: ClipboardList,    to: "/admin/grades" },
   { label: "Bulletins",       icon: FileText,         to: "/admin/bulletins" },
+  { label: "Appréciations",   icon: Star,             to: "/admin/appreciations" },
   { label: "Absences",        icon: Calendar,         to: "/admin/attendance" },
   { label: "Emploi du temps", icon: Calendar,         to: "/admin/schedule" },
   // Fonctionnalité conditionnelle : réservée aux entités « académie en
@@ -37,13 +38,17 @@ const nav = [
   { label: "Devoirs",         icon: BookOpen,         to: "/admin/homework" },
   { label: "Paiements",       icon: DollarSign,       to: "/admin/payments" },
   { label: "Transactions carte", icon: CreditCard, to: "/admin/card-transactions" },
+  { label: "Relances de paiement", icon: BellRing, to: "/admin/payment-reminders" },
   { label: "Documents officiels", icon: Award, to: "/admin/official-documents" },
+  { label: "Gabarits des documents", icon: Stamp, to: "/admin/document-templates" },
   { label: "Messages",        icon: MessageSquare,    to: "/admin/messages" },
+  { label: "E-mails groupés", icon: Mail, to: "/admin/emails" },
+  { label: "Boîte d'envoi", icon: Inbox, to: "/admin/outbox" },
   { label: "Annonces",        icon: Megaphone,        to: "/admin/announcements" },
   { label: "Utilisateurs",    icon: UserCog,          to: "/admin/users" },
   { label: "Fichiers",         icon: FolderOpen,       to: "/admin/user-files" },
-  { label: "Admissions FEBA FHA", icon: ClipboardList, to: "/admin/fha-admissions", feature: "placement_tests" },
-  { label: "Rapports mensuels", icon: FileBarChart, to: "/admin/monthly-reports", feature: "placement_tests" },
+  { label: "Admissions en ligne", icon: ClipboardList, to: "/admin/fha-admissions", feature: "online_admissions" },
+  { label: "Rapports mensuels", icon: FileBarChart, to: "/admin/monthly-reports", feature: "monthly_reports" },
   { label: "Site vitrine",     icon: Globe,            to: "/admin/website" },
   { label: "Branding & Logo",  icon: School,           to: "/admin/branding" },
   { label: "Paramètres",      icon: Settings,         to: "/admin/settings" },
@@ -71,7 +76,7 @@ export default function AdminLayout() {
   // protection réelle est côté serveur (permission HasEntityFeature),
   // qui refuse l'endpoint même si l'URL est saisie à la main.
   const { hasFeature } = useEntityContext();
-  const visibleNav = nav.filter((item) => !item.feature || hasFeature(item.feature));
+  const visibleNav = nav.filter((item) => isNavItemVisible(item, { hasFeature }));
 
   const isMobile = useIsMobile();
   const [sidebarOpen, setSidebarOpen] = useState(!isMobile);
@@ -79,7 +84,6 @@ export default function AdminLayout() {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const { user, logout } = useAuth();
-  const { logoSrc } = useBranding();
 
   // Close sidebar on mobile when screen resizes to mobile
   useEffect(() => {
@@ -144,10 +148,10 @@ export default function AdminLayout() {
             )}>
             <div className="p-5 flex items-center gap-3 border-b border-white/10">
               <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-yellow-400 shrink-0 bg-white">
-                <img src={logoSrc} alt={t("FEBA")} className="w-full h-full object-contain" />
+                <AcademyLogo />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-white font-bold text-sm leading-tight">{t("FEBA Academy")}</p>
+                <AcademyName className="text-white font-bold text-sm leading-tight" />
                 <p className="text-yellow-400 text-xs">{t("Administrateur")}</p>
               </div>
               {isMobile && (
@@ -222,7 +226,7 @@ export default function AdminLayout() {
                     {notifications.length === 0 ? (
                       <p className="text-center text-slate-400 py-8 text-sm">{t("Aucune notification")}</p>
                     ) : notifications.slice(0, 10).map(n => (
-                      <div key={n.id} onClick={() => { setNotifOpen(false); if (n.related_url) navigate(n.related_url); }}
+                      <div key={n.id} onClick={() => { setNotifOpen(false); const to = safeInternalPath(n.related_url); if (to) navigate(to); }}
                         className={`px-4 py-3 cursor-pointer hover:bg-slate-50 transition-colors ${!n.is_read ? "bg-primary-50/30" : ""}`}>
                         <p className="text-sm font-medium text-slate-800">{n.title}</p>
                         <p className="text-xs text-slate-500 mt-0.5 line-clamp-2">{n.message}</p>

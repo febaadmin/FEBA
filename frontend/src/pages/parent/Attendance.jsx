@@ -6,6 +6,7 @@ import DataTable from "../../components/ui/DataTable";
 import StatusBadge from "../../components/ui/StatusBadge";
 import { t } from "../../i18n";
 
+import { ageColumn } from "../../utils/age";
 export default function ParentAttendance() {
   const [selectedChild, setSelectedChild] = useState("");
 
@@ -26,6 +27,7 @@ export default function ParentAttendance() {
 
   const cols = [
     { key: "student", label: t("Élève"), accessor: "student_name" },
+    ageColumn("student_age"),
     { key: "date", label: t("Date"), accessor: "date" },
     { key: "status", label: t("Statut"), render: r => <StatusBadge status={r.status} /> },
     { key: "subject", label: t("Matière"), render: r => r.subject_name || "—" },

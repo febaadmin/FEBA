@@ -17,12 +17,17 @@
 #   make diagnose                        → diagnostic en cas de problème
 #   make prod                              → démarre l'environnement de production
 
-.PHONY: install bootstrap dev migrate migrations-plan superuser seed seed-reset seed-check init-academies \
+.PHONY: prod prod-rollback prod-preflight prod-logs prod-down plugnmeet-setup-local plugnmeet-up plugnmeet-down plugnmeet-logs plugnmeet-health install bootstrap dev migrate migrations-plan superuser seed seed-reset seed-check init-academies \
         test-sqlite test-postgres test-frontend test-e2e test-install \
         payments-setup payments-check payments-test payments-webhook-check \
         documents-check documents-install documents-ready documents-calibrate documents-compare \
         branding-check \
-        jitsi-up jitsi-down jitsi-logs jitsi-health health logs logs-all ps down reset \
+        jitsi-up jitsi-down jitsi-restart jitsi-logs jitsi-health jitsi-config-check \
+        jitsi-network jitsi-prod-restart \
+        deploy-check deploy-production deploy-rollback production-health \
+        jitsi-prod-up jitsi-prod-down jitsi-prod-logs \
+        jitsi-proxy-up jitsi-proxy-down jitsi-proxy-logs \
+        health logs logs-all ps down reset \
         test shell diagnose doctor install-check repair prod prod-down prod-logs help
 
 # P6 — Point de passage UNIQUE vers Django : toujours à travers le
@@ -118,19 +123,151 @@ bootstrap:
 # Démarre l'instance Jitsi AUTO-HÉBERGÉE. Les secrets manquants sont
 # générés automatiquement : plus aucune étape manuelle, et surtout aucun
 # repli vers une instance publique.
+# ── plugNmeet (remplace Jitsi) — voir PLUGNMEET_DEPLOYMENT_GUIDE.md ──────
+PNM_COMPOSE = docker compose -p feba-pnm-local -f plugnmeet/docker-compose.plugnmeet.yml --env-file plugnmeet/runtime/plugnmeet.env
+
+plugnmeet-setup-local:
+	@bash scripts/plugnmeet_setup.sh --local
+
+plugnmeet-up:
+	@test -f plugnmeet/runtime/plugnmeet.env || bash scripts/plugnmeet_setup.sh --local
+	$(PNM_COMPOSE) up -d
+
+plugnmeet-down:
+	$(PNM_COMPOSE) down
+
+plugnmeet-logs:
+	$(PNM_COMPOSE) logs -f plugnmeet pnm-livekit
+
+plugnmeet-health:
+	@if docker compose ps --status running backend-dev 2>/dev/null | grep -q backend-dev; then \
+		docker compose exec -T backend-dev python manage.py plugnmeet_health; \
+	else \
+		cd backend && python3 manage.py plugnmeet_health; \
+	fi
+
 jitsi-up:
 	@bash scripts/jitsi_up.sh
 
 jitsi-down:
 	docker compose -f docker-compose.jitsi.yml --env-file .env.jitsi down
 
+# Redémarre la pile sans régénérer les secrets : les jetons déjà émis
+# restent valides, les cours en séance ne sont pas invalidés.
+jitsi-restart:
+	docker compose -f docker-compose.jitsi.yml --env-file .env.jitsi restart
+	@echo "Instance redémarrée — vérifiez avec « make jitsi-health »."
+
 jitsi-logs:
 	docker compose -f docker-compose.jitsi.yml --env-file .env.jitsi logs -f
 
-# Vérifie l'instance : configuration, signature de jeton, joignabilité.
-# Code de sortie non nul si l'instance n'est pas opérationnelle.
+# Vérifie l'instance : configuration, signature de jeton, DNS, TLS, HTTP,
+# page Jitsi. Code de sortie non nul si l'instance n'est pas opérationnelle.
+#
+# JITSI_TARGET permet de contrôler une instance PRÉCISE, en particulier
+# celle de production, sans déployer de configuration :
+#     make jitsi-health JITSI_TARGET=meet.globalfeba.com
+#
+# Le contrôle passe par le conteneur backend quand il tourne, sinon par un
+# Python local : « make jitsi-health » ne doit pas être indisponible juste
+# parce que la pile de développement est arrêtée — c'est précisément quand
+# quelque chose ne va pas qu'on en a besoin.
+JITSI_TARGET ?=
+JITSI_HEALTH_ARGS = $(if $(JITSI_TARGET),--domain $(JITSI_TARGET),)
+
 jitsi-health:
-	docker compose exec -T backend-dev python manage.py jitsi_health
+	@if docker compose ps --status running backend-dev 2>/dev/null | grep -q backend-dev; then \
+		docker compose exec -T backend-dev python manage.py jitsi_health $(JITSI_HEALTH_ARGS); \
+	else \
+		echo "(conteneur backend-dev arrêté — contrôle depuis l'hôte)"; \
+		cd backend && python3 manage.py jitsi_health $(JITSI_HEALTH_ARGS); \
+	fi
+
+# ── Production : meet.globalfeba.com ─────────────────────────────────
+# La surcouche ajoute TLS Let's Encrypt, les ports 80/443 et l'IP publique
+# annoncée par le pont vidéo. Elle ne remplace pas la pile de base : les
+# deux fichiers sont passés ensemble, sinon la configuration diverge à la
+# première correction faite d'un seul côté.
+JITSI_PROD_COMPOSE = -f docker-compose.jitsi.yml -f docker-compose.jitsi.prod.yml --env-file .env.jitsi
+
+# ── Topologie « MÊME SERVEUR que FEBA » ──────────────────────────────
+# Jitsi n'écoute que sur la boucle locale ; c'est le nginx de FEBA qui
+# termine TLS et sert meet.globalfeba.com. À utiliser dès lors que le
+# serveur héberge DÉJÀ globalfeba.com : la surcouche `prod` ci-dessous
+# publierait 80 et 443, que nginx-prod occupe déjà.
+JITSI_PROXY_COMPOSE = -f docker-compose.jitsi.yml -f docker-compose.jitsi.behind-proxy.yml --env-file .env.jitsi
+
+jitsi-proxy-up: jitsi-network
+	@bash scripts/jitsi_config_check.sh || echo "⚠ Configuration incohérente — voir ci-dessus."
+	docker compose $(JITSI_PROXY_COMPOSE) up -d
+	@echo ""
+	@echo "Jitsi écoute sur 127.0.0.1:$${JITSI_PROXY_PORT:-8443} — inaccessible de l'extérieur."
+	@echo "Activez ensuite le vhost côté FEBA :"
+	@echo "  cp nginx/sites-available/meet.globalfeba.com.conf nginx/sites-enabled/"
+	@echo "  docker compose -f docker-compose.prod.yml exec nginx-prod nginx -t   # AVANT de recharger"
+	@echo "  docker compose -f docker-compose.prod.yml exec nginx-prod nginx -s reload"
+
+jitsi-proxy-down:
+	docker compose $(JITSI_PROXY_COMPOSE) down
+
+jitsi-proxy-logs:
+	docker compose $(JITSI_PROXY_COMPOSE) logs -f
+
+# ── Réseau partagé Jitsi ─────────────────────────────────────────────
+# `feba_jitsi_shared` est POSSÉDÉ par docker-compose.yml et REJOINT par la
+# pile Jitsi, qui le déclare « external ». Démarrer Jitsi sur une machine
+# où la pile FEBA n'a jamais tourné — ou après un `docker network prune` —
+# échouait donc sur :
+#
+#     network feba_jitsi_shared declared as external, but could not be found
+#
+# `scripts/jitsi_up.sh` le créait déjà pour le démarrage de développement.
+# Les démarrages de PRODUCTION ne passent pas par ce script : ils
+# tombaient sur l'erreur, sur le serveur, au pire moment.
+# ── Production : contrôle et déploiement ─────────────────────────────
+# `deploy-check` ne modifie RIEN : il dit si le serveur est en état de
+# recevoir le déploiement. `deploy-production` sauvegarde d'abord, et
+# vérifie ce qu'il a fait plutôt que de l'affirmer.
+deploy-check:
+	@bash scripts/deploy_production.sh --check
+
+deploy-production:
+	@bash scripts/deploy_production.sh
+
+deploy-rollback:
+	@bash scripts/deploy_production.sh --rollback
+
+jitsi-prod-restart: jitsi-network
+	docker compose $(JITSI_PROD_COMPOSE) restart
+	@echo "Pile redémarrée — vérifiez : make jitsi-health JITSI_TARGET=$${JITSI_DOMAIN:-meet.globalfeba.com}"
+
+# État de bout en bout : l'application ET la visioconférence. Les deux
+# répondent séparément, et une seule des deux en panne se diagnostique
+# différemment.
+production-health:
+	@bash scripts/production_health.sh
+
+jitsi-network:
+	@docker network inspect feba_jitsi_shared >/dev/null 2>&1 || \
+	  { echo "Création du réseau partagé feba_jitsi_shared…"; \
+	    docker network create feba_jitsi_shared >/dev/null; }
+
+jitsi-prod-up: jitsi-network
+	@bash scripts/jitsi_config_check.sh || echo "⚠ Configuration incohérente — voir ci-dessus."
+	docker compose $(JITSI_PROD_COMPOSE) up -d
+	@echo "Instance démarrée. Vérifiez : make jitsi-health JITSI_TARGET=$${JITSI_DOMAIN:-meet.globalfeba.com}"
+
+jitsi-prod-down:
+	docker compose $(JITSI_PROD_COMPOSE) down
+
+jitsi-prod-logs:
+	docker compose $(JITSI_PROD_COMPOSE) logs -f
+
+# Contrôle de COHÉRENCE de la configuration, sans réseau : ce que les
+# fichiers déclarent, avant même de savoir si l'instance répond. Utilisable
+# en CI, où meet.globalfeba.com n'est de toute façon pas joignable.
+jitsi-config-check:
+	@bash scripts/jitsi_config_check.sh
 
 health: jitsi-health
 	@docker compose exec -T backend-dev python manage.py check --deploy 2>/dev/null || true
@@ -268,11 +405,19 @@ install-check:
 repair:
 	bash scripts/repair.sh
 
+# Déploiement vérifié (sauvegarde, contrôle de pré-démarrage, fumée,
+# retour arrière automatique) — voir scripts/deploy_feba.sh.
 prod:
-	docker compose -f docker-compose.prod.yml up --build -d
+	bash scripts/deploy_feba.sh
+
+prod-rollback:
+	bash scripts/deploy_feba.sh --rollback
+
+prod-preflight:
+	docker compose --env-file .env.prod -f docker-compose.prod.yml run --rm --no-deps -T backend-prod python manage.py production_preflight
 
 prod-logs:
-	docker compose -f docker-compose.prod.yml logs -f backend-prod
+	docker compose --env-file .env.prod -f docker-compose.prod.yml logs -f backend-prod celery-prod celery-beat
 
 prod-down:
-	docker compose -f docker-compose.prod.yml down
+	docker compose --env-file .env.prod -f docker-compose.prod.yml down

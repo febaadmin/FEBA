@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Plus, Trash2, BarChart2, BookOpen, Globe, User, Clock, History, Layers } from "lucide-react";
+import { Plus, Trash2, BarChart2, BookOpen, Globe, User, Clock, History, Layers, MessageSquare, Eye } from "lucide-react";
 import { useForm, Controller } from "react-hook-form";
 import toast from "react-hot-toast";
 import { gradesAPI, studentsAPI, subjectsAPI, schoolsAPI, classesAPI } from "../../api";
@@ -22,6 +22,8 @@ import PageHeader from "../../components/ui/PageHeader";
 import Modal from "../../components/ui/Modal";
 import SearchableSelect from "../../components/ui/SearchableSelect";
 import BulkGradeModal from "../../components/grades/BulkGradeModal";
+import BulletinCommentManager from "../../components/bulletins/BulletinCommentManager";
+import BulletinPreviewDialog from "../../components/bulletins/BulletinPreviewDialog";
 import { extractApiError } from "../../utils/errors";
 import { isValidGrade, gradePayloadValue } from "../../utils/gradeInput";
 import { t, dateLocale } from "../../i18n";
@@ -29,6 +31,7 @@ import AcademyBadge from "../../components/AcademyBadge";
 import { useAcademy } from "../../context/AcademyContext";
 import { useSchoolYearScope } from "../../hooks/useSchoolYearScope";
 
+import { ageText, studentOptionLabel } from "../../utils/age";
 const PERIODS = [
   { value: "T1", label: "Trimestre 1" },
   { value: "T2", label: "Trimestre 2" },
@@ -62,10 +65,19 @@ function LetterBadge({ letter }) {
 }
 
 export default function AdminGrades() {
-  const { isAllAcademies } = useAcademy();
+  const { isAllAcademies, activeAcademy } = useAcademy();
+  // Programme monolingue (français ou anglais uniquement) : pas de moyenne
+  // bilingue 60/40 — l'onglet « Bilingue » n'aurait que des cases vides.
+  const monolingualCurriculum = ["french_only", "english_only"].includes(activeAcademy?.curriculum_language_mode);
   const qc = useQueryClient();
   const [view, setView] = useState("list"); // "list" | "summary" | "bilingual" | "deleted" | "allhistory"
   const [addOpen, setAddOpen] = useState(false);
+  // Commentaire du directeur imprimé sur le bulletin — distinct du
+  // commentaire d'une note (champ « comment » de la note).
+  const [bulletinCommentOpen, setBulletinCommentOpen] = useState(false);
+  const [bulletinCommentKey, setBulletinCommentKey] = useState(0);
+  const [bulletinPreviewOpen, setBulletinPreviewOpen] = useState(false);
+  const [bulletinPreviewKey, setBulletinPreviewKey] = useState(0);
   const [bulkOpen, setBulkOpen] = useState(false);
   const [editItem, setEditItem] = useState(null);
   const [histItem, setHistItem] = useState(null);
@@ -213,11 +225,11 @@ export default function AdminGrades() {
   });
   const allHistRows = allHistData?.data?.results || [];
 
-  const studentOpts = students.map(s => ({ value: s.id, label: `${s.full_name || s.first_name + ' ' + s.last_name} — ${s.class_name || "?"}` }));
+  const studentOpts = students.map(s => ({ value: s.id, label: studentOptionLabel(s) }));
   const subjectOpts = subjects.map(s => ({ value: s.id, label: `${s.name}${s.language ? ` (${s.language.toUpperCase()})` : ""}` }));
   // Saisie groupée : élèves avec identifiant de classe + options de classe.
   const bulkStudentOpts = students.map(s => ({
-    value: s.id, label: `${s.full_name || s.first_name + ' ' + s.last_name} — ${s.class_name || "?"}`,
+    value: s.id, label: studentOptionLabel(s),
     classId: s.current_class ?? s.class_id ?? "",
   }));
   const classOpts = classes.map(c => ({ value: c.id, label: c.name }));
@@ -328,6 +340,10 @@ export default function AdminGrades() {
                 Excel / CSV ({grades.length})
               </button>
             )}
+            <button onClick={() => { setBulletinPreviewKey((k) => k + 1); setBulletinPreviewOpen(true); }}
+              className="btn-secondary flex items-center gap-2"><Eye className="w-4 h-4" />{t("Aperçu du bulletin")}</button>
+            <button onClick={() => { setBulletinCommentKey((k) => k + 1); setBulletinCommentOpen(true); }}
+              className="btn-secondary flex items-center gap-2"><MessageSquare className="w-4 h-4" />{t("Commentaires des bulletins")}</button>
             <button onClick={() => setBulkOpen(true)}
               className="btn-secondary flex items-center gap-2"><Layers className="w-4 h-4" />{t("Saisie groupée")}</button>
             <button onClick={() => { reset({ school_year: currentYear?.id || "" }); setAddOpen(true); }}
@@ -335,6 +351,11 @@ export default function AdminGrades() {
           </div>
         }
       />
+
+      <BulletinPreviewDialog key={`p${bulletinPreviewKey}`} open={bulletinPreviewOpen}
+        onClose={() => setBulletinPreviewOpen(false)} initial={{ yearId: currentYear?.id }} />
+      <BulletinCommentManager key={bulletinCommentKey} open={bulletinCommentOpen} onClose={() => setBulletinCommentOpen(false)}
+        initial={{ yearId: currentYear?.id }} />
 
       <BulkGradeModal
         open={bulkOpen}
@@ -355,10 +376,10 @@ export default function AdminGrades() {
         {[
           { key: "list", label: t("Liste"), icon: BookOpen },
           { key: "summary", label: t("Résumé par élève"), icon: User },
-          { key: "bilingual", label: t("Bilingue"), icon: Globe },
+          !monolingualCurriculum && { key: "bilingual", label: t("Bilingue"), icon: Globe },
           { key: "deleted", label: t("Supprimées"), icon: Trash2 },
           { key: "allhistory", label: t("Historique"), icon: History },
-        ].map(({ key, label, icon: Icon }) => (
+        ].filter(Boolean).map(({ key, label, icon: Icon }) => (
           <button key={key} onClick={() => setView(key)}
             className={`flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition ${view === key ? "bg-white shadow text-blue-700" : "text-gray-600 hover:text-gray-800"}`}>
             <Icon className="w-4 h-4 shrink-0" />{label}
@@ -480,6 +501,7 @@ export default function AdminGrades() {
                       <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500">{t("Académie")}</th>
                     )}
                     <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500">{t("Élève")}</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500">{t("Âge")}</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500">{t("Matière")}</th>
                     <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500">{t("Période")}</th>
                     <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500">{t("Type")}</th>
@@ -489,10 +511,10 @@ export default function AdminGrades() {
                 </thead>
                 <tbody className="divide-y divide-gray-100">
                   {isLoading && (
-                    <tr><td colSpan={8} className="px-4 py-8 text-center text-gray-400">{t("Chargement…")}</td></tr>
+                    <tr><td colSpan={9} className="px-4 py-8 text-center text-gray-400">{t("Chargement…")}</td></tr>
                   )}
                   {!isLoading && grades.length === 0 && (
-                    <tr><td colSpan={8} className="px-4 py-8 text-center text-gray-400">{t("Aucune note pour cette sélection.")}</td></tr>
+                    <tr><td colSpan={9} className="px-4 py-8 text-center text-gray-400">{t("Aucune note pour cette sélection.")}</td></tr>
                   )}
                   {grades.slice((gradePage-1)*GRADES_PER_PAGE, gradePage*GRADES_PER_PAGE).map(r => (
                     <tr
@@ -507,10 +529,11 @@ export default function AdminGrades() {
                       </td>
                       {isAllAcademies && (
                         <td className="px-4 py-3">
-                          <AcademyBadge code={r.academy_code} name={r.academy_name} />
+                          <AcademyBadge code={r.academy_code} name={r.academy_name} shortName={r.academy_short_name} />
                         </td>
                       )}
                       <td className="px-4 py-3 font-medium text-gray-800">{r.student_name || r.student}</td>
+                      <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{ageText(r.student_age, r.student_age_status)}</td>
                       <td className="px-4 py-3 text-gray-600">{r.subject_name || r.subject}</td>
                       <td className="px-4 py-3 text-center">
                         <span className="text-xs font-medium px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full">{r.period}</span>
@@ -705,7 +728,7 @@ export default function AdminGrades() {
       )}
 
       {/* BILINGUAL VIEW */}
-      {view === "bilingual" && (
+      {view === "bilingual" && !monolingualCurriculum && (
         <div className="space-y-4">
           {!selectedStudent ? (
             <div className="bg-white rounded-xl border border-gray-200 p-12 text-center text-gray-400">
@@ -735,7 +758,7 @@ export default function AdminGrades() {
             <>
               {/* Bilingual formula explanation */}
               <div className="bg-gradient-to-r from-blue-900 to-blue-800 rounded-xl p-4 text-white">
-                <h3 className="font-bold text-yellow-400 mb-1">{t("Système Bilingue FEBA")}</h3>
+                <h3 className="font-bold text-yellow-400 mb-1">{t("Système bilingue")}</h3>
                 <p className="text-blue-200 text-sm">
                   <strong className="text-white">{t("Formule :")}</strong> {t("Moyenne Bilingue = (Moyenne Française × 60%) + (Moyenne Anglaise × 40%)")}</p>
               </div>

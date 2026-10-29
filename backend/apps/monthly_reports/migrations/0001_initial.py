@@ -201,7 +201,7 @@ class Migration(migrations.Migration):
         migrations.AddConstraint(
             model_name="monthlystudentreport",
             constraint=models.CheckConstraint(
-                check=models.Q(("month__gte", 1), ("month__lte", 12)),
+                condition=models.Q(("month__gte", 1), ("month__lte", 12)),
                 name="rapport_mensuel_mois_valide",
             ),
         ),

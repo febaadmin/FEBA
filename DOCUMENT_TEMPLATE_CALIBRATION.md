@@ -1,5 +1,8 @@
 # Calibrage des quatre gabarits officiels
 
+> **DOCUMENT HISTORIQUE** — il décrit une version antérieure de FEBA ; ses résultats n'ont pas été
+> rejoués tels quels sur cette version. Références à jour : `DOCUMENTATION_INDEX.md`, `FINAL_REPORT.md`.
+
 Chaque nombre de ce dossier a été **mesuré sur le fond réellement
 dessiné**, par une commande qu'on peut relancer, et non choisi à l'œil.
 Les commandes sont citées à côté de leurs résultats : un calibrage qu'on

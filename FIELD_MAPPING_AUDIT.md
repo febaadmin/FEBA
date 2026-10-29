@@ -1,4 +1,7 @@
 # Audit de la chaîne des champs
+
+> **DOCUMENT HISTORIQUE** — il décrit une version antérieure de FEBA ; ses résultats n'ont pas été
+> rejoués tels quels sur cette version. Références à jour : `DOCUMENTATION_INDEX.md`, `FINAL_REPORT.md`.
 Ce fichier est **produit par `manage.py field_mapping_audit`**, pas rédigé à la main. Un tableau écrit reste juste le jour où on l'écrit et devient faux au premier champ ajouté — c'est exactement ainsi que le numéro WhatsApp a disparu : présent dans le modèle et dans le formulaire, absent du serializer.
 Colonnes : **Saisi** (le serializer public l'accepte) · **Relu** (l'administration le voit) · **Liste** (visible sans ouvrir le détail) · **Export** (présent dans le CSV).
 

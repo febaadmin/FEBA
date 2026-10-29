@@ -1,0 +1,9 @@
+# Contexte de construction de l'image frontend : ni dépendances du poste
+# (reconstruites par « npm ci » dans l'image), ni sorties de build, ni
+# fichiers d'environnement.
+node_modules/
+dist/
+coverage/
+.env
+.env.*
+*.log

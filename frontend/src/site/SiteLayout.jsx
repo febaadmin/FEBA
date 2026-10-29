@@ -56,7 +56,9 @@ export default function SiteLayout() {
   const location = useLocation();
   const navigate = useNavigate();
   const { accessToken, user } = useAuthStore();
-  const { logoSrc } = useBranding();
+  // Site public multi-académies : les pages /feba-fha portent l'identité de
+  // FEBA French Heritage Academy (logo, favicon), le reste celle de FEBA.
+  const { logoSrc } = useBranding(location.pathname.startsWith("/feba-fha") ? "FEBA_FHA" : "FEBA");
   const settings = useSiteSettings();
 
   // Fermer le menu mobile et remonter en haut à chaque navigation.

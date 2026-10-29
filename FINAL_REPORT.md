@@ -1,149 +1,125 @@
-# Rapport de clôture — V9
+# FEBA — Audit du 28 octobre 2026 : bulletin sur une page, conversions, sécurité, CI/CD
 
-Ce rapport distingue **où** chaque chose a été vérifiée. C'est la seule
-distinction qui compte : cinq défauts de cette itération n'apparaissaient
-pas dans le dépôt source, seulement depuis l'archive extraite.
+Branche `fix/audit-bulletin-ci-deploiement`.
 
----
+| | |
+|---|---|
+| Départ | `705468c` (= version V2 `FEBA_LAST_VERSION`, vérifiée fichier par fichier ; seuls les deux workflows différaient, modifications reprises) |
+| Base GitHub | `main` = `d3bc137` (ancêtre de `705468c` : provenance linéaire) |
+| Commit final | voir `git log -1` ; les campagnes de référence ont tourné sur `1e464ff`, la documentation a été ajoutée ensuite |
 
-## Ce qui est testé, et où
-
-| Vérification | Dépôt source | Archive extraite | SQLite | PostgreSQL | Navigateur | Vu à l'œil |
-|---|:-:|:-:|:-:|:-:|:-:|:-:|
-| Suites backend | ✅ 806 | ✅ 806 | ✅ 805+1 | ✅ 806 | — | — |
-| Suites frontend | ✅ 123 | ✅ 123 | — | — | — | — |
-| ESLint / build | ✅ 0 erreur | ✅ 0 erreur | — | — | — | — |
-| Installation propre | — | ✅ venv neuf, base vide | — | ✅ 0→69 tables | — | — |
-| Diplôme produisible | ✅ | ✅ sans commande | — | ✅ | ✅ | ✅ capture |
-| Certificat produisible | ✅ | ✅ | — | ✅ | ✅ | ✅ capture |
-| Neutralisation du placeholder | ✅ | ✅ 4220→0 px | — | — | — | ✅ PDF |
-| Identité par académie | ✅ | ✅ 7 documents | — | ✅ | ✅ | ✅ PDF |
-| Inscription FEBA FHA | ✅ 43 tests | ✅ bout en bout | ✅ | ✅ SQL direct | ✅ | ✅ capture |
-| Fiche PDF + téléchargement | ✅ | ✅ | — | ✅ | ✅ | ✅ PDF |
-| Contacts + WhatsApp | ✅ 16 tests | ✅ 2 académies | ✅ | ✅ SQL direct | ✅ | ✅ capture |
-| Messages longs non coupés | ✅ 14 tests | ✅ | — | ✅ 6300/6300 car. | ✅ 1011/1011 | ✅ capture |
-| Isolation + anti-IDOR | ✅ | ✅ | ✅ | ✅ | — | ✅ preuve |
-| Stockage privé | ✅ | ✅ | — | ✅ | — | — |
-| Contrôle des secrets | ✅ garde-fou | ✅ ZIP analysé | — | — | — | — |
+Statuts utilisés :
+- **CORRIGÉ ET TESTÉ** ;
+- **NON VÉRIFIABLE** (environnement indisponible) ;
+- **NON CORRIGÉ** ;
+- **BLOQUÉ** (accès ou autorisation) ;
+- **RECOMMANDÉ**.
 
 ---
 
-## E-mails : ce qui s'est réellement passé
+## 1. Bulletin sur une seule page — CORRIGÉ ET TESTÉ
 
-Le brief demande de distinguer cinq états. Voici lequel s'applique.
+**Cause racine.** La mise en page ReportLab était rigide : logo de 2 cm, intertitres de 11 à 14 pt, marges internes des lignes, bloc commentaire et cachet de 3 cm. Elle ne vérifiait jamais la hauteur disponible. Mesuré : dès 6 matières françaises et 4 anglaises, les signatures, le cachet et le pied de page passaient en page 2. Les tests existants n'utilisaient que 2 à 4 matières.
 
-| État | S'applique ? | Détail |
-|---|:-:|---|
-| Capturé par un backend local | **OUI** | `django.core.mail.backends.console.EmailBackend` |
-| Mis en file | non | Aucune file n'a été employée |
-| Simulé | non | Les messages sont réellement composés et remis au backend |
-| Accepté par un fournisseur externe | **NON** | Aucun fournisseur configuré |
-| Réellement distribué | **NON** | Impossible à affirmer sans fournisseur |
+**Correction** (`apps/bulletins/pdf_generator.py`). Quatre densités de mise en page sont essayées, de « standard » à « très compact ». Elles ne changent que les espacements, les marges internes, la taille du logo et du cachet, puis la police, jamais sous 7 pt. Le moteur conserve la première densité dont le PDF **produit** compte exactement une page.
 
-Le journal `EmailDelivery` porte `status = sent` et
-`backend = console.EmailBackend`. Le drapeau `used_real_provider` vaut
-**faux**, et l'interface affiche « Sans fournisseur » — jamais « Envoyé ».
-`manage.py email_check` sort en erreur dans cet état, exprès.
+Ni matière, ni note, ni appréciation, ni calcul ne sont retirés ou modifiés. Au-delà de la densité la plus compacte : `BulletinLayoutError`, HTTP 422 sur l'aperçu et la génération, ancien PDF conservé. Le bulletin de maternelle utilise le même mécanisme.
 
-Un fichier HTML a bien été produit pour chaque message. **Cela ne vaut pas
-envoi**, et rien dans cette livraison ne le présente comme tel.
+**Capacité mesurée** : 28 matières, ou 22 avec le commentaire maximal de 1 200 caractères. Les données réelles de développement comptent au plus 10 matières par classe.
 
----
+**Défaut découvert pendant l'audit** : les lettres hors Windows-1252 étaient imprimées en carrés noirs (« Ìyábọ̀ » sortait « Ìyáb■■ »). Cela touche ɖ, ɛ, ɔ, ŋ, les voyelles pointées et les tons des noms en fon et en yoruba. Correction : repli glyphe par glyphe sur DejaVu Sans, police libre embarquée avec sa licence (`apps/core/pdf_longtext.py`).
 
-## Les cinq défauts trouvés en validant l'archive
+**Preuves** :
+- `tests/test_bulletin_one_page.py`, sur la base et l'API réelles, vérifie :
+  - exactement une page A4, chaque matière et chaque information d'identité ;
+  - la moyenne pondérée sur /10 et sur /20, et toutes les périodes ;
+  - les notes manquantes, le commentaire maximal, les noms longs et accentués (fon et yoruba), deux académies ;
+  - qu'aucun caractère ne sort de la page et qu'aucune police n'est sous 7 pt ;
+  - l'aperçu, la génération, le fichier téléchargé et une classe entière ;
+  - le refus explicite au-delà de la capacité.
+- Navigateur réel (`e2e/parcours-bulletin-une-page.mjs`) : l'aperçu et 6 PDF officiels font une page chacun, avec les sections FR et EN et les signatures.
 
-Aucun n'était visible depuis le dépôt source.
+## 2. Délai de conversion des documents — CORRIGÉ ET TESTÉ
 
-**1. La livraison partait avec les rapports de l'itération précédente.**
-La liste était figée sur V8. L'archive V9 ne contenait aucun des douze
-rapports écrits pour elle. Corrigé par une liste vérifiée : un rapport
-annoncé mais absent interrompt la construction.
+**Cause racine.** Le contrat, tel que l'annoncent le réglage et le message d'erreur, est un délai **global** par téléversement. Or `convert_office` enchaîne jusqu'à trois appels LibreOffice, et chacun recevait le délai entier. Avec un délai de 1 s, une conversion de 2,43 s était donc acceptée.
 
-**2. La règle d'académie ne tenait que dans la vue HTTP.** Produire un
-diplôme au fond FEBA pour un élève de l'académie en ligne était refusé par
-l'API et **accepté par le service**. Une commande, un script d'import ou un
-test produisait donc un document au nom d'une académie et à l'effigie
-d'une autre. Une règle posée à la porte d'entrée HTTP n'est pas une règle.
+**Correction** (`apps/documents/conversion.py`) :
+- un objet `Deadline` transmet à chaque étape le temps **restant** ;
+- le relevé et le retrait des marqueurs comptent dans le délai ;
+- le groupe de processus (LibreOffice et ses descendants détachés) est tué dans tous les cas ;
+- les répertoires temporaires sont supprimés et aucun gabarit partiel n'est enregistré.
 
-**3. L'adresse imprimée se répétait.** `Akpakpa, Cotonou, Bénin, Cotonou,
-Bénin` en tête de chaque reçu — et, pour l'académie en ligne, une ville qui
-n'est pas la sienne affichée deux fois sur ses propres documents.
+**Preuves** :
+- `GlobalDeadlineTests` utilise un faux convertisseur à durée maîtrisée. Contre-épreuve : 2 échecs sur l'ancien code, 4 réussites sur le nouveau.
+- `test_delai_de_conversion_depasse` (LibreOffice réel) a réussi 5 fois sur 5 dans l'image Python 3.12.
+- Le test réel n'a été ni supprimé ni affaibli, et le délai n'a pas été relevé.
 
-**4. Deux caractères disparaissaient de chaque message long.** DRF retire
-les blancs de fin par défaut. Un message de 7 014 caractères arrivait à
-7 012. Deux caractères — mais c'est la même mécanique qui modifie ce que le
-visiteur a écrit, pendant que l'application affirme ne rien tronquer.
+## 3. Données, migrations, retour arrière — CORRIGÉ ET TESTÉ (en local) ; production NON VÉRIFIABLE
 
-**5. Un fichier d'environnement réel partait dans chaque archive.**
-`.env.dev` contenait une `SECRET_KEY` et un `JITSI_APP_SECRET`. Des secrets
-faibles restent des secrets : livrés, ils deviennent les secrets par défaut
-de toute installation qui recopie le fichier sans le lire.
+- **96 migrations** séparent `main` de cette version, toutes non destructives.
+- Copie peuplée par le code `main` (2 400 notes, 276 paiements, 120 bulletins…), puis migrée : effectifs, empreintes des identifiants et sommes **identiques** (`scripts/audit/data_counts.py`).
+- **Défaut trouvé** : sept colonnes NOT NULL ajoutées sans défaut en base. Revenir à l'ancien code **sans restaurer la base** cassait la création de paiements (IntegrityError). Correction : `db_default` (migrations `notifications 0008`, `payments 0015`, `website 0013`). Avec le code `main` sur le schéma migré, les écritures fonctionnent (`scripts/audit/rollback_columns_check.py` → `RISKY []`).
 
-Chacun a reçu un test de non-régression. L'archive a été régénérée et
-réinstallée depuis zéro après chaque correction — **quatre tours de
-boucle**.
+## 4. Sécurité — CORRIGÉ ET TESTÉ
 
----
-
-## Non validé faute d'identifiants externes
-
-| Sujet | Ce qui manque | Ce qui a été fait malgré tout |
+| Composant | Avant → après | Constat |
 |---|---|---|
-| Envoi d'e-mail réel | Un fournisseur SMTP et ses identifiants | Composition, formats, langues, pièces jointes, journal, états d'échec, relance — et un refus explicite de présenter un envoi comme réel |
-| Paiement par carte | Des clés Stripe valides | 54 tests couvrant tentative, webhook, idempotence, ordre, remboursement, reçu, permissions ; signature vérifiée par la bibliothèque officielle, sans réseau |
+| Django | 5.0.4 → **5.2.18 LTS** | branche 5.0 non maintenue, 43 vulnérabilités publiées |
+| DRF / simplejwt | 3.15.1 → 3.18.3 / 5.3.1 → 5.5.1 | 7 + 2 vulnérabilités |
+| Pillow | 10.3.0 → 13.0.0 | 66 vulnérabilités |
+| pypdf | 6.14.2 → 6.21.4 | 27 vulnérabilités |
+| gunicorn / sentry-sdk | 21.2.0 → 23.0.0 / 1.45.0 → 1.45.1 | vulnérabilités publiées |
+| WeasyPrint | **retiré** | inutilisé (6 vulnérabilités) |
+| axios, follow-redirects, zod (+ resolvers) | 1.18 → 1.21, 1.16.0 → 1.16.2, 3 → 4 | sévérité haute |
 
----
+Changements liés :
+- `STATICFILES_STORAGE` → `STORAGES` (supprimé en Django 5.1).
+- `fontTools` est déclaré : utilisé directement, il n'était présent que par WeasyPrint (158 tests échouaient sans lui).
+- DRF ≥ 3.16 rendait `school` obligatoire au téléversement d'un logo : le validateur généré pour une contrainte conditionnelle est désactivé, avec justification.
 
-## Limitations réelles restantes
+Résultat de `pip-audit` après correction : aucune vulnérabilité (base et production). `npm audit --omit=dev --audit-level=high` : aucune haute ni critique. Reste React Router 6, avis **modéré**, atténué par la garde `safeInternalPath` (voir `KNOWN_LIMITATIONS.md`).
 
-**Aucune signature officielle n'est fournie.** Les zones
-`director_signature` restent vides. Le moteur ne dessine, ne reconstitue et
-n'approche jamais une signature : une signature inventée sur un diplôme
-n'est pas une approximation graphique, c'est un faux.
+## 5. CI/CD — CORRIGÉ ; exécution GitHub : voir la pull request
 
-**L'académie en ligne n'a pas de fond de diplôme ni de certificat.** Les
-deux gabarits sont réservés à FEBA et l'interface le dit, avec sa raison.
-Le jour où le fond est fourni, il fera l'objet d'un gabarit distinct.
+**CI** :
+- Python **3.12**, comme les images Docker (la CI testait en 3.11).
+- LibreOffice et polices installés, et exigés (`FEBA_REQUIRE_LIBREOFFICE=1`). Les tests de conversion étaient auparavant **ignorés en silence**.
+- Service Mailpit, et `-rs` pour lister chaque test ignoré.
+- Contrôle bloquant explicite du bulletin sur une page et du délai de conversion.
+- `pip-audit` et `npm audit`.
+- Construction des images de production.
 
-**Ni téléphone ni e-mail ne sont renseignés pour les deux académies.** Les
-documents ne les affichent donc pas. C'est une donnée que l'établissement
-doit saisir, pas un défaut de code — et les inventer serait pire.
+**Déploiement** : le commit **testé** (`GITHUB_SHA`) est déployé, et non plus `origin/main` au moment de l'exécution. Le commit précédent est enregistré pour le retour arrière. La fusion dans `main` déclenche **automatiquement** le déploiement en production.
 
-**Les fonds installés ne sont pas les PNG d'origine** : variantes
-transcodées, acceptées nommément et tracées. Géométrie exacte, calibrage
-valide.
+## 6. Autres corrections
 
-**Les libellés d'état des dossiers FHA restent en français** sur une
-session anglaise. Défaut d'affichage seulement : l'état stocké et transmis
-est le code interne.
+- Pagination ordonnée (enseignants, parents, académie).
+- `CheckConstraint(check=)` → `condition=`.
+- pypdf 7 : la page est rattachée au writer avant rotation et fusion.
+- 39 libellés visibles codés en dur passent par `t()` (16 traductions anglaises).
+- Liens de notification filtrés par `safeInternalPath`.
 
-**L'interface charge une police depuis `fonts.googleapis.com`.** Injoignable
-derrière le proxy de ce conteneur, elle retombe sur la police système sans
-rien casser. À signaler pour un déploiement hors ligne, et parce que chaque
-visiteur est alors vu par un tiers.
+## 7. Tests exécutés (résultats exacts) — voir `TEST_REPORT.md`
 
-**Redis doit tourner.** `django-ratelimit` et l'authentification passent par
-le cache ; sans lui, le formulaire public et la connexion renvoient 500.
-Documenté dans `INSTALLATION_GUIDE.md` et démarré par `make dev`.
+| Suite | Résultat |
+|---|---|
+| Backend PostgreSQL 16, image Python 3.12 + LibreOffice, commit exporté `1e464ff` | **1959 passed**, 0 failed, 4 skipped |
+| Backend SQLite, même image | **1948 passed**, 0 failed, 15 skipped |
+| `manage.py check`, `makemigrations --check` | aucun problème, aucune migration manquante |
+| Vitest | **413 passed** |
+| ESLint | 0 erreur (74 avertissements préexistants) |
+| Build Vite ; images Docker de production | réussis |
+| E2E navigateur (Chrome) : bulletin, langues/identité (2 phases), académies, espaces anglais, préinscription, site public anglais | **tous verts** |
 
----
+## 8. BLOQUÉ — production et intégration
 
-## Détail par priorité
+- **Accès production** : la lecture de la production (SSH vers `62.238.38.111`, sondes de `globalfeba.com`) a été **refusée par la politique de permissions** de cette session. N'ont donc pas pu être vérifiés : la version en service, les volumes, les sauvegardes Restic, le TLS, Jitsi et les services. Aucun déploiement n'a eu lieu.
+- **Fusion** : non effectuée. Elle déclenche le déploiement automatique, qui exige votre accord explicite et les contrôles de `MANUAL_PRODUCTION_ACTIONS.md` § 000000000.
+- **plugNmeet réel** : NOT RUN.
 
-| | Sujet | État |
-|---|---|---|
-| P0 | Source unique d'identité par académie | Corrigé et vérifié |
-| P1 | Inscription FEBA FHA de bout en bout | Corrigé et vérifié |
-| P2 | Audit de la chaîne des champs | Corrigé et vérifié |
-| P3 | Fiche PDF + téléchargement sécurisé | Corrigé et vérifié |
-| P4 | Vue détail complète + export | Corrigé et vérifié |
-| P5 | Formulaires de contact | Corrigé et vérifié |
-| P6 | Messages longs jamais tronqués | Corrigé et vérifié |
-| P7 | Diplôme disponible dès l'installation | Corrigé et vérifié |
-| P8 | Documents filtrés par académie | Corrigé et vérifié |
-| P9 | Tests automatisés | 806 backend, 123 frontend |
-| P10 | Vérification navigateur | 34 vérifications, depuis l'archive |
-| P11 | Audit global | 5 défauts trouvés et corrigés |
+## 9. Recommandé
 
-« Corrigé et vérifié » signifie : exécuté sur cette instance, depuis
-l'archive extraite, avec la sortie reproduite dans `TEST_REPORT.md`.
+- Protéger `main` : contrôles obligatoires, environnement GitHub `production` avec approbation.
+- Épingler l'empreinte SSH du serveur, au lieu de `ssh-keyscan`.
+- Vérifier que le dépôt doit bien rester public.
+- Prévoir React Router 7 et ReportLab ≥ 4.4.

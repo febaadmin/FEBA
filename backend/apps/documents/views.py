@@ -101,6 +101,8 @@ def _serialize(document, request=None):
         "student_id": document.student_id,
         "template_id": document.template_id,
         "template_version": document.template_version,
+        "kind": ("diploma" if document.template_id.startswith("diploma") else "certificate"),
+        "template_source": "uploaded" if document.academy_template_id else "builtin",
         "status": document.status,
         "status_display": document.get_status_display(),
         # Ni chemin, ni URL de fichier : le téléchargement passe par une
@@ -226,6 +228,30 @@ class DocumentListCreateView(APIView):
         template_id = request.data.get("template")
         extra = request.data.get("values") or {}
         preview = bool(request.data.get("preview"))
+
+        # Production PAR TYPE : le gabarit est celui de l'académie de
+        # l'élève — version téléversée active, sinon gabarit intégré prévu
+        # pour elle. Le navigateur ne choisit pas le fond.
+        kind = request.data.get("kind")
+        if kind:
+            from apps.documents.services import create_for_kind
+
+            if kind not in ("diploma", "certificate"):
+                return Response({"detail": "Type de document attendu : diploma ou certificate."},
+                                status=status.HTTP_400_BAD_REQUEST)
+            year = None
+            if request.data.get("school_year"):
+                year = student.school.years.filter(pk=request.data.get("school_year")).first()
+                if year is None:
+                    return Response({"detail": "Année scolaire introuvable pour cette académie."},
+                                    status=status.HTTP_400_BAD_REQUEST)
+            try:
+                document = create_for_kind(kind=kind, student=student, user=user,
+                                           school_year=year, extra_values=extra)
+            except (TemplateError, ValidationError) as exc:
+                return Response({"detail": " ".join(exc.messages)},
+                                status=status.HTTP_400_BAD_REQUEST)
+            return Response(_serialize(document, request), status=status.HTTP_201_CREATED)
 
         # P8 — L'ACADÉMIE EST CELLE DE L'ÉLÈVE, et le gabarit doit
         # l'autoriser. Sans ce contrôle, un super administrateur en mode

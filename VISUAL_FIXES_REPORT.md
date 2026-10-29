@@ -1,5 +1,8 @@
 # VISUAL_FIXES_REPORT.md — Corrections visuelles V5 + V6 + V6.1
 
+> **DOCUMENT HISTORIQUE** — il décrit une version antérieure de FEBA ; ses résultats n'ont pas été
+> rejoués tels quels sur cette version. Références à jour : `DOCUMENTATION_INDEX.md`, `FINAL_REPORT.md`.
+
 ## V7 (25/07/2026)
 P5 façade (panneau « Faith & Excellence » + fresques) sur accueil + galerie ; focal 50/42
 (panneau non coupé, crop simulé vérifié). P6 vidéo galerie : visionneuse à contrôles, portrait

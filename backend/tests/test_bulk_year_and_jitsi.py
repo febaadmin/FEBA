@@ -84,7 +84,7 @@ class BulkRemoveFromYearTests(TestCase):
         self.assertEqual(s.current_class_id, self.c1.id)
 
 
-@override_settings(JITSI_APP_ID="feba", JITSI_APP_SECRET="s" * 32, JITSI_DOMAIN="meet.example.bj")
+@override_settings(VIDEO_PROVIDER="jitsi", JITSI_APP_ID="feba", JITSI_APP_SECRET="s" * 32, JITSI_DOMAIN="meet.example.bj")
 class JitsiJwtTests(TestCase):
     def setUp(self):
         # Salle virtuelle + JWT Jitsi = fonctionnalité des académies en

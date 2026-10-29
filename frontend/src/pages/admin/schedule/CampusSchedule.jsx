@@ -136,7 +136,11 @@ export default function CampusSchedule() {
                   return [
                     <div key={`label-${slot}`} className="bg-slate-50 border border-slate-100 p-2 text-xs text-slate-500 text-center font-mono">{start}<br/>{end}</div>,
                     ...DAYS.map((_, di) => {
-                      const items = schedules.filter(s => s.day_of_week === di && s.start_time?.slice(0,5) === start);
+                      // Créneau COMPLET (début ET fin) : les lignes sont des couples
+                      // début-fin ; filtrer sur le seul début affichait deux fois
+                      // un cours quand un autre commençait à la même heure.
+                      const items = schedules.filter(s => s.day_of_week === di && s.start_time?.slice(0,5) === start
+                        && s.end_time?.slice(0,5) === end);
                       return (
                         <div key={`${slot}-${di}`} className="border border-slate-100 p-1 min-h-[60px]">
                           {items.map((item, ii) => {
@@ -181,7 +185,7 @@ export default function CampusSchedule() {
                             la même liste : sans étiquette, rien ne dit à
                             laquelle une ligne appartient. */}
                         {isAllAcademies && (
-                          <AcademyBadge code={item.academy_code} name={item.academy_name} />
+                          <AcademyBadge code={item.academy_code} name={item.academy_name} shortName={item.academy_short_name} />
                         )}
                         <span>{item.subject_name} — {item.class_name}</span>
                       </p>
@@ -219,7 +223,7 @@ export default function CampusSchedule() {
                 </div>
                 <div><label className="label">{t("Année scolaire*")}</label>
                   <select {...register("school_year", { required: true })} className="input">
-                    <option value="">-- Sélectionner --</option>
+                    <option value="">{t("-- Sélectionner --")}</option>
                     {years.map(y => <option key={y.id} value={y.id}>{y.name}{y.is_current ? " ✓" : ""}</option>)}
                   </select>
                 </div>

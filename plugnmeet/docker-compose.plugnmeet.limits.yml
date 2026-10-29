@@ -1,0 +1,14 @@
+# Limites mémoire de la pile plugNmeet sur le serveur partagé
+# feba-plugnmeet-prod-01 (Jitsi pendant la transition, bot OKX ; 7,6 Go,
+# sans swap) : un débordement ne doit toucher que le service fautif, jamais
+# les voisins. memswap_limit = mem_limit : pas d'échange même si un swap
+# est ajouté plus tard.
+#
+# Total des services démarrés sans le proxy : 2 304 Mo (avec pnm-web : 2 432 Mo).
+services:
+  pnm-redis:   { mem_limit: 128m, memswap_limit: 128m }
+  pnm-db:      { mem_limit: 512m, memswap_limit: 512m }
+  pnm-nats:    { mem_limit: 128m, memswap_limit: 128m }
+  pnm-livekit: { mem_limit: 1g,   memswap_limit: 1g }
+  plugnmeet:   { mem_limit: 512m, memswap_limit: 512m }
+  pnm-web:     { mem_limit: 128m, memswap_limit: 128m }

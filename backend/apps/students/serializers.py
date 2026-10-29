@@ -9,15 +9,18 @@ Corrections :
   - StudentSerializer : ajout de 'enrolled_at_class' pour afficher la date
     d'inscription dans la classe courante.
 """
+from apps.core.tenancy import TenantRelationsMixin
 import logging
 from rest_framework import serializers
 from .models import Student, StudentEnrollment
-from apps.core.academy_serializers import ACADEMY_FIELDS, AcademyMetadataMixin
+from apps.core.academy_serializers import (
+    ACADEMY_FIELDS, STUDENT_AGE_FIELDS, AcademyMetadataMixin, StudentAgeMixin,
+)
 
 logger = logging.getLogger("apps.students")
 
 
-class StudentEnrollmentSerializer(serializers.ModelSerializer):
+class StudentEnrollmentSerializer(StudentAgeMixin, serializers.ModelSerializer):
     class_name       = serializers.SerializerMethodField()
     school_year_name = serializers.SerializerMethodField()
     student_name     = serializers.SerializerMethodField()
@@ -35,7 +38,7 @@ class StudentEnrollmentSerializer(serializers.ModelSerializer):
             'class_obj', 'class_name',
             'enrolled_at', 'is_active', 'is_current_year',
             'note', 'promotion_status', 'promotion_status_label',
-        ]
+        ] + STUDENT_AGE_FIELDS
         # 'student' est read_only : on le passe via serializer.save(student=...)
         # dans la vue, jamais dans le payload du frontend. Sans ce read_only,
         # DRF le considère comme requis et renvoie "student: Champ requis."
@@ -78,7 +81,9 @@ class StudentEnrollmentSerializer(serializers.ModelSerializer):
         return attrs
 
 
-class StudentSerializer(AcademyMetadataMixin, serializers.ModelSerializer):
+class StudentSerializer(TenantRelationsMixin, AcademyMetadataMixin, serializers.ModelSerializer):
+    #: Isolation des relations écrites (voir apps.core.tenancy.TenantRelationsMixin).
+    tenant_relations = {"current_class": "school_year.school", "school_year": "school"}
     # P3 : chaque objet expose son académie, sans quoi la vue
     # « Toutes les Académies » ne peut pas étiqueter ses lignes.
     academy_source = "school"
@@ -87,6 +92,9 @@ class StudentSerializer(AcademyMetadataMixin, serializers.ModelSerializer):
     class_level      = serializers.SerializerMethodField()
     school_year_name = serializers.SerializerMethodField()
     photo_url        = serializers.SerializerMethodField()
+    # Âge en années révolues — calculé par apps.core.age, jamais stocké.
+    age              = serializers.SerializerMethodField()
+    age_status       = serializers.SerializerMethodField()
     enrollments      = StudentEnrollmentSerializer(many=True, read_only=True)
     parent_user_id   = serializers.IntegerField(
         write_only=True, required=False, allow_null=True,
@@ -97,7 +105,7 @@ class StudentSerializer(AcademyMetadataMixin, serializers.ModelSerializer):
         model  = Student
         fields = [
             'id', 'user', 'school', 'matricule', 'first_name', 'last_name', 'full_name',
-            'date_of_birth', 'gender', 'photo', 'photo_url', 'address',
+            'date_of_birth', 'age', 'age_status', 'gender', 'photo', 'photo_url', 'address',
             'current_class', 'class_name', 'class_level',
             'school_year', 'school_year_name',
             'is_active', 'exit_reason', 'exit_date', 'exit_notes',
@@ -116,6 +124,35 @@ class StudentSerializer(AcademyMetadataMixin, serializers.ModelSerializer):
 
     def get_full_name(self, obj):
         return obj.get_full_name()
+
+    def _age(self, obj):
+        from apps.core.age import age_info
+        return age_info(obj.date_of_birth, obj.school)
+
+    def get_age(self, obj):
+        return self._age(obj)["age"]
+
+    def get_age_status(self, obj):
+        return self._age(obj)["age_status"]
+
+    def validate_date_of_birth(self, value):
+        """
+        Une date de naissance future produisait silencieusement un âge
+        négatif (ou rien) dans les listes. Elle est désormais refusée à la
+        saisie, avec le même contrôle que les imports.
+        """
+        from apps.core.age import validate_birth_date
+        from apps.core.tenancy import get_request_school
+
+        request = self.context.get('request')
+        academy = (
+            getattr(self.instance, 'school', None)
+            or (get_request_school(request) if request is not None else None)
+        )
+        error = validate_birth_date(value, academy)
+        if error:
+            raise serializers.ValidationError(error)
+        return value
 
     def validate_user(self, value):
         """

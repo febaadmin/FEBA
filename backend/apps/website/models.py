@@ -588,6 +588,16 @@ class FHAEnrollmentApplication(models.Model):
     child_last_name = models.CharField(max_length=120)
     child_first_name = models.CharField(max_length=120)
     child_birth_date = models.DateField()
+    #: Sexe de l'enfant — mêmes codes que `Student.gender` pour que le
+    #: dossier se reporte tel quel sur la fiche élève. Obligatoire pour une
+    #: NOUVELLE fiche (validé par le sérialiseur public) ; vide pour les
+    #: dossiers reçus avant l'ajout du champ : on n'invente pas cette
+    #: information, le document affiche « Non renseigné ».
+    GENDER_CHOICES = [('F', 'Féminin'), ('M', 'Masculin')]
+    child_gender = models.CharField(
+        max_length=1, choices=GENDER_CHOICES, blank=True, default='', db_default='',
+        help_text="F ou M. Vide = non renseigné (dossiers antérieurs).",
+    )
     child_city = models.CharField(max_length=120, blank=True)
     child_state_province = models.CharField(max_length=120, blank=True)
     child_country = models.CharField(max_length=100, blank=True)
@@ -802,14 +812,14 @@ class FHAEnrollmentApplication(models.Model):
 
     @property
     def child_age(self):
-        """Âge calculé à partir de la date de naissance (jamais saisi)."""
-        if not self.child_birth_date:
-            return None
-        today = timezone.localdate()
-        years = today.year - self.child_birth_date.year
-        if (today.month, today.day) < (self.child_birth_date.month, self.child_birth_date.day):
-            years -= 1
-        return years
+        """
+        Âge calculé à partir de la date de naissance (jamais saisi).
+
+        Même règle que partout ailleurs (apps.core.age) : années révolues,
+        « aujourd'hui » dans le fuseau de l'académie.
+        """
+        from apps.core.age import age_info
+        return age_info(self.child_birth_date, getattr(self, "entity", None))["age"]
 
     @property
     def suggested_group(self):
@@ -1076,13 +1086,8 @@ class FHAPlacementTestRequest(models.Model):
 
     @property
     def child_age(self):
-        if not self.child_birth_date:
-            return None
-        today = timezone.localdate()
-        years = today.year - self.child_birth_date.year
-        if (today.month, today.day) < (self.child_birth_date.month, self.child_birth_date.day):
-            years -= 1
-        return years
+        from apps.core.age import age_info
+        return age_info(self.child_birth_date, getattr(self, "entity", None))["age"]
 
     @property
     def suggested_group(self):

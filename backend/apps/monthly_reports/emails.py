@@ -19,10 +19,8 @@ Seule la combinaison des trois autorise le statut « envoyé ». Les deux
 autres cas restent visibles tels quels dans l'écran d'administration.
 """
 import logging
-import uuid
 
 from django.conf import settings
-from django.core.mail import EmailMultiAlternatives, get_connection
 
 from apps.schools.branding import get_branding
 
@@ -41,24 +39,10 @@ LOCAL_BACKENDS = (
 
 
 def provider_is_external():
-    """Le backend configuré parle-t-il à un serveur de messagerie ?"""
-    backend = getattr(settings, "EMAIL_BACKEND", "")
-    if backend in LOCAL_BACKENDS:
-        return False
-    # SMTP sans hôte configuré ne joindra jamais personne.
-    if backend.endswith("smtp.EmailBackend"):
-        return bool(getattr(settings, "EMAIL_HOST", ""))
-    return True
+    """Un VRAI serveur de messagerie est-il configuré ? (Mailpit : non.)"""
+    from apps.notifications.mailer import provider_is_configured
 
-
-def sender_for(academy):
-    """Expéditeur PROPRE à l'académie : un parent doit pouvoir répondre."""
-    code = getattr(academy, "code", "")
-    if code == "FEBA_FHA":
-        return (getattr(settings, "FHA_FROM_EMAIL", "")
-                or settings.DEFAULT_FROM_EMAIL)
-    return (getattr(settings, "FEBA_FROM_EMAIL", "")
-            or settings.DEFAULT_FROM_EMAIL)
+    return provider_is_configured()
 
 
 def build_bodies(report, language):
@@ -144,53 +128,43 @@ def send_monthly_report_email(report, recipients):
 
     language = preferred_language(report)
     subject, texte, html = build_bodies(report, language)
-    brand = get_branding(report.academy)
 
-    tracking = uuid.uuid4().hex
+    # Envoi par la couche centrale : UN message par destinataire (aucune
+    # adresse exposée aux autres), contenu et PDF archivés dans la boîte
+    # d'envoi, chaque échec journalisé et relançable. Auparavant le message
+    # était construit ici, hors journal, avec tous les destinataires en « À ».
+    from apps.notifications.mailer import send_tracked_email
+
     try:
-        message = EmailMultiAlternatives(
-            subject=subject, body=texte,
-            from_email=sender_for(report.academy), to=list(recipients),
-            connection=get_connection(),
-        )
-        message.attach_alternative(html, "text/html")
+        from .pdf import report_filename
 
         with open(report.pdf_absolute_path, "rb") as handle:
-            from .pdf import report_filename
-
-            message.attach(report_filename(report), handle.read(),
-                           "application/pdf")
-
-        # Un identifiant de suivi voyage dans l'en-tête : il permet de
-        # retrouver le message côté serveur de réception, et de prouver
-        # qu'un envoi correspond bien à CE rapport.
-        message.extra_headers["X-FEBA-Report-Id"] = report.reference or ""
-        message.extra_headers["X-FEBA-Tracking-Id"] = tracking
-        reply_to = getattr(settings, "EMAIL_REPLY_TO", "")
-        if reply_to:
-            message.reply_to = [reply_to]
-
-        accepted = message.send(fail_silently=False)
-    except Exception as exc:
-        logger.exception("Rapport %s — envoi refusé", report.reference)
+            attachments = [(report_filename(report), handle.read(), "application/pdf")]
+    except OSError as exc:
+        logger.exception("Rapport %s — PDF illisible", report.reference)
         return {"accepted": False, "used_real_provider": provider_is_external(),
-                "message_id": "", "error": f"{type(exc).__name__}: {exc}"}
+                "message_id": "", "error": f"PDF illisible : {type(exc).__name__}: {exc}"}
 
-    externe = provider_is_external()
-    if not accepted:
-        return {"accepted": False, "used_real_provider": externe,
-                "message_id": "",
-                "error": "Le backend de messagerie a refusé le message."}
-
+    deliveries = [
+        send_tracked_email(
+            purpose="monthly_report", to_email=address, subject=subject, text_body=texte,
+            html_body=html, entity=report.academy, reference=report.reference or "",
+            language=language, attachments=attachments,
+        )
+        for address in dict.fromkeys(recipients)
+    ]
+    errors = [f"{d.to_email} : {d.last_error}" for d in deliveries if not d.is_delivered_to_provider]
+    externe = all(d.used_real_provider for d in deliveries) and bool(deliveries)
+    tracking = deliveries[0].tracking_id.hex if deliveries else ""
+    if errors:
+        return {"accepted": False, "used_real_provider": externe, "message_id": "",
+                "error": " ; ".join(errors)[:2000]}
     if not externe:
-        # Le message a été écrit localement. L'annoncer comme « envoyé »
-        # serait un mensonge poli : personne ne l'a reçu.
+        # Console, mémoire ou Mailpit : le message est archivé mais n'est
+        # pas parti sur Internet. L'annoncer « envoyé » serait faux.
         return {
             "accepted": False, "used_real_provider": False, "message_id": "",
-            "error": ("Message capturé localement par le backend "
-                      f"« {settings.EMAIL_BACKEND} » : aucun fournisseur "
-                      "externe ne l'a accepté."),
+            "error": ("Message capturé localement (" + (deliveries[0].transport if deliveries else "")
+                      + ") : aucun fournisseur externe ne l'a accepté."),
         }
-
-    return {"accepted": True, "used_real_provider": True,
-            "message_id": tracking, "error": ""}
+    return {"accepted": True, "used_real_provider": True, "message_id": tracking, "error": ""}

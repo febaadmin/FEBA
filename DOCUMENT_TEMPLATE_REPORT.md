@@ -1,5 +1,8 @@
 # Gabarits documentaires — calibrage au millimètre
 
+> **DOCUMENT HISTORIQUE** — il décrit une version antérieure de FEBA ; ses résultats n'ont pas été
+> rejoués tels quels sur cette version. Références à jour : `DOCUMENTATION_INDEX.md`, `FINAL_REPORT.md`.
+
 ## Comment les coordonnées ont été obtenues
 
 Elles n'ont pas été estimées à l'œil. La commande `document_probe` mesure

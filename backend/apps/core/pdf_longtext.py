@@ -43,6 +43,8 @@ qu'une fiche longue, parce que rien n'y signale ce qui manque.
 from __future__ import annotations
 
 import html
+import os
+import unicodedata
 
 from reportlab.lib.styles import ParagraphStyle
 from reportlab.platypus import CondPageBreak, KeepTogether, Paragraph, Table
@@ -93,6 +95,82 @@ def normalize(value) -> str:
     return text.replace("\r\n", "\n").replace("\r", "\n")
 
 
+#: Polices standard d'un PDF (Helvetica, Times, Courier) : jeu Windows-1252.
+#: Un caractère hors de ce jeu est imprimé comme un CARRÉ NOIR — mesuré sur
+#: un bulletin : « Ìyábọ̀ » sortait « Ìyáb■■ », « Hounŋɔn » « Houn■■n ». Les
+#: noms en fon, en yoruba ou en mina (ɖ, ɛ, ɔ, ŋ, voyelles pointées, tons)
+#: étaient imprimés faux sur des pièces officielles, sans aucune erreur.
+#:
+#: Repli GLYPHE PAR GLYPHE : seuls ces caractères (avec leurs signes
+#: diacritiques combinants) passent en DejaVu Sans, police libre embarquée
+#: dans le dépôt (`feba_project/static_files/fonts`). Le reste du texte
+#: garde sa police : l'apparence des documents ne change pas.
+FALLBACK_FONTS = {"regular": ("FEBA-Fallback", "DejaVuSans.ttf"),
+                  "bold": ("FEBA-Fallback-Bold", "DejaVuSans-Bold.ttf")}
+_STANDARD_FONT_PREFIXES = ("Helvetica", "Times", "Courier")
+
+
+def _fallback_font(bold):
+    """Nom de la police de repli, enregistrée à la première utilisation."""
+    from django.conf import settings
+    from reportlab.pdfbase import pdfmetrics
+    from reportlab.pdfbase.ttfonts import TTFont
+
+    name, filename = FALLBACK_FONTS["bold" if bold else "regular"]
+    if name not in pdfmetrics.getRegisteredFontNames():
+        path = os.path.join(settings.BASE_DIR, "feba_project", "static_files", "fonts", filename)
+        pdfmetrics.registerFont(TTFont(name, path))
+    return name
+
+
+def _encodable(cluster):
+    try:
+        cluster.encode("cp1252")
+        return True
+    except UnicodeEncodeError:
+        return False
+
+
+def _clusters(text):
+    """Caractère de base suivi de ses signes combinants (ọ̀ = o + U+0323 + U+0300)."""
+    current = ""
+    for char in text:   # aucune normalisation : les caractères saisis restent exacts
+        if current and unicodedata.combining(char):
+            current += char
+            continue
+        if current:
+            yield current
+        current = char
+    if current:
+        yield current
+
+
+def markup_with_fallback(text, font_name="Helvetica"):
+    """
+    Texte échappé pour `Paragraph`, les caractères hors Windows-1252 composés
+    dans la police de repli. Inchangé pour une police TrueType (qui couvre
+    ce qu'elle couvre) ou un texte entièrement latin-1.
+    """
+    if not str(font_name).startswith(_STANDARD_FONT_PREFIXES) or _encodable(text):
+        return html.escape(text, quote=False)
+    bold = "Bold" in str(font_name)
+    parts, run, run_fallback = [], "", False
+    for cluster in _clusters(text):
+        needs = cluster != "\n" and not _encodable(cluster)
+        if run and needs != run_fallback:
+            parts.append((run, run_fallback))
+            run = ""
+        run += cluster
+        run_fallback = needs
+    if run:
+        parts.append((run, run_fallback))
+    out = []
+    for chunk, fallback in parts:
+        escaped = html.escape(chunk, quote=False)
+        out.append(f'<font name="{_fallback_font(bold)}">{escaped}</font>' if fallback else escaped)
+    return "".join(out)
+
+
 def pdf_paragraph(value, **style):
     """
     `Paragraph` ReportLab construit à partir d'un texte saisi par un humain.
@@ -119,7 +197,7 @@ def pdf_paragraph(value, **style):
     style.setdefault("allowOrphans", 0)
 
     text = normalize(value)
-    escaped = html.escape(text, quote=False).replace("\n", "<br/>")
+    escaped = markup_with_fallback(text, style.get("fontName", "Helvetica")).replace("\n", "<br/>")
     return Paragraph(escaped, ParagraphStyle("longtext", **style))
 
 

@@ -8,6 +8,7 @@ import AvatarUpload from "../../components/ui/AvatarUpload";
 import { Save, Lock, Eye, EyeOff, BookOpen, AlertCircle, ClipboardList } from "lucide-react";
 import { extractApiError } from "../../utils/errors";
 import { t } from "../../i18n";
+import SmsPreferencesCard from "../../components/SmsPreferencesCard";
 
 export default function StudentProfile() {
   const qc = useQueryClient();
@@ -68,6 +69,7 @@ export default function StudentProfile() {
   return (
     <div className="space-y-6">
       <PageHeader title={t("Mon Profil")} subtitle={t("Année scolaire {y}", { y: currentYear?.name || "" })} />
+      <SmsPreferencesCard />
 
       {/* Avatar card */}
       <div className="card flex flex-col items-center gap-3 py-6">

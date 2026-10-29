@@ -37,8 +37,8 @@ def get_fha_entity():
     STABLE. Ne jamais rechercher par nom affiché : l'administration peut
     renommer l'entité sans que la logique métier ne doive changer.
     """
-    from apps.schools.models import School
-    return School.objects.filter(code=School.CODE_FEBA_FHA).first()
+    from apps.schools.models import School, public_site_online_academy_code
+    return School.objects.filter(code=public_site_online_academy_code()).first()
 
 
 def get_feba_entity():
@@ -54,15 +54,16 @@ def get_feba_entity():
     présentielle active, en excluant explicitement FEBA FHA pour ne jamais
     router un message FEBA vers l'académie en ligne.
     """
-    from apps.schools.models import School
+    from apps.schools.models import (
+        School, public_site_campus_academy_code, public_site_online_academy_code)
 
-    entity = School.objects.filter(code=School.CODE_FEBA).first()
+    entity = School.objects.filter(code=public_site_campus_academy_code()).first()
     if entity is not None:
         return entity
     return (
         School.objects
         .filter(is_active=True)
-        .exclude(code=School.CODE_FEBA_FHA)
+        .exclude(code=public_site_online_academy_code())
         .exclude(entity_type="online")
         .order_by("id")
         .first()
@@ -149,6 +150,7 @@ class FHAEnrollmentCreateSerializer(HoneypotMixin, serializers.ModelSerializer):
         fields = [
             # étape 1
             'child_last_name', 'child_first_name', 'child_birth_date', 'child_age',
+            'child_gender',
             'child_city', 'child_state_province', 'child_country',
             'child_current_school', 'child_grade', 'child_photo',
             # étape 2
@@ -205,6 +207,13 @@ class FHAEnrollmentCreateSerializer(HoneypotMixin, serializers.ModelSerializer):
             'child_birth_date': {'error_messages': {
                 'required': "La date de naissance est obligatoire.",
                 'invalid': "Date de naissance invalide (format attendu : AAAA-MM-JJ).",
+            }},
+            # Facultatif au niveau du modèle (dossiers antérieurs), mais
+            # OBLIGATOIRE pour toute nouvelle fiche.
+            'child_gender': {'required': True, 'allow_blank': False, 'error_messages': {
+                'required': "Le sexe de l'enfant est obligatoire.",
+                'blank': "Le sexe de l'enfant est obligatoire.",
+                'invalid_choice': "Sexe invalide : choisir « F » (féminin) ou « M » (masculin).",
             }},
             'parent1_last_name': {'error_messages': {
                 'required': "Le nom du parent est obligatoire.",
@@ -454,6 +463,22 @@ def _latest_email_state(application, purpose):
         .filter(purpose=purpose, subject_reference=application.reference)
         .order_by('-created_at').first()
     )
+    return _email_state(delivery)
+
+
+def _latest_deliveries(references, purpose):
+    """Dernier envoi par référence, en UNE requête (listes)."""
+    from apps.notifications.email_models import EmailDelivery
+
+    latest = {}
+    for delivery in (EmailDelivery.objects
+                     .filter(purpose=purpose, subject_reference__in=set(references))
+                     .order_by('subject_reference', '-created_at')):
+        latest.setdefault(delivery.subject_reference, delivery)
+    return latest
+
+
+def _email_state(delivery):
     if delivery is None:
         return {
             'status': 'none', 'status_display': 'Aucun envoi enregistré',
@@ -470,6 +495,9 @@ def _latest_email_state(application, purpose):
         # Sans ce drapeau, un écran pourrait afficher « envoyé » alors que
         # le message a été écrit dans la console du serveur.
         'used_real_provider': delivery.used_real_provider,
+        'transport': delivery.transport,
+        'delivery_summary': delivery.delivery_summary(),
+        'delivery_id': delivery.pk,
         'sent_at': delivery.sent_at,
         'attempts': delivery.attempts,
         'next_retry_at': delivery.next_retry_at,
@@ -502,7 +530,7 @@ class FHAApplicationListSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'reference', 'status', 'status_display', 'entity_code',
             'entity_short_name',
-            'child_first_name', 'child_last_name', 'child_age',
+            'child_first_name', 'child_last_name', 'child_age', 'child_gender',
             'child_country', 'suggested_group', 'recommended_group',
             'parent1_first_name', 'parent1_last_name', 'parent1_email',
             'parent1_phone', 'parent1_whatsapp', 'family_timezone',
@@ -514,8 +542,20 @@ class FHAApplicationListSerializer(serializers.ModelSerializer):
         ]
 
     def get_confirmation_email(self, obj):
+        """
+        État du dernier accusé. En liste, les états de TOUTE la page sont lus
+        en une requête (auparavant : une requête par dossier).
+        """
         from .fha_enrollment import PURPOSE_PARENT_ACK
-        return _latest_email_state(obj, PURPOSE_PARENT_ACK)
+
+        rows = getattr(self.parent, 'instance', None) if self.parent is not None else None
+        if rows is None:
+            return _latest_email_state(obj, PURPOSE_PARENT_ACK)
+        cache = self.context.get('_ack_cache')
+        if cache is None:
+            cache = _latest_deliveries([a.reference for a in rows], PURPOSE_PARENT_ACK)
+            self.context['_ack_cache'] = cache
+        return _email_state(cache.get(obj.reference))
 
 
 class FHAApplicationDetailSerializer(serializers.ModelSerializer):
@@ -539,6 +579,9 @@ class FHAApplicationDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = FHAEnrollmentApplication
         fields = '__all__'
+        # Le dossier reste dans l'académie où la famille l'a déposé : un
+        # PATCH {"entity": …} le transférait dans une autre académie.
+        read_only_fields = ('entity',)
 
     def get_confirmation_email(self, obj):
         from .fha_enrollment import PURPOSE_PARENT_ACK
@@ -749,6 +792,9 @@ class FHAPlacementTestDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = FHAPlacementTestRequest
         fields = '__all__'
+        # Académie, dossier lié et salle de visio : fixés par le dépôt et par
+        # l'action « schedule » (qui vérifie la salle), jamais par un PATCH.
+        read_only_fields = ('entity', 'application', 'meeting_room')
 
     def get_result(self, obj):
         result = getattr(obj, 'result', None)

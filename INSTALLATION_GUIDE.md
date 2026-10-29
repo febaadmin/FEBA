@@ -1,130 +1,202 @@
-# Guide d'installation — FEBA multi-académies
+# Guide d'installation — FEBA
 
-> Remplace l'ancien `INSTALLATION_GUIDE.md` (V6, 20/07/2026), qui référençait
-> `make dev`, un fichier `.env` que rien ne charge réellement, et des
-> effectifs de tests obsolètes. Voir `CORRECTIONS.md` (P11, P12) pour le
-> détail de ce qui a changé et pourquoi.
+Installation depuis zéro, sur une machine neuve, jusqu'à une application
+utilisable.
+
+---
 
 ## 1. Prérequis
 
-- Docker 24+ et le plugin Docker Compose v2 (`docker compose version` doit
-  répondre — pas `docker-compose` en v1, séparé par un tiret).
-- `openssl` (génération des secrets — présent par défaut sur macOS et Linux).
-- Git.
+| Outil | Version | Vérifier |
+|---|---|---|
+| Docker + Compose v2 | récente | `docker compose version` |
+| Git | ≥ 2.30 | `git --version` |
+| `openssl` | — | `openssl version` |
+| `make` | — | `make --version` |
 
-Aucune installation locale de Python ou Node n'est nécessaire : toutes les
-commandes officielles passent par Docker. `make doctor` vérifie ces
-prérequis avant de démarrer quoi que ce soit.
+Installation **sans Docker** (développement) : Python 3.11, PostgreSQL 16,
+Redis 7, Node.js 20+.
 
-## 2. Installation
+---
 
-Chaque commande ci-dessous est **une ligne**, à coller telle quelle. Pas de
-bloc contenant des commentaires `#` mêlés aux commandes : sur macOS, le
-shell par défaut est zsh, qui — contrairement à bash — ne traite pas `#`
-comme un commentaire en session interactive et échoue avec
-`zsh: command not found: #` si un commentaire est collé avec la commande.
+## 2. Installation avec Docker — chemin recommandé
 
 ```bash
-unzip feba_multi_academies_v9_application.zip
-cd feba_multi_academies_v9_application
-make install
+unzip feba_corrected_production_ready.zip
+cd feba_v6_version_finale_corrigee
+
+cp .env.dev.example .env.dev          # aucun secret à inventer
+make install                          # doctor + bootstrap + contrôles
 ```
 
-`make install` exécute, dans l'ordre, et s'arrête à la première étape en
-échec (voir `scripts/bootstrap.sh`) :
+`make install` enchaîne : contrôle de l'environnement, génération des
+secrets, démarrage des conteneurs, migrations, création des académies,
+données de démonstration, puis vérifications post-installation.
 
-1. Vérification des prérequis (`make doctor`)
-2. Préparation de `.env.dev` (généré depuis `.env.dev.example` si absent,
-   secrets générés par `openssl rand`)
-3. Démarrage de PostgreSQL, Redis, Mailpit
-4. Application des migrations par un service dédié (`migrate`), avant tout
-   autre service — aucune migration concurrente possible
-5. Démarrage du backend, puis de Celery (worker + beat)
-6. Initialisation des académies FEBA et FEBA FHA
-7. Préparation des gabarits documentaires (diplômes, certificats)
-8. Démarrage du frontend
-9. Vérification complète (`make install-check`)
-
-À la fin, l'application est accessible sur :
-
-| Service | URL |
+| Service | Adresse |
 |---|---|
-| Application (frontend) | http://localhost:5173 |
+| Application | http://localhost:5173 |
 | API | http://localhost:8000/api/ |
-| Admin Django | http://localhost:8000/django-admin/ |
-| Mailpit (courrier de développement) | http://localhost:8025 |
+| Back-office Django | http://localhost:8000/django-admin/ |
+| Mailpit (courriers de test) | http://localhost:8025 |
 
-## 3. Salles virtuelles (Jitsi)
-
-Optionnel — nécessaire uniquement pour les cours en ligne (FEBA FHA) :
+### Visioconférence (facultatif en développement)
 
 ```bash
-make jitsi-up
+make jitsi-up          # génère les secrets et démarre la pile locale
+make jitsi-health      # doit finir par « OPÉRATIONNEL »
 ```
 
-Démarre une instance Jitsi auto-hébergée (jamais un service public :
-politique de protection des mineurs) et la relie au backend via un réseau
-Docker partagé. Vérifier ensuite :
+Sans cette étape, les salles virtuelles affichent un bandeau de diagnostic
+et refusent d'ouvrir une session. **C'est voulu** : il n'existe aucun repli
+vers une instance publique, y compris en développement. Voir
+[`JITSI_PRODUCTION_GUIDE.md`](JITSI_PRODUCTION_GUIDE.md).
+
+---
+
+## 3. Installation sans Docker
 
 ```bash
-make jitsi-health
+# ── Base de données ────────────────────────────────────────────────
+sudo -u postgres psql -c "CREATE USER feba_user WITH PASSWORD 'feba_dev_pass' CREATEDB;"
+sudo -u postgres psql -c "CREATE DATABASE feba_dev OWNER feba_user;"
+redis-server --daemonize yes
+
+# ── Backend ────────────────────────────────────────────────────────
+cd backend
+python3 -m venv .venv && source .venv/bin/activate
+pip install -r requirements/dev.txt
+
+cat > .env <<'EOF'
+DJANGO_ENV=dev
+SECRET_KEY=dev-secret-key-not-for-production-use-change-me
+DATABASE_URL=postgresql://feba_user:feba_dev_pass@localhost:5432/feba_dev
+REDIS_URL=redis://localhost:6379/0
+CORS_ALLOWED_ORIGINS=http://localhost:5173
+ALLOWED_HOSTS=localhost,127.0.0.1
+EMAIL_BACKEND=django.core.mail.backends.console.EmailBackend
+JITSI_DOMAIN=
+JITSI_APP_ID=
+JITSI_APP_SECRET=
+EOF
+
+python manage.py migrate
+python manage.py init_academies
+python manage.py seed_demo_data          # facultatif
+python manage.py runserver 127.0.0.1:8000
+
+# ── Frontend (autre terminal) ──────────────────────────────────────
+cd frontend
+npm ci
+BACKEND_ORIGIN=http://localhost:8000 npm run dev
 ```
 
-Doit afficher `État : OPÉRATIONNEL`, `Instance joignable : oui`.
+---
 
-## 4. Données de démonstration
+## 4. Comptes de démonstration
+
+Créés par `seed_demo_data`. **À supprimer avant toute mise en production.**
+
+| Académie | Rôle | Identifiant | Mot de passe |
+|---|---|---|---|
+| FEBA | Administration | `admin@feba.bj` | `Admin@2024` |
+| FEBA | Enseignant | `prof1@feba.bj` | `Teacher@2024` |
+| FEBA | Parent | `parent1@feba.bj` | `Parent@2024` |
+| FEBA | Élève | `eleve1@feba.bj` | `Student@2024` |
+| FEBA FHA | Administration | `admin@febafha.org` | `Admin@2024` |
+| FEBA FHA | Enseignant | `prof@febafha.org` | `Teacher@2024` |
+| FEBA FHA | Parent | `parent@febafha.org` | `Parent@2024` |
+| FEBA FHA | Élève | `eleve1@febafha.org` | `Student@2024` |
+
+La connexion se fait par **adresse e-mail** (`USERNAME_FIELD = "email"`).
+
+---
+
+## 5. Vérifier que l'installation est saine
 
 ```bash
-make seed
-make seed-check
+make install-check          # contrôles post-installation
+make branding-check         # identité visuelle des deux académies
+make jitsi-config-check     # cohérence Jitsi, sans réseau
+make jitsi-health           # état réel de l'instance
+make seed-check             # cohérence des données de démonstration
 ```
 
-`seed-check` échoue si une donnée d'une académie est visible depuis
-l'autre — les 20 contrôles d'isolation multi-académies attendus.
-
-## 5. Vérification manuelle
-
-Suivre le démarrage :
+### Tests
 
 ```bash
-make logs        # tous les services
-make ps          # état de santé de chaque conteneur
-```
-
-Si un service reste `unhealthy` ou qu'un contrôle échoue :
-
-```bash
-make diagnose     # diagnostic détaillé du service en cause
-make repair       # remédiation ciblée (migrations, redémarrage, documents)
-```
-
-## 6. Réinstallation propre
-
-```bash
-docker compose down -v --remove-orphans
-make install
-```
-
-Doit réussir une seconde fois sans erreur ni doublon — `make install` est
-idempotent (voir `TEST_REPORT.md`, section idempotence).
-
-## 7. Variables d'environnement
-
-Un seul fichier fait autorité pour le développement : **`.env.dev`**,
-chargé par `docker-compose.yml`. Ne créez pas de `.env` isolé en pensant
-qu'il sera pris en compte — `make doctor` le signale explicitement s'il en
-trouve un. Partir de `.env.dev.example` (déjà fait automatiquement par
-`make install` si `.env.dev` n'existe pas encore).
-
-Les secrets Jitsi vivent séparément dans `.env.jitsi` (généré par
-`make install` ou `make jitsi-up`), jamais dans `.env.dev`.
-
-## 8. Tests
-
-```bash
-make payments-test                          # tests de paiement (SQLite, rapide)
-docker compose exec -T backend-dev python manage.py test tests   # suite complète (Postgres)
+make test-sqlite            # suite backend, sans service externe
+make test-postgres          # suite backend sur PostgreSQL — la référence
+make test-frontend          # Vitest
 cd frontend && npm run lint && npm run build
 ```
 
-Voir `TEST_REPORT.md` pour les résultats réels de la dernière exécution.
+**Toujours valider sur PostgreSQL avant une livraison.** SQLite n'applique
+pas les longueurs de colonnes ni certaines contraintes : un défaut réel y
+passe inaperçu.
+
+#### Les tests qui lisent des fichiers hors de `backend/`
+
+Une partie de la suite vérifie des **fichiers de livraison** —
+`.env.*.example`, `Makefile`, `docker-compose*.yml`, `scripts/`. Ils
+vivent à la racine, un niveau au-dessus de `backend/`.
+
+Dans le conteneur, `./backend` est monté sur `/app` : la racine n'y
+existerait pas. `docker-compose.yml` la monte donc **en lecture seule**
+sur `/repo`, et `backend/tests/repo_root.py` la retrouve par trois
+chemins indépendants (variable `FEBA_REPO_ROOT`, remontée
+d'arborescence, montage `/repo`).
+
+Conséquence pratique : **si vous modifiez `docker-compose.yml`,
+recréez le conteneur**, sinon l'ancien montage persiste.
+
+```bash
+docker compose up -d --force-recreate backend-dev
+```
+
+Ces tests **ne s'ignorent jamais**. Un « skipped » sur un fichier de
+configuration se lit comme un succès alors que rien n'a été vérifié :
+c'est ainsi qu'un `.env.dev.example` revenu au backend console était
+passé inaperçu. Si la racine est introuvable, ils échouent avec un
+message qui dit quoi faire.
+
+### Environnements couverts
+
+| | Où | Ce qui résout la racine du dépôt |
+|---|---|---|
+| **A. Développement local** | Docker Compose | montage `.:/repo:ro` + `FEBA_REPO_ROOT` |
+| **B. Tests** | checkout Git, hors conteneur | remontée d'arborescence |
+| **C. CI GitHub** | `.github/workflows/ci.yml` | remontée d'arborescence (checkout complet) |
+| **D. Production FEBA** | `docker-compose.prod.yml` | sans objet — aucun test n'y tourne |
+| **E. Jitsi production** | `JITSI_PRODUCTION_GUIDE.md` | sans objet |
+
+### Intégration continue (C)
+
+`.github/workflows/ci.yml` valide chaque Pull Request : suites backend
+sur PostgreSQL **et** SQLite, tests et build frontend, validité des
+fichiers Compose, cohérence Jitsi, syntaxe Nginx, sûreté du dépôt.
+
+Elle **ne requiert aucun secret de production** : une Pull Request venue
+d'un fork est validée comme les autres. Le déploiement reste
+exclusivement l'affaire de `deploy.yml`, inchangé.
+
+---
+
+## 6. Problèmes fréquents
+
+| Symptôme | Cause | Geste |
+|---|---|---|
+| `port is already allocated` | 5173, 8000, 5432 ou 6379 occupés | `make down`, ou libérer le port |
+| `password authentication failed` | `DATABASE_URL` ne correspond pas au conteneur | vérifier `.env.dev` |
+| Écran de connexion sans réponse | origine absente de `CORS_ALLOWED_ORIGINS` | ajouter l'adresse du frontend |
+| Bandeau « Visioconférence indisponible » | instance Jitsi non démarrée | `make jitsi-up` puis `make jitsi-health` |
+| `CSRF verification failed` sur `/django-admin/` | `CSRF_TRUSTED_ORIGINS` absent en production | voir `.env.prod.example` |
+| Documents sans logo | ressources absentes de `static_files/` | `make documents-check` |
+
+---
+
+## 7. Passage en production
+
+Ne pas déployer `.env.dev` ni les comptes de démonstration. Voir
+[`DEPLOYMENT_PRODUCTION.md`](DEPLOYMENT_PRODUCTION.md) et
+[`MANUAL_PRODUCTION_ACTIONS.md`](MANUAL_PRODUCTION_ACTIONS.md).

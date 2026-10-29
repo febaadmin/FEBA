@@ -1,4 +1,5 @@
 from feba_project.bulk_delete import BulkDeleteMixin
+from django.db.models import Q
 from rest_framework import viewsets
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
@@ -13,12 +14,12 @@ class AnnouncementViewSet(BulkDeleteMixin, viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated, IsSameTenant]
     search_fields = ["title", "content"]
     parser_classes = [MultiPartParser, FormParser, JSONParser]
-    tenant_lookup = "author__school"
+    tenant_lookup = "academy"
 
     def get_queryset(self):
         user = self.request.user
         school = get_request_school(self.request)
-        qs = Announcement.objects.select_related("author")
+        qs = Announcement.objects.select_related("author__school", "school_year__school")
         school_year_id = self.request.query_params.get("school_year")
         all_years = self.request.query_params.get("all_years") == "1"
 
@@ -26,7 +27,12 @@ class AnnouncementViewSet(BulkDeleteMixin, viewsets.ModelViewSet):
         # FIX SÉCURITÉ : "role_level >= 80 → return qs" exposait les
         # annonces de TOUS les établissements à n'importe quel admin.
         if school is not None:
-            qs = qs.filter(author__school=school)
+            # Académie de l'année scolaire, ou de l'auteur pour une annonce
+            # sans année (voir Announcement.academy).
+            qs = qs.filter(
+                Q(school_year__school=school)
+                | Q(school_year__isnull=True, author__school=school)
+            )
         elif not user.is_superadmin():
             return qs.none()
 

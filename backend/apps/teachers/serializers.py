@@ -14,6 +14,7 @@ FIXES:
   - `subjects_detail` / `classes_detail`: read-only nested serializers kept with explicit source.
   - Custom create() / update() that call .set() for M2M after instance is persisted.
 """
+from apps.core.tenancy import TenantRelationsMixin
 from rest_framework import serializers
 from apps.subjects.serializers import SubjectSerializer
 from apps.classes.serializers import ClassSerializer
@@ -24,7 +25,9 @@ from .models import Teacher
 from apps.core.academy_serializers import ACADEMY_FIELDS, AcademyMetadataMixin
 
 
-class TeacherSerializer(AcademyMetadataMixin, serializers.ModelSerializer):
+class TeacherSerializer(TenantRelationsMixin, AcademyMetadataMixin, serializers.ModelSerializer):
+    #: Isolation des relations écrites (voir apps.core.tenancy.TenantRelationsMixin).
+    tenant_relations = {"subjects": "school", "classes": "school_year.school"}
     #: Chemin ORM vers l'académie propriétaire de l'objet.
     academy_source = "user.school"
 

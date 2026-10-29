@@ -14,7 +14,12 @@ permissions:
   contents: read
 
 jobs:
+  ci:
+    name: CI — tests et contrôles avant production
+    uses: ./.github/workflows/ci.yml
+
   deploy:
+    needs: ci
     name: Deploy to Hetzner
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -43,11 +48,14 @@ jobs:
           SERVER_HOST: ${{ secrets.SERVER_HOST }}
           SERVER_USER: ${{ secrets.SERVER_USER }}
           SERVER_PORT: ${{ secrets.SERVER_PORT }}
+          # Le commit EXACT validé par le job « ci » ci-dessus.
+          DEPLOY_SHA: ${{ github.sha }}
         run: |
+          case "$DEPLOY_SHA" in (*[!0-9a-f]*|"") echo "SHA invalide"; exit 1;; esac
           ssh \
             -i ~/.ssh/feba_deploy \
             -p "$SERVER_PORT" \
-            "$SERVER_USER@$SERVER_HOST" <<'REMOTE'
+            "$SERVER_USER@$SERVER_HOST" "DEPLOY_SHA=$DEPLOY_SHA bash -s" <<'REMOTE'
           set -Eeuo pipefail
 
           cd /opt/feba/app/FEBA
@@ -102,8 +110,18 @@ jobs:
           fi
 
           echo "==> Récupération du code"
+          # On déploie le commit TESTÉ, pas « origin/main » au moment de
+          # l'exécution : un push arrivé pendant la CI aurait sinon été mis
+          # en production sans avoir été validé.
           git fetch origin main
-          git reset --hard origin/main
+          if ! git merge-base --is-ancestor "$DEPLOY_SHA" origin/main; then
+            echo "ERREUR : $DEPLOY_SHA n'appartient pas à origin/main."
+            exit 1
+          fi
+          previous_sha="$(git rev-parse HEAD)"
+          echo "Version en service : $previous_sha → version déployée : $DEPLOY_SHA"
+          echo "$previous_sha" > .previous_deploy_sha
+          git reset --hard "$DEPLOY_SHA"
 
           echo "==> Validation de Docker Compose"
           docker compose \
@@ -111,11 +129,57 @@ jobs:
             -f docker-compose.prod.yml \
             config >/dev/null
 
-          echo "==> Construction et démarrage"
-          docker compose \
-            --env-file .env.prod \
-            -f docker-compose.prod.yml \
-            up -d --build --remove-orphans
+          # Incident du 28/10/2026 : « up --build » remplaçait les conteneurs
+          # AVANT de savoir si la nouvelle image acceptait la configuration
+          # (.env.prod). Le nouveau backend s'arrêtait au contrôle de
+          # configuration, nginx ne redémarrait pas : site hors ligne, et
+          # « set -e » quittait avant d'afficher les journaux du backend.
+          # Désormais : construire, contrôler la configuration dans un
+          # conteneur jetable, et ne basculer qu'ensuite.
+          compose() {
+            docker compose --env-file .env.prod -f docker-compose.prod.yml "$@"
+          }
+
+          restore_previous() {
+            echo "==> Version précédente conservée : $previous_sha"
+            git reset --hard "$previous_sha"
+            for image in feba-backend feba-frontend; do
+              if docker image inspect "$image:previous" >/dev/null 2>&1; then
+                docker tag "$image:previous" "$image:current"
+              fi
+            done
+          }
+
+          echo "==> Image en service conservée sous le tag « previous »"
+          for image in feba-backend feba-frontend; do
+            if docker image inspect "$image:current" >/dev/null 2>&1; then
+              docker tag "$image:current" "$image:previous"
+            fi
+          done
+
+          echo "==> Construction des images (les conteneurs en service restent actifs)"
+          if ! compose build; then
+            echo "ERREUR : construction impossible. Rien n'a été remplacé."
+            restore_previous
+            exit 1
+          fi
+
+          echo "==> Contrôle de la configuration de production avec la nouvelle image"
+          if ! compose run --rm --no-deps -T backend-prod \
+              python manage.py production_preflight --network </dev/null; then
+            echo "ERREUR : la nouvelle version refuse la configuration de .env.prod."
+            echo "Rien n'a été remplacé ; corriger .env.prod puis relancer le déploiement."
+            restore_previous
+            exit 1
+          fi
+
+          echo "==> Démarrage de la nouvelle version"
+          if ! compose up -d --remove-orphans; then
+            echo "ERREUR : la nouvelle version n'a pas démarré."
+            compose ps || true
+            compose logs backend-prod --tail=200 || true
+            exit 1
+          fi
 
           echo "==> Attente du backend"
           for attempt in $(seq 1 30); do
@@ -153,14 +217,14 @@ jobs:
             --env-file .env.prod \
             -f docker-compose.prod.yml \
             exec -T backend-prod \
-            python manage.py check
+            python manage.py check </dev/null
 
           echo "==> Vérification des migrations restantes"
           migration_plan="$(docker compose \
             --env-file .env.prod \
             -f docker-compose.prod.yml \
             exec -T backend-prod \
-            python manage.py migrate --plan)"
+            python manage.py migrate --plan </dev/null)"
 
           printf '%s\n' "$migration_plan"
 

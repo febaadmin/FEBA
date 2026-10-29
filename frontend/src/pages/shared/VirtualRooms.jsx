@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Plus, Pencil, Trash2, Video, Users, CalendarClock, StopCircle } from "lucide-react";
+import { Plus, Pencil, Trash2, Video, Users, CalendarClock, StopCircle, Film } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { format } from "date-fns";
 import { fr, enGB } from "date-fns/locale";
@@ -10,7 +10,6 @@ import { useAuthStore } from "../../store/authStore";
 import PageHeader from "../../components/ui/PageHeader";
 import Modal from "../../components/ui/Modal";
 import ConfirmDialog from "../../components/ui/ConfirmDialog";
-import JitsiMeeting from "../../components/JitsiMeeting";
 import { extractApiError } from "../../utils/errors";
 import { t, getLang } from "../../i18n";
 import JitsiInfrastructureBanner from "../../components/JitsiInfrastructureBanner";
@@ -42,7 +41,8 @@ export default function VirtualRooms() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editItem, setEditItem] = useState(null);
   const [deleteItem, setDeleteItem] = useState(null);
-  const [activeMeeting, setActiveMeeting] = useState(null); // {room_code, join_domain, name}
+  const [recordingsRoom, setRecordingsRoom] = useState(null);
+
 
   const { register, handleSubmit, reset, formState: { errors } } = useForm();
 
@@ -72,7 +72,7 @@ export default function VirtualRooms() {
   }, [rooms]);
 
   const closeModal = () => { setModalOpen(false); setEditItem(null); reset(); };
-  const openCreate = () => { reset({ duration_minutes: 60 }); setModalOpen(true); };
+  const openCreate = () => { reset({ duration_minutes: 60, target_roles: [], lobby_enabled: true, allow_recording: false }); setModalOpen(true); };
   const openEdit = (r) => {
     setEditItem(r);
     reset({
@@ -82,6 +82,9 @@ export default function VirtualRooms() {
       subject: r.subject || "",
       scheduled_at: r.scheduled_at ? r.scheduled_at.slice(0, 16) : "",
       duration_minutes: r.duration_minutes,
+      target_roles: r.target_roles || [],
+      lobby_enabled: r.lobby_enabled ?? true,
+      allow_recording: !!r.allow_recording,
     });
     setModalOpen(true);
   };
@@ -91,6 +94,12 @@ export default function VirtualRooms() {
     class_obj: d.class_obj || null,
     subject: d.subject || null,
     scheduled_at: d.scheduled_at || null,
+    // Un groupe de cases à cocher renvoie `false` quand rien n'est coché,
+    // et une chaîne quand une seule l'est. Le backend attend une liste :
+    // sans cette normalisation, il recevrait `false` et refuserait.
+    target_roles: Array.isArray(d.target_roles)
+      ? d.target_roles.filter(Boolean)
+      : (d.target_roles ? [d.target_roles] : []),
   });
 
   const createMut = useMutation({
@@ -108,14 +117,34 @@ export default function VirtualRooms() {
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["virtual-rooms"] }); toast.success(t("Salle supprimée.")); setDeleteItem(null); },
     onError: (e) => toast.error(extractApiError(e)),
   });
-  const joinMut = useMutation({
-    mutationFn: virtualAPI.join,
-    onSuccess: ({ data }) => {
-      qc.invalidateQueries({ queryKey: ["virtual-rooms"] });
-      setActiveMeeting(data);
-    },
-    onError: (e) => toast.error(extractApiError(e)),
-  });
+  /**
+   * Ouvre la conférence DANS UN NOUVEL ONGLET.
+   *
+   * `window.open` est appelé SYNCHRONEMENT dans le gestionnaire de clic,
+   * avant tout appel réseau. C'est la seule façon qu'un navigateur
+   * considère l'ouverture comme voulue par l'utilisateur : ouvrir après
+   * un `await` fait bloquer l'onglet par le bloqueur de fenêtres
+   * surgissantes, silencieusement.
+   *
+   * L'adhésion elle-même (`virtualAPI.join`) est faite PAR l'onglet
+   * ouvert : le jeton reste ainsi hors de l'URL, et une seule
+   * participation est enregistrée.
+   */
+  const ouvrirConference = (roomId) => {
+    const onglet = window.open(`/virtual-room/${roomId}/join`, "_blank", "noopener");
+    if (!onglet) {
+      // Pas d'écran noir silencieux : on dit ce qui s'est passé et quoi
+      // faire. C'est le cas le plus fréquent sur un poste d'école.
+      toast.error(
+        t("Votre navigateur a bloqué l'ouverture de la salle. Autorisez les fenêtres surgissantes pour ce site, puis réessayez."),
+        { duration: 8000 },
+      );
+      return;
+    }
+    // La liste se met à jour (statut « en cours », participants) sans
+    // rien imposer à l'onglet de conférence, qui vit désormais à part.
+    qc.invalidateQueries({ queryKey: ["virtual-rooms"] });
+  };
   const endMut = useMutation({
     mutationFn: virtualAPI.end,
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["virtual-rooms"] }); toast.success(t("Réunion clôturée.")); },
@@ -131,7 +160,7 @@ export default function VirtualRooms() {
     <div className="space-y-6">
       <PageHeader
         title={t("Salles virtuelles")}
-        subtitle={t("Visioconférence intégrée (Jitsi Meet) — cours en ligne, réunions parents-professeurs…")}
+        subtitle={t("Visioconférence (plugNmeet) — cours en ligne, tableau blanc, sous-groupes, sondages, réunions parents-professeurs…")}
         action={canManage && (
           <button onClick={openCreate} className="btn-primary flex items-center gap-2">
             <Plus className="w-4 h-4" />{t("Nouvelle salle")}</button>
@@ -197,15 +226,24 @@ export default function VirtualRooms() {
                     </td>
                     <td className="py-3 px-4">
                       <div className="flex items-center gap-1 justify-end">
-                        {r.status !== "ended" && r.status !== "cancelled" && (
+                        {r.status !== "cancelled" && (r.status !== "ended" || canManage) && (
                           <button
-                            onClick={() => joinMut.mutate(r.id)}
-                            disabled={joinMut.isPending}
+                            onClick={() => ouvrirConference(r.id)}
                             className="btn-primary flex items-center gap-1.5 !py-1.5 !px-3 text-xs"
                           >
-                            <Video className="w-3.5 h-3.5" />{t("Rejoindre")}</button>
+                            <Video className="w-3.5 h-3.5" />
+                            {r.status === "ended" ? t("Rouvrir") : t("Rejoindre")}</button>
                         )}
-                        {canManage && r.status === "live" && (
+                        {r.capabilities?.recording && (
+                          <button
+                            onClick={() => setRecordingsRoom(r)}
+                            title={t("Enregistrements")}
+                            className="p-1.5 rounded-lg hover:bg-primary-50 text-slate-400 hover:text-primary"
+                          >
+                            <Film className="w-4 h-4" />
+                          </button>
+                        )}
+                        {canManage && r.can_manage !== false && r.status === "live" && (
                           <button
                             onClick={() => endMut.mutate(r.id)}
                             title={t("Clôturer la réunion")}
@@ -214,7 +252,7 @@ export default function VirtualRooms() {
                             <StopCircle className="w-4 h-4" />
                           </button>
                         )}
-                        {canManage && (
+                        {canManage && r.can_manage !== false && (
                           <>
                             <button onClick={() => openEdit(r)} className="p-1.5 rounded-lg hover:bg-primary-50 text-slate-400 hover:text-primary">
                               <Pencil className="w-4 h-4" />
@@ -267,6 +305,35 @@ export default function VirtualRooms() {
                 </select>
               </div>
             </div>
+            {/* Ciblage par RÔLE.
+                Une salle sans classe visait « toute l'école » — élèves
+                compris. Une réunion pédagogique n'avait donc aucun moyen
+                d'être réservée à l'équipe. Rien de coché = comportement
+                historique : tous les rôles autorisés par ailleurs. */}
+            <div>
+              <label className="label">{t("Réservée à (facultatif)")}</label>
+              <div className="flex flex-wrap gap-3 mt-1">
+                {[
+                  ["admin", t("Administration")],
+                  ["teacher", t("Enseignants")],
+                  ["student", t("Élèves")],
+                  ["parent", t("Parents")],
+                ].map(([code, label]) => (
+                  <label key={code} className="flex items-center gap-2 text-sm text-slate-600">
+                    <input
+                      type="checkbox"
+                      value={code}
+                      {...register("target_roles")}
+                      className="rounded border-slate-300"
+                    />
+                    {label}
+                  </label>
+                ))}
+              </div>
+              <p className="text-xs text-slate-500 mt-1">
+                {t("Aucune case cochée = ouverte à tous les profils autorisés.")}
+              </p>
+            </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="label">{t("Date / heure (vide = permanente)")}</label>
@@ -276,6 +343,19 @@ export default function VirtualRooms() {
                 <label className="label">{t("Durée (minutes)")}</label>
                 <input {...register("duration_minutes", { valueAsNumber: true })} type="number" min="5" className="input" />
               </div>
+            </div>
+            <div className="space-y-2">
+              <label className="flex items-center gap-2 text-sm text-slate-600">
+                <input type="checkbox" {...register("lobby_enabled")} className="rounded border-slate-300" />
+                {t("Salle d'attente : j'admets moi-même les participants")}
+              </label>
+              <label className="flex items-center gap-2 text-sm text-slate-600">
+                <input type="checkbox" {...register("allow_recording")} className="rounded border-slate-300" />
+                {t("Autoriser l'enregistrement du cours")}
+              </label>
+              <p className="text-xs text-slate-500">
+                {t("L'enregistrement n'est proposé que si le service d'enregistrement est installé sur le serveur.")}
+              </p>
             </div>
             <div className="flex gap-3 justify-end pt-2">
               <button type="button" onClick={closeModal} className="btn-secondary">{t("Annuler")}</button>
@@ -287,6 +367,10 @@ export default function VirtualRooms() {
         </Modal>
       )}
 
+      {recordingsRoom && (
+        <RecordingsModal room={recordingsRoom} onClose={() => setRecordingsRoom(null)} />
+      )}
+
       <ConfirmDialog
         open={!!deleteItem}
         onClose={() => setDeleteItem(null)}
@@ -295,20 +379,50 @@ export default function VirtualRooms() {
         message={`Supprimer la salle "${deleteItem?.name}" ? L'historique des participations sera perdu.`}
       />
 
-      {activeMeeting && (
-        <JitsiMeeting
-          roomName={activeMeeting.room_code}
-          domain={activeMeeting.join_domain}
-          displayName={user ? `${user.first_name || ""} ${user.last_name || ""}`.trim() || user.username : ""}
-          subject={activeMeeting.name}
-          jwt={activeMeeting.jwt || null}
-          onClose={() => {
-            // FIX v35 : clôture de la participation (left_at + durée)
-            virtualAPI.leave(activeMeeting.id).catch(() => {});
-            setActiveMeeting(null);
-          }}
-        />
-      )}
     </div>
+  );
+}
+
+/**
+ * Enregistrements d'une salle. La liste et chaque lien de téléchargement
+ * sont fournis par le backend APRÈS contrôle des droits ; le lien est à
+ * durée limitée et n'est demandé qu'au clic.
+ */
+function RecordingsModal({ room, onClose }) {
+  const { data, isLoading, error } = useQuery({
+    queryKey: ["virtual-room-recordings", room.id],
+    queryFn: () => virtualAPI.recordings(room.id).then((r) => r.data),
+    retry: false,
+  });
+  const download = async (recordId) => {
+    try {
+      const { data: link } = await virtualAPI.recordingDownload(room.id, recordId);
+      window.open(link.url, "_blank", "noopener");
+    } catch (e) {
+      toast.error(extractApiError(e));
+    }
+  };
+  return (
+    <Modal open onClose={onClose} title={`${t("Enregistrements")} — ${room.name}`}>
+      {isLoading ? (
+        <p className="text-slate-400 text-sm">{t("Chargement…")}</p>
+      ) : error ? (
+        <p className="text-sm text-red-600">{extractApiError(error)}</p>
+      ) : !data?.length ? (
+        <p className="text-sm text-slate-500">{t("Aucun enregistrement pour cette salle.")}</p>
+      ) : (
+        <ul className="divide-y divide-slate-100">
+          {data.map((rec) => (
+            <li key={rec.record_id} className="flex items-center justify-between py-2 text-sm">
+              <span>{rec.created_at ? new Date(Number(rec.created_at) * 1000).toLocaleString() : rec.record_id}
+                {rec.size_mb ? ` · ${rec.size_mb} Mo` : ""}</span>
+              <button type="button" className="btn-secondary !py-1 !px-3 text-xs" onClick={() => download(rec.record_id)}>
+                {t("Télécharger")}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </Modal>
   );
 }

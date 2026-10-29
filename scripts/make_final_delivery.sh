@@ -1,0 +1,343 @@
+#!/usr/bin/env bash
+# ══════════════════════════════════════════════════════════════════════
+# Construit l'archive de livraison.
+#
+# CE QUI EST EXCLU, ET POURQUOI
+# -----------------------------
+# Une archive de livraison n'est pas une copie du répertoire de travail.
+# En sont retirés : les dépendances reconstructibles (node_modules,
+# environnements virtuels), les caches, les artefacts de compilation, et
+# surtout TOUT fichier de configuration réel — un `.env` de production
+# livré par mégarde publie des mots de passe de base de données.
+#
+# Sont également exclus les documents produits pendant les essais
+# (backend/media, backend/private_media) : ce sont des reçus et des
+# fiches nominatives d'élèves de démonstration, mais leur place n'est pas
+# dans une archive qui circule.
+# ══════════════════════════════════════════════════════════════════════
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+NOM="${1:-FEBA_AUDIT_BULLETIN_CICD_VALIDEE}"
+SORTIE="${2:-$(dirname "$ROOT")}"
+STAGE="$(mktemp -d)"
+# Le dossier racine porte le MÊME nom que l'archive. En V8 il était
+# resté « feba_v6_… » dans une archive « …_production_ready.zip » : deux
+# noms pour une seule livraison, et une ambiguïté de plus au moment de
+# réintégrer le dépôt.
+CIBLE="$STAGE/$NOM"
+
+trap 'rm -rf "$STAGE"' EXIT
+
+mkdir -p "$CIBLE"
+
+# ── Source de l'archive ───────────────────────────────────────────────
+# Dans un dépôt Git, l'archive est construite depuis le COMMIT courant
+# (`git archive HEAD`) : elle contient exactement la version validée, et
+# rien de ce que les tests ou un poste de développement laissent traîner
+# (médias générés, bases SQLite, captures, caches). Un arbre de travail
+# modifié est refusé : on ne livre pas un état qui n'existe nulle part
+# dans l'historique.
+if git -C "$ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+  if [ -n "$(git -C "$ROOT" status --porcelain --untracked-files=no)" ]; then
+    echo "ÉCHEC : modifications non validées dans le dépôt — validez-les avant de livrer."
+    git -C "$ROOT" status --short --untracked-files=no
+    exit 1
+  fi
+  echo "Source : commit $(git -C "$ROOT" rev-parse --short HEAD) ($(git -C "$ROOT" rev-parse --abbrev-ref HEAD))"
+  git -C "$ROOT" archive --format=tar HEAD | tar -xf - -C "$CIBLE"
+  git -C "$ROOT" log -1 --format='commit %H%nbranche '"$(git -C "$ROOT" rev-parse --abbrev-ref HEAD)"'%ndate %ci%n%s' > "$CIBLE/SOURCE_COMMIT.txt"
+else
+tar -C "$ROOT" \
+    --exclude='./.git' \
+    --exclude='./.claude' \
+    --exclude='./frontend/node_modules' \
+    --exclude='./frontend/dist' \
+    --exclude='__pycache__' \
+    --exclude='*.pyc' \
+    --exclude='*.pyo' \
+    --exclude='.pytest_cache' \
+    --exclude='.ruff_cache' \
+    --exclude='./backend/venv' \
+    --exclude='./backend/.venv' \
+    --exclude='./backend/staticfiles' \
+    --exclude='./backend/media' \
+    --exclude='./backend/private_media' \
+    --exclude='*.sqlite3' \
+    --exclude='*.log' \
+    --exclude='./.env' \
+    --exclude='./.env.dev' \
+    --exclude='./.env.prod' \
+    --exclude='./.env.jitsi' \
+    --exclude='./.env.local' \
+    --exclude='./backend/.env' \
+    --exclude='./plugnmeet/runtime' \
+    --exclude='.DS_Store' \
+    -cf - . | tar -xf - -C "$CIBLE"
+fi
+
+# ── Garde-fous : on VÉRIFIE, on ne suppose pas ────────────────────────
+echo "Contrôles avant compression :"
+
+fautifs="$(find "$CIBLE" \( -name '.env' -o -name '.env.prod' -o -name '.env.dev' \
+             -o -name '.env.jitsi' -o -name '.env.local' \) -not -name '*.example' -print)"
+if [ -n "$fautifs" ]; then
+  echo "  ÉCHEC : fichiers de configuration réels présents :"; echo "$fautifs"; exit 1
+fi
+echo "  OK    aucun fichier .env réel"
+
+if [ -e "$CIBLE/plugnmeet/runtime" ]; then
+  echo "  ÉCHEC : plugnmeet/runtime (secrets plugNmeet générés) présent dans l'archive"; exit 1
+fi
+echo "  OK    aucun secret plugNmeet (plugnmeet/runtime absent)"
+
+if [ -e "$CIBLE/frontend/public/favicon.svg" ]; then
+  echo "  ÉCHEC : ancienne icône frontend/public/favicon.svg présente"; exit 1
+fi
+echo "  OK    aucune ancienne icône (favicon.svg)"
+
+for interdit in node_modules __pycache__ .pytest_cache venv; do
+  if find "$CIBLE" -name "$interdit" -print -quit | grep -q .; then
+    echo "  ÉCHEC : « $interdit » présent dans l'archive"; exit 1
+  fi
+done
+echo "  OK    aucun cache ni dépendance reconstructible"
+
+for requis in backend/manage.py frontend/package.json Makefile \
+              docker-compose.yml docker-compose.prod.yml \
+              docker-compose.jitsi.yml docker-compose.jitsi.prod.yml \
+              nginx/nginx.prod.conf \
+              backend/apps/schools/institution.py \
+              frontend/public/images/feba-fha/feba-fha-flyer.pdf \
+              frontend/src/site/components/FhaFlyerDownload.jsx \
+              INSTALLATION_GUIDE.md DEPLOYMENT_PRODUCTION.md \
+              JITSI_PRODUCTION_GUIDE.md MANUAL_PRODUCTION_ACTIONS.md \
+              TEST_REPORT.md SECURITY_AUDIT.md KNOWN_LIMITATIONS.md \
+              FINAL_REPORT.md .env.example .env.prod.example \
+              .env.dev.example .env.jitsi.example \
+              backend/tests/repo_root.py \
+              docker-compose.jitsi.behind-proxy.yml \
+              nginx/sites-available/meet.globalfeba.com.conf \
+              nginx/sites-enabled/.gitkeep \
+              scripts/repo_safety_check.sh scripts/compose_config_check.sh \
+              .github/workflows/ci.yml .github/workflows/deploy.yml \
+              backend/apps/schools/academic_year.py \
+              backend/apps/schools/migrations/0016_activate_orphan_school_years.py \
+              backend/apps/classes/migrations/0003_class_language_track.py \
+              backend/apps/virtualclass/migrations/0003_virtualroom_target_roles.py \
+              backend/tests/test_v10_academy_scope_and_rooms.py \
+              backend/tests/test_bulletin_language_track.py \
+              frontend/src/pages/shared/VirtualRoomSession.jsx \
+              frontend/src/pages/shared/VirtualRoomSession.test.jsx \
+              frontend/src/pages/shared/VirtualRooms.test.jsx \
+              frontend/src/components/JitsiMeeting.test.jsx \
+              V10_REPORT.md JITSI_AUDIT_REPORT.md \
+              CLASS_LANGUAGE_MODEL_REPORT.md MULTI_ACADEMY_AUDIT.md \
+              VIRTUAL_CLASS_REPORT.md TEST_REPORT_V10.md \
+              KNOWN_LIMITATIONS_V10.md MANUAL_PRODUCTION_ACTIONS_V10.md \
+              docs/v10-parcours/README.md docs/v10-parcours/parcours.mjs \
+              backend/apps/classes/subject_rules.py \
+              backend/apps/classes/migrations/0004_audit_language_tracks.py \
+              backend/tests/test_v11_class_language_rules.py \
+              backend/tests/test_v11_jitsi_moderators_and_jwt.py \
+              backend/tests/test_v11_jitsi_health_checks.py \
+              frontend/src/utils/classLanguage.js \
+              frontend/src/utils/classLanguage.test.js \
+              CLASS_TYPE_BUSINESS_RULES_REPORT.md \
+              FEBA_FHA_CLASS_VALIDATION_REPORT.md \
+              DEPLOYMENT_CHECKLIST.md \
+              jitsi/nginx-custom/feba-security-headers.conf \
+              backend/tests/test_v12_jitsi_production_headers.py \
+              JITSI_PRODUCTION_ACTIONS.md JITSI_REAL_WORLD_TEST_PLAN.md \
+              TURN_DECISION.md JITSI_PRODUCTION_FINAL_REPORT.md \
+              scripts/deploy_production.sh scripts/production_health.sh \
+              backend/tests/test_v13_deploiement_production.py \
+              ROLLBACK_GUIDE.md PRODUCTION_CHECKLIST.md \
+              TURN_DEPLOYMENT_GUIDE.md \
+              EMAIL_CONFIGURATION_GUIDE.md PAYMENT_REMINDERS_GUIDE.md \
+              AUDIT_CORRECTIONS_REPORT.md VALIDATION_REPORT.md \
+              backend/apps/core/age.py \
+              backend/apps/notifications/campaigns.py \
+              backend/apps/notifications/campaign_models.py \
+              backend/apps/notifications/tasks.py \
+              backend/apps/payments/reminders.py \
+              backend/apps/payments/schedule_models.py \
+              backend/apps/payments/fee_plans/feba_2026_2027.json \
+              backend/apps/payments/management/commands/load_fee_plan.py \
+              backend/apps/payments/migrations/0011_backfill_payment_paid_at.py \
+              backend/apps/payments/migrations/0013_optional_services_not_mandatory.py \
+              backend/tests/test_audit_p1_student_age.py \
+              backend/tests/test_audit_p1_payment_datetime.py \
+              backend/tests/test_audit_p1_mass_email.py \
+              backend/tests/test_audit_p1_payment_reminders.py \
+              backend/tests/test_audit_p1_confirmation_emails.py \
+              backend/tests/test_audit_cross_academy_writes.py \
+              backend/tests/test_audit_role_escalation.py \
+              frontend/src/pages/admin/MassEmail.jsx \
+              frontend/src/pages/admin/PaymentReminders.jsx \
+              frontend/src/utils/age.jsx frontend/src/utils/datetime.js \
+              EMAIL_OUTBOX_CORRECTIONS_REPORT.md EMAIL_OUTBOX_VALIDATION_REPORT.md \
+              backend/apps/notifications/attachments.py \
+              backend/apps/notifications/backends.py \
+              backend/apps/notifications/outbox_views.py \
+              backend/apps/notifications/migrations/0006_email_outbox_content_attachments.py \
+              backend/tests/test_email_outbox.py \
+              backend/tests/test_email_single_path.py \
+              frontend/src/pages/admin/Outbox.jsx \
+              frontend/src/pages/admin/Outbox.test.jsx \
+              frontend/src/router/restoreUser.test.jsx \
+              PLUGNMEET_DEPLOYMENT_GUIDE.md SMS_CONFIGURATION_GUIDE.md \
+              FEBA_P0_AUDIT_REPORT.md \
+              plugnmeet/docker-compose.plugnmeet.yml plugnmeet/sql/install.sql \
+              plugnmeet/templates/config.yaml.tpl plugnmeet/templates/livekit.yaml.tpl \
+              plugnmeet/templates/nats-server.conf.tpl plugnmeet/templates/pnm-web.conf.tpl \
+              scripts/plugnmeet_setup.sh \
+              backend/apps/virtualclass/plugnmeet.py backend/apps/virtualclass/meetings.py \
+              backend/apps/virtualclass/checks.py backend/apps/virtualclass/tasks.py \
+              backend/apps/virtualclass/migrations/0004_plugnmeet_meetings_events.py \
+              backend/apps/notifications/sms.py backend/apps/notifications/sms_models.py \
+              backend/apps/notifications/sms_providers.py backend/apps/notifications/sms_views.py \
+              backend/apps/notifications/checks.py \
+              backend/apps/notifications/management/commands/sms_check.py \
+              backend/apps/notifications/migrations/0007_sms_messages.py \
+              backend/apps/accounts/migrations/0007_customuser_sms_consent_customuser_sms_consent_at.py \
+              backend/apps/payments/migrations/0014_paymentreminder_sms_message.py \
+              backend/tests/test_plugnmeet_integration.py backend/tests/test_sms_mirror.py \
+              backend/tests/test_email_sender_globalfeba.py \
+              frontend/src/api/tokenRefresh.js frontend/src/api/tokenRefresh.test.js \
+              frontend/src/api/sessionInterceptor.test.js frontend/src/hooks/useSessionKeepAlive.js \
+              frontend/src/pages/shared/VirtualRoomEnded.jsx \
+              frontend/src/components/SmsPreferencesCard.jsx \
+              DOCUMENTATION_INDEX.md docs/historique/FINAL_REPORT_V13.md \
+              DOCUMENT_TEMPLATES_GUIDE.md \
+              backend/apps/documents/conversion.py \
+              backend/apps/documents/migrations/0003_template_conversion.py \
+              backend/tests/test_template_conversion.py \
+              backend/tests/fixtures/office_templates/diplome_paysage_marqueurs.docx \
+              backend/tests/fixtures/office_templates/diplome_paysage_marqueurs.doc \
+              backend/tests/fixtures/office_templates/diplome_paysage_marqueurs.odt \
+              backend/tests/fixtures/office_templates/diplome_paysage_marqueurs.rtf \
+              backend/tests/fixtures/office_templates/diplome_diapo_marqueurs.pptx \
+              backend/tests/fixtures/office_templates/diplome_diapo_marqueurs.ppt \
+              backend/tests/fixtures/office_templates/diplome_diapo_marqueurs.odp \
+              backend/tests/fixtures/office_templates/certificat_portrait.docx \
+              backend/.dockerignore frontend/.dockerignore \
+              e2e/parcours-gabarits-multiformats.mjs \
+              docs/historique/FINAL_REPORT_2026-10-26_gabarits.md \
+              backend/apps/documents/academy_templates.py \
+              backend/apps/documents/academy_template_views.py \
+              backend/apps/documents/migrations/0002_academy_document_templates.py \
+              backend/tests/test_academy_document_templates.py \
+              backend/tests/test_backup_private_media.py \
+              frontend/src/pages/admin/DocumentTemplates.jsx \
+              frontend/src/components/documents/TemplateEditor.jsx \
+              backend/feba_project/static_files/fonts/CrimsonPro-Regular.ttf \
+              e2e/parcours-gabarits.mjs \
+              docs/historique/FINAL_REPORT_2026-10-26_academies_appreciations.md \
+              scripts/deploy_feba.sh scripts/tls_bootstrap.sh \
+              backend/apps/core/preflight.py \
+              backend/apps/core/management/commands/production_preflight.py \
+              backend/tests/test_production_preflight.py \
+              backend/tests/test_session_revocation.py \
+              frontend/src/pages/admin/schedule/ScheduleGrid.test.jsx \
+              docs/historique/FINAL_REPORT_2026-10-25.md docs/historique/TEST_REPORT_2026-10-25.md \
+              backend/apps/bulletins/operations.py \
+              backend/apps/bulletins/migrations/0006_comments_operations.py \
+              backend/apps/schools/migrations/0017_enable_video_for_all_academies.py \
+              backend/tests/test_bulletin_comments.py backend/tests/test_visio_multi_academies.py \
+              backend/tests/test_audit_2026_10_26.py \
+              frontend/src/components/bulletins/BulletinCommentManager.jsx \
+              frontend/src/components/bulletins/BulletinCommentManager.test.jsx \
+              branding/source/feba_logo_transparent.png branding/source/favicon-16x16.png \
+              branding/source/favicon-32x32.png scripts/build_branding_assets.py \
+              frontend/public/favicon-16x16.png frontend/public/favicon-32x32.png \
+              frontend/public/apple-touch-icon.png frontend/src/assets/feba_logo.png \
+              backend/feba_project/static_files/feba_logo_document.png \
+              backend/feba_project/static_files/favicon-16x16.png \
+              backend/feba_project/static_files/favicon-32x32.png \
+              backend/apps/schools/public_branding.py \
+              backend/apps/schools/migrations/0018_branding_unique_active.py \
+              backend/apps/schools/migrations/0019_branding_settings_image_defaults.py \
+              backend/apps/schools/management/commands/branding_refresh_documents.py \
+              backend/tests/test_branding_logo_2026_10_26.py \
+              frontend/src/components/bulletins/BulletinPreviewDialog.jsx \
+              frontend/src/components/bulletins/BulletinPreviewDialog.test.jsx \
+              frontend/src/hooks/useBranding.test.jsx \
+              plugnmeet/client-branding/feba-branding.js \
+              docs/historique/FINAL_REPORT_2026-10-26_commentaires_visio.md \
+              docs/historique/FINAL_REPORT_2026-10-26_bulletins_branding.md \
+              ACADEMIES_GUIDE.md \
+              backend/apps/website/migrations/0012_fha_child_gender.py \
+              backend/apps/schools/migrations/0020_academy_type.py \
+              backend/apps/grades/migrations/0013_appreciation_rules.py \
+              backend/apps/schools/academy_setup.py backend/apps/schools/academy_types.py \
+              backend/apps/schools/management/commands/academy_types_report.py \
+              backend/apps/grades/appreciations.py backend/apps/grades/appreciation_views.py \
+              backend/tests/test_fha_child_gender.py backend/tests/test_academy_types_creation.py \
+              backend/tests/test_appreciation_rules.py backend/tests/test_isolation_2_7_19_academies.py \
+              backend/tests/isolation_campaign.py backend/tests/academy_fixtures.py \
+              backend/tests/test_audit_academies_2026_10_26.py \
+              frontend/src/pages/superadmin/Academies.jsx frontend/src/pages/superadmin/Academies.test.jsx \
+              frontend/src/pages/admin/Appreciations.jsx frontend/src/pages/admin/Appreciations.test.jsx \
+              frontend/src/components/AcademyLogo.jsx frontend/src/site/fhaEnrollGender.test.jsx \
+              AUDIT_IDENTITES_ACADEMIES.md \
+              backend/apps/schools/curriculum.py \
+              backend/apps/schools/migrations/0021_curriculum_language_mode.py \
+              backend/apps/schools/management/commands/academy_languages_report.py \
+              backend/tests/test_curriculum_language_mode.py backend/tests/test_academy_identity_features.py \
+              frontend/src/components/AcademyName.jsx frontend/src/components/FeatureGate.jsx \
+              frontend/src/layouts/navFeatures.js frontend/src/layouts/menuIdentity.test.jsx \
+              frontend/src/pages/admin/Schedule.tabs.test.jsx frontend/src/components/AcademyBadge.test.jsx \
+              e2e/parcours-langues-identite.mjs \
+              docs/historique/FINAL_REPORT_2026-10-27_gabarits_multiformats.md \
+              docs/historique/TEST_REPORT_2026-10-27_gabarits_multiformats.md \
+              backend/tests/test_bulletin_one_page.py e2e/parcours-bulletin-une-page.mjs \
+              backend/feba_project/static_files/fonts/DejaVuSans.ttf \
+              backend/feba_project/static_files/fonts/DejaVu-LICENSE.txt \
+              scripts/audit/data_counts.py scripts/audit/rollback_columns_check.py \
+              docs/historique/FINAL_REPORT_2026-10-27_langues_identite.md; do
+  [ -e "$CIBLE/$requis" ] || { echo "  ÉCHEC : « $requis » manquant"; exit 1; }
+done
+echo "  OK    tous les fichiers attendus sont présents"
+
+# Les scripts doivent rester EXÉCUTABLES à travers l'archive : un test
+# vérifie leur bit +x, et « zip » le préserve sur Unix — mais seulement
+# si les fichiers l'ont au départ.
+for script in "$CIBLE"/scripts/*.sh; do
+  [ -f "$script" ] && chmod +x "$script"
+done
+non_exec="$(find "$CIBLE/scripts" -name '*.sh' ! -perm -u+x -print 2>/dev/null)"
+if [ -n "$non_exec" ]; then
+  echo "  ÉCHEC : scripts non exécutables :"; echo "$non_exec"; exit 1
+fi
+echo "  OK    tous les scripts .sh sont exécutables"
+
+# Empreinte de CHAQUE fichier du projet, déposée dans l'archive. Elle
+# permet de vérifier un fichier isolé après extraction, là où l'empreinte
+# de l'archive ne dit que « intacte ou non » en bloc.
+#
+# Le fichier s'exclut lui-même du calcul : s'y inclure changerait son
+# contenu et invaliderait sa propre ligne.
+(cd "$CIBLE" && find . -type f ! -name SHA256SUMS.txt -print0 \
+   | sort -z | xargs -0 sha256sum > SHA256SUMS.txt)
+echo "  OK    SHA256SUMS.txt ($(wc -l < "$CIBLE/SHA256SUMS.txt") fichiers)"
+
+ARCHIVE="$SORTIE/${NOM}.zip"
+# Une livraison existante n'est jamais écrasée : elle a pu être
+# transmise, et son empreinte publiée.
+if [ -e "$ARCHIVE" ]; then
+  echo "ÉCHEC : $ARCHIVE existe déjà — choisissez un autre nom (1er argument)."; exit 1
+fi
+(cd "$STAGE" && zip -qr "$ARCHIVE" "$NOM")
+
+# Empreinte déposée À CÔTÉ de l'archive : un fichier ne peut pas contenir
+# sa propre empreinte (l'y écrire la changerait). SHA256SUMS.txt, à
+# l'intérieur, couvre les fichiers du projet.
+sha256sum "$ARCHIVE" | sed "s#$SORTIE/##" > "$ARCHIVE.sha256"
+
+echo ""
+echo "Archive : $ARCHIVE"
+echo "Taille  : $(du -h "$ARCHIVE" | cut -f1) ($(wc -c < "$ARCHIVE" | tr -d ' ') octets)"
+echo "SHA-256 : $(sha256sum "$ARCHIVE" | cut -d' ' -f1)"
+echo "Fichiers: $(unzip -l "$ARCHIVE" | tail -1 | awk '{print $2}')"
+echo "Empreinte déposée dans : $ARCHIVE.sha256"

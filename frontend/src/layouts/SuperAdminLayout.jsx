@@ -1,17 +1,16 @@
 import { NavLink } from "react-router-dom";
 import { useState, useEffect } from "react";
-import { FileBarChart,
-  LayoutDashboard, Users, Shield, GraduationCap, UserCheck,
-  Users2, BookOpen, DollarSign, Megaphone, Settings, LogOut,
-  Menu, X, MessageSquare, Layers, ClipboardList, FileText,
-  Calendar, UserCog, FolderOpen, Image, ClipboardCheck, Video, Globe,
-  AlertTriangle, CreditCard, Award } from "lucide-react";
+import {
+  Building2, Star, Stamp, FileBarChart, LayoutDashboard, Users, Shield, GraduationCap, UserCheck, Users2, BookOpen, DollarSign, Megaphone, Settings, LogOut, Menu, X, MessageSquare, Layers, ClipboardList, FileText, Calendar, UserCog, FolderOpen, Image, ClipboardCheck, Video, Globe, AlertTriangle, CreditCard, Award, Mail, BellRing, Inbox,
+} from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
-import { useBranding } from "../hooks/useBranding";
+import AcademyLogo from "../components/AcademyLogo";
+import AcademyName from "../components/AcademyName";
+import { useAcademy } from "../context/AcademyContext";
+import { isNavItemVisible } from "./navFeatures";
 import { clsx } from "clsx";
 import { motion, AnimatePresence } from "framer-motion";
 import { useQuery } from "@tanstack/react-query";
-import logoFeba from "../assets/logo_feba.jpeg";
 import { useAuthStore } from "../store/authStore";
 import { t } from "../i18n";
 import LanguageSwitcher from "../components/ui/LanguageSwitcher";
@@ -22,8 +21,11 @@ const nav = [
   { section: "SuperAdmin", items: [
     { label: "Tableau de bord",       icon: LayoutDashboard, to: "/superadmin/dashboard" },
     { label: "Tous les utilisateurs", icon: Users,            to: "/superadmin/users" },
+    { label: "Académies",             icon: Building2,        to: "/superadmin/academies" },
     { label: "Gestion Admins",        icon: Shield,           to: "/superadmin/admins" },
     { label: "Messages",              icon: MessageSquare,    to: "/superadmin/messages", badge: true },
+    { label: "E-mails groupés", icon: Mail, to: "/superadmin/emails" },
+    { label: "Boîte d'envoi", icon: Inbox, to: "/superadmin/outbox" },
     { label: "Incidents techniques",  icon: AlertTriangle,    to: "/superadmin/incidents" },
     { label: "Mon profil",            icon: UserCog,          to: "/superadmin/profile" },
   ]},
@@ -36,9 +38,12 @@ const nav = [
     { label: "Niveaux",           icon: Layers,        to: "/superadmin/levels" },
     { label: "Notes",             icon: ClipboardList, to: "/superadmin/grades" },
     { label: "Bulletins",         icon: FileText,      to: "/superadmin/bulletins" },
+    { label: "Appréciations",     icon: Star,          to: "/superadmin/appreciations" },
     { label: "Paiements",         icon: DollarSign,    to: "/superadmin/payments" },
   { label: "Transactions carte", icon: CreditCard, to: "/superadmin/card-transactions" },
+  { label: "Relances de paiement", icon: BellRing, to: "/superadmin/payment-reminders" },
   { label: "Documents officiels", icon: Award, to: "/superadmin/official-documents" },
+  { label: "Gabarits des documents", icon: Stamp, to: "/superadmin/document-templates" },
     { label: "Absences",          icon: Calendar,      to: "/superadmin/attendance" },
     { label: "Devoirs",           icon: BookOpen,      to: "/superadmin/homework" },
     { label: "Emploi du temps",   icon: Calendar,      to: "/superadmin/schedule" },
@@ -46,8 +51,8 @@ const nav = [
     { label: "Annonces",          icon: Megaphone,     to: "/superadmin/announcements" },
     { label: "Paramètres",        icon: Settings,      to: "/superadmin/settings" },
     { label: "Fichiers",           icon: FolderOpen,    to: "/superadmin/user-files" },
-    { label: "Admissions FEBA FHA", icon: ClipboardList, to: "/superadmin/fha-admissions", feature: "placement_tests" },
-    { label: "Rapports mensuels", icon: FileBarChart, to: "/superadmin/monthly-reports", feature: "placement_tests" },
+    { label: "Admissions en ligne", icon: ClipboardList, to: "/superadmin/fha-admissions", feature: "online_admissions" },
+    { label: "Rapports mensuels", icon: FileBarChart, to: "/superadmin/monthly-reports", feature: "monthly_reports" },
   { label: "Site vitrine",       icon: Globe,         to: "/superadmin/website" },
     { label: "Logo & Branding",    icon: Image,         to: "/superadmin/branding" },
   ]},
@@ -68,11 +73,15 @@ export default function SuperAdminLayout() {
   // aucune donnée de l'académie précédente ne peut rester affichée,
   // et aucun rechargement manuel du navigateur n'est nécessaire.
 
+  // Entrées liées à une fonctionnalité (admissions en ligne, rapports
+  // mensuels) : affichées d'après la matrice servie par l'API, jamais
+  // d'après le nom d'une académie.
+  const academy = useAcademy();
+
   const isMobile = useIsMobile();
   const [open, setOpen] = useState(!isMobile);
   const { user, logout } = useAuth();
   const { user: storeUser } = useAuthStore();
-  const { logoSrc } = useBranding();
 
   useEffect(() => {
     if (isMobile) setOpen(false);
@@ -114,10 +123,10 @@ export default function SuperAdminLayout() {
           >
             <div className="p-5 flex items-center gap-3 border-b border-white/10">
               <div className="w-9 h-9 rounded-xl overflow-hidden bg-white border-2 border-purple-400 flex items-center justify-center shrink-0">
-                <img src={logoSrc} alt={t("FEBA")} className="w-full h-full object-contain" />
+                <AcademyLogo />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-white font-bold text-sm leading-tight">{t("FEBA")}</p>
+                <AcademyName className="text-white font-bold text-sm leading-tight" />
                 <p className="text-purple-400 text-xs font-semibold tracking-wide">{t("SUPER ADMIN")}</p>
               </div>
               {isMobile && (
@@ -134,7 +143,7 @@ export default function SuperAdminLayout() {
                     {t(section.section)}
                   </p>
                   <div className="space-y-0.5">
-                    {section.items.map(item => (
+                    {section.items.filter((item) => isNavItemVisible(item, academy)).map(item => (
                       <NavLink
                         key={item.to} to={item.to}
                         onClick={closeSidebarOnMobile}

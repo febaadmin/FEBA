@@ -145,9 +145,8 @@ class ClassSchedule(models.Model):
         if academy is not None and academy.entity_type == "online":
             raise ValidationError(
                 f"« {academy.name} » est une académie en ligne : ses séances "
-                f"se planifient dans l'emploi du temps FEBA FHA (salle "
-                f"virtuelle, fuseau horaire), pas dans l'emploi du temps "
-                f"présentiel."
+                f"se planifient dans les séances en ligne (salle virtuelle, "
+                f"fuseau horaire), pas dans l'emploi du temps présentiel."
             )
 
     def save(self, *args, **kwargs):
@@ -238,11 +237,11 @@ class OnlineSessionSchedule(models.Model):
         ordering = ["day_of_week", "start_time_utc"]
         constraints = [
             models.CheckConstraint(
-                check=models.Q(duration_minutes__gte=1) & models.Q(duration_minutes__lte=480),
+                condition=models.Q(duration_minutes__gte=1) & models.Q(duration_minutes__lte=480),
                 name="online_session_duration_between_1_and_480",
             ),
             models.CheckConstraint(
-                check=models.Q(reminder_minutes_before__lte=1440),
+                condition=models.Q(reminder_minutes_before__lte=1440),
                 name="online_session_reminder_at_most_24h",
             ),
             # Un même groupe ne peut pas avoir deux séances au même instant.
@@ -318,8 +317,8 @@ class OnlineSessionSchedule(models.Model):
         if self.academy_id and self.academy.entity_type != self.ACADEMY_REQUIREMENT:
             raise ValidationError(
                 f"« {self.academy.name} » est une école présentielle : ses "
-                f"cours se planifient dans l'emploi du temps FEBA (classe et "
-                f"salle physique), pas dans les séances en ligne."
+                f"cours se planifient dans l'emploi du temps présentiel "
+                f"(classe et salle physique), pas dans les séances en ligne."
             )
 
         assert_single_academy(

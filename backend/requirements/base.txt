@@ -1,6 +1,6 @@
-Django==5.0.4
-djangorestframework==3.15.1
-djangorestframework-simplejwt==5.3.1
+Django==5.2.18   # LTS ; 5.0 n'est plus maintenue (43 vulnérabilités publiées sur 5.0.4)
+djangorestframework==3.18.3
+djangorestframework-simplejwt==5.5.1
 django-cors-headers==4.3.1
 django-filter==24.2
 channels==4.1.0
@@ -8,12 +8,23 @@ channels-redis==4.2.0
 celery==5.3.6
 redis==5.0.3
 psycopg2-binary==2.9.12   # 2.9.9 n'a pas de roue pour Python ≥ 3.13
-Pillow==10.3.0
+Pillow==13.0.0
 reportlab==4.2.2
-WeasyPrint==62.3
+# Gabarits officiels téléversés (diplômes, certificats) : lecture et fusion
+# des fonds PDF (pypdf, BSD) et aperçu des pages PDF dans l'éditeur
+# (pypdfium2, Apache-2.0/BSD ; roues autonomes, aucun paquet système).
+pypdf==6.21.4
+pypdfium2==4.30.0
+# Formats Office binaires (DOC, PPT) : lecture de la structure OLE pour
+# vérifier le contenu réel et détecter les macros AVANT conversion.
+olefile==0.47
+# WeasyPrint retiré (28/10/2026) : aucun import dans le code ; 6 vulnérabilités publiées.
+# fontTools : utilisé DIRECTEMENT (apps/documents/textfit.py, métriques des polices des
+# gabarits). Il n'était installé que comme dépendance de WeasyPrint : déclaré ici.
+fonttools==4.67.0
 django-ratelimit==4.1.0
-gunicorn==21.2.0
-whitenoise==6.7.0
+gunicorn==23.0.0
+whitenoise==6.9.0   # compatible Django 5.2
 python-decouple==3.8
 dj-database-url==2.1.0
 django-storages==1.14.3
@@ -24,3 +35,4 @@ num2words==0.5.13
 stripe==12.5.1
 openpyxl==3.1.2
 PyJWT>=2.8,<3
+phonenumbers==9.0.40   # normalisation E.164 des numéros (SMS)

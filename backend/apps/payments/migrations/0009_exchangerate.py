@@ -36,6 +36,6 @@ class Migration(migrations.Migration):
         ),
         migrations.AddConstraint(
             model_name='exchangerate',
-            constraint=models.CheckConstraint(check=models.Q(('rate__gt', 0)), name='exchange_rate_positive'),
+            constraint=models.CheckConstraint(condition=models.Q(('rate__gt', 0)), name='exchange_rate_positive'),
         ),
     ]

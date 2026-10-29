@@ -1,0 +1,93 @@
+# SHA256SUMS — livraison FEBA
+#
+# Vérification :
+#     sha256sum -c SHA256SUMS.txt
+#
+# Les chemins sont relatifs à la racine du projet.
+#
+# L'empreinte de l'ARCHIVE DE LIVRAISON elle-même ne peut pas figurer ici :
+# ce fichier est à l'intérieur de l'archive, et l'y inscrire changerait
+# l'empreinte qu'il annonce. Elle est déposée à côté de l'archive, dans
+# « feba_corrected_production_ready.zip.sha256 ».
+#
+# L'archive SOURCE (feba.zip) n'est pas livrée — elle vient de Google
+# Drive. Son empreinte est donnée en fin de fichier pour que vous puissiez
+# confirmer que c'est bien elle qui a servi de base :
+#     sha256sum feba.zip
+
+# ── Correctifs livrés ────────────────────────────────────────────
+b9a5479792e9e79d7c3a73a6c94571b6146651f1074f7286cc3afd85407b17b6  backend/apps/schools/institution.py
+b850e5026ae3938b00c3fa5fb812fb823a01d91f44a0e62a02c06142ffe9f3d5  backend/apps/schools/branding.py
+76a96ba2eca42fd311460dc04541c579b3bc947f502b2b6228fa27e0dcd5061d  backend/apps/schools/migrations/0015_retire_legacy_institutional_phone.py
+6f11d3072055503700664e9871e916bec50b734eaaf10280d3e5acb6cb2408de  backend/apps/bulletins/pdf_generator.py
+5c19d5e12590e813c52440e3425ed175e78364fffab396ec62cc7b96b1638987  backend/apps/virtualclass/services.py
+3a7cc1107bff3c710ae05332f70706df59e13e7771dd80557b3ce04449815abe  backend/apps/virtualclass/management/commands/jitsi_health.py
+5be527b5d83cc06968fc7a3b19f1608307e32d8a7f87f0a1da43c60022bef5cf  backend/feba_project/settings/base.py
+5c3dc660ac47df39abbcd85bde8da9a3638019e1a0fe44824c0143e372756b93  backend/feba_project/settings/prod.py
+
+# ── Flyer FEBA FHA ───────────────────────────────────────────────
+4dedb347991c2e2972904a3a60651c06be118f48d5b41656898da7d9eec45ceb  frontend/public/images/feba-fha/feba-fha-flyer.jpeg
+c1024474ea4b603296b283066694229a04ae43f3852da392499bff36203d5402  frontend/public/images/feba-fha/feba-fha-flyer.pdf
+a67f86f5cba8dc866fb80c0519e84c9b2d5251ec1fb6eed3f0f955bdbec8ec65  frontend/src/site/components/FhaFlyerDownload.jsx
+0fb6ee4f33deb852fc8036096bfba1fdaf6c379dce28e36add900b3e668f8c7c  scripts/build_fha_flyer_pdf.py
+
+# ── V9 — visibilité de la racine du dépôt depuis les tests ───────
+577bb0dec97d592a44c858a8dbd0b8eb86e55f48f19b88c73219b0a0650bb3f8  backend/tests/repo_root.py
+d5979b65e310819f2a6fad5a4f552e2cade2b6cd290963ad268582fd17bba9d5  backend/tests/test_repo_root_visibility.py
+b0f9eb025f4b788858795a50be5eb23d343302eae245c69a74897b0e50290771  backend/tests/test_migration_0015_data_safety.py
+de686f2a9013c033030a53acbb081f8f035ea41d842eb032a6cfe6b946e9fcbd  docker-compose.yml
+
+# ── V9 — Jitsi : seconde topologie et vhost ──────────────────────
+7f6a0abd35a6f0138f1a16f177587f93dc2d2e74749e9123e98eb3b730f7fd05  docker-compose.jitsi.behind-proxy.yml
+b053b665a0076d2a8205d8da70d6802b7aa717ebfb89703b576ecdd260ba2a85  nginx/sites-available/meet.globalfeba.com.conf
+0315462f019fb308d22f19b1386c3a79f80ea7608e67305ed09c907db5a32b16  nginx/nginx.prod.conf
+0813fb5cceaafec490fbf5ed6a3651a74da85455e210de73ae4df22797daef5d  docker-compose.prod.yml
+67892bcdb302d51f01dffa4e4a5f260c89137acdec0e39c5230fa462356f41df  frontend/nginx.prod.conf
+
+# ── V9 — intégration continue et sûreté du dépôt ─────────────────
+9b8109d82596c7a004ee3b6d355ab3c887b9de6aadeb864b2744d3f72ba384f8  .github/workflows/ci.yml
+89a9aa679354593cc1069faca04591169055171090a80459e4d3430c051b2b4e  .github/workflows/deploy.yml
+79aac79391f6b871d90e1598737cd025e02863e4b08a9b1848128a81e0a6bd00  scripts/repo_safety_check.sh
+095a0b791f735c113398ee001e8e44f98345037a16f28481cb654391ebd4c563  scripts/compose_config_check.sh
+
+# ── Infrastructure ───────────────────────────────────────────────
+de686f2a9013c033030a53acbb081f8f035ea41d842eb032a6cfe6b946e9fcbd  docker-compose.yml
+0813fb5cceaafec490fbf5ed6a3651a74da85455e210de73ae4df22797daef5d  docker-compose.prod.yml
+3790568ebc311c2c1f67768a17b4b43e08bfb2242b9e769ef63fd7a7f379833a  docker-compose.jitsi.yml
+059729ead11a31fdb325adc65744ed7e0560f1d309924ebd66248314ec013acb  docker-compose.jitsi.prod.yml
+0315462f019fb308d22f19b1386c3a79f80ea7608e67305ed09c907db5a32b16  nginx/nginx.prod.conf
+67892bcdb302d51f01dffa4e4a5f260c89137acdec0e39c5230fa462356f41df  frontend/nginx.prod.conf
+48b54a18ca2b6d3a02932a339e2d901a17a15bbc4a7d58c4644348dc8fb3a545  Makefile
+945b8f97dbee9d5b369d4d6bc06f25c1aab13fd8d5cd6eff044a4d9dea0f3927  scripts/jitsi_config_check.sh
+a6ab4e06b8d5fb1bdbf1f6e02f831a89aa835eed9bfc08e1b88ab2d9846c26fb  scripts/make_final_delivery.sh
+
+# ── Tests de non-régression ──────────────────────────────────────
+ea15b61354c18c5331bf2e4047ff43679f4c41edf31f90c03c40ee098c19cf8d  backend/tests/test_institutional_phone.py
+7eac5506cf2e8be410eafc807ee2973eb23e7391a90f61be0c8505448e4a24aa  backend/tests/test_jitsi_production_domain.py
+ebb3950c09ab5101d7d2f0c75e0e616d36887bac45cfb8310e16129f7367cba3  backend/tests/test_production_settings.py
+ca66aba269be053f12885af5aaebf8cff20b7d17f1f8fedde85b4006a1d9bc97  frontend/src/site/fhaFlyerDownload.test.jsx
+
+# ── Modèles de configuration ─────────────────────────────────────
+d130bd4f2116c9afb50726e7d484c23d3034bc98a1ee96500610667a16f97f0d  .env.example
+9e55cfc40621eed64a2c377ed5f9f4f67b63d4040ae57c2f6fdf7e07f48d138d  .env.dev.example
+c665ce09c79e6c5a42558e3f835f3e8006b145a1010574725b8ca1af53ed0331  .env.prod.example
+725def3c0e3f1c4ca7541c9c36ba01493deac5d07f5ea1106a4b4114f6e5b468  .env.jitsi.example
+
+# ── Documentation ────────────────────────────────────────────────
+4a6253128179892ab77eae49b6aa1abb5c924f1d584b12b7d85c4f54b1ee215e  INSTALLATION_GUIDE.md
+82760f89eb522f5b2908645945c4113d3fbf9084a0eba871788915c22f39abfd  DEPLOYMENT_PRODUCTION.md
+941a364dfd358c322515b47ce9fd40f056added2a7c55efc5527a58ac1d41637  JITSI_PRODUCTION_GUIDE.md
+91acbc9104ec090759b4faec5d980aa53f39afa184f1b34979496432fb259427  MANUAL_PRODUCTION_ACTIONS.md
+07d1f30b96da9498990b4b734563ad3cc480feadd27040f92524d7bc39d7130e  TEST_REPORT.md
+705332b791d9524bd19847a7c69cf23a83ab1c94473b75a8631d4dc99b8e56d9  SECURITY_AUDIT.md
+4f1f6aa8dce04c376f323d1e8efc78edbd543d7af5dd5b7bc704d1811c291b94  KNOWN_LIMITATIONS.md
+6ece3c02b65aa84ca5bc100359c704478bec22d60f770d56fa6c7964baac7a16  FINAL_REPORT.md
+
+# ══════════════════════════════════════════════════════════════════════
+# ARCHIVE SOURCE — telle que téléchargée depuis Google Drive
+# https://drive.google.com/file/d/1_XB0DUpHUOFcqO-gGCzZfLzRgLRUp2zS/view
+# 34 457 093 octets · unzip -t : PASS (1076 entrées)
+# ══════════════════════════════════════════════════════════════════════
+# (ligne de référence, non vérifiée par « sha256sum -c » : le fichier
+#  n'est pas livré dans l'archive)
+# e06cdab5bad530087cf1a1c2c6917faff957d84b7ff48bca9e992dbb04d53c74  feba.zip

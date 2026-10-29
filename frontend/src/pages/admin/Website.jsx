@@ -27,6 +27,8 @@ import DetailField from "../../components/ui/DetailField";
 import ConfirmDialog from "../../components/ui/ConfirmDialog";
 import { t } from "../../i18n";
 import { useAcademyKey, useEntityContext } from "../../hooks/useEntityContext";
+import SharedAcademyBadge from "../../components/AcademyBadge";
+import { isNavItemVisible } from "../../layouts/navFeatures";
 
 const TABS = [
   { key: "messages", label: "Messages reçus", icon: Inbox },
@@ -38,7 +40,12 @@ const TABS = [
   //
   // `campusOnly` masque l'onglet ET rend sa vue inatteignable — le
   // masquage seul ne suffirait pas.
-  { key: "prereg", label: "Préinscriptions", icon: ClipboardList, campusOnly: true },
+  //
+  // Le critère n'est plus « académie présentielle » mais la capacité
+  // `public_preregistrations` servie par l'API : seule l'académie rattachée
+  // au site public en reçoit — une autre académie présentielle aurait vu
+  // un onglet « Préinscriptions FEBA » vide qui ne la concerne pas.
+  { key: "prereg", label: "Préinscriptions", icon: ClipboardList, feature: "public_preregistrations" },
   { key: "news", label: "Actualités", icon: Newspaper },
   { key: "settings", label: "Paramètres du site", icon: Settings2 },
 ];
@@ -58,16 +65,9 @@ function rows(data) {
  * Le code interne est stable ; le libellé affiché vient du serveur et suit
  * un éventuel renommage.
  */
-function AcademyBadge({ code, name }) {
+function AcademyBadge({ code, name, shortName }) {
   if (!code && !name) return <span className="text-slate-400">—</span>;
-  const isOnline = code === "FEBA_FHA";
-  return (
-    <span className={`badge whitespace-nowrap ${isOnline
-      ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-      : "bg-indigo-50 text-indigo-700 border border-indigo-200"}`}>
-      {name || code}
-    </span>
-  );
+  return <SharedAcademyBadge code={code} name={name} shortName={shortName} />;
 }
 
 /* ── Détail d'un message reçu ────────────────────────────────────────────── */
@@ -273,7 +273,7 @@ function PreregTab() {
     { key: "parent", label: t("Parent"), accessor: "parent_name" },
     { key: "phone", label: t("Téléphone"), accessor: "phone" },
     { key: "academy", label: t("Académie"), sortable: false, render: r => (
-        <AcademyBadge code={r.academy_code} name={r.academy_name} />
+        <AcademyBadge code={r.academy_code} name={r.academy_name} shortName={r.academy_short_name} />
       ) },
     { key: "status", label: t("Statut"), sortable: false, render: r => (
         <select value={r.status}
@@ -362,7 +362,7 @@ function PreregDetail({ id, onClose, onDownload, onRegenerate, busy }) {
       {row && (
         <div className="space-y-4 text-sm min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <AcademyBadge code={row.academy_code} name={row.academy_name} />
+            <AcademyBadge code={row.academy_code} name={row.academy_name} shortName={row.academy_short_name} />
             <span className="badge bg-slate-100 text-slate-600">{row.reference}</span>
             <span className="badge bg-sky-50 text-sky-700">{row.status_display}</span>
             {/* L'état RÉEL de la fiche, tel que le serveur le constate sur
@@ -708,18 +708,19 @@ function SettingsTab() {
 
 export default function AdminWebsite() {
   // Académie active : détermine les onglets réellement disponibles.
-  const { activeEntity, allEntitiesMode, isLoading: contextLoading } = useEntityContext();
-  // Une académie EN LIGNE (FEBA FHA) n'a pas de préinscriptions FEBA.
+  const { allEntitiesMode, entities, hasFeature, isLoading: contextLoading } = useEntityContext();
+  // Seule l'académie rattachée au site public reçoit des préinscriptions
+  // (capacité `public_preregistrations`, calculée par le serveur).
   // En mode « Toutes les Académies », l'onglet reste visible : il porte
   // alors explicitement le libellé « Préinscriptions FEBA ».
   // Le contexte d'académie arrive de façon ASYNCHRONE. Tant qu'il n'est
   // pas chargé, `activeEntity` est indéfini : filtrer à ce moment-là
   // afficherait l'onglet « Préinscriptions » pour FEBA FHA, puis le
   // retirerait — un clignotement trompeur. On attend donc le contexte.
-  const isOnlineAcademy = activeEntity?.entity_type === "online";
   const visibleTabs = contextLoading
     ? []
-    : TABS.filter((item) => !(item.campusOnly && isOnlineAcademy));
+    : TABS.filter((item) => isNavItemVisible(item, {
+      hasFeature, isAllAcademies: allEntitiesMode, allowedAcademies: entities || [] }));
 
   const [tab, setTab] = useState("messages");
   return (
@@ -738,15 +739,15 @@ export default function AdminWebsite() {
                 : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50"
             }`}>
             <tb.icon className="w-4 h-4" />{" "}
-            {/* Libellé explicite en toutes circonstances : cet onglet ne
-                montre QUE les préinscriptions FEBA (modèle PreRegistration).
-                Les dossiers FEBA FHA vivent dans « Admissions FEBA FHA ». */}
-            {tb.key === "prereg" ? t("Préinscriptions FEBA") : t(tb.label)}
+            {/* Libellé explicite : cet onglet ne montre QUE les
+                préinscriptions du site public (modèle PreRegistration).
+                Les dossiers en ligne vivent dans « Admissions en ligne ». */}
+            {tb.key === "prereg" ? t("Préinscriptions du site") : t(tb.label)}
           </button>
         ))}
       </div>
       {tab === "messages" && <MessagesTab />}
-      {tab === "prereg" && !isOnlineAcademy && <PreregTab />}
+      {tab === "prereg" && visibleTabs.some((item) => item.key === "prereg") && <PreregTab />}
       {tab === "news" && <NewsTab />}
       {tab === "settings" && <SettingsTab />}
       <p className="text-xs text-slate-400">

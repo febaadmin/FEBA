@@ -1,5 +1,8 @@
 # GRADING_SCALE_REPORT.md — Barèmes par niveau (V8-P5, 26/07/2026)
 
+> **DOCUMENT HISTORIQUE** — il décrit une version antérieure de FEBA ; ses résultats n'ont pas été
+> rejoués tels quels sur cette version. Références à jour : `DOCUMENTATION_INDEX.md`, `FINAL_REPORT.md`.
+
 ## 1. Règle métier
 
 - **Niveaux 1 à 11** (Garderie → CM2) : moyennes affichées **sur 10** ;

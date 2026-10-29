@@ -3,11 +3,27 @@ FROM python:3.12-slim
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONFAULTHANDLER=1
+# Une image de PRODUCTION ne charge jamais les réglages de développement,
+# même si DJANGO_ENV manque dans l'environnement (settings/__init__.py).
+ENV DJANGO_ENV=prod
 
 RUN apt-get update && apt-get install -y \
     gcc libpq-dev \
     libcairo2 libpango-1.0-0 libpangocairo-1.0-0 \
     libgdk-pixbuf-2.0-0 libffi-dev shared-mime-info \
+    && rm -rf /var/lib/apt/lists/*
+
+# Conversion des gabarits bureautiques (DOCX, DOC, ODT, RTF, PPTX, PPT, ODP)
+# en PDF : LibreOffice SANS interface graphique (paquets « -nogui »), lancé
+# par apps/documents/conversion.py avec un profil jetable par conversion,
+# macros désactivées et délai maximal. Polices métriquement compatibles
+# avec celles de Microsoft (Carlito ≈ Calibri, Caladea ≈ Cambria,
+# Liberation ≈ Arial/Times/Courier) : sans elles, un document Word serait
+# recomposé avec d'autres largeurs de texte et sa mise en page changerait.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libreoffice-writer-nogui libreoffice-impress-nogui \
+    fonts-dejavu-core fonts-liberation fonts-liberation2 \
+    fonts-crosextra-carlito fonts-crosextra-caladea \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app

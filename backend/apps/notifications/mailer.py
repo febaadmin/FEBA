@@ -3,199 +3,412 @@ apps/notifications/mailer.py — Couche d'envoi unique, traçable et honnête.
 
 RÈGLE
 -----
-Aucun appel direct à `send_mail` ailleurs dans le projet. Tout passe par
-`send_tracked_email()`, qui enregistre l'envoi AVANT de tenter quoi que ce
-soit et met à jour son état ensuite. Un envoi non journalisé est un envoi
-dont personne ne peut dire s'il a eu lieu.
+Tout envoi passe par ce module (et, en dernier recours, par le backend
+`TrackingEmailBackend` qui trace ce qui lui échapperait). Chaque message :
 
-CE QUI A CHANGÉ
----------------
-`fail_silently=True` a disparu. Il transformait un serveur SMTP injoignable
-en succès silencieux : l'écran public annonçait « vous recevrez un e-mail »
-et l'administration n'avait aucune trace de l'échec. L'erreur est
-désormais capturée, journalisée, exposée, et l'écran public ne parle
-d'e-mail qu'après avoir vu le résultat.
+  1. est ENREGISTRÉ avant toute tentative (`EmailDelivery`), avec son
+     contenu archivé (`EmailContent`) et ses pièces jointes
+     (`EmailAttachment`, fichiers privés) ;
+  2. est tenté ; chaque tentative est journalisée (`EmailDeliveryAttempt`)
+     avec son résultat EXACT ;
+  3. porte le TRANSPORT réellement utilisé : console, mémoire, serveur de
+     test (Mailpit — capturé, jamais distribué), ou SMTP réel.
 
 CE QUE CETTE COUCHE NE PRÉTEND PAS
 ----------------------------------
-Elle ne dit jamais qu'un e-mail est ARRIVÉ. Elle sait seulement si le
-backend d'envoi l'a accepté sans erreur. Sur une installation sans
-fournisseur configuré (backend `console` ou `locmem`), `used_real_provider`
-vaut faux et les rapports doivent le refléter : douze e-mails écrits dans
-la console ne sont pas douze e-mails envoyés.
+Elle ne dit jamais qu'un e-mail est ARRIVÉ. L'état le plus fort constatable
+est « accepté par le serveur de messagerie ». Un message accepté par Mailpit
+n'a quitté aucune machine : il est affiché comme « capturé ».
+
+Les secrets SMTP ne sont jamais écrits dans le journal, les erreurs ou les
+réponses d'API.
 """
+import hashlib
 import logging
+import re
+from datetime import timedelta
 
 from django.conf import settings
+from django.core.files.base import ContentFile
 from django.core.mail import EmailMultiAlternatives, get_connection
 from django.utils import timezone
 
-from .email_models import EmailDelivery
+from .email_models import EmailAttachment, EmailContent, EmailDelivery, EmailDeliveryAttempt
 
 logger = logging.getLogger("apps")
 
-#: Délais des nouvelles tentatives, en minutes. Croissants : un serveur
-#: momentanément indisponible se remet rarement en dix secondes, et
-#: marteler une adresse refusée ne la rend pas valide.
+#: Délais des nouvelles tentatives automatiques, en minutes.
 RETRY_DELAYS_MINUTES = (5, 30, 180)
-
-#: Au-delà, on cesse d'essayer et on laisse la main à l'administration.
-#: Une adresse mal saisie ne deviendra jamais correcte toute seule ; c'est
-#: un humain qui doit la corriger.
+#: Au-delà, échec définitif : une décision humaine est nécessaire.
 MAX_ATTEMPTS = len(RETRY_DELAYS_MINUTES) + 1
+
+TRACKING_HEADER = "X-FEBA-Tracking-Id"
+TRACKING_BACKEND = "apps.notifications.backends.TrackingEmailBackend"
+
+#: Hôtes de serveurs de CAPTURE (développement) : un message accepté par
+#: eux n'est jamais distribué. Complétable par EMAIL_CAPTURE_HOSTS.
+DEFAULT_CAPTURE_HOSTS = {"mailpit", "mailhog", "mailcatcher", "smtp4dev", "maildev"}
+
+
+# ── Transport ─────────────────────────────────────────────────────────
+
+def transport_backend():
+    """Backend de TRANSPORT effectif (celui qu'enveloppe le backend de traçage)."""
+    backend = getattr(settings, "EMAIL_BACKEND", "") or ""
+    if backend == TRACKING_BACKEND:
+        return (getattr(settings, "EMAIL_TRANSPORT_BACKEND", "")
+                or "django.core.mail.backends.console.EmailBackend")
+    return backend
+
+
+def capture_hosts():
+    extra = getattr(settings, "EMAIL_CAPTURE_HOSTS", "") or ""
+    if isinstance(extra, str):
+        extra = [h.strip() for h in extra.split(",") if h.strip()]
+    return DEFAULT_CAPTURE_HOSTS | {h.lower() for h in extra}
+
+
+def current_transport():
+    """
+    Ce que deviendra réellement un message envoyé maintenant.
+
+    `EMAIL_DELIVERY_MODE` (auto | capture | real) force la qualification
+    d'un hôte que l'heuristique ne reconnaîtrait pas.
+    """
+    backend = transport_backend().lower()
+    if "console" in backend:
+        return EmailDelivery.TRANSPORT_CONSOLE
+    if "locmem" in backend or "dummy" in backend:
+        return EmailDelivery.TRANSPORT_MEMORY
+    if "filebased" in backend:
+        return EmailDelivery.TRANSPORT_FILE
+    if "smtp" in backend:
+        host = (getattr(settings, "EMAIL_HOST", "") or "").strip().lower()
+        if not host:
+            return EmailDelivery.TRANSPORT_UNCONFIGURED
+        mode = (getattr(settings, "EMAIL_DELIVERY_MODE", "auto") or "auto").lower()
+        if mode == "capture":
+            return EmailDelivery.TRANSPORT_CAPTURE
+        if mode == "real":
+            return EmailDelivery.TRANSPORT_SMTP
+        if host in capture_hosts():
+            return EmailDelivery.TRANSPORT_CAPTURE
+        return EmailDelivery.TRANSPORT_SMTP
+    return EmailDelivery.TRANSPORT_OTHER
+
+
+def smtp_target():
+    """`hôte:port` visé, sans aucune donnée d'authentification."""
+    if "smtp" not in transport_backend().lower():
+        return ""
+    host = getattr(settings, "EMAIL_HOST", "") or ""
+    return f"{host}:{getattr(settings, 'EMAIL_PORT', '')}" if host else ""
+
+
+def provider_is_configured():
+    """Vrai seulement si un VRAI serveur de messagerie est configuré."""
+    return current_transport() in EmailDelivery.REAL_TRANSPORTS
+
+
+#: Adresse d'expédition RETIRÉE (domaine feba.bj) et sa remplaçante. Une
+#: configuration existante sur un serveur (.env.prod) peut encore la
+#: contenir : elle n'est plus jamais utilisée (voir `sender_for`).
+OBSOLETE_SENDERS = {"noreply@feba.bj"}
+OFFICIAL_NOREPLY = "noreply@globalfeba.com"
+
+
+def _address_of(value):
+    from email.utils import parseaddr
+
+    return (parseaddr(value or "")[1] or "").strip().lower()
+
+
+def normalize_sender(value):
+    """
+    Remplace une adresse d'expédition obsolète par l'adresse officielle,
+    en conservant un éventuel nom affiché (« FEBA <…> »).
+    """
+    address = _address_of(value)
+    if address in OBSOLETE_SENDERS:
+        logger.warning("Adresse d'expédition obsolète « %s » remplacée par « %s » : corrigez "
+                       "DEFAULT_FROM_EMAIL / FEBA_FROM_EMAIL / FHA_FROM_EMAIL.", address, OFFICIAL_NOREPLY)
+        from email.utils import formataddr, parseaddr
+        name = parseaddr(value)[0]
+        return formataddr((name, OFFICIAL_NOREPLY)) if name else OFFICIAL_NOREPLY
+    return value
 
 
 def sender_for(entity):
     """
-    Adresse d'expédition de cette académie.
-
-    Chaque académie peut avoir la sienne (`FEBA_FROM_EMAIL`,
-    `FHA_FROM_EMAIL`) : un parent de l'académie en ligne ne doit pas
-    recevoir un message venant de l'adresse de l'école présentielle.
+    SEULE source de l'adresse d'expédition de FEBA : propre à l'académie
+    (FEBA_FROM_EMAIL / FHA_FROM_EMAIL), sinon DEFAULT_FROM_EMAIL
+    (noreply@globalfeba.com). Tous les envois passent par ici.
     """
     code = getattr(entity, "code", "") or ""
     specific = {
         "FEBA": getattr(settings, "FEBA_FROM_EMAIL", ""),
         "FEBA_FHA": getattr(settings, "FHA_FROM_EMAIL", ""),
     }.get(code, "")
-    return specific or getattr(settings, "DEFAULT_FROM_EMAIL", "") or ""
+    return normalize_sender(specific or getattr(settings, "DEFAULT_FROM_EMAIL", "") or OFFICIAL_NOREPLY)
 
 
-def provider_is_configured():
+# ── Expurgation des secrets ───────────────────────────────────────────
+
+_SECRET_URL = re.compile(
+    r"https?://\S*(?:reset|password|token|activate|confirm|verify|magic|invitation|uid)\S*",
+    re.IGNORECASE,
+)
+_SECRET_PARAM = re.compile(r"(?i)\b(token|code|key|password|pwd|secret)=([^\s&\"'<]+)")
+REDACTED_LINK = "[lien de sécurité masqué dans l'archive]"
+NOT_ARCHIVED = "Contenu non archivé pour cet envoi historique : impossible de le rejouer."
+# Rejouer l'archive masquée enverrait un message au lien inutilisable,
+# présenté comme « accepté » : ce serait un succès trompeur.
+REDACTED_NOT_REPLAYABLE = ("Message porteur d'un lien de sécurité (masqué dans l'archive) : "
+                           "il n'est jamais renvoyé depuis l'archive. Demander un nouveau lien.")
+
+
+def redact(text):
+    """Masque liens et paramètres porteurs de secrets. Renvoie (texte, modifié)."""
+    if not text:
+        return text, False
+    new = _SECRET_URL.sub(REDACTED_LINK, text)
+    new = _SECRET_PARAM.sub(lambda m: f"{m.group(1)}=[masqué]", new)
+    return new, new != text
+
+
+# ── Archivage ─────────────────────────────────────────────────────────
+
+def create_content(*, subject, text_body, html_body=None, attachments=None, sensitive=False):
     """
-    Vrai si un fournisseur d'envoi réel est configuré.
+    Archive le contenu et ses pièces jointes.
 
-    Sert aux rapports et aux écrans : sans fournisseur, on n'annonce pas
-    un envoi externe. Le message reste enregistré, visible, relançable.
+    `attachments` : liste de (nom, octets, type MIME).
+    `sensitive` : expurgation des liens et jetons de sécurité dans l'archive.
     """
-    backend = (getattr(settings, "EMAIL_BACKEND", "") or "").lower()
-    if any(marker in backend for marker in
-           ("console", "locmem", "dummy", "filebased")):
-        return False
-    if "smtp" in backend:
-        return bool(getattr(settings, "EMAIL_HOST", ""))
-    # Backend tiers (API d'un prestataire) : on ne peut pas en juger ici.
-    return True
+    text, red1 = redact(text_body or "") if sensitive else (text_body or "", False)
+    html, red2 = redact(html_body or "") if sensitive else (html_body or "", False)
+    redacted = bool(sensitive and (red1 or red2))
+    content = EmailContent.objects.create(
+        subject=(subject or "")[:255], text_body=text, html_body=html, is_redacted=redacted,
+        redaction_note="Liens et jetons de sécurité masqués dans l'archive." if redacted else "",
+    )
+    for item in attachments or []:
+        store_attachment(content, *item)
+    return content
 
 
-def send_tracked_email(*, purpose, to_email, subject, text_body,
-                       html_body=None, entity=None, reference="",
-                       language="", cc=None, attachments=None,
-                       reply_to=None):
+def store_attachment(content, name, data, mimetype):
+    from .attachments import safe_filename
+
+    digest = hashlib.sha256(data).hexdigest()
+    name = safe_filename(name)
+    existing = content.attachments.filter(sha256=digest, original_name=name).first()
+    if existing is not None:
+        return existing
+    attachment = EmailAttachment(
+        content=content, original_name=name, content_type=mimetype or "application/octet-stream",
+        size=len(data), sha256=digest,
+    )
+    attachment.file.save(name, ContentFile(data), save=False)
+    attachment.save()
+    return attachment
+
+
+def create_delivery(*, purpose, to_email, subject, text_body="", html_body=None, entity=None,
+                    reference="", language="", cc=None, attachments=None, reply_to=None,
+                    content=None, initiated_by=None, sensitive=False,
+                    status=EmailDelivery.QUEUED, sms=True, sms_user=None, sms_phone=None,
+                    sms_key=None, sms_precheck=None):
     """
-    Envoie un e-mail et renvoie la ligne de journal correspondante.
+    Enregistre un envoi (et son contenu) SANS le tenter — et met en file la
+    copie SMS de ce message pour ce destinataire (apps/notifications/sms.py).
 
-    Ne lève JAMAIS : un échec d'envoi ne doit pas annuler l'opération
-    métier qui l'a déclenché. Une fiche d'inscription enregistrée reste
-    enregistrée même si l'accusé de réception ne part pas — la perdre pour
-    cette raison serait bien pire. L'échec est enregistré, visible, et une
-    action de renvoi est offerte à l'administration.
-
-    `attachments` : liste de (nom, contenu, type MIME).
+    `sms_user` / `sms_phone` : destinataire connu de l'appelant (sinon le
+    compte est retrouvé par l'adresse e-mail, dans la même académie).
+    `sms_key` : clé de l'ÉVÉNEMENT métier (une relance publiée sur deux
+    canaux ne produit qu'un SMS). `sms=False` : pas de copie (renvoi).
     """
-    from_email = sender_for(entity)
+    if content is None:
+        content = create_content(subject=subject, text_body=text_body, html_body=html_body,
+                                 attachments=attachments, sensitive=sensitive)
     delivery = EmailDelivery.objects.create(
-        entity=entity,
-        purpose=purpose,
-        subject_reference=reference,
-        to_email=to_email,
-        cc_emails=list(cc or []),
-        from_email=from_email,
+        entity=entity, purpose=purpose, subject_reference=(reference or "")[:64],
+        to_email=to_email, cc_emails=list(cc or []), from_email=sender_for(entity),
         reply_to=reply_to or getattr(settings, "EMAIL_REPLY_TO", "") or "",
-        subject=subject,
-        language=language,
-        backend=getattr(settings, "EMAIL_BACKEND", ""),
+        subject=(content.subject or subject or "")[:255], language=language or "",
+        backend=transport_backend(), transport=current_transport(), smtp_host=smtp_target(),
+        content=content, initiated_by=initiated_by, status=status,
     )
-
-    _attempt(delivery, text_body, html_body, attachments)
+    if sms:
+        from .sms import schedule_for_email
+        try:
+            schedule_for_email(
+                delivery, user=sms_user, phone=sms_phone, key=sms_key, precheck=sms_precheck,
+                text_body=text_body or None, html_body=html_body, sensitive=sensitive and content.is_redacted,
+            )
+        except Exception:  # le SMS ne doit jamais empêcher l'e-mail
+            logger.exception("SMS miroir de l'envoi %s non enregistré.", delivery.pk)
     return delivery
 
 
-def _attempt(delivery, text_body, html_body=None, attachments=None):
-    """Une tentative d'envoi. Met à jour l'état du journal, ne lève pas."""
+# ── Envoi ─────────────────────────────────────────────────────────────
+
+def send_tracked_email(*, purpose, to_email, subject, text_body, html_body=None, entity=None,
+                       reference="", language="", cc=None, attachments=None, reply_to=None,
+                       initiated_by=None, sensitive=False, sms=True, sms_user=None, sms_phone=None,
+                       sms_key=None, sms_precheck=None):
+    """
+    Enregistre ET tente l'envoi. Ne lève JAMAIS : un échec d'envoi ne doit
+    pas annuler l'opération métier qui l'a déclenché ; il est enregistré,
+    visible et relançable.
+
+    `sensitive` : le message part intact, mais son archive est expurgée.
+    """
+    delivery = create_delivery(
+        purpose=purpose, to_email=to_email, subject=subject, text_body=text_body,
+        html_body=html_body, entity=entity, reference=reference, language=language, cc=cc,
+        attachments=attachments, reply_to=reply_to, initiated_by=initiated_by,
+        sensitive=sensitive, status=EmailDelivery.PENDING, sms=sms, sms_user=sms_user,
+        sms_phone=sms_phone, sms_key=sms_key, sms_precheck=sms_precheck,
+    )
+    live = (text_body, html_body) if sensitive else None
+    return _attempt(delivery, live_bodies=live)
+
+
+def deliver(delivery, *, manual=False):
+    """
+    Tente (ou retente) l'envoi d'un message ENREGISTRÉ, depuis son contenu
+    archivé. `manual` : relance décidée par un humain — le compteur
+    automatique repart de zéro ; l'historique des tentatives est conservé.
+    """
+    if manual:
+        delivery.attempts = 0
+    return _attempt(delivery, manual=manual)
+
+
+def resend(delivery, text_body=None, html_body=None, attachments=None, initiated_by=None):
+    """
+    Renvoi MANUEL : crée un NOUVEL envoi ; le précédent reste visible dans
+    la boîte d'envoi. Sans nouveaux corps, le contenu archivé est réutilisé.
+    """
+    content = delivery.content
+    if text_body is not None or content is None:
+        content = create_content(subject=delivery.subject, text_body=text_body or "",
+                                 html_body=html_body, attachments=attachments)
+    new = create_delivery(
+        purpose=delivery.purpose, to_email=delivery.to_email, subject=delivery.subject,
+        entity=delivery.entity, reference=delivery.subject_reference, language=delivery.language,
+        cc=delivery.cc_emails, reply_to=delivery.reply_to or None, content=content,
+        initiated_by=initiated_by, status=EmailDelivery.PENDING,
+        # Le SMS de cet événement existe déjà (envoi d'origine) : un renvoi
+        # manuel de l'e-mail n'en produit pas un second.
+        sms=False,
+    )
+    return _attempt(new, manual=True)
+
+
+def retry_due(delivery):
+    """Nouvelle tentative AUTOMATIQUE (le compteur n'est pas remis à zéro)."""
+    return _attempt(delivery)
+
+
+def replay_blocker(delivery):
+    """Pourquoi cet envoi ne peut pas être rejoué depuis l'archive ('' si rien)."""
+    content = delivery.content
+    if content is None:
+        return NOT_ARCHIVED
+    if content.is_redacted:
+        return REDACTED_NOT_REPLAYABLE
+    return ""
+
+
+def build_message(delivery, live_bodies=None):
+    """Message reconstruit depuis l'archive (ou les corps fournis)."""
+    content = delivery.content
+    if live_bodies is not None:
+        text_body, html_body = live_bodies
+    else:
+        blocker = replay_blocker(delivery)
+        if blocker:
+            raise LookupError(blocker)
+        text_body, html_body = content.text_body, content.html_body
+    message = EmailMultiAlternatives(
+        subject=delivery.subject,
+        body=text_body or "",
+        # Un envoi créé avant le changement d'adresse est rejoué avec
+        # l'adresse officielle, jamais avec l'adresse retirée.
+        from_email=normalize_sender(delivery.from_email) or None,
+        to=[delivery.to_email],
+        cc=list(delivery.cc_emails or []) or None,
+        reply_to=[delivery.reply_to] if delivery.reply_to else None,
+        headers={TRACKING_HEADER: str(delivery.tracking_id)},
+    )
+    if html_body:
+        message.attach_alternative(html_body, "text/html")
+    if content is not None:
+        for attachment in content.attachments.all():
+            # Fichier manquant → échec explicite : partir sans la pièce
+            # annoncée serait un succès mensonger.
+            message.attach(attachment.original_name, attachment.read_bytes(), attachment.content_type)
+    return message
+
+
+def _attempt(delivery, *, manual=False, live_bodies=None):
+    """Une tentative. Met à jour l'état et l'historique ; ne lève pas."""
+    now = timezone.now()
     delivery.attempts += 1
-
+    delivery.status = EmailDelivery.PENDING
+    delivery.backend = transport_backend()
+    delivery.transport = current_transport()
+    delivery.smtp_host = smtp_target()
+    delivery.last_attempt_at = now
+    error, permanent = "", False
     try:
-        connection = get_connection(fail_silently=False)
-        message = EmailMultiAlternatives(
-            subject=delivery.subject,
-            body=text_body,
-            from_email=delivery.from_email or None,
-            to=[delivery.to_email],
-            cc=list(delivery.cc_emails or []) or None,
-            reply_to=[delivery.reply_to] if delivery.reply_to else None,
-            connection=connection,
-            headers={"X-FEBA-Tracking-Id": str(delivery.tracking_id)},
-        )
-        if html_body:
-            message.attach_alternative(html_body, "text/html")
-        for name, content, mimetype in (attachments or []):
-            message.attach(name, content, mimetype)
-
+        message = build_message(delivery, live_bodies)
+        message.connection = get_connection(fail_silently=False)
         accepted = message.send()
+        try:
+            delivery.message_id = (message.message().get("Message-ID") or "")[:255]
+        except Exception:  # pragma: no cover — en-tête purement informatif
+            pass
+        if not accepted:
+            error = "Le backend d'envoi a accepté 0 message sans signaler d'erreur."
+    except LookupError as exc:
+        error, permanent = str(exc), True
     except Exception as exc:
-        # L'erreur EXACTE est conservée. « Erreur d'envoi » ne permet ni de
-        # distinguer une adresse invalide d'un mot de passe expiré, ni de
-        # décider s'il faut relancer ou corriger.
-        delivery.last_error = f"{type(exc).__name__}: {exc}"[:2000]
-        _schedule_retry_or_fail(delivery)
-        logger.warning(
-            "E-mail %s → %s : échec (tentative %d/%d) — %s",
-            delivery.purpose, delivery.to_email, delivery.attempts,
-            MAX_ATTEMPTS, delivery.last_error,
-        )
-        return delivery
+        # Erreur EXACTE conservée (jamais de secret : le mot de passe n'est
+        # pas dans les messages d'erreur SMTP).
+        error = f"{type(exc).__name__}: {exc}"[:2000]
 
-    if not accepted:
-        # `send()` a renvoyé 0 : le backend n'a pas pris le message, sans
-        # lever. Un succès muet serait pire qu'une erreur.
-        delivery.last_error = (
-            "Le backend d'envoi a accepté 0 message sans signaler d'erreur."
-        )
-        _schedule_retry_or_fail(delivery)
-        return delivery
-
-    delivery.status = EmailDelivery.SENT
-    delivery.sent_at = timezone.now()
-    delivery.next_retry_at = None
-    delivery.last_error = ""
-    delivery.save(update_fields=[
-        "status", "attempts", "sent_at", "next_retry_at", "last_error",
-        "updated_at",
-    ])
-    logger.info(
-        "E-mail %s → %s : remis au backend (%s, suivi %s)",
-        delivery.purpose, delivery.to_email, delivery.backend,
-        delivery.tracking_id,
+    if error and not permanent and live_bodies is not None and replay_blocker(delivery):
+        # Le premier essai partait avec les corps réels ; un nouvel essai ne
+        # pourrait rejouer que l'archive masquée. Échec définitif, expliqué.
+        error, permanent = f"{error}\n{replay_blocker(delivery)}", True
+    if error:
+        delivery.last_error = error
+        _schedule_retry_or_fail(delivery, permanent=permanent)
+        logger.warning("E-mail %s → %s : échec (tentative %d/%d) — %s",
+                       delivery.purpose, delivery.to_email, delivery.attempts, MAX_ATTEMPTS, error)
+    else:
+        delivery.status = EmailDelivery.SENT
+        delivery.sent_at = now
+        delivery.next_retry_at = None
+        delivery.last_error = ""
+        logger.info("E-mail %s → %s : accepté (%s %s, suivi %s)", delivery.purpose,
+                    delivery.to_email, delivery.transport, delivery.smtp_host, delivery.tracking_id)
+    delivery.save()
+    EmailDeliveryAttempt.objects.create(
+        delivery=delivery, outcome=delivery.status, transport=delivery.transport,
+        smtp_host=delivery.smtp_host, error=error, manual=manual,
     )
     return delivery
 
 
-def _schedule_retry_or_fail(delivery):
-    from datetime import timedelta
-
-    if delivery.attempts < MAX_ATTEMPTS:
+def _schedule_retry_or_fail(delivery, permanent=False):
+    if not permanent and delivery.attempts < MAX_ATTEMPTS:
         minutes = RETRY_DELAYS_MINUTES[delivery.attempts - 1]
         delivery.status = EmailDelivery.RETRY
         delivery.next_retry_at = timezone.now() + timedelta(minutes=minutes)
     else:
         delivery.status = EmailDelivery.FAILED
         delivery.next_retry_at = None
-    delivery.save(update_fields=[
-        "status", "attempts", "last_error", "next_retry_at", "updated_at",
-    ])
-
-
-def resend(delivery, text_body, html_body=None, attachments=None):
-    """
-    Relance un envoi depuis l'administration.
-
-    Repart de zéro sur le compteur de tentatives : la relance est une
-    décision humaine, prise après avoir corrigé quelque chose. Lui
-    appliquer le quota d'un envoi automatique la ferait échouer d'emblée.
-    """
-    delivery.attempts = 0
-    delivery.status = EmailDelivery.PENDING
-    delivery.backend = getattr(settings, "EMAIL_BACKEND", "")
-    delivery.save(update_fields=["attempts", "status", "backend", "updated_at"])
-    return _attempt(delivery, text_body, html_body, attachments)

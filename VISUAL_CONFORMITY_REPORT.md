@@ -1,5 +1,8 @@
 # VISUAL_CONFORMITY_REPORT.md — Conformité visuelle V6.2 (20/07/2026)
 
+> **DOCUMENT HISTORIQUE** — il décrit une version antérieure de FEBA ; ses résultats n'ont pas été
+> rejoués tels quels sur cette version. Références à jour : `DOCUMENTATION_INDEX.md`, `FINAL_REPORT.md`.
+
 Passe corrective **de conformité** partant du dernier commit V6.1. Les
 captures annotées font foi pour le CHOIX des images : « Bonne image » =
 utilisée, « Pas la bonne / Mauvaise image » = retirée. Aucune interprétation

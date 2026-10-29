@@ -5,7 +5,8 @@ import toast from "react-hot-toast";
 import { schoolsAPI } from "../../api";
 import PageHeader from "../../components/ui/PageHeader";
 import Modal from "../../components/ui/Modal";
-import logoFeba from "../../assets/logo_feba.jpeg";
+import { useAcademy } from "../../context/AcademyContext";
+import AcademyLogo from "../../components/AcademyLogo";
 import { extractApiError } from "../../utils/errors";
 import { resolveMediaUrl } from "../../utils/media";
 import { t } from "../../i18n";
@@ -18,17 +19,22 @@ export default function AdminBranding() {
   const [label, setLabel] = useState("");
   const fileRef = useRef();
 
-  const { data: schoolData } = useQuery({ queryKey: ["school"], queryFn: schoolsAPI.list });
-  const school = schoolData?.data?.results?.[0] || (Array.isArray(schoolData?.data) ? schoolData?.data?.[0] : null);
+  // L'académie est celle du CONTEXTE (sélecteur d'académie), jamais « la
+  // première de la liste » ni l'identifiant 1 : c'est ce repli qui pouvait
+  // poser le logo d'une académie chez une autre.
+  const { activeAcademy, isAllAcademies } = useAcademy();
+  const academyId = activeAcademy?.id || null;
 
   const { data: brandsData, isLoading, refetch } = useQuery({
-    queryKey: ["branding"],
+    queryKey: ["branding", academyId],
     queryFn: () => schoolsAPI.listBranding(),
+    enabled: Boolean(academyId),
   });
 
   const { data: activeData } = useQuery({
-    queryKey: ["branding-active"],
+    queryKey: ["branding-active", academyId],
     queryFn: () => schoolsAPI.activeBranding(),
+    enabled: Boolean(academyId),
   });
 
   const brands = brandsData?.data?.results || brandsData?.data || [];
@@ -40,6 +46,8 @@ export default function AdminBranding() {
       toast.success(t("Logo uploadé et activé avec succès ! Propagé dans toute l'application."));
       qc.invalidateQueries({ queryKey: ["branding"] });
       qc.invalidateQueries({ queryKey: ["branding-active"] });
+      // Logo et favicons de TOUTES les pages ouvertes (useBranding).
+      qc.invalidateQueries({ queryKey: ["branding-public"] });
       setUploadOpen(false);
       setSelectedFile(null);
       setLabel("");
@@ -54,6 +62,8 @@ export default function AdminBranding() {
       toast.success(t("Logo activé avec succès !"));
       qc.invalidateQueries({ queryKey: ["branding"] });
       qc.invalidateQueries({ queryKey: ["branding-active"] });
+      // Logo et favicons de TOUTES les pages ouvertes (useBranding).
+      qc.invalidateQueries({ queryKey: ["branding-public"] });
     },
     onError: (e) => toast.error(extractApiError(e)),
   });
@@ -64,6 +74,8 @@ export default function AdminBranding() {
       toast.success(t("Version supprimée."));
       qc.invalidateQueries({ queryKey: ["branding"] });
       qc.invalidateQueries({ queryKey: ["branding-active"] });
+      // Logo et favicons de TOUTES les pages ouvertes (useBranding).
+      qc.invalidateQueries({ queryKey: ["branding-public"] });
     },
     onError: (e) => toast.error(extractApiError(e)),
   });
@@ -71,6 +83,15 @@ export default function AdminBranding() {
   const handleFileChange = (e) => {
     const file = e.target.files[0];
     if (!file) return;
+    // Contrôle indicatif ; le serveur décode l'image et fait foi.
+    if (!["image/png", "image/jpeg", "image/webp"].includes(file.type)) {
+      toast.error(t("Format refusé : PNG, JPEG ou WebP uniquement."));
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error(t("Fichier trop volumineux (5 Mo au maximum)."));
+      return;
+    }
     setSelectedFile(file);
     setPreviewUrl(URL.createObjectURL(file));
   };
@@ -81,8 +102,7 @@ export default function AdminBranding() {
     fd.append("logo", selectedFile);
     fd.append("label", label || `Logo ${new Date().toLocaleDateString()}`);
     fd.append("activate", "true");
-    // Use school ID 1 or get from context
-    fd.append("school", school?.id || "1");
+    fd.append("school", String(academyId));
     uploadMut.mutate(fd);
   };
 
@@ -90,13 +110,24 @@ export default function AdminBranding() {
     <div className="space-y-6">
       <PageHeader
         title={t("Gestion du Branding & Logo")}
-        subtitle={t("Gestion centralisée du logo officiel de l'école FEBA — propagé automatiquement dans toute l'application")}
+        subtitle={isAllAcademies || !activeAcademy?.name
+          ? t("Gestion centralisée du logo officiel de chaque académie — propagé automatiquement dans toute l'application")
+          : t("Gestion centralisée du logo officiel de {nom} — propagé automatiquement dans toute l'application", { nom: activeAcademy.name })}
         action={
-          <button onClick={() => setUploadOpen(true)}
+          <button onClick={() => setUploadOpen(true)} disabled={!academyId}
             className="btn-primary flex items-center gap-2">
             <Upload className="w-4 h-4" />{t("Uploader un nouveau logo")}</button>
         }
       />
+
+      {isAllAcademies && (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-amber-800" role="alert">
+          {t("Sélectionnez d'abord l'académie dont vous gérez le logo (sélecteur d'académie en haut de page).")}
+        </div>
+      )}
+      {activeAcademy && (
+        <p className="text-sm text-slate-600">{t("Académie")} : <strong>{activeAcademy.name}</strong></p>
+      )}
 
       {/* Active Logo Banner */}
       <div className="bg-gradient-to-r from-blue-900 to-blue-800 rounded-xl p-6 text-white flex items-center gap-6">
@@ -104,7 +135,9 @@ export default function AdminBranding() {
           {active?.logo_url ? (
             <img src={resolveMediaUrl(active.logo_url)} alt={t("Logo actif")} className="w-full h-full object-contain" />
           ) : (
-            <img src={logoFeba} alt={t("Logo FEBA par défaut")} className="w-full h-full object-contain" />
+            // Logo de repli de l'académie, ou son monogramme si elle n'en a
+            // aucun (académie nouvellement créée) : jamais une image cassée.
+            <AcademyLogo />
           )}
         </div>
         <div className="flex-1">
@@ -112,7 +145,7 @@ export default function AdminBranding() {
             <CheckCircle className="w-5 h-5 text-green-400" />
             <span className="font-bold text-lg">{t("Logo actuellement actif")}</span>
           </div>
-          <p className="text-blue-200 text-sm">{active?.label || "Logo FEBA officiel"}</p>
+          <p className="text-blue-200 text-sm">{active?.label || t("Logo officiel par défaut")}</p>
           <p className="text-blue-300 text-xs mt-1">{t("Affiché sur : Page de connexion • Tableaux de bord • Bulletins PDF • Tous les documents")}</p>
         </div>
         <div className="text-right text-xs text-blue-300">
@@ -157,7 +190,7 @@ export default function AdminBranding() {
           <div className="p-8 text-center">
             <Image className="w-12 h-12 text-gray-300 mx-auto mb-3" />
             <p className="text-gray-500 text-sm">{t("Aucune version uploadée.")}</p>
-            <p className="text-gray-400 text-xs mt-1">{t("Le logo FEBA par défaut est utilisé.")}</p>
+            <p className="text-gray-400 text-xs mt-1">{t("Le logo par défaut de l'académie est utilisé.")}</p>
           </div>
         ) : (
           <div className="divide-y divide-gray-100">
@@ -250,7 +283,7 @@ export default function AdminBranding() {
                 </div>
               )}
             </div>
-            <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
+            <input ref={fileRef} type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={handleFileChange} />
           </div>
 
           <div className="bg-blue-50 rounded-lg p-3 text-xs text-blue-700">
@@ -258,7 +291,7 @@ export default function AdminBranding() {
 
           <div className="flex gap-3 pt-2">
             <button onClick={() => setUploadOpen(false)} className="btn-secondary flex-1">{t("Annuler")}</button>
-            <button onClick={handleUpload} disabled={!selectedFile || uploadMut.isPending}
+            <button onClick={handleUpload} disabled={!selectedFile || !academyId || uploadMut.isPending}
               className="btn-primary flex-1 flex items-center justify-center gap-2">
               {uploadMut.isPending ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
               {uploadMut.isPending ? t("Upload en cours…") : t("Uploader & Activer")}

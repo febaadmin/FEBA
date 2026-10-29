@@ -170,6 +170,23 @@
   ],
   "assets": [
     {
+      "name": "academy_logo",
+      "label": "Logo de l'académie (logo activé)",
+      "required": false,
+      "resource": "academy_logo",
+      "box": {
+        "x_mm": 127.0,
+        "y_mm": 9.2,
+        "width_mm": 43.2,
+        "height_mm": 49.7
+      },
+      "fit": "contain",
+      "cover": {
+        "color": "#FCF5EE"
+      },
+      "_commentaire": "Le blason est INCRUSTÉ dans le fond. Tant qu'aucun logo n'est téléversé et activé, rien n'est apposé : le visuel officiel reste intact. Dès qu'un logo est activé, la zone mesurée du blason (pixels relevés sur le fond, échelle 0,199 mm/px) est recouverte de la couleur du papier, puis le logo actif y est apposé — un document ne sort jamais avec l'ancien logo."
+    },
+    {
       "name": "official_seal",
       "label": "Sceau officiel — remplace « YOUR SEAL »",
       "required": false,

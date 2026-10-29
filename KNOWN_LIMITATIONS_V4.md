@@ -1,5 +1,8 @@
 # Limitations connues — V4 multi-entités
 
+> **DOCUMENT HISTORIQUE** — il décrit une version antérieure de FEBA ; ses résultats n'ont pas été
+> rejoués tels quels sur cette version. Références à jour : `DOCUMENTATION_INDEX.md`, `FINAL_REPORT.md`.
+
 Ce document est délibérément explicite. Le cahier des charges interdit de
 déclarer « 100 % fonctionnel » lorsqu'une limitation subsiste. En voici la
 liste exhaustive.

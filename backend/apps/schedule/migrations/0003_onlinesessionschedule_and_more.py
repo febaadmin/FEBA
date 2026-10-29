@@ -148,7 +148,7 @@ class Migration(migrations.Migration):
         migrations.AddConstraint(
             model_name="onlinesessionschedule",
             constraint=models.CheckConstraint(
-                check=models.Q(
+                condition=models.Q(
                     ("duration_minutes__gte", 1), ("duration_minutes__lte", 480)
                 ),
                 name="online_session_duration_between_1_and_480",
@@ -157,7 +157,7 @@ class Migration(migrations.Migration):
         migrations.AddConstraint(
             model_name="onlinesessionschedule",
             constraint=models.CheckConstraint(
-                check=models.Q(("reminder_minutes_before__lte", 1440)),
+                condition=models.Q(("reminder_minutes_before__lte", 1440)),
                 name="online_session_reminder_at_most_24h",
             ),
         ),

@@ -1,5 +1,8 @@
 # TEST_REPORT — V9
 
+> **DOCUMENT HISTORIQUE** — il décrit une version antérieure de FEBA ; ses résultats n'ont pas été
+> rejoués tels quels sur cette version. Références à jour : `DOCUMENTATION_INDEX.md`, `FINAL_REPORT.md`.
+
 Toutes les sorties de ce fichier ont été produites sur cette instance.
 Aucune n'est reconstituée. La colonne « où » distingue le dépôt source de
 l'archive extraite : c'est la distinction qui compte, puisque plusieurs

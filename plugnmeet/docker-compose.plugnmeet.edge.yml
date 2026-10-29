@@ -1,0 +1,7 @@
+# pnm-web derrière l'aiguilleur : ses ports passent en boucle locale.
+# À ajouter avec --profile edge, une fois l'aiguilleur en place.
+services:
+  pnm-web:
+    ports: !override
+      - "127.0.0.1:9080:80"
+      - "127.0.0.1:9443:443"

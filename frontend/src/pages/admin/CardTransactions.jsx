@@ -25,6 +25,7 @@ import { useAcademy } from "../../context/AcademyContext";
 import { extractApiError } from "../../utils/errors";
 import { t } from "../../i18n";
 
+import { formatDateTime } from "../../utils/datetime";
 /** Couleur du statut. Un échec doit se voir sans lire le libellé. */
 const STATUS_STYLES = {
   succeeded: "bg-green-50 text-green-700",
@@ -75,6 +76,17 @@ export default function AdminCardTransactions() {
       ),
     },
     { key: "student", label: t("Élève"), accessor: "student" },
+    {
+      // Pas de colonne date auparavant : impossible de situer une tentative
+      // dans le temps. Heure de confirmation si encaissée, sinon de création.
+      key: "date", label: t("Date et heure"), sortKey: "date",
+      sortValue: r => Date.parse(r.succeeded_at || r.created_at) || null,
+      render: r => (
+        <span className="whitespace-nowrap">
+          {formatDateTime(r.succeeded_at || r.created_at, r.academy_timezone)}
+        </span>
+      ),
+    },
     { key: "type", label: t("Type"), render: r => t(r.payment_type) },
     {
       key: "amount", label: t("Montant"),
