@@ -1,0 +1,9 @@
+[Unit]
+Description=Renouvellement quotidien du certificat plugNmeet (sans effet s'il n'est pas dû)
+
+[Timer]
+OnCalendar=*-*-* 03:30:00 UTC
+Persistent=true
+
+[Install]
+WantedBy=timers.target
