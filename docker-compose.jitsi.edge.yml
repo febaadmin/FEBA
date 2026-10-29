@@ -1,0 +1,19 @@
+# ══════════════════════════════════════════════════════════════════════
+# Jitsi derrière l'aiguilleur de plugnmeet/edge (TROISIÈME fichier, avec
+# docker-compose.jitsi.yml et docker-compose.jitsi.prod.yml, inchangés).
+#
+# Les ports publics 80/443 sont LIBÉRÉS pour l'aiguilleur ; jitsi-web reste
+# joignable en boucle locale sur 8443 (HTTP) et 8444 (HTTPS). Seul jitsi-web
+# change : prosody, jicofo et jvb (10000/udp) ne sont pas touchés.
+#
+#   docker compose -f docker-compose.jitsi.yml -f docker-compose.jitsi.prod.yml \
+#     -f docker-compose.jitsi.edge.yml --env-file .env.jitsi \
+#     up -d --no-deps --pull never jitsi-web
+#
+# Retour arrière : la même commande SANS ce fichier.
+# ══════════════════════════════════════════════════════════════════════
+services:
+  jitsi-web:
+    ports: !override
+      - "127.0.0.1:8443:80"
+      - "127.0.0.1:8444:443"

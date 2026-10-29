@@ -104,6 +104,14 @@ def close_open_attendances(room, at=None, session_sid=None):
     for attendance in qs:
         if attendance.source == VirtualRoomAttendance.SOURCE_WEBHOOK:
             recompute_attendance(attendance, finished_at=at)
+        elif attendance.session_sid and room.events.filter(
+                session_sid=attendance.session_sid, event__in=JOIN_EVENTS).exists():
+            # Les webhooks fonctionnent pour cette séance, mais aucune entrée
+            # de ce participant : il a demandé le lien sans jamais se
+            # connecter. Sans ce cas, il recevait toute la durée de la réunion.
+            attendance.left_at = attendance.joined_at
+            attendance.duration_seconds = 0
+            attendance.save(update_fields=["left_at", "duration_seconds"])
         else:
             attendance.left_at = max(at, attendance.joined_at)
             attendance.duration_seconds = int((attendance.left_at - attendance.joined_at).total_seconds())

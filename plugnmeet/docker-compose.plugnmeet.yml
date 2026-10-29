@@ -14,6 +14,10 @@
 # sur 127.0.0.1 ; le proxy TLS (plugnmeet/edge) les publie sous un seul
 # nom de domaine. Seuls les ports MÉDIA sont publics.
 #
+# Fichiers complémentaires (même dossier) :
+#   docker-compose.plugnmeet.limits.yml  limites mémoire (serveur partagé)
+#   docker-compose.plugnmeet.turn.yml    ports TURN, seulement si TURN actif
+#
 # Préparation (secrets, configurations, client) :
 #     scripts/plugnmeet_setup.sh --domain pnm.globalfeba.com --public-ip <IP>
 # Démarrage :
@@ -21,6 +25,10 @@
 #        --env-file plugnmeet/runtime/plugnmeet.env up -d
 # Guide complet : PLUGNMEET_DEPLOYMENT_GUIDE.md
 # ══════════════════════════════════════════════════════════════════════
+# Images : tag ET empreinte (index multi-architecture) — le tag documente la
+# version, l'empreinte garantit que chaque serveur exécute exactement les
+# octets validés. Mise à jour : changer les deux, puis relancer les tests
+# (backend/tests/test_plugnmeet_deploy_config.py).
 name: feba-pnm
 
 x-logging: &logging
@@ -31,22 +39,26 @@ x-logging: &logging
 
 services:
   pnm-redis:
-    image: redis:7.4.10-alpine
+    image: redis:7.4.10-alpine@sha256:e7723ff73d963f5cc6d9c4643ea3d989527a402a319239054e9472a7fb9219a2
     restart: unless-stopped
-    command: ["redis-server", "--requirepass", "${PNM_REDIS_PASSWORD:?secret manquant}", "--appendonly", "yes"]
+    # Mot de passe dans runtime/redis.conf, jamais en argument de processus
+    # (lisible par tout compte de l'hôte via ps). redis-cli le lit dans
+    # REDISCLI_AUTH, variable d'environnement du conteneur.
+    command: ["redis-server", "/usr/local/etc/redis/redis.conf"]
     volumes:
       - pnm_redis:/data
+      - ./runtime/redis.conf:/usr/local/etc/redis/redis.conf:ro
     healthcheck:
-      test: ["CMD-SHELL", "redis-cli -a \"$$REDIS_PASSWORD\" --no-auth-warning ping | grep -q PONG"]
+      test: ["CMD-SHELL", "redis-cli --no-auth-warning ping | grep -q PONG"]
       interval: 10s
       timeout: 3s
       retries: 10
     environment:
-      REDIS_PASSWORD: ${PNM_REDIS_PASSWORD}
+      REDISCLI_AUTH: ${PNM_REDIS_PASSWORD:?secret manquant}
     logging: *logging
 
   pnm-db:
-    image: mariadb:11.4.12
+    image: mariadb:11.4.12@sha256:4f1d8d202fcf7bcb3902f63af09f9c1a050c2922a89652f22abaec0d4f015e83
     restart: unless-stopped
     environment:
       MARIADB_ROOT_PASSWORD: ${PNM_DB_ROOT_PASSWORD:?secret manquant}
@@ -67,7 +79,7 @@ services:
     logging: *logging
 
   pnm-nats:
-    image: nats:2.15.0-alpine
+    image: nats:2.15.0-alpine@sha256:ac8f88a6494bffc2c2a5289a0ca61cb28a9145c11ba5677cf24265d07f46d8d4
     restart: unless-stopped
     command: ["-config", "/nats-server.conf"]
     volumes:
@@ -78,18 +90,20 @@ services:
     logging: *logging
 
   pnm-livekit:
-    image: livekit/livekit-server:v1.13.9
+    image: livekit/livekit-server:v1.13.11@sha256:25cd902de7cacbd5f1f779f6a6ac1eae20ba8f56b0935934ce6b0ab80d1e3d20
     restart: unless-stopped
     command: ["--config", "/etc/livekit.yaml", "--node-ip", "${PNM_PUBLIC_IP:?IP publique manquante}"]
     volumes:
       - ./runtime/livekit.yaml:/etc/livekit.yaml:ro
       - ${PNM_TLS_CERT_DIR:-./runtime/certs}:/certs:ro
+    # Chaque port publié coûte un processus docker-proxy par famille
+    # d'adresses : garder la plage UDP courte (voir livekit.yaml.tpl).
+    # Les ports TURN (3478/udp, 5349/tcp) sont dans
+    # docker-compose.plugnmeet.turn.yml, ajouté seulement quand TURN est actif.
     ports:
       - "127.0.0.1:${PNM_LIVEKIT_HOST_PORT:-7880}:7880"
       - "7881:7881/tcp"
-      - "${LIVEKIT_UDP_START}-${LIVEKIT_UDP_END}:${LIVEKIT_UDP_START}-${LIVEKIT_UDP_END}/udp"
-      - "3478:3478/udp"
-      - "5349:5349/tcp"
+      - "${LIVEKIT_UDP_PORTS:?plage UDP manquante}:${LIVEKIT_UDP_PORTS}/udp"
     depends_on:
       pnm-redis:
         condition: service_healthy
@@ -101,7 +115,7 @@ services:
     logging: *logging
 
   plugnmeet:
-    image: mynaparrot/plugnmeet-server:v2.5.3
+    image: mynaparrot/plugnmeet-server:v2.5.3@sha256:75e045ecbe4a69e726ecc2092a23e82b8697170636f80211845b0704673c0320
     restart: unless-stopped
     volumes:
       - ./runtime/config.yaml:/app/config.yaml:ro
@@ -134,7 +148,7 @@ services:
   # pile locale de test. Certificats Let's Encrypt de l'hôte (/etc/letsencrypt),
   # obtenus par certbot en mode webroot (voir PLUGNMEET_DEPLOYMENT_GUIDE.md).
   pnm-web:
-    image: nginx:1.27.5-alpine
+    image: nginx:1.27.5-alpine@sha256:65645c7bb6a0661892a8b03b89d0743208a18dd2f3f17a54ef4b76fb8e2f2a10
     profiles: ["edge"]
     restart: unless-stopped
     ports:

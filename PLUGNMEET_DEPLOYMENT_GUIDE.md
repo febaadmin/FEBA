@@ -13,7 +13,7 @@ Versions figées (toutes publiées depuis plus de deux semaines) :
 |---|---|
 | plugNmeet-server | `mynaparrot/plugnmeet-server:v2.5.3` |
 | client web | `plugNmeet-client` v2.5.3 (SHA-256 vérifié par le script) |
-| LiveKit | `livekit/livekit-server:v1.13.9` |
+| LiveKit | `livekit/livekit-server:v1.13.11` (durcissement du relais TURN de v1.13.10) |
 | NATS | `nats:2.15.0-alpine` |
 | Redis | `redis:7.4.10-alpine` |
 | MariaDB | `mariadb:11.4.12` |
@@ -44,8 +44,13 @@ peut se faire qu'après inspection du serveur, impossible d'ici.
 ```bash
 apt update && apt install -y docker.io docker-compose-plugin python3 curl unzip certbot
 git clone <dépôt FEBA> /opt/feba && cd /opt/feba        # ou extraire l'archive livrée
-scripts/plugnmeet_setup.sh --domain pnm.globalfeba.com --public-ip <IP_DU_SERVEUR>
+scripts/plugnmeet_setup.sh --domain pnm.globalfeba.com --public-ip <IP_DU_SERVEUR> --turn off
 ```
+
+`--turn off` tant que le certificat de `pnm.globalfeba.com` n'existe pas
+(§ 3) : LiveKit démarre alors sans serveur TURN et sans lire de certificat.
+`--turn on` refuse de rendre la configuration si le certificat manque,
+expire sous 7 jours, ne couvre pas le domaine ou ne correspond pas à la clé.
 
 Le script : génère les secrets (`plugnmeet/runtime/plugnmeet.env`, mode
 600, jamais versionné), les clés NATS (outil officiel `nats-box`), rend les
@@ -62,26 +67,42 @@ l'empreinte diffère. Relancé, il conserve les secrets.
    |---|---|---|
    | 80, 443 | TCP | HTTPS, ACME |
    | 7881 | TCP | WebRTC sur TCP (réseaux filtrants) |
-   | 50000-50500 | UDP | média WebRTC |
-   | 3478 | UDP | TURN |
-   | 5349 | TCP | TURN/TLS |
+   | 7882-7885 | UDP | média WebRTC (multiplexage `rtc.udp_port`) |
+   | 3478 | UDP | TURN (seulement après `--turn on`) |
+   | 5349 | TCP | TURN/TLS (seulement après `--turn on`) |
 
-3. **Certificat** (avant de démarrer le proxy) :
+   Pourquoi 4 ports UDP et non une plage par participant : Docker publie
+   chaque port par un processus `docker-proxy` (≈ 5 Mo, IPv4 et IPv6) ;
+   50000-50500 en aurait lancé ≈ 1 000. LiveKit ouvre
+   min(nombre de CPU, nombre de ports) multiplexeurs : 4 sur 4 vCPU.
+
+3. **Certificat, puis activation de TURN** (le port 80 de `pnm` doit
+   servir `/.well-known/acme-challenge/` depuis `/var/www/certbot`) :
    ```bash
    mkdir -p /var/www/certbot
-   certbot certonly --standalone -d pnm.globalfeba.com   # 80 libre à ce stade
-   cp /etc/letsencrypt/live/pnm.globalfeba.com/{fullchain,privkey}.pem plugnmeet/runtime/certs/
+   docker run --rm -v /etc/letsencrypt:/etc/letsencrypt -v /var/www/certbot:/var/www/certbot \
+     certbot/certbot certonly --webroot -w /var/www/certbot -d pnm.globalfeba.com \
+     --email <adresse> --agree-tos --no-eff-email
+   install -m 600 /etc/letsencrypt/live/pnm.globalfeba.com/fullchain.pem plugnmeet/runtime/certs/fullchain.pem
+   install -m 600 /etc/letsencrypt/live/pnm.globalfeba.com/privkey.pem   plugnmeet/runtime/certs/privkey.pem
+   scripts/plugnmeet_setup.sh --domain pnm.globalfeba.com --public-ip <IP> --turn on
+   docker compose -p feba-pnm -f plugnmeet/docker-compose.plugnmeet.yml \
+     -f plugnmeet/docker-compose.plugnmeet.limits.yml -f plugnmeet/docker-compose.plugnmeet.turn.yml \
+     --env-file plugnmeet/runtime/plugnmeet.env up -d pnm-livekit
    ```
-   Renouvellement : `certbot renew --webroot -w /var/www/certbot` (cron),
-   puis recopier les fichiers pour TURN et `docker compose … restart pnm-livekit pnm-web`.
+   Renouvellement : `certbot renew` (même image, minuteur quotidien) avec un
+   *deploy hook* qui recopie les deux fichiers puis redémarre `pnm-livekit`
+   (TURN ne lit le certificat qu'au démarrage : les réunions en cours sont
+   coupées, d'où un horaire de nuit) et recharge `pnm-web`.
 
 ## 4. Démarrer et vérifier
 
 ```bash
-docker compose -p feba-pnm -f plugnmeet/docker-compose.plugnmeet.yml \
-  --env-file plugnmeet/runtime/plugnmeet.env --profile edge up -d
-docker compose -p feba-pnm -f plugnmeet/docker-compose.plugnmeet.yml \
-  --env-file plugnmeet/runtime/plugnmeet.env ps          # tout « healthy »
+C="docker compose -p feba-pnm -f plugnmeet/docker-compose.plugnmeet.yml \
+   -f plugnmeet/docker-compose.plugnmeet.limits.yml --env-file plugnmeet/runtime/plugnmeet.env"
+$C up -d                       # sans TURN ni proxy ; ajouter -f …turn.yml après --turn on
+$C ps                          # tout « healthy »
+$C --profile edge up -d pnm-web   # proxy HTTPS, une fois 80/443 disponibles
 curl -fsS https://pnm.globalfeba.com/healthCheck
 ```
 
