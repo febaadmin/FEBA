@@ -51,12 +51,14 @@ tls_ok() {  # $1 = hôte:port ; certificat vérifié pour $DOMAINE
     -verify_return_error 2>/dev/null | grep -q 'Verify return code: 0 (ok)'
 }
 attendre_sains() {
-  local s
+  local s ok
   for _ in $(seq 1 40); do
+    ok=1
     for s in plugnmeet pnm-livekit pnm-web; do
-      [ "$(docker inspect -f '{{.State.Health.Status}}' "feba-pnm-$s-1" 2>/dev/null)" = healthy ] || continue 2
+      [ "$(docker inspect -f '{{.State.Health.Status}}' "feba-pnm-$s-1" 2>/dev/null)" = healthy ] || ok=0
     done
-    return 0
+    [ $ok = 1 ] && return 0
+    sleep 3
   done
   return 1
 }

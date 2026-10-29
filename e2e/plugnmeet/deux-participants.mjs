@@ -25,7 +25,7 @@ const browser = await chromium.launch({
          '--auto-select-desktop-capture-source=Entire screen', '--auto-accept-this-tab-capture',
          // Ex. « --host-resolver-rules=MAP meet.globalfeba.com 127.0.0.1:18443 » :
          // tester un domaine par un tunnel SSH avant sa bascule publique.
-         ...(process.env.CHROME_EXTRA_ARGS ? [process.env.CHROME_EXTRA_ARGS] : [])],
+         ...(process.env.CHROME_EXTRA_ARGS ? process.env.CHROME_EXTRA_ARGS.split('|') : [])],
 });
 
 // Garde une référence à chaque RTCPeerConnection pour lire ses statistiques.
@@ -49,7 +49,9 @@ async function entrer(nom, url) {
   await page.goto(url, { waitUntil: 'domcontentloaded' });
   await page.getByText('Activer le microphone et la caméra').click({ timeout: 20000 });
   await page.getByRole('button', { name: 'Rejoindre' }).click({ timeout: 20000 });
-  await page.getByText(/Participants \(\d+\)/).waitFor({ timeout: 30000 });
+  // Sa propre entrée dans la liste : l'en-tête « Participants (n) » peut être
+  // masqué par une notification.
+  await page.getByText(/\((moi|me)\)/).first().waitFor({ timeout: 30000 });
   await page.waitForTimeout(3000);
   const etapes = [];
   // Micro puis caméra : fenêtre de choix du périphérique, puis « Partager ».

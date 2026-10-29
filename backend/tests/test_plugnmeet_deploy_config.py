@@ -187,6 +187,10 @@ class AiguilleurTests(SimpleTestCase):
     def test_la_bascule_feba_vise_meet(self):
         self.assertIn("PNM_URL=${PNM_URL:-https://meet.globalfeba.com}", read_repo_file("plugnmeet/ops/basculer_feba.sh"))
         self.assertNotIn("pnm.globalfeba.com", read_repo_file("plugnmeet/ops/renouveler_pnm.sh"))
+        # Le client plugNmeet (origine meet) appelle l'API d'habillage de FEBA.
+        bascule = read_repo_file("plugnmeet/ops/basculer_feba.sh")
+        self.assertIn('sed -i "s#^CORS_ALLOWED_ORIGINS=', bascule)
+        self.assertIn("https://meet.globalfeba.com", read_repo_file(".env.prod.example").split("CORS_ALLOWED_ORIGINS=")[1].splitlines()[0])
 
     @staticmethod
     def charger_compose(texte):

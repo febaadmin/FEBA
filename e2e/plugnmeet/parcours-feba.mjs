@@ -60,7 +60,7 @@ const browser = await chromium.launch({
          '--auto-select-desktop-capture-source=Entire screen', '--auto-accept-this-tab-capture',
          // Ex. « --host-resolver-rules=MAP meet.globalfeba.com 127.0.0.1:18443 » :
          // tester un domaine par un tunnel SSH avant sa bascule publique.
-         ...(process.env.CHROME_EXTRA_ARGS ? [process.env.CHROME_EXTRA_ARGS] : [])],
+         ...(process.env.CHROME_EXTRA_ARGS ? process.env.CHROME_EXTRA_ARGS.split('|') : [])],
 });
 const espion = () => {
   const Orig = window.RTCPeerConnection;
@@ -166,7 +166,8 @@ c["API : un compte hors de la classe ne voit pas la salle (404)"] = salleAutre.s
 // ── 2. Enseignant : FEBA → plugNmeet
 const prof = await ouvrir('enseignant', TEACHER);
 await rejoindre(prof);
-await prof.page.getByText(/Participants \(\d+\)/).waitFor({ timeout: 45000 });
+// Sa propre entrée : l'en-tête « Participants (n) » peut être masqué par une notification.
+await prof.page.getByText(/\((moi|me)\)/).first().waitFor({ timeout: 45000 });
 c["navigateur : l'enseignant passe de FEBA à la salle plugNmeet"] = prof.origineVisio !== new URL(FEBA).origin;
 
 // ── 3. Élève : salle d'attente puis admission par l'enseignant
