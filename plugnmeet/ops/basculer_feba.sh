@@ -14,7 +14,8 @@ set -uo pipefail
 MODE="${1:-}"
 VIDEO="ssh -o BatchMode=yes -i ${VIDEO_KEY:-$HOME/.ssh/feba_jitsi_prod} root@89.167.63.1"
 FEBA="ssh -o BatchMode=yes -i ${FEBA_KEY:-$HOME/.ssh/feba_github_actions} deploy@62.238.38.111"
-PNM_URL=https://pnm.globalfeba.com
+# Adresse publique de plugNmeet (domaine définitif : meet.globalfeba.com).
+PNM_URL=${PNM_URL:-https://meet.globalfeba.com}
 HOOK=https://globalfeba.com/api/virtual-rooms/webhook/
 
 cles() { $VIDEO 'grep -E "^(PNM_API_KEY|PNM_API_SECRET)=" /opt/feba/pnm/FEBA/plugnmeet/runtime/plugnmeet.env' </dev/null \

@@ -163,6 +163,31 @@ class AiguilleurTests(SimpleTestCase):
         self.assertNotIn("ssl_certificate", conf)          # aucune clé privée côté aiguilleur
         self.assertIn("proxy_pass http://127.0.0.1:8443;", conf)  # défis ACME de Jitsi
 
+    def test_l_etat_plugnmeet_ne_change_que_la_cible_de_meet(self):
+        jitsi = read_repo_file("plugnmeet/edge/nginx.conf")
+        pnm = read_repo_file("plugnmeet/edge/nginx.plugnmeet.conf")
+        cibles = dict(re.findall(r"^\s+(\S+)\s+(127\.0\.0\.1:\d+);", pnm, re.M))
+        self.assertEqual(cibles, {"meet.globalfeba.com": "127.0.0.1:9443",
+                                  "pnm.globalfeba.com": "127.0.0.1:9443",
+                                  "default": "127.0.0.1:9443"})
+        self.assertNotIn("ssl_certificate", pnm)
+        for conf in (jitsi, pnm):
+            # certbot (webroot) d'abord, puis acme.sh de Jitsi : les deux renouvellent.
+            self.assertIn("try_files $uri @jitsi;", conf)
+            self.assertIn("location @jitsi {", conf)
+        self.assertIn("return 301 https://$host$request_uri;", pnm.split("server_name meet.globalfeba.com;")[1])
+
+    def test_pnm_web_porte_le_domaine_public_comme_alias_interne(self):
+        # Le serveur plugNmeet joint LiveKit par https://<domaine>/livekit :
+        # l'alias le garde dans le réseau Docker, avant comme après la bascule.
+        pnm = self.charger_compose(read_repo_file("plugnmeet/docker-compose.plugnmeet.edge.yml"))
+        self.assertEqual(pnm["services"]["pnm-web"]["networks"]["default"]["aliases"],
+                         ["${PNM_DOMAIN:?domaine manquant}"])
+
+    def test_la_bascule_feba_vise_meet(self):
+        self.assertIn("PNM_URL=${PNM_URL:-https://meet.globalfeba.com}", read_repo_file("plugnmeet/ops/basculer_feba.sh"))
+        self.assertNotIn("pnm.globalfeba.com", read_repo_file("plugnmeet/ops/renouveler_pnm.sh"))
+
     @staticmethod
     def charger_compose(texte):
         """yaml.safe_load qui accepte les étiquettes Compose !override / !reset."""

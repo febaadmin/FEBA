@@ -22,7 +22,10 @@ const browser = await chromium.launch({
   headless: true,
   args: ['--use-fake-device-for-media-stream', '--use-fake-ui-for-media-stream',
          '--autoplay-policy=no-user-gesture-required',
-         '--auto-select-desktop-capture-source=Entire screen', '--auto-accept-this-tab-capture'],
+         '--auto-select-desktop-capture-source=Entire screen', '--auto-accept-this-tab-capture',
+         // Ex. « --host-resolver-rules=MAP meet.globalfeba.com 127.0.0.1:18443 » :
+         // tester un domaine par un tunnel SSH avant sa bascule publique.
+         ...(process.env.CHROME_EXTRA_ARGS ? [process.env.CHROME_EXTRA_ARGS] : [])],
 });
 
 // Garde une référence à chaque RTCPeerConnection pour lire ses statistiques.
