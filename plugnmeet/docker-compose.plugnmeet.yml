@@ -14,6 +14,10 @@
 # sur 127.0.0.1 ; le proxy TLS (plugnmeet/edge) les publie sous un seul
 # nom de domaine. Seuls les ports MÉDIA sont publics.
 #
+# Fichiers complémentaires (même dossier) :
+#   docker-compose.plugnmeet.limits.yml  limites mémoire (serveur partagé)
+#   docker-compose.plugnmeet.turn.yml    ports TURN, seulement si TURN actif
+#
 # Préparation (secrets, configurations, client) :
 #     scripts/plugnmeet_setup.sh --domain pnm.globalfeba.com --public-ip <IP>
 # Démarrage :
@@ -84,12 +88,14 @@ services:
     volumes:
       - ./runtime/livekit.yaml:/etc/livekit.yaml:ro
       - ${PNM_TLS_CERT_DIR:-./runtime/certs}:/certs:ro
+    # Chaque port publié coûte un processus docker-proxy par famille
+    # d'adresses : garder la plage UDP courte (voir livekit.yaml.tpl).
+    # Les ports TURN (3478/udp, 5349/tcp) sont dans
+    # docker-compose.plugnmeet.turn.yml, ajouté seulement quand TURN est actif.
     ports:
       - "127.0.0.1:${PNM_LIVEKIT_HOST_PORT:-7880}:7880"
       - "7881:7881/tcp"
-      - "${LIVEKIT_UDP_START}-${LIVEKIT_UDP_END}:${LIVEKIT_UDP_START}-${LIVEKIT_UDP_END}/udp"
-      - "3478:3478/udp"
-      - "5349:5349/tcp"
+      - "${LIVEKIT_UDP_PORTS:?plage UDP manquante}:${LIVEKIT_UDP_PORTS}/udp"
     depends_on:
       pnm-redis:
         condition: service_healthy

@@ -7,7 +7,7 @@
 #   /livekit   → pnm-livekit:7880 signalisation WebRTC (WebSocket)
 #   /ws        → pnm-nats:8222    temps réel : chat, tableau blanc, sondages
 #
-# Le MÉDIA ne passe pas par ici : UDP 50000-50500, TCP 7881 et TURN
+# Le MÉDIA ne passe pas par ici : UDP LIVEKIT_UDP_PORTS, TCP 7881 et TURN
 # (3478/udp, 5349/tcp) sont publiés directement par LiveKit.
 # ══════════════════════════════════════════════════════════════════════
 map $http_upgrade $connection_upgrade {

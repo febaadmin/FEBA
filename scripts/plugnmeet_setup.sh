@@ -2,7 +2,8 @@
 # ══════════════════════════════════════════════════════════════════════
 # Prépare plugNmeet pour FEBA : secrets, configurations, client web.
 #
-#   scripts/plugnmeet_setup.sh --domain pnm.globalfeba.com --public-ip 89.167.63.1
+#   scripts/plugnmeet_setup.sh --domain pnm.globalfeba.com --public-ip 89.167.63.1 --turn off
+#   scripts/plugnmeet_setup.sh --domain … --public-ip … --turn on   # certificat requis
 #   scripts/plugnmeet_setup.sh --local          # pile de test sur ce poste
 #
 # Produit plugnmeet/runtime/ (JAMAIS versionné, JAMAIS dans une archive) :
@@ -38,6 +39,13 @@ PUBLIC_IP=""
 FEBA_URL="${FEBA_PUBLIC_URL:-}"
 LOCAL=0
 ROTATE=0
+# TURN : « on » exige le certificat de --domain dans plugnmeet/runtime/certs
+# (fullchain.pem, privkey.pem) ; sinon le script échoue AVANT de rendre la
+# configuration — jamais de livekit.yaml qui active TURN sans certificat.
+TURN="on"
+# Multiplexage UDP de LiveKit (rtc.udp_port) : voir livekit.yaml.tpl.
+UDP_PORTS_PROD="7882-7885"
+UDP_PORTS_LOCAL="7882-7883"
 
 usage() {
   sed -n '3,8p' "${BASH_SOURCE[0]}"
@@ -51,14 +59,18 @@ while [ $# -gt 0 ]; do
     --local) LOCAL=1; shift ;;
     --feba-url) FEBA_URL="$2"; shift 2 ;;
     --rotate-secrets) ROTATE=1; shift ;;
+    --turn) TURN="$2"; shift 2 ;;
     -h|--help) usage 0 ;;
     *) echo "Option inconnue : $1"; usage 1 ;;
   esac
 done
 
+case "$TURN" in on|off) ;; *) echo "ÉCHEC : --turn vaut « on » ou « off »."; exit 1 ;; esac
+
 if [ "$LOCAL" = 1 ]; then
   DOMAIN="${DOMAIN:-localhost}"
   PUBLIC_IP="${PUBLIC_IP:-127.0.0.1}"
+  TURN="off"   # pas de certificat public sur un poste de développement
 elif [ -z "$DOMAIN" ] || [ -z "$PUBLIC_IP" ]; then
   echo "ÉCHEC : --domain et --public-ip sont obligatoires (ou --local)."
   exit 1
@@ -70,6 +82,26 @@ done
 
 mkdir -p "$RUNTIME" "$RUNTIME/certs"
 chmod 700 "$RUNTIME"
+
+# ── 0. TURN actif : le certificat doit exister, être valide et couvrir le
+#      domaine, sinon LiveKit refuserait de démarrer (tls.LoadX509KeyPair).
+if [ "$TURN" = on ]; then
+  command -v openssl >/dev/null || { echo "ÉCHEC : « openssl » est requis avec --turn on."; exit 1; }
+  CERT="$RUNTIME/certs/fullchain.pem"; KEY="$RUNTIME/certs/privkey.pem"
+  if [ ! -s "$CERT" ] || [ ! -s "$KEY" ]; then
+    echo "ÉCHEC : --turn on sans certificat ($CERT, $KEY)."
+    echo "        Obtenir le certificat de $DOMAIN (PLUGNMEET_DEPLOYMENT_GUIDE.md § 3),"
+    echo "        ou relancer avec --turn off."
+    exit 1
+  fi
+  openssl x509 -in "$CERT" -noout -checkend 604800 >/dev/null \
+    || { echo "ÉCHEC : certificat TURN expiré ou expirant sous 7 jours."; exit 1; }
+  openssl x509 -in "$CERT" -noout -ext subjectAltName 2>/dev/null | grep -q "DNS:$DOMAIN" \
+    || { echo "ÉCHEC : le certificat ne couvre pas $DOMAIN."; exit 1; }
+  [ "$(openssl x509 -in "$CERT" -noout -pubkey | openssl sha256)" = \
+    "$(openssl pkey -in "$KEY" -pubout | openssl sha256)" ] \
+    || { echo "ÉCHEC : la clé privée ne correspond pas au certificat."; exit 1; }
+fi
 
 random_key() {  # $1 = longueur ; alphabet sans caractères spéciaux (YAML, URL)
   python3 -c "import secrets,string,sys; a=string.ascii_letters+string.digits; print(''.join(secrets.choice(a) for _ in range(int(sys.argv[1]))))" "$1"
@@ -111,12 +143,13 @@ EOF
 fi
 
 # ── 2. Paramètres non secrets (réécrits à chaque lancement) ──────────
-python3 - "$ENV_FILE" "$DOMAIN" "$PUBLIC_IP" "$LOCAL" <<'PY'
+python3 - "$ENV_FILE" "$DOMAIN" "$PUBLIC_IP" "$LOCAL" "$TURN" "$UDP_PORTS_PROD" "$UDP_PORTS_LOCAL" <<'PY'
 import sys
 path, domain, ip, local = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4] == "1"
+turn, udp_prod, udp_local = sys.argv[5] == "on", sys.argv[6], sys.argv[7]
 keep = [l for l in open(path).read().splitlines() if not l.startswith((
     "PNM_DOMAIN=", "PNM_PUBLIC_IP=", "PNM_PUBLIC_URL=", "PNM_LIVEKIT_URL=", "PNM_NATS_WS_URL=",
-    "PNM_TURN_DOMAIN=", "LIVEKIT_TURN_ENABLED=", "LIVEKIT_UDP_START=", "LIVEKIT_UDP_END=",
+    "PNM_TURN_DOMAIN=", "LIVEKIT_TURN_ENABLED=", "LIVEKIT_UDP_START=", "LIVEKIT_UDP_END=", "LIVEKIT_UDP_PORTS=",
     "PNM_HTTP_HOST_PORT=", "PNM_LIVEKIT_HOST_PORT=", "PNM_NATS_WS_HOST_PORT=", "# --- paramètres"))]
 if local:
     params = {
@@ -126,7 +159,7 @@ if local:
         "PNM_LIVEKIT_URL": "http://host.docker.internal:7880",
         "PNM_NATS_WS_URL": "http://localhost:18222",
         "PNM_TURN_DOMAIN": "localhost", "LIVEKIT_TURN_ENABLED": "false",
-        "LIVEKIT_UDP_START": "50000", "LIVEKIT_UDP_END": "50020",
+        "LIVEKIT_UDP_PORTS": udp_local,
         "PNM_HTTP_HOST_PORT": "18080", "PNM_LIVEKIT_HOST_PORT": "7880", "PNM_NATS_WS_HOST_PORT": "18222",
     }
 else:
@@ -135,8 +168,8 @@ else:
         "PNM_PUBLIC_URL": f"https://{domain}",
         "PNM_LIVEKIT_URL": f"https://{domain}/livekit",
         "PNM_NATS_WS_URL": f"https://{domain}/ws",
-        "PNM_TURN_DOMAIN": domain, "LIVEKIT_TURN_ENABLED": "true",
-        "LIVEKIT_UDP_START": "50000", "LIVEKIT_UDP_END": "50500",
+        "PNM_TURN_DOMAIN": domain, "LIVEKIT_TURN_ENABLED": "true" if turn else "false",
+        "LIVEKIT_UDP_PORTS": udp_prod,
         "PNM_HTTP_HOST_PORT": "8080", "PNM_LIVEKIT_HOST_PORT": "7880", "PNM_NATS_WS_HOST_PORT": "8222",
     }
 keep.append("# --- paramètres (réécrits à chaque lancement)")
@@ -243,6 +276,10 @@ ailleurs que dans ce fichier :
   PLUGNMEET_API_KEY=<PNM_API_KEY de $ENV_FILE>
   PLUGNMEET_API_SECRET=<PNM_API_SECRET de $ENV_FILE>
 
+TURN : $TURN
+
 Démarrage :
-  docker compose -p feba-pnm -f plugnmeet/docker-compose.plugnmeet.yml --env-file plugnmeet/runtime/plugnmeet.env up -d
+  docker compose -p feba-pnm -f plugnmeet/docker-compose.plugnmeet.yml \\
+    -f plugnmeet/docker-compose.plugnmeet.limits.yml $( [ "$TURN" = on ] && printf '%s' '-f plugnmeet/docker-compose.plugnmeet.turn.yml ' )\\
+    --env-file plugnmeet/runtime/plugnmeet.env up -d
 EOF
