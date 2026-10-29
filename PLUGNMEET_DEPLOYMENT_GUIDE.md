@@ -13,7 +13,7 @@ Versions figées (toutes publiées depuis plus de deux semaines) :
 |---|---|
 | plugNmeet-server | `mynaparrot/plugnmeet-server:v2.5.3` |
 | client web | `plugNmeet-client` v2.5.3 (SHA-256 vérifié par le script) |
-| LiveKit | `livekit/livekit-server:v1.13.9` |
+| LiveKit | `livekit/livekit-server:v1.13.11` (durcissement du relais TURN de v1.13.10) |
 | NATS | `nats:2.15.0-alpine` |
 | Redis | `redis:7.4.10-alpine` |
 | MariaDB | `mariadb:11.4.12` |

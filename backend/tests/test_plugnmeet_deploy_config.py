@@ -112,6 +112,19 @@ class ComposePortsTests(SimpleTestCase):
             self.assertTrue(local and all(p.startswith("127.0.0.1:") for p in local), (svc, local))
 
 
+class ComposeImagesTests(SimpleTestCase):
+    def test_chaque_image_est_epinglee_par_tag_et_empreinte(self):
+        base = yaml.safe_load(read_repo_file("plugnmeet/docker-compose.plugnmeet.yml"))
+        for name, svc in base["services"].items():
+            self.assertRegex(svc["image"], r"^[a-z0-9./-]+:[A-Za-z0-9._-]+@sha256:[0-9a-f]{64}$", name)
+
+    def test_livekit_inclut_le_durcissement_turn_de_v1_13_10(self):
+        """v1.13.10 : relais TURN TCP refusés, relais vers l'hôte limités aux ports média."""
+        image = yaml.safe_load(read_repo_file("plugnmeet/docker-compose.plugnmeet.yml"))["services"]["pnm-livekit"]["image"]
+        version = tuple(int(x) for x in re.search(r":v(\d+)\.(\d+)\.(\d+)@", image).groups())
+        self.assertGreaterEqual(version, (1, 13, 10))
+
+
 class ComposeLimitsTests(SimpleTestCase):
     def test_chaque_service_a_une_limite_sans_echange(self):
         base = yaml.safe_load(read_repo_file("plugnmeet/docker-compose.plugnmeet.yml"))
