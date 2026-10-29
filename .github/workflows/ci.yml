@@ -120,6 +120,20 @@ jobs:
           python manage.py check
           python manage.py makemigrations --check --dry-run
 
+      # Apport de la PR #13 : les migrations sont jouées par « migrate », comme
+      # au déploiement (entrypoint.prod.py), sur une base PostgreSQL vide —
+      # pas seulement par la création de la base de test de pytest. Aucune
+      # opération ne doit rester ensuite.
+      - name: Migrations sur base vide (comme en production)
+        working-directory: backend
+        env:
+          DJANGO_SETTINGS_MODULE: feba_project.settings.test_postgres
+        run: |
+          python manage.py migrate --noinput
+          plan="$(python manage.py migrate --plan)"
+          printf '%s\n' "$plan"
+          printf '%s\n' "$plan" | grep -q "No planned migration operations"
+
       - name: Suite backend — PostgreSQL
         working-directory: backend
         env:
