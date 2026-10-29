@@ -200,7 +200,7 @@ for tpl in sorted(src.glob("*.tpl")):
     print(f"  rendu : {target.relative_to(dst.parent.parent)}")
 PY
 # Les conteneurs lisent ces fichiers sous un autre utilisateur.
-chmod 644 "$RUNTIME/nats-server.conf" "$RUNTIME/livekit.yaml" "$RUNTIME/config.yaml" "$RUNTIME/pnm-web.conf"
+chmod 644 "$RUNTIME/nats-server.conf" "$RUNTIME/livekit.yaml" "$RUNTIME/config.yaml" "$RUNTIME/pnm-web.conf" "$RUNTIME/redis.conf"
 
 # ── 4. Client web, version figée, empreinte vérifiée ─────────────────
 if [ -f "$RUNTIME/client/.version" ] && [ "$(cat "$RUNTIME/client/.version")" = "$CLIENT_VERSION" ]; then

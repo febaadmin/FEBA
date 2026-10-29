@@ -125,6 +125,31 @@ class ComposeImagesTests(SimpleTestCase):
         self.assertGreaterEqual(version, (1, 13, 10))
 
 
+class SecretsHorsArgumentsTests(SimpleTestCase):
+    """Un argument de processus est lisible par tout compte de l'hôte (ps)."""
+
+    SECRETS = re.compile(r"PASSWORD|SECRET|_KEY\b|PRIVATE")
+
+    def test_aucun_secret_dans_les_commandes_ni_les_controles_de_sante(self):
+        base = yaml.safe_load(read_repo_file("plugnmeet/docker-compose.plugnmeet.yml"))
+        for name, svc in base["services"].items():
+            for champ in ("command", "entrypoint"):
+                valeur = svc.get(champ) or []
+                texte = " ".join(valeur) if isinstance(valeur, list) else str(valeur)
+                self.assertNotRegex(texte, self.SECRETS, f"{name}.{champ}")
+            test = " ".join((svc.get("healthcheck") or {}).get("test") or [])
+            self.assertNotRegex(test, self.SECRETS, f"{name}.healthcheck")
+            self.assertNotRegex(test, r"redis-cli[^|]*\s-a\s", f"{name}.healthcheck")
+
+    def test_redis_lit_son_mot_de_passe_dans_un_fichier_rendu(self):
+        tpl = read_repo_file("plugnmeet/templates/redis.conf.tpl")
+        self.assertRegex(tpl, r"(?m)^requirepass \$\{PNM_REDIS_PASSWORD\}$")
+        self.assertRegex(tpl, r"(?m)^appendonly yes$")
+        redis = yaml.safe_load(read_repo_file("plugnmeet/docker-compose.plugnmeet.yml"))["services"]["pnm-redis"]
+        self.assertIn("./runtime/redis.conf:/usr/local/etc/redis/redis.conf:ro", redis["volumes"])
+        self.assertEqual(redis["environment"], {"REDISCLI_AUTH": "${PNM_REDIS_PASSWORD:?secret manquant}"})
+
+
 class ComposeLimitsTests(SimpleTestCase):
     def test_chaque_service_a_une_limite_sans_echange(self):
         base = yaml.safe_load(read_repo_file("plugnmeet/docker-compose.plugnmeet.yml"))

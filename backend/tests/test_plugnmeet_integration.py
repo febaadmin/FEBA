@@ -363,6 +363,32 @@ class AttendanceFromEventsTests(PlugNmeetBase):
         a = self.att()
         self.assertEqual((a.reconnections, a.duration_seconds, a.left_at), (1, 3600, self.at(62)))
 
+    def test_lien_demande_sans_connexion_duree_nulle(self):
+        """
+        Constaté en recette locale le 29/10/2026 : un participant qui demande
+        le lien sans jamais se connecter recevait toute la durée de la
+        réunion (présence « api » close à la fin). Quand les webhooks
+        fonctionnent pour la séance, une présence restée « api » signifie
+        qu'il n'est jamais entré : durée nulle.
+        """
+        jamais = VirtualRoomAttendance.objects.create(
+            room=self.salle_classe, user=self.prof_affecte, session_sid="sid-1", joined_at=self.at(1))
+        self.post_webhook(event("room_started", self.salle_classe, at=self.at(0)))
+        self.post_webhook(event("participant_joined", self.salle_classe, self.ident, self.at(2)))
+        self.post_webhook(event("room_finished", self.salle_classe, at=self.at(65)))
+        jamais.refresh_from_db()
+        self.assertEqual((jamais.left_at, jamais.duration_seconds), (self.at(1), 0))
+        self.assertEqual(jamais.source, "api")
+        self.assertEqual(self.att().duration_seconds, 63 * 60)  # l'élève connecté, inchangé
+
+    def test_sans_aucun_webhook_le_repli_par_appels_est_conserve(self):
+        """Webhooks absents (non configurés, refusés) : durée depuis la demande."""
+        a = VirtualRoomAttendance.objects.create(
+            room=self.salle_classe, user=self.prof_affecte, session_sid="sid-1", joined_at=self.at(1))
+        meetings.close_open_attendances(self.salle_classe, at=self.at(31), session_sid="sid-1")
+        a.refresh_from_db()
+        self.assertEqual((a.left_at, a.duration_seconds), (self.at(31), 30 * 60))
+
     def test_deconnexion_brutale_close_par_la_fin_de_reunion(self):
         self.post_webhook(event("room_started", self.salle_classe, at=self.at(0)))
         self.post_webhook(event("participant_joined", self.salle_classe, self.ident, self.at(5)))

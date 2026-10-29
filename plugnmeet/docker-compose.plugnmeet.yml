@@ -41,16 +41,20 @@ services:
   pnm-redis:
     image: redis:7.4.10-alpine@sha256:e7723ff73d963f5cc6d9c4643ea3d989527a402a319239054e9472a7fb9219a2
     restart: unless-stopped
-    command: ["redis-server", "--requirepass", "${PNM_REDIS_PASSWORD:?secret manquant}", "--appendonly", "yes"]
+    # Mot de passe dans runtime/redis.conf, jamais en argument de processus
+    # (lisible par tout compte de l'hôte via ps). redis-cli le lit dans
+    # REDISCLI_AUTH, variable d'environnement du conteneur.
+    command: ["redis-server", "/usr/local/etc/redis/redis.conf"]
     volumes:
       - pnm_redis:/data
+      - ./runtime/redis.conf:/usr/local/etc/redis/redis.conf:ro
     healthcheck:
-      test: ["CMD-SHELL", "redis-cli -a \"$$REDIS_PASSWORD\" --no-auth-warning ping | grep -q PONG"]
+      test: ["CMD-SHELL", "redis-cli --no-auth-warning ping | grep -q PONG"]
       interval: 10s
       timeout: 3s
       retries: 10
     environment:
-      REDIS_PASSWORD: ${PNM_REDIS_PASSWORD}
+      REDISCLI_AUTH: ${PNM_REDIS_PASSWORD:?secret manquant}
     logging: *logging
 
   pnm-db:

@@ -1,4 +1,20 @@
-# Classe virtuelle plugNmeet — test navigateur à deux participants
+# Classes virtuelles plugNmeet — tests navigateur
+
+Deux scénarios :
+
+| Scénario | Ce qu'il vérifie |
+|---|---|
+| `parcours-feba.mjs` | **Parcours complet depuis FEBA** : connexion réelle, règles d'accès (404 hors de la classe, modérateur pour l'enseignant), salle d'attente et admission, audio/vidéo dans les deux sens en UDP, présence enregistrée par les webhooks, partage d'écran, refus dans le navigateur d'un compte hors de la classe, coupure réseau de 12 s et reprise, fin de réunion par l'enseignant, retour vers `/virtual-room/<id>/ended`, réunion inactive et présences closes dans FEBA (26 critères). |
+| `deux-participants.mjs` | La salle plugNmeet seule, jetons produits par le code FEBA sans passer par l'interface (15 critères). |
+
+`parcours-feba.mjs` : `FEBA_URL` (frontend), `FEBA_API` (défaut `FEBA_URL/api`),
+`ROOM_ID`, `TEACHER`, `STUDENT`, `OUTSIDER` (comptes de `DEMO_ACCOUNTS.md`,
+ou `ACCOUNTS_FILE`), `OUT`, `CHROMIUM_PATH`. FEBA doit avoir
+`VIDEO_PROVIDER=plugnmeet` et un `PLUGNMEET_WEBHOOK_URL` joignable par
+plugNmeet. Les libellés du client sont reconnus en français et en anglais
+(la langue de la réunion suit celle de l'interface FEBA).
+
+## deux-participants.mjs
 
 Vérifie une vraie session : une salle et deux jetons (enseignant modérateur,
 élève) produits par le code FEBA (`apps.virtualclass.plugnmeet`), puis deux
