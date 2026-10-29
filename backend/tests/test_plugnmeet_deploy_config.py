@@ -150,6 +150,48 @@ class SecretsHorsArgumentsTests(SimpleTestCase):
         self.assertEqual(redis["environment"], {"REDISCLI_AUTH": "${PNM_REDIS_PASSWORD:?secret manquant}"})
 
 
+class AiguilleurTests(SimpleTestCase):
+    """Aiguilleur 80/443 : Jitsi et plugNmeet sur une seule adresse IPv4."""
+
+    def test_le_routage_tls_ne_vise_que_la_boucle_locale(self):
+        conf = read_repo_file("plugnmeet/edge/nginx.conf")
+        cibles = re.findall(r"^\s+(\S+)\s+(127\.0\.0\.1:\d+);", conf, re.M)
+        self.assertEqual(dict(cibles), {"meet.globalfeba.com": "127.0.0.1:8444",
+                                        "pnm.globalfeba.com": "127.0.0.1:9443",
+                                        "default": "127.0.0.1:8444"})
+        self.assertIn("ssl_preread on;", conf)
+        self.assertNotIn("ssl_certificate", conf)          # aucune clé privée côté aiguilleur
+        self.assertIn("proxy_pass http://127.0.0.1:8443;", conf)  # défis ACME de Jitsi
+
+    @staticmethod
+    def charger_compose(texte):
+        """yaml.safe_load qui accepte les étiquettes Compose !override / !reset."""
+        class Chargeur(yaml.SafeLoader):
+            pass
+        for tag in ("!override", "!reset"):
+            Chargeur.add_constructor(tag, lambda l, n: l.construct_sequence(n) if isinstance(n, yaml.SequenceNode)
+                                     else l.construct_mapping(n) if isinstance(n, yaml.MappingNode) else l.construct_scalar(n))
+        return yaml.load(texte, Loader=Chargeur)
+
+    def test_les_surcharges_ne_publient_qu_en_boucle_locale(self):
+        for chemin in ("docker-compose.jitsi.edge.yml", "plugnmeet/docker-compose.plugnmeet.edge.yml"):
+            # Sans !override, Compose AJOUTERAIT ces ports aux 80/443 publics.
+            self.assertIn("ports: !override", read_repo_file(chemin), chemin)
+        jitsi = self.charger_compose(read_repo_file("docker-compose.jitsi.edge.yml"))
+        self.assertEqual(set(jitsi["services"]), {"jitsi-web"})
+        pnm = self.charger_compose(read_repo_file("plugnmeet/docker-compose.plugnmeet.edge.yml"))
+        self.assertEqual(set(pnm["services"]), {"pnm-web"})
+        for svc in (jitsi["services"]["jitsi-web"], pnm["services"]["pnm-web"]):
+            self.assertTrue(all(p.startswith("127.0.0.1:") for p in svc["ports"]), svc["ports"])
+
+    def test_l_aiguilleur_est_epingle_et_limite(self):
+        edge = yaml.safe_load(read_repo_file("plugnmeet/edge/docker-compose.edge.yml"))["services"]["edge"]
+        self.assertRegex(edge["image"], r"@sha256:[0-9a-f]{64}$")
+        self.assertEqual(edge["network_mode"], "host")
+        self.assertEqual(edge["mem_limit"], edge["memswap_limit"])
+        self.assertIn("./nginx.conf:/etc/nginx/nginx.conf:ro", edge["volumes"])
+
+
 class ComposeLimitsTests(SimpleTestCase):
     def test_chaque_service_a_une_limite_sans_echange(self):
         base = yaml.safe_load(read_repo_file("plugnmeet/docker-compose.plugnmeet.yml"))

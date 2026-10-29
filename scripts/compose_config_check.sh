@@ -99,6 +99,9 @@ verifier "Jitsi + serveur dédié"    --env-file "$JITSI_ENV" -f docker-compose.
 verifier "Jitsi + derrière le proxy" --env-file "$JITSI_ENV" -f docker-compose.jitsi.yml -f docker-compose.jitsi.behind-proxy.yml
 verifier "plugNmeet (+ proxy edge)"  --env-file plugnmeet/plugnmeet.env.example -f plugnmeet/docker-compose.plugnmeet.yml --profile edge
 verifier "plugNmeet + limites + TURN" --env-file plugnmeet/plugnmeet.env.example -f plugnmeet/docker-compose.plugnmeet.yml -f plugnmeet/docker-compose.plugnmeet.limits.yml -f plugnmeet/docker-compose.plugnmeet.turn.yml --profile edge
+verifier "Jitsi + serveur dédié + aiguilleur" --env-file "$JITSI_ENV" -f docker-compose.jitsi.yml -f docker-compose.jitsi.prod.yml -f docker-compose.jitsi.edge.yml
+verifier "plugNmeet + edge derrière l'aiguilleur" --env-file plugnmeet/plugnmeet.env.example -f plugnmeet/docker-compose.plugnmeet.yml -f plugnmeet/docker-compose.plugnmeet.limits.yml -f plugnmeet/docker-compose.plugnmeet.turn.yml -f plugnmeet/docker-compose.plugnmeet.edge.yml --profile edge
+verifier "aiguilleur 80/443"             -f plugnmeet/edge/docker-compose.edge.yml
 
 printf '\n'
 if [ "$FAILURES" -gt 0 ]; then
