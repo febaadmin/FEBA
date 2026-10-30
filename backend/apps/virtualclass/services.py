@@ -28,6 +28,14 @@ class JitsiAccessDenied(PermissionError):
     """L'utilisateur n'a pas le droit de rejoindre cette salle."""
 
 
+class JoinOutsideSchedule(JitsiAccessDenied):
+    """Élève ou parent hors de la fenêtre d'accès du cours planifié."""
+
+    def __init__(self, message, code):
+        super().__init__(message)
+        self.code = code
+
+
 def jitsi_domain():
     """Domaine de l'instance auto-hébergée, ou lève JitsiNotConfigured."""
     domain = (getattr(settings, "JITSI_DOMAIN", "") or "").strip()
@@ -205,6 +213,52 @@ def assert_can_join(user, room):
                     "Aucun de vos enfants n'appartient au groupe de cette salle."
                 )
 
+    return True
+
+
+def assert_within_schedule(room, *, moderator, now=None):
+    """
+    Fenêtre d'accès d'un cours PLANIFIÉ (règle FEBA, réglable).
+
+    - Modérateur (enseignant, administrateur, super-administrateur) : à tout
+      moment — il prépare, démarre ou prolonge le cours.
+    - Élève, parent : de VIRTUAL_ROOM_EARLY_JOIN_MINUTES avant le début à
+      VIRTUAL_ROOM_LATE_JOIN_MINUTES après la fin prévue (début + durée).
+      En dehors, seulement si un modérateur a ouvert la réunion (statut
+      « live ») : cours commencé en avance ou qui déborde.
+    - Salle permanente (sans date) : pas de fenêtre.
+
+    Les comparaisons se font en UTC ; l'heure affichée est celle du fuseau
+    de l'académie. Lève JoinOutsideSchedule (code too_early / too_late).
+    """
+    from datetime import timedelta
+    from zoneinfo import ZoneInfo
+
+    from django.utils import timezone
+
+    if moderator or room.scheduled_at is None or room.status == "live":
+        return True
+    now = now or timezone.now()
+    debut = room.scheduled_at
+    ouverture = debut - timedelta(minutes=settings.VIRTUAL_ROOM_EARLY_JOIN_MINUTES)
+    fermeture = debut + timedelta(minutes=(room.duration_minutes or 0)
+                                  + settings.VIRTUAL_ROOM_LATE_JOIN_MINUTES)
+    try:
+        zone = ZoneInfo(getattr(room.school, "timezone", "") or settings.TIME_ZONE)
+    except Exception:
+        zone = ZoneInfo(settings.TIME_ZONE)
+    local = timezone.localtime(debut, zone)
+    quand = f"{local:%d/%m/%Y} à {local:%H:%M} ({zone.key})"
+    if now < ouverture:
+        raise JoinOutsideSchedule(
+            f"Ce cours commence le {quand}. Vous pourrez le rejoindre "
+            f"{settings.VIRTUAL_ROOM_EARLY_JOIN_MINUTES} minutes avant.",
+            "too_early",
+        )
+    if now > fermeture:
+        raise JoinOutsideSchedule(
+            f"Ce cours, prévu le {quand}, est terminé.", "too_late",
+        )
     return True
 
 

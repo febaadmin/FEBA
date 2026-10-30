@@ -154,7 +154,8 @@ class AiguilleurTests(SimpleTestCase):
     """Aiguilleur 80/443 : Jitsi et plugNmeet sur une seule adresse IPv4."""
 
     def test_le_routage_tls_ne_vise_que_la_boucle_locale(self):
-        conf = read_repo_file("plugnmeet/edge/nginx.conf")
+        # État de RETOUR ARRIÈRE (Jitsi), recopié dans nginx.conf au besoin.
+        conf = read_repo_file("plugnmeet/edge/nginx.jitsi.conf")
         cibles = re.findall(r"^\s+(\S+)\s+(127\.0\.0\.1:\d+);", conf, re.M)
         self.assertEqual(dict(cibles), {"meet.globalfeba.com": "127.0.0.1:8444",
                                         "pnm.globalfeba.com": "127.0.0.1:9443",
@@ -164,8 +165,10 @@ class AiguilleurTests(SimpleTestCase):
         self.assertIn("proxy_pass http://127.0.0.1:8443;", conf)  # défis ACME de Jitsi
 
     def test_l_etat_plugnmeet_ne_change_que_la_cible_de_meet(self):
-        jitsi = read_repo_file("plugnmeet/edge/nginx.conf")
-        pnm = read_repo_file("plugnmeet/edge/nginx.plugnmeet.conf")
+        # nginx.conf (lu par l'aiguilleur) = production : meet → plugNmeet.
+        # Un déploiement ou un « git pull » ne peut donc pas rétablir Jitsi.
+        jitsi = read_repo_file("plugnmeet/edge/nginx.jitsi.conf")
+        pnm = read_repo_file("plugnmeet/edge/nginx.conf")
         cibles = dict(re.findall(r"^\s+(\S+)\s+(127\.0\.0\.1:\d+);", pnm, re.M))
         self.assertEqual(cibles, {"meet.globalfeba.com": "127.0.0.1:9443",
                                   "pnm.globalfeba.com": "127.0.0.1:9443",

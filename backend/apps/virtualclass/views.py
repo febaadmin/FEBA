@@ -220,6 +220,13 @@ class VirtualRoomViewSet(BulkDeleteMixin, viewsets.ModelViewSet):
             return Response({"detail": str(exc)}, status=status.HTTP_403_FORBIDDEN)
 
         moderator = request.user.role_level >= 50
+        # 2. Fenêtre d'accès du cours planifié (élèves et parents).
+        from .services import JoinOutsideSchedule, assert_within_schedule
+        try:
+            assert_within_schedule(room, moderator=moderator)
+        except JoinOutsideSchedule as exc:
+            return Response({"detail": str(exc), "code": exc.code},
+                            status=status.HTTP_403_FORBIDDEN)
         # Une réunion FERMÉE par l'enseignant ne se rouvre pas par un élève :
         # seul un modérateur peut relancer une salle terminée.
         if room.status == "ended" and not moderator:
