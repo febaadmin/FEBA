@@ -71,7 +71,8 @@ def open_meeting(room, user, *, moderator, lang="fr"):
     Crée (ou retrouve) la réunion, enregistre la participation et renvoie
     l'URL d'adhésion. Lève plugnmeet.PlugNmeetUnavailable / PlugNmeetError.
 
-    Le jeton est à USAGE UNIQUE : il n'est ni stocké ni journalisé.
+    Le jeton vaut 10 min (réutilisable pendant ce délai, vérifié le
+    30/10/2026) : il n'est ni stocké ni journalisé.
     """
     info = plugnmeet.create_room(room)
     sid = (info or {}).get("sid") or ""

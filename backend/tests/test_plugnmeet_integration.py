@@ -161,7 +161,8 @@ class ApiContractTests(PlugNmeetBase):
         self.assertTrue(f["breakout_room_features"]["is_allow"])
         self.assertTrue(f["polls_features"]["is_allow"])
         self.assertTrue(f["whiteboard_features"]["is_allow"])
-        self.assertTrue(f["shared_note_pad_features"]["is_allow"])
+        # Etherpad absent : pas de bouton sans effet.
+        self.assertFalse(f["shared_note_pad_features"]["is_allow"])
 
     def test_enregistrement_seulement_si_service_ET_salle(self):
         self.salle_classe.allow_recording = True

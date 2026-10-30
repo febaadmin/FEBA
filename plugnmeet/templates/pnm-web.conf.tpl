@@ -39,7 +39,7 @@ server {
     add_header Strict-Transport-Security "max-age=31536000" always;
     add_header X-Content-Type-Options nosniff always;
     add_header Referrer-Policy "strict-origin-when-cross-origin" always;
-    # Le jeton d'adhésion est dans l'URL (usage unique, 10 min) : il ne
+    # Le jeton d'adhésion est dans l'URL (valable 10 min) : il ne
     # doit pas partir vers un autre site dans l'en-tête Referer.
     add_header Permissions-Policy "camera=(self), microphone=(self), display-capture=(self)" always;
 

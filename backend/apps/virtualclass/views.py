@@ -205,7 +205,7 @@ class VirtualRoomViewSet(BulkDeleteMixin, viewsets.ModelViewSet):
     def join(self, request, pk=None):
         """
         Contrôle le droit d'entrer, ouvre (ou retrouve) la réunion et renvoie
-        l'URL d'adhésion. Le jeton d'adhésion est à usage unique, émis par
+        l'URL d'adhésion. Le jeton d'adhésion (10 min de validité) est émis par
         le serveur après ce contrôle ; la clé et le secret de l'API ne
         quittent jamais le backend.
         """

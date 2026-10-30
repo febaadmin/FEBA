@@ -97,3 +97,50 @@ class FenetreApiTests(TestCase):
             resp = self.client.post(f"/api/virtual-rooms/{self.salle(debut).id}/join/")
             self.assertEqual(resp.status_code, status.HTTP_403_FORBIDDEN, code)
             self.assertEqual(resp.data["code"], code)
+
+
+class ParentAccesTests(TestCase):
+    """
+    Parents : FEBA leur ouvre les salles de la classe de leurs enfants, comme
+    simples participants (rôle < 50), avec la même fenêtre horaire qu'un élève.
+    """
+
+    def setUp(self):
+        from django.utils import timezone
+
+        from apps.parents.models import Parent, ParentStudent
+        self.school = make_school()
+        year = SchoolYear.objects.create(school=self.school, name="2026-2027",
+                                         start_date="2026-09-01", end_date="2027-06-30", is_current=True)
+        level = Level.objects.create(school=self.school, name="CM2", order=2, cycle="primaire")
+        self.cls = Class.objects.create(name="CM2 A", level=level, school_year=year)
+        self.autre = Class.objects.create(name="CM2 B", level=level, school_year=year)
+        enfant = Student.objects.create(user=make_user("enfant@test.bj", "student", self.school),
+                                        school=self.school, first_name="E", last_name="F",
+                                        current_class=self.cls)
+        self.parent_user = make_user("parent@test.bj", "parent", self.school)
+        ParentStudent.objects.create(parent=Parent.objects.create(user=self.parent_user),
+                                     student=enfant, relationship="mother")
+        maintenant = timezone.now()
+        self.salle = VirtualRoom.objects.create(school=self.school, name="Cours CM2 A", class_obj=self.cls,
+                                                scheduled_at=maintenant, duration_minutes=60)
+        self.salle_autre = VirtualRoom.objects.create(school=self.school, name="Cours CM2 B",
+                                                      class_obj=self.autre, scheduled_at=maintenant)
+        self.client = APIClient()
+        auth(self.client, "parent@test.bj")
+
+    def test_le_parent_voit_la_salle_de_son_enfant_seulement(self):
+        resp = self.client.get("/api/virtual-rooms/")
+        noms = {r["name"] for r in resp.data.get("results", resp.data)}
+        self.assertIn("Cours CM2 A", noms)
+        self.assertNotIn("Cours CM2 B", noms)
+
+    def test_le_parent_entre_comme_participant_dans_la_salle_de_son_enfant(self):
+        from apps.virtualclass.services import assert_can_join
+        self.assertTrue(assert_can_join(self.parent_user, self.salle))
+        self.assertLess(self.parent_user.role_level, 50)   # jamais modérateur
+        self.assertTrue(assert_within_schedule(self.salle, moderator=False))
+
+    def test_le_parent_est_refuse_ailleurs(self):
+        resp = self.client.post(f"/api/virtual-rooms/{self.salle_autre.id}/join/")
+        self.assertIn(resp.status_code, (status.HTTP_403_FORBIDDEN, status.HTTP_404_NOT_FOUND))

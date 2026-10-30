@@ -1,5 +1,5 @@
 [Unit]
-Description=Renouvellement du certificat pnm.globalfeba.com (plugNmeet, TURN)
+Description=Renouvellement du certificat de plugNmeet (meet.globalfeba.com, TURN)
 After=docker.service
 Requires=docker.service
 

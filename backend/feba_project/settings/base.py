@@ -274,6 +274,8 @@ PLUGNMEET_WEBHOOK_URL = config('PLUGNMEET_WEBHOOK_URL', default='')
 PLUGNMEET_RECORDING_ENABLED = config('PLUGNMEET_RECORDING_ENABLED', default=False, cast=bool)
 PLUGNMEET_RTMP_ENABLED = config('PLUGNMEET_RTMP_ENABLED', default=False, cast=bool)
 PLUGNMEET_INSIGHTS_ENABLED = config('PLUGNMEET_INSIGHTS_ENABLED', default=False, cast=bool)
+# Bloc-notes partagé : seulement avec un serveur Etherpad déclaré à plugNmeet.
+PLUGNMEET_SHARED_NOTEPAD_ENABLED = config('PLUGNMEET_SHARED_NOTEPAD_ENABLED', default=False, cast=bool)
 # Fenêtre d'accès des élèves et parents à un cours planifié : de N minutes
 # avant le début à N minutes après la fin prévue (modérateurs : sans limite ;
 # cours ouvert par un modérateur : accessible). Voir services.assert_within_schedule.
