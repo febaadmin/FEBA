@@ -6,7 +6,7 @@
  * Cette page demande au backend `virtualAPI.join(id)`. Le backend vérifie
  * les droits FEBA (académie, rôle, classe, état de la salle), ouvre ou
  * retrouve la réunion plugNmeet et renvoie une URL contenant un jeton
- * d'adhésion À USAGE UNIQUE. L'onglet s'y rend aussitôt
+ * d'adhésion de COURTE DURÉE (10 min). L'onglet s'y rend aussitôt
  * (`location.replace` : le jeton ne reste pas dans l'historique, le
  * bouton « Précédent » ne le rejoue pas). Ni la clé ni le secret de l'API
  * plugNmeet n'existent dans le navigateur.

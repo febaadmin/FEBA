@@ -16,7 +16,7 @@ client:
   # navigateur.
   api_key: ${PNM_API_KEY}
   secret: ${PNM_API_SECRET}
-  # Durée de validité du jeton d'ADHÉSION (usage unique, consommé à
+  # Durée de validité du jeton d'ADHÉSION (courte durée, consommé à
   # l'ouverture de la salle). Une fois connecté, le participant n'en
   # dépend plus.
   token_validity: 10m

@@ -11,7 +11,7 @@ la salle et l'académie sont des instances non enregistrées.
     python salle_et_jetons.py          → JSON {room_id, enseignant, eleve}
     python salle_et_jetons.py --fin    → JSON {actif_avant, end_room, actif_apres}
 
-Les jetons sont à usage unique : relancer pour chaque essai.
+Les jetons valent 10 min : relancer pour chaque essai.
 """
 import json
 import os
@@ -56,7 +56,11 @@ with override_settings(
     else:
         plugnmeet.create_room(room)
         out = {"room_id": plugnmeet.room_id_for(room)}
-        for cle, (user, admin) in {"enseignant": (participant(990101, "Prof Essai", "teacher"), True),
-                                   "eleve": (participant(990201, "Élève Essai", "student"), False)}.items():
+        # PNM_E2E_ELEVES=N : élèves « eleve », « eleve2 »… « eleveN » (défaut 1).
+        roles = {"enseignant": (participant(990101, "Prof Essai", "teacher"), True)}
+        for i in range(1, int(os.environ.get("PNM_E2E_ELEVES", "1")) + 1):
+            suffixe = "" if i == 1 else str(i)
+            roles["eleve" + suffixe] = (participant(990200 + i, f"Élève Essai {i}", "student"), False)
+        for cle, (user, admin) in roles.items():
             out[cle] = plugnmeet.join_url(plugnmeet.join_token(room, user, is_admin=admin))
         json.dump(out, sys.stdout)

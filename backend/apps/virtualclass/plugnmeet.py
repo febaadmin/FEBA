@@ -12,7 +12,7 @@ v2.5.3, vérifiés contre une instance réelle) :
   `sha256` = base64(SHA-256(corps)), validité 5 minutes.
 
 La clé et le secret ne quittent JAMAIS le backend : le navigateur ne
-reçoit qu'un jeton d'adhésion à usage unique, émis après le contrôle
+reçoit qu'un jeton d'adhésion de courte durée (10 min), émis après le contrôle
 des permissions FEBA.
 """
 import base64
@@ -167,7 +167,9 @@ def room_features(room):
             "only_record_admin_webcams": False,
         },
         "chat_features": {"is_allow": True, "is_allow_file_upload": True},
-        "shared_note_pad_features": {"is_allow": True},
+        # Le bloc-notes partagé exige un serveur Etherpad (shared_notepad dans
+        # la configuration de plugNmeet), non installé : bouton sans effet.
+        "shared_note_pad_features": {"is_allow": settings.PLUGNMEET_SHARED_NOTEPAD_ENABLED},
         "whiteboard_features": {"is_allow": True},
         "external_media_player_features": {"is_allow": True},
         "external_broadcasting_features": {"is_allow": rtmp, "is_allow_rtmp": rtmp},
@@ -223,7 +225,9 @@ def create_room(room):
 
 
 def join_token(room, user, *, is_admin, lang="fr"):
-    """Jeton d'adhésion à USAGE UNIQUE, à consommer immédiatement."""
+    """Jeton d'adhésion valable 10 min (client.token_validity), à consommer
+    immédiatement. plugNmeet ne le rend PAS à usage unique : le même lien
+    rouvre la salle tant qu'il est valide (vérifié le 30/10/2026)."""
     name = (user.get_full_name() or user.username or "Participant")[:100]
     body = {
         "room_id": room_id_for(room),
