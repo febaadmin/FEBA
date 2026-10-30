@@ -63,6 +63,8 @@ retour)
   $FEBA 'set -u; cd /opt/feba/app/FEBA; S=$(ls -1t ~/sauvegardes-env/.env.prod.* | head -1)
   [ -n "$S" ] || { echo "ARRÊT : aucune sauvegarde"; exit 1; }
   install -m 600 "$S" .env.prod; echo ".env.prod restauré depuis $S"
+  # Retour délibéré : sans ce drapeau, le contrôle de déploiement refuse Jitsi.
+  grep -q "^VIDEO_ROLLBACK_JITSI=" .env.prod || echo "VIDEO_ROLLBACK_JITSI=true" >> .env.prod
   C="docker compose --env-file .env.prod -f docker-compose.prod.yml"
   $C up -d --no-deps --no-build backend-prod celery-prod celery-beat 2>&1 | tail -2
   for _ in $(seq 1 40); do [ "$(docker inspect -f "{{.State.Health.Status}}" feba_backend_prod)" = healthy ] && break; sleep 5; done

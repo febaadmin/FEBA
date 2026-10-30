@@ -109,6 +109,9 @@ def problems():
         url = settings.PLUGNMEET_SERVER_URL
         if not _https(url):
             add(ERROR, "plugnmeet_url", "PLUGNMEET_SERVER_URL doit être une adresse HTTPS.")
+        elif _host(url) != settings.VIDEO_PUBLIC_HOST:
+            add(ERROR, "plugnmeet_domain",
+                f"PLUGNMEET_SERVER_URL doit viser {settings.VIDEO_PUBLIC_HOST} (domaine public des classes).")
         if len(settings.PLUGNMEET_API_KEY or "") < 8 or len(settings.PLUGNMEET_API_SECRET or "") < 20:
             add(ERROR, "plugnmeet_credentials", "PLUGNMEET_API_KEY / PLUGNMEET_API_SECRET absents ou trop courts.")
         hook = settings.PLUGNMEET_WEBHOOK_URL
@@ -124,7 +127,14 @@ def problems():
             assert_jitsi_configured()
         except JitsiNotConfigured as exc:
             add(ERROR, "jitsi", f"VIDEO_PROVIDER=jitsi mais configuration incomplète : {exc}")
-        add(WARNING, "video_rollback", "VIDEO_PROVIDER=jitsi : moteur de RETOUR ARRIÈRE actif (pas plugNmeet).")
+        # Jitsi n'est plus le moteur de FEBA : un déploiement ne le réactive pas
+        # par accident. Retour arrière délibéré : VIDEO_ROLLBACK_JITSI=true
+        # (posé par plugnmeet/ops/basculer_feba.sh retour).
+        if settings.VIDEO_ROLLBACK_JITSI:
+            add(WARNING, "video_rollback", "VIDEO_PROVIDER=jitsi : RETOUR ARRIÈRE délibéré (VIDEO_ROLLBACK_JITSI).")
+        else:
+            add(ERROR, "video_rollback",
+                "VIDEO_PROVIDER=jitsi sans VIDEO_ROLLBACK_JITSI=true : plugNmeet est le moteur de production.")
     else:
         add(ERROR, "video_provider", f"VIDEO_PROVIDER « {provider} » inconnu (plugnmeet ou jitsi).")
 

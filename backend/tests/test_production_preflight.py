@@ -72,6 +72,14 @@ class PreflightTests(SimpleTestCase):
         self.assert_refused("email_sender_domain", EMAIL_HOST_USER="contact@autre.com")
         self.assert_refused("sms_from", SMS_FROM_NUMBER="2157155406")
         self.assert_refused("video_provider", VIDEO_PROVIDER="zoom")
+        # Domaine des classes et retour à Jitsi : jamais par accident.
+        self.assert_refused("plugnmeet_domain", PLUGNMEET_SERVER_URL="https://pnm.globalfeba.com")
+        self.assert_refused("video_rollback", VIDEO_PROVIDER="jitsi")
+
+    def test_retour_jitsi_delibere_seulement_signale(self):
+        with override_settings(**{**GOOD, "VIDEO_PROVIDER": "jitsi", "VIDEO_ROLLBACK_JITSI": True}):
+            self.assertNotIn("video_rollback", codes())
+            self.assertIn("video_rollback", codes("WARNING"))
         self.assert_refused("database", DATABASES={"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": "x"}})
 
     def test_preproduction_tolere_les_transports_de_test_en_avertissement(self):

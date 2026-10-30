@@ -254,6 +254,10 @@ VIDEO_PROVIDER = config('VIDEO_PROVIDER', default='plugnmeet').strip().lower()
 # https://meet.globalfeba.com. Clé et secret de l'API : côté serveur
 # UNIQUEMENT — ils ne sont jamais transmis au frontend.
 PLUGNMEET_SERVER_URL = config('PLUGNMEET_SERVER_URL', default='').rstrip('/')
+# Domaine public des classes virtuelles, contrôlé avant chaque déploiement.
+VIDEO_PUBLIC_HOST = config('VIDEO_PUBLIC_HOST', default='meet.globalfeba.com')
+# Retour arrière DÉLIBÉRÉ vers Jitsi (sinon refusé en production).
+VIDEO_ROLLBACK_JITSI = config('VIDEO_ROLLBACK_JITSI', default=False, cast=bool)
 # Adresse utilisée par le BACKEND s'il ne joint pas l'URL publique
 # (réseau Docker interne). Vide = PLUGNMEET_SERVER_URL.
 PLUGNMEET_INTERNAL_URL = config('PLUGNMEET_INTERNAL_URL', default='').rstrip('/')
@@ -270,6 +274,11 @@ PLUGNMEET_WEBHOOK_URL = config('PLUGNMEET_WEBHOOK_URL', default='')
 PLUGNMEET_RECORDING_ENABLED = config('PLUGNMEET_RECORDING_ENABLED', default=False, cast=bool)
 PLUGNMEET_RTMP_ENABLED = config('PLUGNMEET_RTMP_ENABLED', default=False, cast=bool)
 PLUGNMEET_INSIGHTS_ENABLED = config('PLUGNMEET_INSIGHTS_ENABLED', default=False, cast=bool)
+# Fenêtre d'accès des élèves et parents à un cours planifié : de N minutes
+# avant le début à N minutes après la fin prévue (modérateurs : sans limite ;
+# cours ouvert par un modérateur : accessible). Voir services.assert_within_schedule.
+VIRTUAL_ROOM_EARLY_JOIN_MINUTES = config('VIRTUAL_ROOM_EARLY_JOIN_MINUTES', default=15, cast=int)
+VIRTUAL_ROOM_LATE_JOIN_MINUTES = config('VIRTUAL_ROOM_LATE_JOIN_MINUTES', default=15, cast=int)
 # Durée maximale d'une réunion en minutes (0 = illimitée).
 PLUGNMEET_MAX_ROOM_MINUTES = config('PLUGNMEET_MAX_ROOM_MINUTES', default=0, cast=int)
 

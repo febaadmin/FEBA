@@ -148,7 +148,10 @@ aiguilleur)
     [ "$(direct "https://$DOMAINE/healthCheck")" = Healthy ] && tls_ok 127.0.0.1:9443 \
       || { echo "ARRÊT : plugNmeet injoignable ou certificat invalide en direct"; exit 1; }
     cp -p "$EDGE/nginx.conf" "$DIAG/nginx.avant.conf"
-    cat "$EDGE/nginx.plugnmeet.conf" > "$EDGE/nginx.conf"
+    # État de production versionné : nginx.conf du dépôt.
+    git -C "$PNM" show HEAD:plugnmeet/edge/nginx.conf > "$DIAG/nginx.plugnmeet.conf" || exit 1
+    grep -q "$DOMAINE  127.0.0.1:9443" "$DIAG/nginx.plugnmeet.conf" || { echo "ARRÊT : état plugNmeet introuvable dans le dépôt"; exit 1; }
+    cat "$DIAG/nginx.plugnmeet.conf" > "$EDGE/nginx.conf"
     if ! recharger_aiguilleur; then
       cat "$DIAG/nginx.avant.conf" > "$EDGE/nginx.conf"; echo "ARRÊT : nginx -t refuse l'état plugNmeet ; aiguilleur inchangé"; exit 1
     fi
@@ -162,7 +165,7 @@ aiguilleur)
     ;;
   jitsi)
     cp -p "$EDGE/nginx.conf" "$DIAG/nginx.avant.conf"
-    git -C "$PNM" show HEAD:plugnmeet/edge/nginx.conf > "$DIAG/nginx.jitsi.conf" || exit 1
+    git -C "$PNM" show HEAD:plugnmeet/edge/nginx.jitsi.conf > "$DIAG/nginx.jitsi.conf" || exit 1
     grep -q "$DOMAINE  127.0.0.1:8444" "$DIAG/nginx.jitsi.conf" || { echo "ARRÊT : état Jitsi introuvable dans le dépôt"; exit 1; }
     cat "$DIAG/nginx.jitsi.conf" > "$EDGE/nginx.conf"
     if ! recharger_aiguilleur; then
