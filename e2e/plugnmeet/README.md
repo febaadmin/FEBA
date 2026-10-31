@@ -7,6 +7,7 @@ Deux scénarios :
 | `parcours-feba.mjs` | **Parcours complet depuis FEBA** : connexion réelle, règles d'accès (404 hors de la classe, modérateur pour l'enseignant), salle d'attente et admission, audio/vidéo dans les deux sens en UDP, présence enregistrée par les webhooks, partage d'écran, refus dans le navigateur d'un compte hors de la classe, coupure réseau de 12 s et reprise, fin de réunion par l'enseignant, retour vers `/virtual-room/<id>/ended`, réunion inactive et présences closes dans FEBA (26 critères). |
 | `recette-salle.mjs` | **Une classe** : enseignant + 2 élèves (`PNM_E2E_ELEVES=2`). Audio et vidéo reçus de chacun vers chacun, micro et caméra coupés puis rétablis, partage d'écran démarré / arrêté / repris, chat dans les deux sens, tableau blanc vu des élèves, modération présente chez l'enseignant et absente chez l'élève, fin par FEBA (23 critères). |
 | `charge.mjs` | **Charge contrôlée** : N participants (`PNM_E2E_ELEVES=N-1`), temps d'entrée, pistes reçues, pertes, gigue, aller-retour. |
+| `tableau-blanc-documents.mjs` | **Documents** : pour chaque fichier de `DOCS_DIR`, téléversement, conversion, ajout au tableau blanc, navigation jusqu'à la dernière page, suivi par l'élève. |
 | `deux-participants.mjs` | La salle plugNmeet seule, jetons produits par le code FEBA sans passer par l'interface (15 critères). |
 
 `parcours-feba.mjs` : `FEBA_URL` (frontend), `FEBA_API` (défaut `FEBA_URL/api`),
