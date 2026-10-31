@@ -95,3 +95,19 @@
     })
     .catch(function () { /* FEBA injoignable : le client fonctionne normalement */ });
 })();
+
+/*
+ * « Gérer les fichiers » du tableau blanc : le bouton « Ajouter au tableau
+ * blanc » reste désactivé tant qu'aucun fichier n'est sélectionné, mais le
+ * client lui garde l'apparence d'un bouton actif : le clic semble sans effet
+ * (pris pour une limite de pages). On rend cet état visible et on l'explique.
+ */
+(function () {
+  "use strict";
+  var style = document.createElement("style");
+  style.textContent =
+    ".excalidrawUploadFiles button[disabled]{opacity:.45;cursor:not-allowed}" +
+    ".excalidrawUploadFiles button[disabled]:last-child::after{display:block;font-size:11px;font-weight:400;" +
+    "content:\"Cliquez d'abord sur un fichier de la liste / Select a file first\"}";
+  document.head.appendChild(style);
+})();

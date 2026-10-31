@@ -19,6 +19,7 @@ import logging
 import socket
 from datetime import timedelta
 
+from apps.core.request_text import text_field
 from django.conf import settings
 from django.core.cache import cache
 from django.core.validators import validate_email
@@ -371,7 +372,7 @@ class EmailConfigTestView(APIView):
     def post(self, request):
         from .mailer import send_tracked_email
 
-        to = (request.data.get("to") or "").strip()
+        to = text_field(request.data, "to")
         try:
             validate_email(to)
         except DjangoValidationError:

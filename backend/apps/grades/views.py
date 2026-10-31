@@ -14,6 +14,7 @@ Corrections :
 import logging
 from decimal import Decimal
 
+from apps.core.request_text import text_field
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -255,7 +256,7 @@ class GradeViewSet(BulkDeleteMixin, viewsets.ModelViewSet):
 
     def perform_bulk_soft_delete(self, queryset, request):
         """Suppression groupée tracée comme la suppression unitaire."""
-        justification = ((request.data.get("justification") or "").strip()
+        justification = (text_field(request.data, "justification")
                          or "Suppression groupée (sans justification saisie)")
         now = timezone.now()
         for grade in queryset.filter(is_deleted=False):
@@ -267,19 +268,32 @@ class GradeViewSet(BulkDeleteMixin, viewsets.ModelViewSet):
 
     def destroy(self, request, *args, **kwargs):
         """Soft delete avec justification obligatoire."""
+        from django.db import transaction
+        from rest_framework.exceptions import PermissionDenied
+
         instance = self.get_object()
-        if instance.is_deleted:
-            return Response({"detail": "Déjà supprimé."}, status=status.HTTP_400_BAD_REQUEST)
-        # FIX: justification obligatoire pour la suppression
-        justification = request.data.get("justification", "").strip()
+        # Même règle que update et restore : la portée de lecture d'un enseignant
+        # (ses classes) est plus large que son droit d'écriture (ses matières).
+        if request.user.is_teacher():
+            teacher = self._resolve_teacher()
+            ok, err = (self._validate_teacher_permission(teacher, instance.subject, instance.student)
+                       if teacher else (False, "Profil enseignant introuvable."))
+            if not ok:
+                raise PermissionDenied(err)
+        justification = text_field(request.data, "justification")
         if not justification:
             return Response({"error": "La justification est obligatoire pour supprimer une note."}, status=status.HTTP_400_BAD_REQUEST)
-        old_value = instance.value
-        instance.is_deleted = True
-        instance.deleted_at = timezone.now()
-        instance.deleted_by = request.user
-        instance.save(update_fields=["is_deleted", "deleted_at", "deleted_by"])
-        _log_grade(instance, old_value, instance.comment, "delete", request.user, justification=justification)
+        # Note et historique ensemble ; le verrou départage deux suppressions simultanées.
+        with transaction.atomic():
+            instance = Grade.objects.select_for_update().get(pk=instance.pk)
+            if instance.is_deleted:
+                return Response({"detail": "Déjà supprimé."}, status=status.HTTP_400_BAD_REQUEST)
+            old_value = instance.value
+            instance.is_deleted = True
+            instance.deleted_at = timezone.now()
+            instance.deleted_by = request.user
+            instance.save(update_fields=["is_deleted", "deleted_at", "deleted_by"])
+            _log_grade(instance, old_value, instance.comment, "delete", request.user, justification=justification)
         logger.info(f"Grade soft-deleted: {instance} by {request.user.email} — {justification}")
         return Response(status=status.HTTP_204_NO_CONTENT)
 
