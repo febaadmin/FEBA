@@ -343,6 +343,11 @@ PAYMENT_REMINDERS_HOUR = config('PAYMENT_REMINDERS_HOUR', default=8, cast=int)
 PAYMENT_REMINDERS_MINUTE = config('PAYMENT_REMINDERS_MINUTE', default=30, cast=int)
 
 CELERY_BEAT_SCHEDULE = {
+    'surveillance-plateforme': {
+        'task': 'incidents.surveillance_plateforme',
+        'schedule': crontab(minute='*/15'),
+        'options': {'expires': 600},
+    },
     'relances-paiements-quotidiennes': {
         'task': 'payments.run_payment_reminders',
         'schedule': crontab(hour=str(PAYMENT_REMINDERS_HOUR), minute=str(PAYMENT_REMINDERS_MINUTE)),

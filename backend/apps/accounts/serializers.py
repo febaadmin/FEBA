@@ -70,6 +70,20 @@ def extract_api_error(exc) -> str:
 
 # ── Lecture ────────────────────────────────────────────────────────────────────
 
+def creer_profil_du_role(user):
+    """
+    Un compte enseignant ou parent sans profil casse ses écrans : création et
+    changement de rôle le créent. L'élève n'est pas concerné : sa fiche exige
+    des données propres (classe, année) qu'on ne peut pas inventer.
+    """
+    if user.role == "teacher":
+        from apps.teachers.models import Teacher
+        Teacher.objects.get_or_create(user=user)
+    elif user.role == "parent":
+        from apps.parents.models import Parent
+        Parent.objects.get_or_create(user=user)
+
+
 class UserSerializer(AcademyMetadataMixin, serializers.ModelSerializer):
     # P3 : chaque objet expose son académie, sans quoi la vue
     # « Toutes les Académies » ne peut pas étiqueter ses lignes.
@@ -97,7 +111,9 @@ class UserSerializer(AcademyMetadataMixin, serializers.ModelSerializer):
         if "sms_consent" in validated_data and validated_data["sms_consent"] != instance.sms_consent:
             # Horodaté par le SERVEUR : preuve du moment du choix.
             validated_data["sms_consent_at"] = timezone.now()
-        return super().update(instance, validated_data)
+        user = super().update(instance, validated_data)
+        creer_profil_du_role(user)
+        return user
 
     def get_avatar(self, obj):
         try:
@@ -262,14 +278,7 @@ class UserCreateSerializer(serializers.ModelSerializer):
         user = CustomUser(**validated_data)
         user.set_password(password)
         user.save()
-        # Un compte enseignant ou parent sans profil casse ses écrans. L'élève
-        # n'est pas concerné ici : sa fiche exige des données propres (classe…).
-        if user.role == "teacher":
-            from apps.teachers.models import Teacher
-            Teacher.objects.get_or_create(user=user)
-        elif user.role == "parent":
-            from apps.parents.models import Parent
-            Parent.objects.get_or_create(user=user)
+        creer_profil_du_role(user)
         logger.info("Compte créé : %s (role=%s)", user.email, user.role)
         return user
 
