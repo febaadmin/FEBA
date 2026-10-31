@@ -177,6 +177,18 @@ class PaymentViewSet(BulkDeleteMixin, viewsets.ModelViewSet):
                 )
         except Exception as exc:
             logger.warning("Erreur non bloquante ignorée : %s", exc, exc_info=True)
+
+    def perform_update(self, serializer):
+        avant = serializer.instance
+        montant_avant, confirme_avant = avant.amount, avant.is_confirmed
+        champs = sorted(serializer.validated_data)
+        payment = serializer.save()
+        _log_payment_action(
+            payment=payment, action="update", performed_by=self.request.user,
+            notes=f"Champs modifiés : {', '.join(champs)} ; montant avant : {montant_avant}",
+            is_confirmed_before=confirme_avant, is_confirmed_after=payment.is_confirmed,
+        )
+
     def perform_bulk_soft_delete(self, queryset, request):
         """
         Suppression groupée = même traitement que la suppression unitaire :
@@ -375,8 +387,12 @@ class PaymentViewSet(BulkDeleteMixin, viewsets.ModelViewSet):
         # convertir un montant XOF en XOF ne serait qu'un calcul inutile
         # qui pourrait, par un bug futur, introduire une erreur d'arrondi
         # là où il n'y en avait aucune raison d'être.
+        # Aucun paiement : le total vide reste dans la devise de l'académie.
+        academy = get_request_school(request)
         target_currency = (
-            next(iter(currencies_present)) if len(currencies_present) == 1 else reporting_currency
+            next(iter(currencies_present)) if len(currencies_present) == 1
+            else academy.currency_code if not currencies_present and academy is not None
+            else reporting_currency
         )
 
         consolidated_total, totals_by_currency, conversions, conversion_errors = consolidate(rows, target_currency)

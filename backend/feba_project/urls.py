@@ -3,8 +3,11 @@ from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
 
+from apps.core import fichiers_prives
+
 urlpatterns = [
     path('django-admin/', admin.site.urls),
+    path('api/files/<str:jeton>/', fichiers_prives.telecharger, name='fichier-prive'),
     path('api/auth/', include('apps.accounts.urls')),
     path('api/schools/', include('apps.schools.urls')),
     path('api/classes/', include('apps.classes.urls')),

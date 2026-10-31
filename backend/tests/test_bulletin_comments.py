@@ -20,9 +20,11 @@ import tempfile
 from unittest import mock
 
 import fitz  # PyMuPDF
+from django.core import signing
 from django.test import TestCase, TransactionTestCase, override_settings
 from rest_framework.test import APIClient
 
+from apps.core.fichiers_prives import SEL
 from apps.accounts.models import CustomUser
 from apps.bulletins.models import Bulletin, BulletinOperation
 from apps.classes.models import Class
@@ -140,7 +142,7 @@ class IndividualCommentTests(BulletinCommentBase):
     def test_ajout_enregistre_et_imprime(self):
         """Scénarios 1, 2, 3, 21 : ajout, base, PDF, lien renouvelé."""
         b = self.generate(self.a.students[0])
-        old_url = b.pdf_file.url
+        old_name = b.pdf_file.name
         self.assertIn(NO_COMMENT, flat(pdf_text(b)[0]))
         r = self.comment(b, "Excellent trimestre, continuez ainsi.")
         self.assertEqual(r.status_code, 200, r.data)
@@ -152,8 +154,11 @@ class IndividualCommentTests(BulletinCommentBase):
         self.assertIn("Excellent trimestre, continuez ainsi.", text)
         self.assertNotIn(NO_COMMENT, text)
         # Nouveau fichier, nouvelle URL : le navigateur ne peut pas resservir l'ancien.
-        self.assertNotEqual(r.data["bulletin"]["pdf_url"], old_url)
-        self.assertEqual(r.data["bulletin"]["pdf_url"], b.pdf_file.url)
+        # Le lien signé change à chaque seconde : on compare le fichier qu'il désigne.
+        jeton = r.data["bulletin"]["pdf_url"].rstrip("/").rsplit("/", 1)[1]
+        nom = signing.loads(jeton, salt=SEL)
+        self.assertNotEqual(nom, old_name)
+        self.assertEqual(nom, b.pdf_file.name)
         self.assertFalse(r.data["bulletin"]["pdf_outdated"])
         self.assertEqual(Bulletin.objects.filter(student=self.a.students[0]).count(), 1)
 

@@ -68,6 +68,21 @@ class MeView(generics.RetrieveUpdateAPIView):
         return Response(serializer.data)
 
 
+def revoquer_sessions(user):
+    """Met en liste noire tous les jetons de renouvellement du compte."""
+    revoked = 0
+    try:
+        from rest_framework_simplejwt.token_blacklist.models import (
+            OutstandingToken, BlacklistedToken,
+        )
+        for token in OutstandingToken.objects.filter(user=user):
+            _, created = BlacklistedToken.objects.get_or_create(token=token)
+            revoked += 1 if created else 0
+    except Exception as exc:
+        logger.warning("Révocation des tokens impossible : %s", exc)
+    return revoked
+
+
 class ChangePasswordView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -79,8 +94,13 @@ class ChangePasswordView(APIView):
             # choisi son propre mot de passe, l'obligation est levée.
             request.user.must_change_password = False
             request.user.save()
+            revoquer_sessions(request.user)
             logger.info(f"Password changed (self): {request.user.email}")
-            return Response({"detail": "Mot de passe modifié."})
+            # Les anciennes sessions tombent, y compris celle-ci : ce poste
+            # reçoit de nouveaux jetons pour rester connecté.
+            refresh = CustomTokenObtainPairSerializer.get_token(request.user)
+            return Response({"detail": "Mot de passe modifié.",
+                             "access": str(refresh.access_token), "refresh": str(refresh)})
         return Response(serializer.errors, status=400)
 
 
@@ -252,16 +272,7 @@ class AdminResetPasswordView(APIView):
         # Révocation des sessions : blacklist de TOUS les refresh tokens en
         # circulation pour la cible. L'ancien mot de passe ne permet plus de
         # se connecter et les sessions ne peuvent plus se renouveler.
-        revoked = 0
-        try:
-            from rest_framework_simplejwt.token_blacklist.models import (
-                OutstandingToken, BlacklistedToken,
-            )
-            for token in OutstandingToken.objects.filter(user=target):
-                _, created = BlacklistedToken.objects.get_or_create(token=token)
-                revoked += 1 if created else 0
-        except Exception as exc:
-            logger.warning("Révocation des tokens impossible : %s", exc)
+        revoked = revoquer_sessions(target)
 
         PasswordResetLog.objects.create(
             performed_by=requester,
