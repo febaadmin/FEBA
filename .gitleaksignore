@@ -1,0 +1,8 @@
+fc81a288a1c3b8d8c96f740806ae7d3f5dd61fa2:plugnmeet/ops/meet_plugnmeet.sh:generic-api-key:48
+1e464ffa05e788611ab022910c518f4b375b2203:backend/tests/test_v11_jitsi_moderators_and_jwt.py:generic-api-key:27
+1d69de7f47f4a2a614243e807066eaa38e5365e6:backend/tests/test_production_preflight.py:generic-api-key:26
+663a53e458df0abaff1ddc4370302b56657df822:scripts/plugnmeet_setup.sh:generic-api-key:31
+b31474dfd8cc5abf2eec5b91a9c0f17246ed2c58:JITSI_PRODUCTION_ACTIONS.md:generic-api-key:239
+2ee9fc142049f299378b9c142cc7f8962f340968:scripts/compose_config_check.sh:generic-api-key:52
+d0fe6b8763bd0ccead4181b51df1e023b44bd2b0:scripts/compose_config_check.sh:generic-api-key:52
+7af41abca618b9a240dd34696c5c4e11e9ce96e2:KNOWN_LIMITATIONS_V8.md:stripe-access-token:64

@@ -216,6 +216,30 @@ def assert_can_join(user, room):
     return True
 
 
+def _creneaux_de_la_salle(room, now):
+    """
+    Créneaux (début, durée en minutes) qui gouvernent l'accès à la salle.
+
+    Une séance de l'emploi du temps se répète chaque semaine : elle prime sur
+    `scheduled_at`, qui n'est au mieux que sa première date. On retient les
+    occurrences de la semaine passée, de celle-ci et de la suivante, pour
+    couvrir les séances à cheval sur une fin de semaine.
+    """
+    from datetime import datetime, timedelta, timezone as dt_tz
+
+    seances = room.scheduled_sessions.filter(is_active=True) if room.pk else []
+    creneaux = []
+    lundi = (now - timedelta(days=now.weekday())).astimezone(dt_tz.utc).date()
+    for seance in seances:
+        for semaine in (-1, 0, 1):
+            jour = lundi + timedelta(days=seance.day_of_week + 7 * semaine)
+            debut = datetime.combine(jour, seance.start_time_utc, tzinfo=dt_tz.utc)
+            creneaux.append((debut, seance.duration_minutes))
+    if not creneaux and room.scheduled_at is not None:
+        creneaux.append((room.scheduled_at, room.duration_minutes or 0))
+    return creneaux
+
+
 def assert_within_schedule(room, *, moderator, now=None):
     """
     Fenêtre d'accès d'un cours PLANIFIÉ (règle FEBA, réglable).
@@ -223,10 +247,11 @@ def assert_within_schedule(room, *, moderator, now=None):
     - Modérateur (enseignant, administrateur, super-administrateur) : à tout
       moment — il prépare, démarre ou prolonge le cours.
     - Élève, parent : de VIRTUAL_ROOM_EARLY_JOIN_MINUTES avant le début à
-      VIRTUAL_ROOM_LATE_JOIN_MINUTES après la fin prévue (début + durée).
-      En dehors, seulement si un modérateur a ouvert la réunion (statut
-      « live ») : cours commencé en avance ou qui déborde.
-    - Salle permanente (sans date) : pas de fenêtre.
+      VIRTUAL_ROOM_LATE_JOIN_MINUTES après la fin prévue, pour la date de la
+      salle ou une occurrence de ses séances hebdomadaires. En dehors,
+      seulement si un modérateur a ouvert la réunion (statut « live ») : cours
+      commencé en avance ou qui déborde.
+    - Salle permanente (ni date ni séance) : pas de fenêtre.
 
     Les comparaisons se font en UTC ; l'heure affichée est celle du fuseau
     de l'académie. Lève JoinOutsideSchedule (code too_early / too_late).
@@ -236,30 +261,32 @@ def assert_within_schedule(room, *, moderator, now=None):
 
     from django.utils import timezone
 
-    if moderator or room.scheduled_at is None or room.status == "live":
+    if moderator or room.status == "live":
         return True
     now = now or timezone.now()
-    debut = room.scheduled_at
-    ouverture = debut - timedelta(minutes=settings.VIRTUAL_ROOM_EARLY_JOIN_MINUTES)
-    fermeture = debut + timedelta(minutes=(room.duration_minutes or 0)
-                                  + settings.VIRTUAL_ROOM_LATE_JOIN_MINUTES)
+    creneaux = _creneaux_de_la_salle(room, now)
+    if not creneaux:
+        return True
+    avant = timedelta(minutes=settings.VIRTUAL_ROOM_EARLY_JOIN_MINUTES)
+    apres = timedelta(minutes=settings.VIRTUAL_ROOM_LATE_JOIN_MINUTES)
+    if any(debut - avant <= now <= debut + timedelta(minutes=duree) + apres for debut, duree in creneaux):
+        return True
     try:
         zone = ZoneInfo(getattr(room.school, "timezone", "") or settings.TIME_ZONE)
     except Exception:
         zone = ZoneInfo(settings.TIME_ZONE)
-    local = timezone.localtime(debut, zone)
-    quand = f"{local:%d/%m/%Y} à {local:%H:%M} ({zone.key})"
-    if now < ouverture:
+    prochain = min((debut for debut, _ in creneaux if debut > now), default=None)
+    if prochain is not None:
+        local = timezone.localtime(prochain, zone)
         raise JoinOutsideSchedule(
-            f"Ce cours commence le {quand}. Vous pourrez le rejoindre "
-            f"{settings.VIRTUAL_ROOM_EARLY_JOIN_MINUTES} minutes avant.",
+            f"Ce cours commence le {local:%d/%m/%Y} à {local:%H:%M} ({zone.key}). Vous pourrez "
+            f"le rejoindre {settings.VIRTUAL_ROOM_EARLY_JOIN_MINUTES} minutes avant.",
             "too_early",
         )
-    if now > fermeture:
-        raise JoinOutsideSchedule(
-            f"Ce cours, prévu le {quand}, est terminé.", "too_late",
-        )
-    return True
+    local = timezone.localtime(max(debut for debut, _ in creneaux), zone)
+    raise JoinOutsideSchedule(
+        f"Ce cours, prévu le {local:%d/%m/%Y} à {local:%H:%M} ({zone.key}), est terminé.", "too_late",
+    )
 
 
 def jitsi_probe_url():

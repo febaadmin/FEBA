@@ -16,3 +16,16 @@ def text_field(data, name):
     if not isinstance(value, str):
         raise ValidationError({name: "Ce champ doit être un texte."})
     return value.strip()
+
+
+def checked_upload(upload):
+    """Pièce jointe : format réel et taille contrôlés, 400 sinon."""
+    from apps.notifications.attachments import AttachmentError, validate_uploads
+    if upload is None:
+        return None
+    try:
+        validate_uploads([upload])
+    except AttachmentError as exc:
+        raise ValidationError({"attachment": str(exc)})
+    upload.seek(0)
+    return upload

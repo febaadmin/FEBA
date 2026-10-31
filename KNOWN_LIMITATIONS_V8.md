@@ -64,7 +64,7 @@ C'est le comportement correct. Le projet **n'invente pas de clé** et ne
 simule pas d'encaissement : une interface qui afficherait « paiement
 réussi » sans compte marchand serait un mensonge, pas une démonstration.
 
-Les clés de cette démonstration (`sk_test_CLEDEDEMONSTRATIONNONVALIDE`)
+Les clés de cette démonstration (`sk_test_***`)
 étaient **volontairement invalides**. Le 502 qu'elles provoquent **n'est
 pas une preuve que le paiement fonctionne** — seulement la preuve
 qu'aucune interface factice ne simule un encaissement.

@@ -226,6 +226,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # historique complet pour la recherche de secrets
+
+      - name: Aucun secret dans le dépôt ni son historique
+        # Constats anciens examinés et listés dans .gitleaksignore.
+        run: |
+          docker run --rm -v "$PWD:/repo" zricethezav/gitleaks:v8.18.4 detect \
+            --source /repo --no-banner --redact --gitleaks-ignore-path /repo/.gitleaksignore
 
       - name: Fichiers Docker Compose valides
         # Le script fournit les valeurs de test que les fichiers exigent

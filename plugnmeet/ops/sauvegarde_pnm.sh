@@ -46,4 +46,6 @@ echo "$tables" > "$B/tables_restaurees"
 
 # Rétention : les GARDER plus récentes ; jamais d'autre dossier que $RACINE/<horodatage>.
 ls -1d "$RACINE"/2*Z 2>/dev/null | sort | head -n -"$GARDER" | while read -r ancien; do rm -rf -- "$ancien"; done
+# Date de la dernière réussite, surveillée par FEBA (aucune donnée sensible).
+date -u +%FT%TZ > "$PNM/plugnmeet/runtime/client/dist/assets/feba/sauvegarde.txt"
 echo "Sauvegarde plugNmeet VALIDE : $B ($(du -sh "$B" | cut -f1), $tables tables restaurées)"

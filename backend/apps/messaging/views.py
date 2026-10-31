@@ -9,7 +9,7 @@ Architecture:
   PUT  /api/messages/conversations/{id}/mark_read/ → mark all as read
   GET  /api/messages/unread_count/          → badge count
 """
-from apps.core.request_text import text_field
+from apps.core.request_text import checked_upload, text_field
 from rest_framework import viewsets, status, views
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -62,7 +62,7 @@ class ConversationViewSet(viewsets.ModelViewSet):
         recipient_id = request.data.get("recipient_id") or request.data.get("recipient")
         subject = text_field(request.data, "subject")
         body = text_field(request.data, "body")
-        attachment = request.FILES.get("attachment")
+        attachment = checked_upload(request.FILES.get("attachment"))
 
         if not recipient_id or not body:
             return Response(
@@ -75,7 +75,10 @@ class ConversationViewSet(viewsets.ModelViewSet):
         from apps.accounts.models import CustomUser
         from apps.core.tenancy import get_request_school
         school = get_request_school(request)
-        recipient_qs = CustomUser.objects.all()
+        from apps.accounts.views import allowed_message_recipients
+        # Même règle que la liste de l'interface : sans elle, un élève écrivait
+        # à n'importe quel compte de l'établissement en devinant son identifiant.
+        recipient_qs = allowed_message_recipients(request.user)
         # FIX SÉCURITÉ (v29) : un utilisateur ne doit pouvoir démarrer une
         # conversation qu'avec quelqu'un de SON établissement — sinon
         # n'importe qui pouvait contacter un utilisateur d'un autre tenant
@@ -84,7 +87,7 @@ class ConversationViewSet(viewsets.ModelViewSet):
             recipient_qs = recipient_qs.filter(school=school)
         try:
             recipient = recipient_qs.get(pk=recipient_id)
-        except CustomUser.DoesNotExist:
+        except (CustomUser.DoesNotExist, ValueError, TypeError):
             return Response({"error": "Destinataire introuvable."}, status=404)
 
         # Find or create conversation
@@ -143,7 +146,7 @@ class ConversationViewSet(viewsets.ModelViewSet):
         if not body:
             return Response({"error": "Le corps du message est requis."}, status=400)
 
-        attachment = request.FILES.get("attachment")
+        attachment = checked_upload(request.FILES.get("attachment"))
 
         # Determine recipient (the other participant)
         other = conv.participants.exclude(id=request.user.id).first()
@@ -262,7 +265,7 @@ class MessageViewSet(viewsets.ReadOnlyModelViewSet):
             subject=subject, body=body,
             thread_id=original.thread_id, parent_message=original,
         )
-        attachment = request.FILES.get("attachment")
+        attachment = checked_upload(request.FILES.get("attachment"))
         if attachment:
             msg.attachment = attachment
             msg.attachment_name = attachment.name

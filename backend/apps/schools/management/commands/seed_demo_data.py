@@ -56,6 +56,11 @@ class Command(BaseCommand):
 
     @transaction.atomic
     def handle(self, *args, **options):
+        # Ses mots de passe sont publics (dépôt ouvert) : jamais en production.
+        from django.conf import settings as prod_settings
+        if (prod_settings.SETTINGS_MODULE or "").endswith(".prod"):
+            raise CommandError("Données de démonstration refusées en production.")
+
         random.seed(42)  # données reproductibles
 
         # Garde-fou : « seed-reset » ne doit jamais tourner en production.
