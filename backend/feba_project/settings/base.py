@@ -113,11 +113,13 @@ STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 # Django 5.1 a supprimé STATICFILES_STORAGE : déclaration par STORAGES.
 STORAGES = {
-    'default': {'BACKEND': 'django.core.files.storage.FileSystemStorage'},
+    'default': {'BACKEND': 'apps.core.fichiers_prives.StockageMedia'},
     'staticfiles': {'BACKEND': 'whitenoise.storage.CompressedManifestStaticFilesStorage'},
 }
 
 MEDIA_URL = '/media/'
+# Durée d'un lien vers un fichier privé (apps.core.fichiers_prives).
+PRIVATE_FILE_LINK_SECONDS = config('PRIVATE_FILE_LINK_SECONDS', default=6 * 3600, cast=int)
 MEDIA_ROOT = config('MEDIA_ROOT', default=str(BASE_DIR / 'media'))
 
 # Documents officiels (diplômes, certificats) — HORS du répertoire servi
@@ -171,6 +173,9 @@ SIMPLE_JWT = {
     'ROTATE_REFRESH_TOKENS': True,
     'BLACKLIST_AFTER_ROTATION': True,
     'UPDATE_LAST_LOGIN': True,
+    # Un jeton d'accès cesse de valoir dès que le mot de passe change.
+    'CHECK_REVOKE_TOKEN': True,
+    'REVOKE_TOKEN_CLAIM': 'hash_password',
     'ALGORITHM': 'HS256',
     'AUTH_HEADER_TYPES': ('Bearer',),
     'AUTH_TOKEN_CLASSES': ('rest_framework_simplejwt.tokens.AccessToken',),

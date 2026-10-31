@@ -449,6 +449,7 @@ class ActiveUserTokenRefreshSerializer(TokenRefreshSerializer):
         from rest_framework_simplejwt.exceptions import AuthenticationFailed
         from rest_framework_simplejwt.settings import api_settings
         from rest_framework_simplejwt.tokens import RefreshToken
+        from rest_framework_simplejwt.utils import get_md5_hash_password
 
         refresh = RefreshToken(attrs["refresh"])
         user_id = refresh.payload.get(api_settings.USER_ID_CLAIM)
@@ -459,4 +460,8 @@ class ActiveUserTokenRefreshSerializer(TokenRefreshSerializer):
             except Exception:  # liste noire indisponible : le refus reste
                 pass
             raise AuthenticationFailed("Compte désactivé ou supprimé.", code="user_inactive")
+        # Mot de passe changé depuis l'émission : ce jeton ne vaut plus rien,
+        # même s'il avait échappé à la liste noire.
+        if refresh.payload.get(api_settings.REVOKE_TOKEN_CLAIM) != get_md5_hash_password(user.password):
+            raise AuthenticationFailed("Session expirée.", code="password_changed")
         return super().validate(attrs)

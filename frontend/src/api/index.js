@@ -146,7 +146,15 @@ export const authAPI = {
   logout: (r)         => api.post("/auth/logout/", { refresh: r }),
   me: ()              => api.get("/auth/me/"),
   updateMe: (d)       => api.patch("/auth/me/", d),
-  changePassword: (d) => api.post("/auth/change-password/", d),
+  // Le serveur ferme toutes les sessions du compte et rend de nouveaux jetons
+  // à ce poste.
+  changePassword: (d) => api.post("/auth/change-password/", d).then((r) => {
+    if (r.data?.access) {
+      const { user, setAuth } = useAuthStore.getState();
+      setAuth(user, r.data.access, r.data.refresh);
+    }
+    return r;
+  }),
   listUsers: (p)      => api.get("/auth/users/", { params: { ...BIG, ...p } }),
   getUser: (id)       => api.get(`/auth/users/${id}/`),
   createUser: (d)     => api.post("/auth/users/", d),

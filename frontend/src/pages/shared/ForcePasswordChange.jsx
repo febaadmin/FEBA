@@ -29,7 +29,7 @@ const HOME_BY_ROLE = {
 export default function ForcePasswordChange() {
   const navigate = useNavigate();
   const { logout } = useAuth();
-  const { user, accessToken, refreshToken, setAuth } = useAuthStore();
+  const { user, setAuth } = useAuthStore();
   const [show, setShow] = useState({ old: false, new1: false, new2: false });
   const [apiErrors, setApiErrors] = useState([]);
   const [submitting, setSubmitting] = useState(false);
@@ -47,6 +47,7 @@ export default function ForcePasswordChange() {
         new_password: d.new_password,
       });
       // Drapeau levé côté backend — synchroniser le store local.
+      const { accessToken, refreshToken } = useAuthStore.getState();
       setAuth({ ...user, must_change_password: false }, accessToken, refreshToken);
       toast.success(t("Mot de passe modifié. Bienvenue !"));
       navigate(HOME_BY_ROLE[user?.role] || "/", { replace: true });

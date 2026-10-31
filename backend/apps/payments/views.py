@@ -177,6 +177,18 @@ class PaymentViewSet(BulkDeleteMixin, viewsets.ModelViewSet):
                 )
         except Exception as exc:
             logger.warning("Erreur non bloquante ignorée : %s", exc, exc_info=True)
+
+    def perform_update(self, serializer):
+        avant = serializer.instance
+        montant_avant, confirme_avant = avant.amount, avant.is_confirmed
+        champs = sorted(serializer.validated_data)
+        payment = serializer.save()
+        _log_payment_action(
+            payment=payment, action="update", performed_by=self.request.user,
+            notes=f"Champs modifiés : {', '.join(champs)} ; montant avant : {montant_avant}",
+            is_confirmed_before=confirme_avant, is_confirmed_after=payment.is_confirmed,
+        )
+
     def perform_bulk_soft_delete(self, queryset, request):
         """
         Suppression groupée = même traitement que la suppression unitaire :

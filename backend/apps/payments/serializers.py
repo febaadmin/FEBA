@@ -101,6 +101,10 @@ class PaymentSerializer(AcademyMetadataMixin, StudentAgeMixin, serializers.Model
         read_only_fields = [
             "reference_number", "received_by", "currency", "amount_minor",
             "paid_at", "paid_at_source",
+            # Ces états ont leurs actions (annuler, supprimer, restaurer, reçu),
+            # qui exigent une justification et écrivent l'historique.
+            "is_confirmed", "is_deleted", "deleted_at", "deleted_by",
+            "receipt_file", "enrollment",
         ]
 
     def validate_amount(self, value):

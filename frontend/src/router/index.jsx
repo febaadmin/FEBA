@@ -326,6 +326,7 @@ export default function AppRouter() {
           <SuperAdminLayout />
         </ProtectedRoute>
       }>
+        <Route index element={<Navigate to="dashboard" replace />} />
         <Route path="dashboard"     element={<SuperAdminDashboard />} />
         <Route path="users"         element={<SuperAdminUsers />} />
         <Route path="admins"        element={<SuperAdminAdmins />} />
@@ -374,6 +375,7 @@ export default function AppRouter() {
           <AdminLayout />
         </ProtectedRoute>
       }>
+        <Route index element={<Navigate to="dashboard" replace />} />
         <Route path="dashboard"     element={<AdminDashboard />} />
         <Route path="students"      element={<AdminStudents />} />
         <Route path="teachers"      element={<AdminTeachers />} />
@@ -416,6 +418,7 @@ export default function AppRouter() {
           <TeacherLayout />
         </ProtectedRoute>
       }>
+        <Route index element={<Navigate to="dashboard" replace />} />
         <Route path="dashboard"     element={<TeacherDashboard />} />
         <Route path="classes"       element={<TeacherClasses />} />
         <Route path="grades"        element={<TeacherGrades />} />
@@ -434,6 +437,7 @@ export default function AppRouter() {
           <ParentLayout />
         </ProtectedRoute>
       }>
+        <Route index element={<Navigate to="home" replace />} />
         <Route path="home"          element={<ParentHome />} />
         <Route path="children"      element={<ParentChildren />} />
         <Route path="grades"        element={<ParentGrades />} />
@@ -454,6 +458,7 @@ export default function AppRouter() {
           <StudentLayout />
         </ProtectedRoute>
       }>
+        <Route index element={<Navigate to="home" replace />} />
         <Route path="home"          element={<StudentHome />} />
         <Route path="grades"        element={<StudentGrades />} />
         <Route path="attendance"    element={<StudentAttendance />} />
