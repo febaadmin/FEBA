@@ -21,7 +21,8 @@ async function go(url) {
     const u = r.url().split('?')[0];
     if (/page_\d+\.(png|jpg)/.test(u)) (r.ok() ? p.images : { add: x => p.echecs.push(x) }).add(u.split('/').slice(-2).join('/'));
   });
-  await p.goto(url);
+  // Réseau du poste de test parfois instable : une reprise au chargement.
+  await p.goto(url, { timeout: 45000 }).catch(() => p.goto(url, { timeout: 45000 }));
   // Selon la langue et le navigateur, l'apostrophe du libellé varie.
   await p.getByText(/Rejoindre en tant qu.auditeur/).click({ timeout: 30000 });
   await p.getByText(/\((moi|me)\)/).first().waitFor({ timeout: 30000 });
@@ -44,7 +45,7 @@ for (const nom of fs.readdirSync(DOCS).sort()) {
     await prof.locator('input[type=file]').last().setInputFiles(path.join(DOCS, nom));
     // La ligne du fichier n'affiche son nombre de pages qu'une fois convertie.
     const ligne = prof.locator('button').filter({ hasText: nom }).filter({ hasText: /pages|Total/ }).first();
-    await ligne.waitFor({ timeout: 240000 });
+    await ligne.waitFor({ timeout: Number(process.env.ATTENTE_MS || 240000) });
     r.conversion_s = Math.round((Date.now() - t0) / 1000);
     r.liste = (await ligne.innerText()).replace(/\s+/g, ' ').slice(-30);
     await ligne.click({ timeout: 8000 });
@@ -57,7 +58,7 @@ for (const nom of fs.readdirSync(DOCS).sort()) {
     let garde = 0;
     while (garde++ < 60 && !(await prof.getByRole('button', { name: 'Page suivante' }).isDisabled().catch(() => true))) {
       await prof.getByRole('button', { name: 'Page suivante' }).click({ force: true });
-      await prof.waitForTimeout(700);
+      await prof.waitForTimeout(1300);  // le client regroupe les clics rapides
     }
     r.derniere_page_prof = await pageCourante(prof);
     await prof.waitForTimeout(4000);
