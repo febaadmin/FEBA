@@ -29,7 +29,8 @@ async function go(url) {
   return p;
 }
 const prof = await go(urls.enseignant), eleve = await go(urls.eleve);
-await prof.getByRole('button', { name: 'Afficher le tableau blanc' }).click();
+const ouvrir = prof.getByRole('button', { name: 'Afficher le tableau blanc' });
+if (await ouvrir.count()) await ouvrir.click();
 await prof.waitForTimeout(5000);
 const pageCourante = p => p.locator('.wb-page-navigation select').inputValue().catch(() => null);
 const nbPages = p => p.locator('.wb-page-navigation select option').count().catch(() => null);
@@ -41,11 +42,13 @@ for (const nom of fs.readdirSync(DOCS).sort()) {
     await prof.waitForTimeout(800);
     const t0 = Date.now();
     await prof.locator('input[type=file]').last().setInputFiles(path.join(DOCS, nom));
-    await prof.getByText(nom, { exact: true }).first().waitFor({ timeout: 180000 });
-    await prof.getByRole('button', { name: 'Ajouter au tableau blanc' }).waitFor({ timeout: 5000 });
+    // La ligne du fichier n'affiche son nombre de pages qu'une fois convertie.
+    const ligne = prof.locator('button').filter({ hasText: nom }).filter({ hasText: /pages|Total/ }).first();
+    await ligne.waitFor({ timeout: 240000 });
     r.conversion_s = Math.round((Date.now() - t0) / 1000);
-    await prof.getByText(nom, { exact: true }).first().click();
-    await prof.getByRole('button', { name: 'Ajouter au tableau blanc' }).click({ timeout: 8000 });
+    r.liste = (await ligne.innerText()).replace(/\s+/g, ' ').slice(-30);
+    await ligne.click({ timeout: 8000 });
+    await prof.getByRole('button', { name: 'Ajouter au tableau blanc' }).click({ timeout: 30000 });
     await prof.waitForTimeout(5000);
     // Le contenu présent déclenche un avertissement de changement : le confirmer.
     const ok = prof.getByRole('button', { name: /^(Oui|Continuer|Confirmer|OK)$/ });
@@ -65,8 +68,8 @@ for (const nom of fs.readdirSync(DOCS).sort()) {
   } catch (e) {
     r.erreur = e.message.split('\n')[0].slice(0, 200);
     await prof.screenshot({ path: `${OUT}/wb-echec-${r.attendu}p.png` });
-    await prof.keyboard.press('Escape');
-    await prof.getByRole('button', { name: 'Fermer' }).last().click({ timeout: 2000, force: true }).catch(() => {});
+    await prof.locator('.excalidrawUploadFiles').getByRole('button', { name: 'Fermer', exact: true }).first().click({ timeout: 3000 }).catch(() => {});
+    await prof.waitForTimeout(500);
     r.ok = false;
   }
   console.log(JSON.stringify(r));
