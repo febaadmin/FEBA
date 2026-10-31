@@ -262,6 +262,14 @@ class UserCreateSerializer(serializers.ModelSerializer):
         user = CustomUser(**validated_data)
         user.set_password(password)
         user.save()
+        # Un compte enseignant ou parent sans profil casse ses écrans. L'élève
+        # n'est pas concerné ici : sa fiche exige des données propres (classe…).
+        if user.role == "teacher":
+            from apps.teachers.models import Teacher
+            Teacher.objects.get_or_create(user=user)
+        elif user.role == "parent":
+            from apps.parents.models import Parent
+            Parent.objects.get_or_create(user=user)
         logger.info("Compte créé : %s (role=%s)", user.email, user.role)
         return user
 

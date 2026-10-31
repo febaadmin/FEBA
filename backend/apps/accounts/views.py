@@ -300,9 +300,12 @@ class MessageRecipientsView(APIView):
         elif user.is_teacher():
             # teacher: can message admins and parents of their students
             from apps.parents.models import Parent
+            # Compte enseignant sans profil (création générique, historique) :
+            # aucune classe, donc aucun parent ; les administrateurs restent joignables.
+            teacher = getattr(user, "teacher_profile", None)
             parent_ids = Parent.objects.filter(
-                children_links__student__current_class__in=user.teacher_profile.classes.all()
-            ).values_list("user_id", flat=True).distinct()
+                children_links__student__current_class__in=teacher.classes.all()
+            ).values_list("user_id", flat=True).distinct() if teacher else []
             admin_ids = CustomUser.objects.filter(role_level__gte=80).values_list("id", flat=True)
             from django.db.models import Q
             qs = qs.filter(Q(id__in=parent_ids) | Q(id__in=admin_ids))

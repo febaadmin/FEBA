@@ -24,7 +24,9 @@ const noRetryOn4xx = (failureCount, error) => {
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: { retry: noRetryOn4xx, staleTime: 30000 },
-    mutations: { retry: noRetryOn4xx },
+    // Jamais de nouvel essai automatique d'une écriture : après une 500 ou une
+    // coupure, le serveur a pu l'appliquer (doublon de paiement, de message…).
+    mutations: { retry: false },
   },
 });
 

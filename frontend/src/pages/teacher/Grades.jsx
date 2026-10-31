@@ -19,7 +19,6 @@ import Modal from "../../components/ui/Modal";
 import SearchableSelect from "../../components/ui/SearchableSelect";
 import BulkGradeModal from "../../components/grades/BulkGradeModal";
 import { isValidGrade, gradePayloadValue } from "../../utils/gradeInput";
-import ConfirmDialog from "../../components/ui/ConfirmDialog";
 import { extractApiError } from "../../utils/errors";
 import { t, dateLocale } from "../../i18n";
 
@@ -121,7 +120,9 @@ export default function TeacherGrades() {
   });
 
   const deleteMut = useMutation({
-    mutationFn: gradesAPI.delete,
+    // Pas de `mutationFn: gradesAPI.delete` : React Query passerait son contexte
+    // en 2e argument, envoyé comme justification (ERR-72B72D et suivants).
+    mutationFn: ({ id, justification }) => gradesAPI.delete(id, justification),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["teacher-grades"] }); toast.success(t("Note supprimée.")); setDeleteItem(null); },
     onError: (e) => toast.error(extractApiError(e)),
   });
@@ -355,9 +356,25 @@ export default function TeacherGrades() {
         </form>
       </Modal>
 
-      <ConfirmDialog open={!!deleteItem} onClose={() => setDeleteItem(null)}
-        onConfirm={() => deleteMut.mutate(deleteItem?.id)} loading={deleteMut.isPending}
-        message={`Supprimer la note de ${deleteItem?.student_name} en ${deleteItem?.subject_name} (${deleteItem?.value}/20) ?`} />
+      <Modal open={!!deleteItem} onClose={() => setDeleteItem(null)} title={t("Supprimer la note")} size="sm">
+        <form className="space-y-4" onSubmit={(e) => {
+          e.preventDefault();
+          const justification = new FormData(e.currentTarget).get("justification").trim();
+          if (justification) deleteMut.mutate({ id: deleteItem.id, justification });
+        }}>
+          <p className="text-sm text-slate-600">{`${deleteItem?.student_name} — ${deleteItem?.subject_name} (${deleteItem?.value}/20)`}</p>
+          <div>
+            <label className="label" htmlFor="grade-del-just">{t("Justification de suppression*")}</label>
+            <textarea id="grade-del-just" name="justification" required className="input" rows={2} placeholder={t("Motif obligatoire : erreur de saisie, doublon…")} />
+          </div>
+          <div className="flex gap-3 justify-end">
+            <button type="button" onClick={() => setDeleteItem(null)} className="btn-secondary">{t("Annuler")}</button>
+            <button type="submit" disabled={deleteMut.isPending} className="btn-danger">
+              {deleteMut.isPending ? t("Suppression…") : t("Supprimer")}
+            </button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }

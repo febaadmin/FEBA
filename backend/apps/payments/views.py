@@ -18,6 +18,7 @@ Corrections v9 conservées :
   - restore() action: POST /api/payments/{id}/restore/
   - get_queryset: excludes is_deleted=True by default (unless ?show_deleted=1)
 """
+from apps.core.request_text import text_field
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -183,7 +184,7 @@ class PaymentViewSet(BulkDeleteMixin, viewsets.ModelViewSet):
         `update(is_deleted=True)` : aucune trace, paiement toujours
         « confirmé », et restauration impossible à reconstituer.
         """
-        justification = (request.data.get("justification") or "").strip() or "Suppression groupée"
+        justification = text_field(request.data, "justification") or "Suppression groupée"
         now = timezone.now()
         for payment in queryset.filter(is_deleted=False):
             _log_payment_action(
@@ -256,7 +257,7 @@ class PaymentViewSet(BulkDeleteMixin, viewsets.ModelViewSet):
     def cancel(self, request, pk=None):
         """POST /api/payments/{id}/cancel/ — annulation avec justification."""
         payment = self.get_object()
-        justification = request.data.get("justification", "").strip()
+        justification = text_field(request.data, "justification")
         if not justification:
             return Response({"error": "Une justification est obligatoire pour annuler un paiement."}, status=400)
         _log_payment_action(

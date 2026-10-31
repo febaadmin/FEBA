@@ -9,6 +9,7 @@ Architecture:
   PUT  /api/messages/conversations/{id}/mark_read/ → mark all as read
   GET  /api/messages/unread_count/          → badge count
 """
+from apps.core.request_text import text_field
 from rest_framework import viewsets, status, views
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -59,8 +60,8 @@ class ConversationViewSet(viewsets.ModelViewSet):
         Body: { recipient_id, subject, body, attachment? }
         """
         recipient_id = request.data.get("recipient_id") or request.data.get("recipient")
-        subject = request.data.get("subject", "").strip()
-        body = request.data.get("body", "").strip()
+        subject = text_field(request.data, "subject")
+        body = text_field(request.data, "body")
         attachment = request.FILES.get("attachment")
 
         if not recipient_id or not body:
@@ -138,7 +139,7 @@ class ConversationViewSet(viewsets.ModelViewSet):
         Body: { body, attachment? }
         """
         conv = self.get_object()
-        body = request.data.get("body", "").strip()
+        body = text_field(request.data, "body")
         if not body:
             return Response({"error": "Le corps du message est requis."}, status=400)
 
@@ -252,7 +253,7 @@ class MessageViewSet(viewsets.ReadOnlyModelViewSet):
     def reply(self, request, pk=None):
         original = self.get_object()
         recipient = original.sender if original.recipient == request.user else original.recipient
-        body = request.data.get("body", "").strip()
+        body = text_field(request.data, "body")
         if not body:
             return Response({"error": "Corps du message requis."}, status=400)
         subject = original.subject if original.subject.startswith("Re: ") else f"Re: {original.subject}"

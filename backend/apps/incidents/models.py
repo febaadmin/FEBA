@@ -81,9 +81,9 @@ def sanitize_data(value, _depth=0):
 def build_fingerprint(exception_type, endpoint, module, location, message):
     """Empreinte de dédoublonnage (deux fois la même erreur = un incident)."""
     normalized = re.sub(r"\d+", "N", sanitize_text(message, 300) or "")
-    raw = "|".join([
-        exception_type or "", endpoint or "", module or "", location or "", normalized,
-    ])
+    # Un même défaut sur /api/grades/742/ et /api/grades/934/ = UN incident.
+    route = re.sub(r"/\d+(?=/|$)", "/N", endpoint or "")
+    raw = "|".join([exception_type or "", route, module or "", location or "", normalized])
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()[:40]
 
 
