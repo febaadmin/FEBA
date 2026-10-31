@@ -285,53 +285,59 @@ class AdminResetPasswordView(APIView):
         })
 
 
+def allowed_message_recipients(user):
+    """Comptes auxquels `user` peut écrire : une seule règle, pour la liste de
+    l'interface ET pour l'envoi (API de messagerie)."""
+    qs = CustomUser.objects.filter(is_active=True).exclude(id=user.id)
+    if not user.is_superadmin():
+        qs = qs.filter(school=user.school)
+    if user.role_level >= 80:
+        # admin / superadmin: can message anyone (dans son établissement)
+        pass
+    elif user.is_teacher():
+        # teacher: can message admins and parents of their students
+        from apps.parents.models import Parent
+        # Compte enseignant sans profil (création générique, historique) :
+        # aucune classe, donc aucun parent ; les administrateurs restent joignables.
+        teacher = getattr(user, "teacher_profile", None)
+        parent_ids = Parent.objects.filter(
+            children_links__student__current_class__in=teacher.classes.all()
+        ).values_list("user_id", flat=True).distinct() if teacher else []
+        admin_ids = CustomUser.objects.filter(role_level__gte=80).values_list("id", flat=True)
+        from django.db.models import Q
+        qs = qs.filter(Q(id__in=parent_ids) | Q(id__in=admin_ids))
+    elif user.is_parent():
+        # parent: can message admins and teachers of their children
+        try:
+            classes = [ps.student.current_class for ps in user.parent_profile.children_links.select_related("student__current_class").all() if ps.student.current_class]
+            from apps.teachers.models import Teacher
+            teacher_ids = Teacher.objects.filter(classes__in=classes).values_list("user_id", flat=True).distinct()
+            admin_ids = CustomUser.objects.filter(role_level__gte=80).values_list("id", flat=True)
+            from django.db.models import Q
+            qs = qs.filter(Q(id__in=teacher_ids) | Q(id__in=admin_ids))
+        except Exception:
+            qs = qs.filter(role_level__gte=80)
+    elif user.is_student():
+        # student: can message admins and their teachers
+        try:
+            cls = user.student_profile.current_class
+            from apps.teachers.models import Teacher
+            teacher_ids = Teacher.objects.filter(classes=cls).values_list("user_id", flat=True).distinct()
+            admin_ids = CustomUser.objects.filter(role_level__gte=80).values_list("id", flat=True)
+            from django.db.models import Q
+            qs = qs.filter(Q(id__in=teacher_ids) | Q(id__in=admin_ids))
+        except Exception:
+            qs = qs.filter(role_level__gte=80)
+    return qs
+
+
 class MessageRecipientsView(APIView):
     """GET /api/auth/recipients/ — list users that can receive messages from this user."""
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
         user = request.user
-        qs = CustomUser.objects.filter(is_active=True).exclude(id=user.id)
-        if not user.is_superadmin():
-            qs = qs.filter(school=user.school)
-        if user.role_level >= 80:
-            # admin / superadmin: can message anyone (dans son établissement)
-            pass
-        elif user.is_teacher():
-            # teacher: can message admins and parents of their students
-            from apps.parents.models import Parent
-            # Compte enseignant sans profil (création générique, historique) :
-            # aucune classe, donc aucun parent ; les administrateurs restent joignables.
-            teacher = getattr(user, "teacher_profile", None)
-            parent_ids = Parent.objects.filter(
-                children_links__student__current_class__in=teacher.classes.all()
-            ).values_list("user_id", flat=True).distinct() if teacher else []
-            admin_ids = CustomUser.objects.filter(role_level__gte=80).values_list("id", flat=True)
-            from django.db.models import Q
-            qs = qs.filter(Q(id__in=parent_ids) | Q(id__in=admin_ids))
-        elif user.is_parent():
-            # parent: can message admins and teachers of their children
-            try:
-                classes = [ps.student.current_class for ps in user.parent_profile.children_links.select_related("student__current_class").all() if ps.student.current_class]
-                from apps.teachers.models import Teacher
-                teacher_ids = Teacher.objects.filter(classes__in=classes).values_list("user_id", flat=True).distinct()
-                admin_ids = CustomUser.objects.filter(role_level__gte=80).values_list("id", flat=True)
-                from django.db.models import Q
-                qs = qs.filter(Q(id__in=teacher_ids) | Q(id__in=admin_ids))
-            except Exception:
-                qs = qs.filter(role_level__gte=80)
-        elif user.is_student():
-            # student: can message admins and their teachers
-            try:
-                cls = user.student_profile.current_class
-                from apps.teachers.models import Teacher
-                teacher_ids = Teacher.objects.filter(classes=cls).values_list("user_id", flat=True).distinct()
-                admin_ids = CustomUser.objects.filter(role_level__gte=80).values_list("id", flat=True)
-                from django.db.models import Q
-                qs = qs.filter(Q(id__in=teacher_ids) | Q(id__in=admin_ids))
-            except Exception:
-                qs = qs.filter(role_level__gte=80)
-
+        qs = allowed_message_recipients(user)
         data = [{"id": u.id, "first_name": u.first_name, "last_name": u.last_name,
                  "full_name": u.get_full_name(), "email": u.email, "role": u.role}
                 for u in qs.order_by("last_name", "first_name")]

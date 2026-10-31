@@ -1,6 +1,7 @@
 import logging
 logger = logging.getLogger("apps")
 from feba_project.bulk_delete import BulkDeleteMixin
+from rest_framework.exceptions import PermissionDenied
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -69,7 +70,16 @@ class AttendanceViewSet(BulkDeleteMixin, viewsets.ModelViewSet):
             return [IsAuthenticated(), IsAdminOrTeacher(), IsSameTenant()]
         return super().get_permissions()
 
+    def _assert_teacher_class(self, student):
+        """Un enseignant ne note la présence que dans ses classes (admins : l'académie)."""
+        user = self.request.user
+        if user.is_teacher():
+            teacher = getattr(user, "teacher_profile", None)
+            if not student or teacher is None or not teacher.classes.filter(id=student.current_class_id).exists():
+                raise PermissionDenied("Cet élève n'est pas dans vos classes.")
+
     def perform_create(self, serializer):
+        self._assert_teacher_class(serializer.validated_data.get("student"))
         # BUG FIX #2: Auto-assign school_year so records are never orphaned from the filter
         from apps.schools.models import SchoolYear
         from apps.students.services import get_or_create_enrollment
@@ -127,6 +137,11 @@ class AttendanceViewSet(BulkDeleteMixin, viewsets.ModelViewSet):
 
             s = AttendanceSerializer(data=r)
             if s.is_valid():
+                try:
+                    self._assert_teacher_class(s.validated_data.get("student"))
+                except PermissionDenied as exc:
+                    errors.append({"student": student_id, "error": str(exc.detail)})
+                    continue
                 save_kwargs = {"created_by": request.user}
                 school_year = s.validated_data.get("school_year")
                 student = s.validated_data.get("student")

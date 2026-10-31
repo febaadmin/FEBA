@@ -1,6 +1,7 @@
 import logging
 logger = logging.getLogger("apps")
 from feba_project.bulk_delete import BulkDeleteMixin
+from apps.core.request_text import checked_upload
 from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -85,9 +86,12 @@ class HomeworkViewSet(BulkDeleteMixin, viewsets.ModelViewSet):
                 logger.warning("Erreur non bloquante ignorée : %s", exc, exc_info=True)
         # BUG FIX: Backend subject restriction for teachers
         if teacher:
+            from rest_framework.exceptions import PermissionDenied
+            cls = serializer.validated_data.get("cls")
+            if cls and not teacher.classes.filter(id=cls.id).exists():
+                raise PermissionDenied("Cette classe ne vous est pas affectée.")
             subject = serializer.validated_data.get("subject")
             if subject and not teacher.subjects.filter(id=subject.id).exists():
-                from rest_framework.exceptions import PermissionDenied
                 raise PermissionDenied(
                     f"Vous ne pouvez pas créer un devoir pour la matière '{subject.name}' "
                     "car elle ne fait pas partie de vos matières assignées."
@@ -102,20 +106,23 @@ class HomeworkViewSet(BulkDeleteMixin, viewsets.ModelViewSet):
         instance = serializer.save(**kwargs)
         files = self.request.FILES.getlist("attachments")
         for f in files:
-            HomeworkAttachment.objects.create(homework=instance, file=f, name=f.name)
+            HomeworkAttachment.objects.create(homework=instance, file=checked_upload(f), name=f.name)
 
     def perform_update(self, serializer):
         instance = serializer.save()
         # Append any new attachments on edit
         files = self.request.FILES.getlist("attachments")
         for f in files:
-            HomeworkAttachment.objects.create(homework=instance, file=f, name=f.name)
+            HomeworkAttachment.objects.create(homework=instance, file=checked_upload(f), name=f.name)
 
     @action(detail=True, methods=["delete"], url_path="attachments/(?P<att_id>[^/.]+)")
     def delete_attachment(self, request, pk=None, att_id=None):
         """DELETE /api/homework/{id}/attachments/{att_id}/"""
+        # get_object : portée de l'académie et de l'enseignant (sans lui, n'importe
+        # quel enseignant supprimait la pièce jointe d'un devoir d'une autre académie).
+        homework = self.get_object()
         try:
-            att = HomeworkAttachment.objects.get(pk=att_id, homework_id=pk)
+            att = HomeworkAttachment.objects.get(pk=att_id, homework=homework)
             att.file.delete(save=False)
             att.delete()
             return Response(status=204)
