@@ -1,19 +1,18 @@
 from channels.middleware import BaseMiddleware
 from channels.db import database_sync_to_async
 from django.contrib.auth.models import AnonymousUser
+from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework_simplejwt.tokens import AccessToken
-from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
+from rest_framework_simplejwt.exceptions import AuthenticationFailed, InvalidToken, TokenError
 from urllib.parse import parse_qs
 
 
 @database_sync_to_async
 def get_user(token_key):
-    from apps.accounts.models import CustomUser
+    # Mêmes règles que l'API : compte actif, mot de passe inchangé depuis le jeton.
     try:
-        token = AccessToken(token_key)
-        user_id = token['user_id']
-        return CustomUser.objects.get(id=user_id)
-    except (InvalidToken, TokenError, CustomUser.DoesNotExist):
+        return JWTAuthentication().get_user(AccessToken(token_key))
+    except (InvalidToken, TokenError, AuthenticationFailed):
         return AnonymousUser()
 
 

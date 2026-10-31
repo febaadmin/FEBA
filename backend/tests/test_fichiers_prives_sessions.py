@@ -144,3 +144,121 @@ class HistoriquePaiementTests(TestCase):
         self.paiement.refresh_from_db()
         self.assertFalse(self.paiement.is_deleted)
         self.assertTrue(self.paiement.is_confirmed)
+
+
+class TempsReelTests(TestCase):
+    def test_le_temps_reel_refuse_un_jeton_d_avant_le_changement_de_mot_de_passe(self):
+        from django.contrib.auth.models import AnonymousUser
+        from rest_framework_simplejwt.tokens import AccessToken
+
+        from apps.accounts.middleware import get_user
+        from asgiref.sync import async_to_sync
+
+        user = make_user("ws@test.bj", "teacher", make_school())
+        jeton = str(AccessToken.for_user(user))
+        self.assertEqual(async_to_sync(get_user)(jeton).pk, user.pk)
+        user.set_password(NOUVEAU)
+        user.save()
+        self.assertIsInstance(async_to_sync(get_user)(jeton), AnonymousUser)
+        nouveau = str(AccessToken.for_user(user))
+        user.is_active = False
+        user.save()
+        self.assertIsInstance(async_to_sync(get_user)(nouveau), AnonymousUser)
+
+
+class LiensParRoleTests(TestCase):
+    """Chaque rôle reçoit un lien pour ce qu'il a le droit de voir, et rien d'autre."""
+
+    def setUp(self):
+        from apps.bulletins.models import Bulletin
+        from apps.classes.models import Class
+        from apps.parents.models import Parent, ParentStudent
+        from apps.schools.models import Level, SchoolYear
+        from apps.teachers.models import Teacher
+
+        self.school = make_school()
+        year = SchoolYear.objects.create(school=self.school, name="2026-2027", start_date="2026-09-01",
+                                         end_date="2027-06-30", is_current=True)
+        level = Level.objects.create(school=self.school, name="CM1", order=1, cycle="primaire")
+        cls = Class.objects.create(name="A", level=level, school_year=year)
+        autre = Class.objects.create(name="B", level=level, school_year=year)
+
+        def eleve(mail, classe):
+            return Student.objects.create(user=make_user(mail, "student", self.school), school=self.school,
+                                          first_name="E", last_name=mail[:3], current_class=classe, school_year=year)
+
+        self.eleve, self.autre = eleve("el1@test.bj", cls), eleve("el2@test.bj", autre)
+        self.parent = make_user("pa1@test.bj", "parent", self.school)
+        ParentStudent.objects.create(parent=Parent.objects.create(user=self.parent), student=self.eleve,
+                                     relationship="mother")
+        self.prof = make_user("pr1@test.bj", "teacher", self.school)
+        Teacher.objects.create(user=self.prof).classes.add(cls)
+        self.prof_autre = make_user("pr2@test.bj", "teacher", self.school)
+        Teacher.objects.create(user=self.prof_autre)
+        self.admin = make_user("ad1@test.bj", "admin", self.school)
+        self.admin_ailleurs = make_user("ad2@test.bj", "admin", make_school())
+
+        self.bulletin = Bulletin.objects.create(student=self.eleve, school_year=year, period="T1",
+                                                pdf_file="bulletins/b.pdf")
+        self.paiement = Payment.objects.create(student=self.eleve, school_year=year, amount=1000,
+                                               payment_type="mensualite", payment_method="cash",
+                                               payment_date=date(2026, 10, 1), receipt_file="receipts/r.pdf")
+
+    def obtenir(self, user, chemin):
+        c = APIClient()
+        c.force_authenticate(user)
+        return c.get(chemin)
+
+    def test_bulletin(self):
+        chemin = f"/api/bulletins/{self.bulletin.pk}/"
+        for user in (self.eleve.user, self.parent, self.prof, self.admin):
+            rep = self.obtenir(user, chemin)
+            self.assertEqual(rep.status_code, 200, user.email)
+            self.assertIn("/api/files/", rep.data["pdf_url"])
+            self.assertIn("/api/files/", rep.data["pdf_file"])
+        for user in (self.autre.user, self.prof_autre, self.admin_ailleurs):
+            self.assertEqual(self.obtenir(user, chemin).status_code, 404, user.email)
+
+    def test_recu(self):
+        chemin = f"/api/payments/{self.paiement.pk}/"
+        for user in (self.eleve.user, self.parent, self.admin):
+            rep = self.obtenir(user, chemin)
+            self.assertEqual(rep.status_code, 200, user.email)
+            self.assertIn("/api/files/", rep.data["receipt_url"])
+            self.assertIn("/api/files/", rep.data["receipt_file"])
+        for user in (self.autre.user, self.prof, self.admin_ailleurs):
+            self.assertIn(self.obtenir(user, chemin).status_code, (403, 404), user.email)
+
+    def test_aucune_liste_ne_donne_une_adresse_media_directe(self):
+        for user, chemin in ((self.parent, "/api/bulletins/"), (self.admin, "/api/payments/"),
+                             (self.eleve.user, "/api/payments/")):
+            texte = self.obtenir(user, chemin).content.decode()
+            self.assertNotIn("/media/bulletins", texte)
+            self.assertNotIn("/media/receipts", texte)
+
+
+class ChiffresTests(TestCase):
+    def setUp(self):
+        self.school = make_school()
+        self.admin = make_user("chiffres@test.bj", "admin", self.school)
+        self.c = APIClient()
+        self.c.force_authenticate(self.admin)
+
+    def test_historique_de_l_eleve_sans_paiement_supprime_ni_annule(self):
+        from apps.schools.models import SchoolYear
+        from apps.students.models import StudentEnrollment
+        annee = SchoolYear.objects.create(school=self.school, name="2026-2027", start_date="2026-09-01",
+                                          end_date="2027-06-30", is_current=True)
+        eleve = Student.objects.create(school=self.school, first_name="A", last_name="B", school_year=annee)
+        StudentEnrollment.objects.create(student=eleve, school_year=annee)
+        for montant, etat in ((1000, {}), (200, {"is_deleted": True}), (30, {"is_confirmed": False})):
+            Payment.objects.create(student=eleve, school_year=annee, amount=montant, payment_type="mensualite",
+                                   payment_method="cash", payment_date=date(2026, 10, 1), **etat)
+        stats = self.c.get(f"/api/students/{eleve.pk}/history/").data[0]["stats"]
+        self.assertEqual((stats["payments_count"], stats["payments_total"]), (1, 1000.0))
+
+    def test_resume_vide_dans_la_devise_de_l_academie(self):
+        self.school.currency_code = "USD"
+        self.school.save()
+        self.assertEqual(self.c.get("/api/payments/summary/").data["consolidated_total"]["currency"],
+                         self.school.currency_code)

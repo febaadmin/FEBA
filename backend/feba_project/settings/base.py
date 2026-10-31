@@ -119,7 +119,7 @@ STORAGES = {
 
 MEDIA_URL = '/media/'
 # Durée d'un lien vers un fichier privé (apps.core.fichiers_prives).
-PRIVATE_FILE_LINK_SECONDS = config('PRIVATE_FILE_LINK_SECONDS', default=6 * 3600, cast=int)
+PRIVATE_FILE_LINK_SECONDS = config('PRIVATE_FILE_LINK_SECONDS', default=3600, cast=int)
 MEDIA_ROOT = config('MEDIA_ROOT', default=str(BASE_DIR / 'media'))
 
 # Documents officiels (diplômes, certificats) — HORS du répertoire servi

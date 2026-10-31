@@ -399,7 +399,7 @@ class StudentViewSet(BulkDeleteMixin, viewsets.ModelViewSet):
             year = enr.school_year
             base = StudentEnrollmentSerializer(enr).data
 
-            grades = Grade.objects.filter(student=student, school_year=year)
+            grades = Grade.objects.filter(student=student, school_year=year, is_deleted=False)
             g = grades.aggregate(count=Count('id'), average=Avg('value'))
 
             att = Attendance.objects.filter(student=student, school_year=year).aggregate(
@@ -408,7 +408,8 @@ class StudentViewSet(BulkDeleteMixin, viewsets.ModelViewSet):
                 excused=Count('id', filter=Q(status='excused')),
             )
 
-            pay = Payment.objects.filter(student=student, school_year=year).aggregate(
+            pay = Payment.objects.filter(student=student, school_year=year,
+                                         is_deleted=False, is_confirmed=True).aggregate(
                 count=Count('id'), total=Sum('amount'),
             )
 

@@ -387,8 +387,12 @@ class PaymentViewSet(BulkDeleteMixin, viewsets.ModelViewSet):
         # convertir un montant XOF en XOF ne serait qu'un calcul inutile
         # qui pourrait, par un bug futur, introduire une erreur d'arrondi
         # là où il n'y en avait aucune raison d'être.
+        # Aucun paiement : le total vide reste dans la devise de l'académie.
+        academy = get_request_school(request)
         target_currency = (
-            next(iter(currencies_present)) if len(currencies_present) == 1 else reporting_currency
+            next(iter(currencies_present)) if len(currencies_present) == 1
+            else academy.currency_code if not currencies_present and academy is not None
+            else reporting_currency
         )
 
         consolidated_total, totals_by_currency, conversions, conversion_errors = consolidate(rows, target_currency)
