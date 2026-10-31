@@ -151,19 +151,18 @@ class TempsReelTests(TestCase):
         from django.contrib.auth.models import AnonymousUser
         from rest_framework_simplejwt.tokens import AccessToken
 
-        from apps.accounts.middleware import get_user
-        from asgiref.sync import async_to_sync
+        from apps.accounts.middleware import utilisateur_du_jeton as get_user
 
         user = make_user("ws@test.bj", "teacher", make_school())
         jeton = str(AccessToken.for_user(user))
-        self.assertEqual(async_to_sync(get_user)(jeton).pk, user.pk)
+        self.assertEqual(get_user(jeton).pk, user.pk)
         user.set_password(NOUVEAU)
         user.save()
-        self.assertIsInstance(async_to_sync(get_user)(jeton), AnonymousUser)
+        self.assertIsInstance(get_user(jeton), AnonymousUser)
         nouveau = str(AccessToken.for_user(user))
         user.is_active = False
         user.save()
-        self.assertIsInstance(async_to_sync(get_user)(nouveau), AnonymousUser)
+        self.assertIsInstance(get_user(nouveau), AnonymousUser)
 
 
 class LiensParRoleTests(TestCase):

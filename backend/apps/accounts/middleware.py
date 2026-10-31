@@ -7,13 +7,15 @@ from rest_framework_simplejwt.exceptions import AuthenticationFailed, InvalidTok
 from urllib.parse import parse_qs
 
 
-@database_sync_to_async
-def get_user(token_key):
+def utilisateur_du_jeton(token_key):
     # Mêmes règles que l'API : compte actif, mot de passe inchangé depuis le jeton.
     try:
         return JWTAuthentication().get_user(AccessToken(token_key))
     except (InvalidToken, TokenError, AuthenticationFailed):
         return AnonymousUser()
+
+
+get_user = database_sync_to_async(utilisateur_du_jeton)
 
 
 class JWTAuthMiddleware(BaseMiddleware):
