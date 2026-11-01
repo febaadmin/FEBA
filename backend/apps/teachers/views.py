@@ -13,6 +13,7 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from apps.accounts.permissions import IsAdminOrReadOnly, IsAdminOrAbove
 from apps.core.tenancy import get_request_school, IsSameTenant
+from .affectations import paires_autorisees, remplacer_affectations
 from .models import Teacher
 from .serializers import TeacherSerializer
 import logging
@@ -91,6 +92,29 @@ class TeacherViewSet(BulkDeleteMixin, viewsets.ModelViewSet):
             return Response({"error": "Profil enseignant introuvable."}, status=404)
         from apps.subjects.serializers import SubjectSerializer
         return Response(SubjectSerializer(teacher.subjects.all(), many=True).data)
+
+    @action(detail=False, methods=["get"])
+    def my_assignments(self, request):
+        """GET /api/teachers/my_assignments/ : les paires classe-matière que l'enseignant peut noter."""
+        teacher = getattr(request.user, "teacher_profile", None)
+        if teacher is None:
+            return Response({"error": "Profil enseignant introuvable."}, status=404)
+        paires = sorted(paires_autorisees(teacher))
+        return Response([{"class_id": c, "subject_id": s} for c, s in paires])
+
+    @action(detail=True, methods=["get", "put"], url_path="assignments",
+            permission_classes=[IsAuthenticated, IsAdminOrAbove, IsSameTenant])
+    def assignments(self, request, pk=None):
+        """GET ou PUT /api/teachers/{id}/assignments/ : remplace les affectations de l'enseignant."""
+        teacher = self.get_object()
+        if request.method == "PUT":
+            remplacer_affectations(teacher, request.data.get("assignments"), request.user)
+        lignes = teacher.assignments.select_related("class_obj", "subject").order_by("class_obj__name", "subject__name")
+        return Response([
+            {"class_id": a.class_obj_id, "class_name": a.class_obj.name, "subject_id": a.subject_id,
+             "subject_name": a.subject.name, "source": a.source, "a_confirmer": a.source == a.SOURCE_REPRISE}
+            for a in lignes
+        ])
 
     @action(detail=False, methods=["get"])
     def my_classes(self, request):

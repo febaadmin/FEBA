@@ -14,6 +14,7 @@ Corrections :
 import logging
 from decimal import Decimal
 
+from apps.teachers.affectations import peut_noter
 from apps.core.request_text import identifiant, text_field
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
@@ -173,14 +174,14 @@ class GradeViewSet(BulkDeleteMixin, viewsets.ModelViewSet):
     def _validate_teacher_permission(self, teacher, subject, student):
         if not teacher:
             return True, ""
-        if not teacher.subjects.filter(id=subject.id).exists():
-            return False, (
-                f"Vous n'êtes pas autorisé à noter en {subject.name}. "
-                "Vous pouvez uniquement noter vos propres matières."
-            )
         if not teacher.classes.filter(id=student.current_class_id).exists():
             return False, (
                 f"L'élève {student.get_full_name()} n'est pas dans vos classes."
+            )
+        if not peut_noter(teacher, subject.id, student.current_class_id):
+            return False, (
+                f"Vous n'êtes pas affecté à {subject.name} dans la classe de cet élève. "
+                "Demandez à l'administration de vérifier vos affectations."
             )
         return True, ""
 
