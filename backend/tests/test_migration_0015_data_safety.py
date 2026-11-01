@@ -54,7 +54,7 @@ class PerimetreDeLaMigrationTests(TestCase):
     def test_le_numero_recopie_dans_l_adresse_est_retire(self):
         ecole = School.objects.create(
             name="Test", code="T2", slug="t2", currency_code="XOF",
-            address=f"Akpakpa, Cotonou — Tél {RETIRED}")
+            address=f"Akpakpa, Cotonou - Tél {RETIRED}")
         self._run()
         ecole.refresh_from_db()
         self.assertNotIn("96697363", ecole.address.replace(" ", ""))
@@ -138,7 +138,7 @@ class PerimetreDeLaMigrationTests(TestCase):
     def test_la_migration_est_idempotente(self):
         ecole = School.objects.create(
             name="Test", code="T7", slug="t7", phone=RETIRED,
-            address=f"Cotonou — Tél {RETIRED}", currency_code="XOF")
+            address=f"Cotonou - Tél {RETIRED}", currency_code="XOF")
         self._run()
         ecole.refresh_from_db()
         premier = (ecole.phone, ecole.address, ecole.whatsapp)

@@ -54,7 +54,7 @@ export default function ParentHome() {
                 <div className="bg-slate-50 rounded-xl p-2 text-center">
                   <p className="text-xs text-slate-500">{t("Moyenne générale")}</p>
                   <p className={`font-bold text-sm ${child.average >= 10 ? "text-success" : "text-danger"}`}>
-                    {child.average != null ? `${Number(child.average).toFixed(2)}/20` : "—"}
+                    {child.average != null ? `${Number(child.average).toFixed(2)}/20` : "-"}
                   </p>
                   {child.appreciation && (
                     <p className="text-[10px] text-slate-400">{t(child.appreciation)}</p>
@@ -82,7 +82,7 @@ export default function ParentHome() {
                     <p className={`font-bold text-sm ${
                       v == null ? "text-slate-300" : v >= 10 ? "text-success" : "text-danger"
                     }`}>
-                      {v != null ? `${Number(v).toFixed(2)}` : "—"}
+                      {v != null ? `${Number(v).toFixed(2)}` : "-"}
                     </p>
                   </div>
                 ))}

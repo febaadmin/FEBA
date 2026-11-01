@@ -35,7 +35,7 @@ export default function StudentBulletins() {
     <div className="space-y-6">
       <PageHeader
         title={t("Mes Bulletins")}
-        subtitle={t("{n} bulletin(s)", { n: bulletins.length }) + (activeYear ? ` — ${activeYear.name}` : "")}
+        subtitle={t("{n} bulletin(s)", { n: bulletins.length }) + (activeYear ? ` - ${activeYear.name}` : "")}
       />
 
       {/* Year selector */}

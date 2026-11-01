@@ -1,6 +1,6 @@
 /**
- * Textes visibles : pas de tiret cadratin servant de ponctuation ni d'emoji
- * décoratif. Le tiret seul reste permis : il marque une cellule vide.
+ * Textes visibles : ni tiret cadratin, y compris seul dans une cellule vide,
+ * ni emoji décoratif. Les commentaires ne sont pas analysés.
  */
 import { describe, it, expect } from "vitest";
 import fs from "node:fs";
@@ -11,7 +11,8 @@ import traverse from "@babel/traverse";
 
 const RACINE = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const EMOJI = /[\u{1F1E6}-\u{1F1FF}\u{1F300}-\u{1FAFF}]/u;
-const CONFORME = (texte) => texte.trim() === "—" || (!texte.includes("—") && !EMOJI.test(texte));
+const TIRET = "\u2014";
+const CONFORME = (texte) => !texte.includes(TIRET) && !EMOJI.test(texte);
 
 function fichiers(dossier) {
   return fs.readdirSync(dossier, { withFileTypes: true }).flatMap((e) => {
@@ -33,16 +34,18 @@ function textes(chemin) {
 }
 
 describe("textes visibles", () => {
-  it("aucun tiret cadratin de ponctuation ni emoji décoratif", () => {
+  it("aucun tiret cadratin ni emoji décoratif", () => {
     const ecarts = fichiers(RACINE).flatMap((f) =>
       textes(f).filter((t) => !CONFORME(t)).map((t) => `${path.relative(RACINE, f)} : ${t.slice(0, 70)}`));
     expect(ecarts).toEqual([]);
   }, 60000);
 
   it("le contrôle repère bien un écart", () => {
-    expect(CONFORME("Paiement — reçu")).toBe(false);
+    expect(CONFORME(`Paiement ${TIRET} reçu`)).toBe(false);
+    expect(CONFORME(TIRET)).toBe(false);
+    expect(CONFORME("Paiement - reçu")).toBe(true);
     expect(CONFORME("Bonjour 👋")).toBe(false);
-    expect(CONFORME("—")).toBe(true);
+    expect(CONFORME("-")).toBe(true);
     expect(CONFORME("0–20")).toBe(true);
   });
 });

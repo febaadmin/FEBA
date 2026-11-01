@@ -104,7 +104,7 @@ export default function FhaContactPage() {
   return (
     <>
       <Seo
-        title={`${t("Contact", "Contact")} — ${FHA_NAME}`}
+        title={`${t("Contact", "Contact")} - ${FHA_NAME}`}
         description={t(
           "Contactez l'équipe de FEBA French Heritage Academy.",
           "Get in touch with the FEBA French Heritage Academy team.",

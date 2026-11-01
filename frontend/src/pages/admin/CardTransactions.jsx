@@ -98,7 +98,7 @@ export default function AdminCardTransactions() {
       key: "refunded", label: t("Remboursé"),
       render: r => r.refunded_display && !/^[^\d]*0([.,]0+)?/.test(r.refunded_display)
         ? <span className="text-amber-700">{r.refunded_display}</span>
-        : <span className="text-slate-400">—</span>,
+        : <span className="text-slate-400">-</span>,
     },
     {
       key: "status", label: t("Statut"),
@@ -126,7 +126,7 @@ export default function AdminCardTransactions() {
               <RotateCcw className="w-3 h-3" />{t("Rembourser")}
             </button>
           )
-          : <span className="text-xs text-slate-400">—</span>
+          : <span className="text-xs text-slate-400">-</span>
       ),
     },
   ];

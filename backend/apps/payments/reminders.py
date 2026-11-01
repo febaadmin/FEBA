@@ -456,13 +456,13 @@ def _lines(rows, lang):
         money = lambda m: Money(m, r.currency).formatted()  # noqa: E731
         if lang == "en":
             out.append(
-                f"- {r.student.get_full_name()} — {r.fee_label} — {r.installment_label} "
+                f"- {r.student.get_full_name()} - {r.fee_label} - {r.installment_label} "
                 f"(due {due}): expected {money(r.amount_expected_minor)}, "
                 f"paid {money(r.amount_paid_minor)}, balance due {money(r.amount_due_minor)}."
             )
         else:
             out.append(
-                f"- {r.student.get_full_name()} — {r.fee_label} — {r.installment_label} "
+                f"- {r.student.get_full_name()} - {r.fee_label} - {r.installment_label} "
                 f"(échéance du {due}) : montant prévu {money(r.amount_expected_minor)}, "
                 f"déjà réglé {money(r.amount_paid_minor)}, reste à payer {money(r.amount_due_minor)}."
             )

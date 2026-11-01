@@ -166,17 +166,17 @@ export default function TeacherGrades() {
   const cols = [
     { key: "student",          label: t("Élève"),        accessor: "student_name" },
     ageColumn("student_age"),
-    { key: "class",            label: t("Classe"),        render: r => r.student_class || r.class_name || "—" },
+    { key: "class",            label: t("Classe"),        render: r => r.student_class || r.class_name || "-" },
     { key: "subject",          label: t("Matière"),      accessor: "subject_name" },
     { key: "period",           label: t("Période"),      accessor: "period" },
-    { key: "note_type",        label: t("Type"),         render: r => r.note_type_label || r.note_type || "—" },
+    { key: "note_type",        label: t("Type"),         render: r => r.note_type_label || r.note_type || "-" },
     { key: "value",            label: t("Note"),         render: r => <span className={nc(r.value)}>{r.value}/20</span> },
-    { key: "appr",             label: t("Appréciation"), accessor: "appreciation", render: r => r.appreciation ? t(r.appreciation) : "—" },
+    { key: "appr",             label: t("Appréciation"), accessor: "appreciation", render: r => r.appreciation ? t(r.appreciation) : "-" },
   ];
 
   const histCols = [
     { key: "action", label: t("Action"),  render: r => <span className={r.action === "create" ? "text-green-600" : "text-amber-600"}>{r.action === "create" ? t("Création") : t("Modification")}</span> },
-    { key: "old",    label: t("Anc."),    render: r => r.old_value != null ? `${r.old_value}/20` : "—" },
+    { key: "old",    label: t("Anc."),    render: r => r.old_value != null ? `${r.old_value}/20` : "-" },
     { key: "new",    label: t("Nouv."),   render: r => `${r.new_value}/20` },
     { key: "by",     label: t("Par"),     accessor: "changed_by_name" },
     { key: "just",   label: t("Justif."), accessor: "justification" },

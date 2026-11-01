@@ -188,17 +188,17 @@ def admin_alert_bodies(application):
         ("Dossier", reference),
         ("Académie", f"{brand.display_name} [{brand.academy_code}]"),
         ("Enfant", f"{application.child_first_name} {application.child_last_name}"),
-        ("Âge", f"{application.child_age} ans" if application.child_age is not None else "—"),
+        ("Âge", f"{application.child_age} ans" if application.child_age is not None else "-"),
         ("Sexe", application.get_child_gender_display() if application.child_gender else "Non renseigné"),
-        ("Pays", application.child_country or "—"),
+        ("Pays", application.child_country or "-"),
         ("Groupe suggéré",
          dict(application.GROUP_CHOICES).get(application.suggested_group, "à déterminer")),
         ("Responsable",
          f"{application.parent1_first_name} {application.parent1_last_name}"),
         ("E-mail", application.parent1_email),
-        ("Téléphone", application.parent1_phone or "—"),
-        ("WhatsApp", application.parent1_whatsapp or "—"),
-        ("Fuseau famille", application.family_timezone or "—"),
+        ("Téléphone", application.parent1_phone or "-"),
+        ("WhatsApp", application.parent1_whatsapp or "-"),
+        ("Fuseau famille", application.family_timezone or "-"),
         ("Besoins particuliers signalés",
          "oui" if application.special_needs.strip() else "non"),
     ]
@@ -219,7 +219,7 @@ def admin_alert_bodies(application):
 <body style="margin:0;padding:24px;background:#f1f5f9;font-family:Helvetica,Arial,sans-serif;color:#1e293b;font-size:14px;">
   <div style="max-width:640px;margin:0 auto;background:#ffffff;border-radius:12px;overflow:hidden;">
     <div style="background:{esc(brand.primary_color)};padding:18px 22px;">
-      <p style="margin:0;color:#ffffff;font-weight:bold;">Nouvelle fiche d'inscription — {esc(reference)}</p>
+      <p style="margin:0;color:#ffffff;font-weight:bold;">Nouvelle fiche d'inscription - {esc(reference)}</p>
     </div>
     <table style="width:100%;border-collapse:collapse;">{cells}</table>
     <div style="padding:14px 22px;background:#f8fafc;color:#64748b;font-size:12px;">
@@ -297,7 +297,7 @@ def process_submission(application):
         # Personne à prévenir : ce n'est pas un détail. Une inscription qui
         # n'arrive dans aucune boîte attend indéfiniment.
         logger.warning(
-            "FHA — dossier %s : AUCUN destinataire interne (ni administrateur "
+            "FHA - dossier %s : AUCUN destinataire interne (ni administrateur "
             "de l'académie, ni super administrateur avec une adresse).",
             application.reference,
         )

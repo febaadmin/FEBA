@@ -98,7 +98,7 @@ class AppreciationScaleTests(TestCase):
         self.assertEqual(get_appreciation(1), 'TRÈS FAIBLE')
 
     def test_none_returns_dash(self):
-        self.assertEqual(get_appreciation(None), '—')
+        self.assertEqual(get_appreciation(None), '-')
 
     def test_other_scales_normalized(self):
         # 45/50 = 18/20 → TRÈS SATISFAISANT (exemple du cahier des charges)

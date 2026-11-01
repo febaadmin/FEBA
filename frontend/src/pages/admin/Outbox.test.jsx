@@ -114,7 +114,7 @@ describe("Statut SMS distinct de l'e-mail", () => {
       ...ROW, sms: { status: "skipped", status_display: "Non envoyé",
                      skip_reason_display: "Consentement aux SMS non recueilli" } }] } });
     renderPage();
-    expect(await screen.findByText(/SMS non envoyé — Consentement aux SMS non recueilli/)).toBeTruthy();
+    expect(await screen.findByText(/SMS non envoyé - Consentement aux SMS non recueilli/)).toBeTruthy();
     expect(screen.getAllByText(/Accepté par le serveur de messagerie/).length).toBeGreaterThan(0);
   });
 });

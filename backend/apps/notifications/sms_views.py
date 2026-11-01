@@ -138,7 +138,7 @@ class TwilioStatusCallbackView(APIView):
             sms.status, sms.delivered_at = SmsMessage.DELIVERED, timezone.now()
         elif state in ("undelivered", "failed"):
             sms.status = SmsMessage.FAILED
-            sms.last_error = f"Non remis par l'opérateur (Twilio {state}, code {part.error_code or '—'})."
+            sms.last_error = f"Non remis par l'opérateur (Twilio {state}, code {part.error_code or '-'})."
             if part.error_code == "21610" and sms.user_id:
                 from .sms import _record_opt_out
                 _record_opt_out(sms.user)

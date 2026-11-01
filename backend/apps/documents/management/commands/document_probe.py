@@ -71,7 +71,7 @@ class Command(BaseCommand):
         navy = (blue > red + 25) & (blue < 150) & (red < 90)
 
         self.stdout.write(self.style.MIGRATE_HEADING(
-            f"\nGéométrie de {os.path.basename(path)} — {width}×{height} px\n"
+            f"\nGéométrie de {os.path.basename(path)} - {width}×{height} px\n"
         ))
         self.stdout.write(
             f"  Page {page_w}×{page_h} mm · fond rendu {draw_w:.2f}×{draw_h:.2f} mm "

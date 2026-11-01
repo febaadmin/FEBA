@@ -18,7 +18,7 @@ import LongText from "./LongText";
 
 const block = () => screen.getByTestId("long-text");
 
-describe("LongText — le texte intégral est conservé", () => {
+describe("LongText - le texte intégral est conservé", () => {
   it("affiche un texte court tel quel", () => {
     render(<LongText value="Bonjour !!" />);
     expect(block().textContent).toBe("Bonjour !!");
@@ -57,7 +57,7 @@ describe("LongText — le texte intégral est conservé", () => {
   });
 
   it("préserve les accents et les caractères spéciaux", () => {
-    const value = "Élisabeth Ahouéfa Gbêdjissi — « N’Guessan » · 100 % ✓ €$£";
+    const value = "Élisabeth Ahouéfa Gbêdjissi - « N’Guessan » · 100 % ✓ €$£";
     render(<LongText value={value} />);
     expect(block().textContent).toBe(value);
   });
@@ -73,12 +73,12 @@ describe("LongText — le texte intégral est conservé", () => {
   });
 
   it("affiche un repère lisible quand le message est vide", () => {
-    render(<LongText value="" emptyLabel="—" />);
-    expect(screen.getByText("—")).toBeTruthy();
+    render(<LongText value="" emptyLabel="-" />);
+    expect(screen.getByText("-")).toBeTruthy();
   });
 });
 
-describe("LongText — mise en forme", () => {
+describe("LongText - mise en forme", () => {
   it("se replie au lieu de déborder", () => {
     render(<LongText value={"x".repeat(300)} />);
     const style = block().style;

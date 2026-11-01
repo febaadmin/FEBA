@@ -16,7 +16,7 @@ class Subject(models.Model):
     coefficient = models.PositiveIntegerField(default=1)
     language = models.CharField(
         max_length=10, choices=LANGUAGE_CHOICES, default='fr',
-        help_text="Langue de la matière — utilisé pour le calcul de la moyenne bilingue"
+        help_text="Langue de la matière - utilisé pour le calcul de la moyenne bilingue"
     )
     order = models.PositiveIntegerField(default=0, help_text="Ordre d'affichage dans le bulletin")
 

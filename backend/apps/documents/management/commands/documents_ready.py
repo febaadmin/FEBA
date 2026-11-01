@@ -30,10 +30,10 @@ class Command(BaseCommand):
         for result in results:
             if result.ok:
                 self.stdout.write(self.style.SUCCESS(
-                    f"  ✓ {result.name}" + (f" — {result.detail}" if result.detail else "")
+                    f"  ✓ {result.name}" + (f" - {result.detail}" if result.detail else "")
                 ))
             else:
-                self.stdout.write(self.style.ERROR(f"  ✗ {result.name} — {result.detail}"))
+                self.stdout.write(self.style.ERROR(f"  ✗ {result.name} - {result.detail}"))
 
         failures = [r for r in results if not r.ok]
         self.stdout.write("")
@@ -45,6 +45,6 @@ class Command(BaseCommand):
             raise SystemExit(1)
 
         self.stdout.write(self.style.SUCCESS(
-            f"{len(results)} contrôles passés — les documents officiels sont "
+            f"{len(results)} contrôles passés - les documents officiels sont "
             f"produisibles dès maintenant, sans commande supplémentaire."
         ))

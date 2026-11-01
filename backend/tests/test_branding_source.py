@@ -110,7 +110,7 @@ class NoHardcodedIdentityTests(SimpleTestCase):
             for number, text in _code_lines(path):
                 for pattern, kind in FORBIDDEN:
                     if re.search(pattern, text):
-                        offences.append(f"{relative}:{number} — {kind} : {text.strip()}")
+                        offences.append(f"{relative}:{number} - {kind} : {text.strip()}")
 
         self.assertEqual(
             offences, [],
@@ -200,7 +200,7 @@ class BrandingResolutionTests(TestCase):
 
     def test_academie_sans_code_reste_neutre_sans_image_inventee(self):
         autre = School.objects.create(
-            name="École partenaire", address="—", currency_code="XOF",
+            name="École partenaire", address="-", currency_code="XOF",
         )
         branding = get_branding(autre)
         self.assertTrue(branding.palette_is_neutral)
@@ -341,7 +341,7 @@ class AddressLineTests(TestCase):
 
     def test_le_point_final_d_une_adresse_libre_est_retire(self):
         line = self._branding(
-            address="Programme 100 % en ligne — depuis Cotonou, Bénin.",
+            address="Programme 100 % en ligne - depuis Cotonou, Bénin.",
             city="Cotonou", country="Bénin", phone="+229 97 00 00 00",
         ).address_line
         self.assertNotIn("Bénin. |", line)

@@ -47,7 +47,7 @@ function rendreSur(chemin) {
   return vue;
 }
 
-describe("RoleRedirect — la fenêtre entre le jeton et l'utilisateur", () => {
+describe("RoleRedirect - la fenêtre entre le jeton et l'utilisateur", () => {
   beforeEach(() => {
     etat.user = null;
     etat.accessToken = null;

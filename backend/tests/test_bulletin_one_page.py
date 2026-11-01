@@ -42,7 +42,7 @@ LONG_COMMENT = ("Élève sérieuse et appliquée ; des progrès très nets en ex
                 "poursuivre l'effort en calcul mental et en lecture à voix haute. ") * 9
 LONG_COMMENT = LONG_COMMENT[:GENERAL_COMMENT_MAX_LENGTH]
 
-FR_NAMES = ["Mathématiques", "Français — Expression écrite", "Lecture et compréhension",
+FR_NAMES = ["Mathématiques", "Français - Expression écrite", "Lecture et compréhension",
             "Sciences de la Vie et de la Terre", "Histoire-Géographie", "Éducation civique et morale",
             "Physique-Chimie", "Éducation artistique", "Éducation physique et sportive",
             "Technologie", "Philosophie", "Économie", "Informatique", "Musique"]

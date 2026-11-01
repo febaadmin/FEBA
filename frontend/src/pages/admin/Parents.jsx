@@ -154,8 +154,8 @@ export default function AdminParents() {
   };
 
   const cols = [
-    { key: "name",       label: t("Nom"),       render: r => `${r.user_first_name || ""} ${r.user_last_name || ""}`.trim() || r.full_name || "—" },
-    { key: "email",      label: t("Email"),     render: r => r.user_email || "—" },
+    { key: "name",       label: t("Nom"),       render: r => `${r.user_first_name || ""} ${r.user_last_name || ""}`.trim() || r.full_name || "-" },
+    { key: "email",      label: t("Email"),     render: r => r.user_email || "-" },
     { key: "profession", label: t("Profession"), accessor: "profession" },
     { key: "children",   label: t("Enfants"),   render: r => `${r.children_count ?? 0} enfant(s)` },
   ];
@@ -245,11 +245,11 @@ export default function AdminParents() {
               <button onClick={() => setSelectedParent(null)} className="text-slate-400 hover:text-slate-600 text-2xl leading-none">×</button>
             </div>
             <div className="space-y-2 text-sm">
-              <div className="flex justify-between py-2 border-b border-slate-50"><span className="text-slate-500">{t("Nom complet")}</span><span className="font-bold text-slate-800">{`${selectedParent.user_first_name || ""} ${selectedParent.user_last_name || ""}`.trim() || "—"}</span></div>
-              <div className="flex justify-between py-2 border-b border-slate-50"><span className="text-slate-500">{t("Email")}</span><span>{selectedParent.user_email || "—"}</span></div>
-              <div className="flex justify-between py-2 border-b border-slate-50"><span className="text-slate-500">{t("Téléphone")}</span><span>{selectedParent.user_phone || "—"}</span></div>
-              <div className="flex justify-between py-2 border-b border-slate-50"><span className="text-slate-500">{t("Profession")}</span><span>{selectedParent.profession || "—"}</span></div>
-              <div className="flex justify-between py-2 border-b border-slate-50"><span className="text-slate-500">{t("Adresse")}</span><span>{selectedParent.address || "—"}</span></div>
+              <div className="flex justify-between py-2 border-b border-slate-50"><span className="text-slate-500">{t("Nom complet")}</span><span className="font-bold text-slate-800">{`${selectedParent.user_first_name || ""} ${selectedParent.user_last_name || ""}`.trim() || "-"}</span></div>
+              <div className="flex justify-between py-2 border-b border-slate-50"><span className="text-slate-500">{t("Email")}</span><span>{selectedParent.user_email || "-"}</span></div>
+              <div className="flex justify-between py-2 border-b border-slate-50"><span className="text-slate-500">{t("Téléphone")}</span><span>{selectedParent.user_phone || "-"}</span></div>
+              <div className="flex justify-between py-2 border-b border-slate-50"><span className="text-slate-500">{t("Profession")}</span><span>{selectedParent.profession || "-"}</span></div>
+              <div className="flex justify-between py-2 border-b border-slate-50"><span className="text-slate-500">{t("Adresse")}</span><span>{selectedParent.address || "-"}</span></div>
               <div className="py-2">
                 <p className="text-slate-500 font-medium mb-2">{t("Enfants associés")} ({selectedParent.children_count ?? 0})</p>
                 {selectedParent.children_links?.length > 0 ? (
@@ -259,7 +259,7 @@ export default function AdminParents() {
                         <div className="w-6 h-6 rounded-full bg-primary text-white text-xs flex items-center justify-center font-bold">{link.student_name?.[0] || "?"}</div>
                         <div>
                           <p className="text-xs font-medium text-slate-800">{link.student_name || `Élève #${link.student}`}</p>
-                          <p className="text-xs text-slate-400">{t(link.relationship_label || "—")} · {ageText(link.student_age, link.student_age_status)}</p>
+                          <p className="text-xs text-slate-400">{t(link.relationship_label || "-")} · {ageText(link.student_age, link.student_age_status)}</p>
                         </div>
                       </div>
                     ))}

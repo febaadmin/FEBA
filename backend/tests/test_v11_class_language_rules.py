@@ -264,7 +264,7 @@ class RefusExpliqueDansLAcademieTests(TestCase):
             username="prof@fha.test", email="prof@fha.test", password="Pass1234!",
             role="teacher", school=cls.fha, first_name="P", last_name="R")
         cls.salle = VirtualRoom.objects.create(
-            name="Cours en direct — French Ambassadors", school=cls.fha,
+            name="Cours en direct - French Ambassadors", school=cls.fha,
             school_year=cls.an_fha, class_obj=cls.ambassadeurs, created_by=cls.prof)
         cls.salle_feba = VirtualRoom.objects.create(
             name="Cours FEBA", school=cls.feba, school_year=cls.an_feba,

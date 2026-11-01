@@ -66,7 +66,7 @@ function rows(data) {
  * un éventuel renommage.
  */
 function AcademyBadge({ code, name, shortName }) {
-  if (!code && !name) return <span className="text-slate-400">—</span>;
+  if (!code && !name) return <span className="text-slate-400">-</span>;
   return <SharedAcademyBadge code={code} name={name} shortName={shortName} />;
 }
 

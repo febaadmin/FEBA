@@ -154,9 +154,9 @@ export default function AdminPayments() {
     { key: "student",label: t("Élève"),      accessor: "student_name" },
     ageColumn("student_age"),
     { key: "class",  label: t("Classe"),     accessor: "student_class" },
-    { key: "type",   label: t("Type"),       render: r => t(r.payment_type_label || r.payment_type || "—") },
+    { key: "type",   label: t("Type"),       render: r => t(r.payment_type_label || r.payment_type || "-") },
     { key: "amount", label: t("Montant"),    render: r => <span className="font-bold text-success">{money.amountOf(r)}</span> },
-    { key: "method", label: t("Mode"),       render: r => t(r.payment_method_label || r.payment_method || "—") },
+    { key: "method", label: t("Mode"),       render: r => t(r.payment_method_label || r.payment_method || "-") },
     { key: "date",   label: t("Date et heure"), accessor: "paid_at_display", sortValue: paymentSortValue,
       render: r => (
         <span className="whitespace-nowrap" title={r.has_time ? "" : t("Heure non enregistrée pour ce paiement")}>
@@ -187,7 +187,7 @@ export default function AdminPayments() {
       <div className="flex items-center gap-3">
         <label className="text-sm font-semibold text-slate-600">{t("Année :")}</label>
         <select value={filterYear} onChange={e => setFilterYear(e.target.value)} className="input w-auto text-sm">
-          <option value="">— {t("Actuelle")} ({currentYear?.name || "—"})</option>
+          <option value="">- {t("Actuelle")} ({currentYear?.name || "-"})</option>
           {years.map(y => <option key={y.id} value={y.id}>{yearLabel(y)}{y.is_current ? " ✓" : ""}</option>)}
         </select>
       </div>
@@ -306,7 +306,7 @@ export default function AdminPayments() {
                     <div key={h.id} className="text-xs bg-slate-50 rounded-lg px-3 py-1.5 flex justify-between gap-2">
                       <span className="text-slate-600">
                         {t(h.action_label || h.action || "")}
-                        {h.performed_by_name ? ` — ${h.performed_by_name}` : ""}
+                        {h.performed_by_name ? ` - ${h.performed_by_name}` : ""}
                       </span>
                       <span className="text-slate-400 whitespace-nowrap">{formatDateTime(h.performed_at, viewItem.academy_timezone)}</span>
                     </div>

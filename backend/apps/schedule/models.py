@@ -194,7 +194,7 @@ class OnlineSessionSchedule(models.Model):
 
     day_of_week = models.PositiveSmallIntegerField(
         choices=DAYS,
-        help_text="Jour de la semaine EN UTC — le jour local peut différer.",
+        help_text="Jour de la semaine EN UTC - le jour local peut différer.",
     )
     start_time_utc = models.TimeField(
         help_text="Heure de début en UTC. Référence unique de la séance.",
@@ -253,7 +253,7 @@ class OnlineSessionSchedule(models.Model):
 
     def __str__(self):
         return (
-            f"{self.group} — {self.subject} — "
+            f"{self.group} - {self.subject} - "
             f"{self.get_day_of_week_display()} {self.start_time_utc} UTC"
         )
 

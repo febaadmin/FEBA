@@ -2,7 +2,7 @@
   "id": "certificate_feba",
   "version": 2,
   "label": "Certificat FEBA",
-  "description": "Certificat de réussite — fond verrouillé, seuls les champs variables sont rendus.",
+  "description": "Certificat de réussite - fond verrouillé, seuls les champs variables sont rendus.",
   "background": {
     "file": "certificat_feba_2.png",
     "sha256": "6ff65e31f6eef6da4da516f7ba80c680f74c067f903444f7fd79e00b223ffa36",
@@ -14,7 +14,7 @@
         "sha256": "bccead70bc0e6643ae60c82ce932b717443e57b578a22ab529a477693958f41a",
         "source": "fichier PNG fourni à l'installation",
         "reason": "Visuel transmis par le canal de conversation, qui ré-encode les images jointes en WebP avec perte avant de les remettre. Dimensions vérifiées identiques à l'original (géométrie intacte, calibrage valide) ; pixels ré-encodés, donc empreinte du PNG d'origine inatteignable. À remplacer par le PNG d'origine dès qu'il parvient par un canal sans transcodage.",
-        "accepted_by": "Livraison V8 — opérateur d'intégration",
+        "accepted_by": "Livraison V8 - opérateur d'intégration",
         "accepted_at": "2026-08-01",
         "lossy": false
       }
@@ -61,7 +61,7 @@
     ]
   },
   "placeholder_masks": [],
-  "_commentaire_masques": "Le certificat n'a AUCUNE mention d'exemple à neutraliser : sa ligne d'écriture est vide sur le visuel d'origine. Le seul placeholder est « YOUR SEAL », traité comme un asset et non comme un masque — voir plus bas.",
+  "_commentaire_masques": "Le certificat n'a AUCUNE mention d'exemple à neutraliser : sa ligne d'écriture est vide sur le visuel d'origine. Le seul placeholder est « YOUR SEAL », traité comme un asset et non comme un masque - voir plus bas.",
   "fields": [
     {
       "name": "student_name",
@@ -88,7 +88,7 @@
       "_commentaire_boite": "Centrée sur la règle d'écriture (67,39 → 229,61 mm, milieu 148,5 mm) avec 3,6 mm de retrait de chaque côté.",
       "bleed_mm": 3.0,
       "_commentaire_debord": "Les jambages descendants (« p », « g », « j ») passent sous la ligne de base et franchissent la règle d'écriture. Ce débord appartient à la zone VARIABLE : sans lui, la comparaison compterait le jambage d'un nom comme une altération du fond.",
-      "_commentaire_lignes": "DEUX lignes autorisées. Un patronyme composé de la diaspora dépasse couramment soixante-dix caractères : sur une seule ligne il ne tient pas, et refuser de produire n'est pas un service rendu à l'élève. Le repli est calculé par apps/documents/textfit.py à partir des métriques réelles de la police — boîte englobante du dessin de chaque lettre — et non d'une estimation du type « hauteur = corps × 0,75 », qui se trompait de 30 % et faisait remonter la première ligne sur la phrase gravée dans le fond.",
+      "_commentaire_lignes": "DEUX lignes autorisées. Un patronyme composé de la diaspora dépasse couramment soixante-dix caractères : sur une seule ligne il ne tient pas, et refuser de produire n'est pas un service rendu à l'élève. Le repli est calculé par apps/documents/textfit.py à partir des métriques réelles de la police - boîte englobante du dessin de chaque lettre - et non d'une estimation du type « hauteur = corps × 0,75 », qui se trompait de 30 % et faisait remonter la première ligne sur la phrase gravée dans le fond.",
       "safe_zone": {
         "y_top_mm": 121.62,
         "y_bottom_mm": 135.95,
@@ -97,7 +97,7 @@
         "engraved_phrase_bottom_mm": 121.02,
         "writing_rule_top_mm": 136.95,
         "_mesure": "MESURÉ sur le fond réellement dessiné, pas estimé. Bord inférieur de la phrase gravée « Ce certificat est fièrement décerné à » : px y 587–607, soit 121.02 mm ; dégagement 0.6 mm. Bord supérieur de la règle d'écriture : px y 688–691, soit 136.95 mm ; dégagement 1.0 mm. La règle s'étend de 67.19 à 229.81 mm : le nom reste à l'intérieur du trait sur lequel il est écrit.",
-        "_commande": "manage.py document_calibrate --template <id> — la commande réimprime ces nombres depuis le fond installé et échoue si le fond a bougé."
+        "_commande": "manage.py document_calibrate --template <id> - la commande réimprime ces nombres depuis le fond installé et échoue si le fond a bougé."
       },
       "line_spacing": 1.0,
       "baseline_reserve_em": 0.23
@@ -182,11 +182,11 @@
       "cover": {
         "color": "#FCF9F3"
       },
-      "_commentaire": "Le blason est INCRUSTÉ dans le fond. Tant qu'aucun logo n'est téléversé et activé, rien n'est apposé : le visuel officiel reste intact. Dès qu'un logo est activé, la zone mesurée du blason (pixels relevés sur le fond, échelle 0,199 mm/px) est recouverte de la couleur du papier, puis le logo actif y est apposé — un document ne sort jamais avec l'ancien logo."
+      "_commentaire": "Le blason est INCRUSTÉ dans le fond. Tant qu'aucun logo n'est téléversé et activé, rien n'est apposé : le visuel officiel reste intact. Dès qu'un logo est activé, la zone mesurée du blason (pixels relevés sur le fond, échelle 0,199 mm/px) est recouverte de la couleur du papier, puis le logo actif y est apposé - un document ne sort jamais avec l'ancien logo."
     },
     {
       "name": "official_seal",
-      "label": "Sceau officiel — remplace « YOUR SEAL »",
+      "label": "Sceau officiel - remplace « YOUR SEAL »",
       "required": false,
       "resource": "seal_official",
       "box": {
@@ -199,7 +199,7 @@
       "backdrop": "#F7F2E6",
       "backdrop_shape": "circle",
       "backdrop_diameter_mm": 22.5,
-      "_commentaire": "Disque intérieur du médaillon MESURÉ : centre (255,59 · 39,31) mm, ⌀ 23,69 mm (px : centre 1283,5 · 197,5, ⌀ 119). Le fond de disque fait 22,5 mm — délibérément PLUS PETIT que le disque, pour que l'anneau marine reste visible et que la couronne dorée crantée ne soit jamais recouverte. Le sceau lui-même s'inscrit dans 21 mm.",
+      "_commentaire": "Disque intérieur du médaillon MESURÉ : centre (255,59 · 39,31) mm, ⌀ 23,69 mm (px : centre 1283,5 · 197,5, ⌀ 119). Le fond de disque fait 22,5 mm - délibérément PLUS PETIT que le disque, pour que l'anneau marine reste visible et que la couronne dorée crantée ne soit jamais recouverte. Le sceau lui-même s'inscrit dans 21 mm.",
       "_commentaire_absence": "Sans sceau officiel dans les ressources du projet, la mention « YOUR SEAL » du fond RESTE VISIBLE. Elle n'est ni masquée ni remplacée par un ersatz : c'est le signal, pour l'établissement, que le document n'est pas finalisé."
     },
     {
@@ -217,7 +217,7 @@
       "_commentaire": "Aucun fichier de signature n'existe dans les ressources du projet : la zone reste vide."
     }
   ],
-  "_commentaire_motif": "Aucun champ « motif » n'est déclaré. L'espace entre la règle d'écriture (137,15 mm) et le paragraphe fixe du fond (142,9 mm) ne fait que 5,7 mm : une ligne ajoutée s'y superposerait au texte imprimé. Le fond porte déjà sa propre formule de félicitations — la doubler n'ajouterait rien et abîmerait la mise en page.",
+  "_commentaire_motif": "Aucun champ « motif » n'est déclaré. L'espace entre la règle d'écriture (137,15 mm) et le paragraphe fixe du fond (142,9 mm) ne fait que 5,7 mm : une ligne ajoutée s'y superposerait au texte imprimé. Le fond porte déjà sa propre formule de félicitations - la doubler n'ajouterait rien et abîmerait la mise en page.",
   "academies": [
     "FEBA"
   ],

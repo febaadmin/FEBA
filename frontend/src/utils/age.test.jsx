@@ -38,10 +38,10 @@ describe("ageSortValue", () => {
 describe("studentOptionLabel", () => {
   it("ajoute l'âge au libellé du sélecteur", () => {
     expect(studentOptionLabel({ full_name: "Ana B", class_name: "CE1", age: 7, age_status: "ok" }))
-      .toBe("Ana B — CE1 · 7 ans");
+      .toBe("Ana B - CE1 · 7 ans");
     expect(studentOptionLabel({ full_name: "Ana B", matricule: "FEBA-26-0001", age_status: "missing" },
                               { withMatricule: true }))
-      .toBe("Ana B — FEBA-26-0001 (?) · Non renseigné");
+      .toBe("Ana B - FEBA-26-0001 (?) · Non renseigné");
   });
 });
 

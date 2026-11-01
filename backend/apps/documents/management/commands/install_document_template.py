@@ -65,7 +65,7 @@ class Command(BaseCommand):
                  "(canal qui ré-encode). Exige --reason.",
         )
         parser.add_argument("--reason", default="",
-                            help="Motif d'acceptation de la variante — obligatoire.")
+                            help="Motif d'acceptation de la variante - obligatoire.")
         parser.add_argument("--accepted-by", default="",
                             help="Qui accepte la variante et en répond.")
 

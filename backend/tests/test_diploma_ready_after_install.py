@@ -179,8 +179,8 @@ class DiplomaRendersWithoutPlaceholderTests(SimpleTestCase):
                 "student_name": "Élisabeth Ahouéfa Gbêdjissi",
                 "issue_date": timezone.now().date(),
                 "document_number": "FEBA-DIP-2026-0001",
-                "director_name": "—",
-                "teacher_name": "—",
+                "director_name": "-",
+                "teacher_name": "-",
             },
             branding=make_branding(),
         )

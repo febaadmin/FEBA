@@ -95,7 +95,7 @@ export default function AdminAnnouncements() {
       <a href={r.attachment} target="_blank" rel="noreferrer" className="flex items-center gap-1 text-xs text-primary hover:underline">
         <FileText className="w-3 h-3" />{r.attachment_name || "Fichier"}
       </a>
-    ) : <span className="text-slate-300">—</span> },
+    ) : <span className="text-slate-300">-</span> },
     { key: "status", label: t("Statut"), render: r => (
       <span className={`badge ${r.is_published ? "bg-success-50 text-success" : "bg-slate-100 text-slate-500"}`}>
         {r.is_published ? t("Publiée") : t("Brouillon")}

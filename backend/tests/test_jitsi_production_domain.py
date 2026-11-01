@@ -236,7 +236,7 @@ class TopologieDeDeploiementTests(SimpleTestCase):
         self.assertEqual(
             actifs, [],
             f"Un vhost est activé dans la livraison : {actifs}. nginx "
-            "refuserait de démarrer sans son certificat — et il sert aussi "
+            "refuserait de démarrer sans son certificat - et il sert aussi "
             "globalfeba.com.")
 
     def test_le_vhost_relaie_la_signalisation_temps_reel(self):

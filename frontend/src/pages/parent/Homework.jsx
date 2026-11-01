@@ -24,7 +24,7 @@ export default function ParentHomework() {
     { key: "att", label: t("Pièces jointes"), sortable: false, render: r => (
       (r.attachments?.length > 0)
         ? <span className="text-xs text-primary font-medium">{r.attachments.length} {t("fichier(s)")}</span>
-        : <span className="text-xs text-slate-400">—</span>
+        : <span className="text-xs text-slate-400">-</span>
     )},
   ];
 

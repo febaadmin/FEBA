@@ -84,7 +84,7 @@ class Command(BaseCommand):
         seal = resolve_resource("seal_official", branding)
 
         self.stdout.write(self.style.MIGRATE_HEADING(
-            f"\nExemples — {template.label} (gabarit v{template.version})"
+            f"\nExemples - {template.label} (gabarit v{template.version})"
             f"\n  Académie émettrice : {branding.display_name} "
             f"[{branding.academy_code}]\n"
         ))
@@ -92,7 +92,7 @@ class Command(BaseCommand):
         if variant is not None:
             self.stdout.write(self.style.WARNING(
                 f"  ⚠ Fond : VARIANTE acceptée, pas le PNG d'origine.\n"
-                f"    {variant.source} — {variant.reason[:110]}…\n"
+                f"    {variant.source} - {variant.reason[:110]}…\n"
             ))
         self.stdout.write(
             f"  Signature officielle : {'oui' if signature else 'AUCUNE'}\n"
@@ -145,6 +145,6 @@ class Command(BaseCommand):
         )
         if failed:
             raise CommandError(
-                f"{len(failed)} cas en échec — voir ci-dessus. Un nom qui ne "
+                f"{len(failed)} cas en échec - voir ci-dessus. Un nom qui ne "
                 f"tient pas n'est pas tronqué : le document n'est pas produit."
             )

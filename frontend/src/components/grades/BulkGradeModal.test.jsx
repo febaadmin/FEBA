@@ -55,8 +55,8 @@ import { gradesAPI } from "../../api";
 import BulkGradeModal from "./BulkGradeModal";
 
 const STUDENTS = [
-  { value: 26, label: "Ayo Codjo — 3ème-A", classId: 7 },
-  { value: 27, label: "Nadège Ahouansou — 3ème-A", classId: 7 },
+  { value: 26, label: "Ayo Codjo - 3ème-A", classId: 7 },
+  { value: 27, label: "Nadège Ahouansou - 3ème-A", classId: 7 },
 ];
 const SUBJECTS = [
   { value: 1, label: "Mathématiques (coeff 4)" },
@@ -92,7 +92,7 @@ beforeEach(() => {
   setLang("fr");
 });
 
-describe("BulkGradeModal — rendu", () => {
+describe("BulkGradeModal - rendu", () => {
   it("affiche le message d'atomicité et une ligne initiale", () => {
     renderModal();
     expect(
@@ -111,7 +111,7 @@ describe("BulkGradeModal — rendu", () => {
   });
 });
 
-describe("BulkGradeModal — sauvegarde atomique", () => {
+describe("BulkGradeModal - sauvegarde atomique", () => {
   it("envoie UNE charge utile groupée { student, grades:[…] } et gère le succès", async () => {
     gradesAPI.bulkCreate.mockResolvedValue({
       data: { created: 2, detail: "2 note(s) ajoutée(s) avec succès pour Ayo Codjo." },

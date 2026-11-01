@@ -105,7 +105,7 @@ class Command(BaseCommand):
         )
         base_url = self.ask(
             options, "public_base_url", "URL publique de l'application",
-            "Ex. https://ecole.exemple.org — utilisée pour les pages de retour\n"
+            "Ex. https://ecole.exemple.org - utilisée pour les pages de retour\n"
             "et l'adresse du webhook.", required=False,
         ) or "http://localhost:5173"
 

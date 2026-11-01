@@ -99,7 +99,7 @@ class Payment(models.Model):
         # db_default : l'ANCIEN code (retour arrière sans restauration) n'écrit
         # pas cette colonne ; sans défaut en base, il ne pouvait plus créer de paiement.
         max_length=24, choices=PAID_AT_SOURCES, blank=True, default="", db_default="",
-        help_text="Provenance de l'heure affichée — jamais une heure inventée.",
+        help_text="Provenance de l'heure affichée - jamais une heure inventée.",
     )
     # Le formulaire proposait « Mois concerné » sans que la valeur soit
     # enregistrée nulle part. Elle l'est désormais (1er jour du mois) et
@@ -148,7 +148,7 @@ class Payment(models.Model):
         ]
 
     def __str__(self):
-        return f"{self.reference_number} — {self.student} — {self.formatted_amount}"
+        return f"{self.reference_number} - {self.student} - {self.formatted_amount}"
 
     # ── Devise : imposée par l'académie, jamais par le client ─────────
     @property
@@ -262,7 +262,7 @@ class PaymentHistory(models.Model):
         ordering = ["-performed_at"]
 
     def __str__(self):
-        return f"{self.payment.reference_number} — {self.action} — {self.performed_at:%d/%m/%Y %H:%M}"
+        return f"{self.payment.reference_number} - {self.action} - {self.performed_at:%d/%m/%Y %H:%M}"
 
 
 # ── Paiement par carte (P1) ───────────────────────────────────────────

@@ -158,7 +158,7 @@ class MontageDuConteneurTests(SimpleTestCase):
         self.assertIn(
             attendu, volumes,
             "Le service backend-dev ne monte plus la racine du dépôt. "
-            "Les tests de configuration redeviendraient invisibles — et "
+            "Les tests de configuration redeviendraient invisibles - et "
             "silencieux. Volumes actuels : " + repr(volumes))
 
     def test_le_montage_est_bien_en_lecture_seule(self):
@@ -229,7 +229,7 @@ class AucunSilenceDansLesTestsDeConfigurationTests(SimpleTestCase):
             coupables, [],
             "Un test de configuration s'ignore quand un fichier manque : "
             f"{coupables}. Un fichier de livraison invisible est un DÉFAUT "
-            "à corriger, pas une condition d'exécution — voir "
+            "à corriger, pas une condition d'exécution - voir "
             "tests/repo_root.py.")
 
 

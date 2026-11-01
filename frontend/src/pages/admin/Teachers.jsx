@@ -112,11 +112,11 @@ export default function AdminTeachers() {
 
   const cols = [
     { key: "id",       label: t("ID employé"),  accessor: "employee_id" },
-    { key: "name",     label: t("Nom"),         render: r => `${r.user_first_name || ""} ${r.user_last_name || ""}`.trim() || "—" },
+    { key: "name",     label: t("Nom"),         render: r => `${r.user_first_name || ""} ${r.user_last_name || ""}`.trim() || "-" },
     { key: "email",    label: t("Email"),       accessor: "user_email" },
     { key: "spec",     label: t("Spécialité"),  accessor: "specialization" },
     { key: "contract", label: t("Contrat"),     accessor: "contract_type" },
-    { key: "classes",  label: t("Classes"),     render: r => (r.classes_detail || []).map(c => c.name).join(", ") || "—" },
+    { key: "classes",  label: t("Classes"),     render: r => (r.classes_detail || []).map(c => c.name).join(", ") || "-" },
     { key: "status",   label: t("Statut"),      render: r => <StatusBadge status={r.user_is_active === false ? "inactive" : "active"} /> },
   ];
 
@@ -177,10 +177,10 @@ export default function AdminTeachers() {
               </div>
             </div>
             <div className="space-y-2 text-sm divide-y divide-slate-50">
-              <div className="flex justify-between py-2"><span className="text-slate-500">{t("Spécialité")}</span><span className="font-medium">{viewItem.specialization || "—"}</span></div>
-              <div className="flex justify-between py-2"><span className="text-slate-500">{t("Téléphone")}</span><span className="font-medium">{viewItem.user_phone || "—"}</span></div>
-              <div className="flex justify-between py-2"><span className="text-slate-500">{t("Type de contrat")}</span><span className="capitalize">{viewItem.contract_type || "—"}</span></div>
-              <div className="flex justify-between py-2"><span className="text-slate-500">{t("Date d'embauche")}</span><span>{viewItem.hire_date || "—"}</span></div>
+              <div className="flex justify-between py-2"><span className="text-slate-500">{t("Spécialité")}</span><span className="font-medium">{viewItem.specialization || "-"}</span></div>
+              <div className="flex justify-between py-2"><span className="text-slate-500">{t("Téléphone")}</span><span className="font-medium">{viewItem.user_phone || "-"}</span></div>
+              <div className="flex justify-between py-2"><span className="text-slate-500">{t("Type de contrat")}</span><span className="capitalize">{viewItem.contract_type || "-"}</span></div>
+              <div className="flex justify-between py-2"><span className="text-slate-500">{t("Date d'embauche")}</span><span>{viewItem.hire_date || "-"}</span></div>
               <div className="py-2">
                 <div className="flex items-center gap-1 text-slate-500 mb-1"><BookOpen className="w-3.5 h-3.5" />{t("Matières enseignées")}</div>
                 <div className="flex flex-wrap gap-1.5 mt-1">
@@ -188,7 +188,7 @@ export default function AdminTeachers() {
                     ? (viewItem.subjects_detail || []).map(s => (
                         <span key={s.id} className="bg-emerald-50 text-emerald-700 text-xs px-2 py-0.5 rounded-full">{s.name}</span>
                       ))
-                    : <span className="text-slate-400 text-xs">—</span>}
+                    : <span className="text-slate-400 text-xs">-</span>}
                 </div>
               </div>
               <div className="py-2">
@@ -198,7 +198,7 @@ export default function AdminTeachers() {
                     ? (viewItem.classes_detail || []).map(c => (
                         <span key={c.id} className="bg-primary-50 text-primary text-xs px-2 py-0.5 rounded-full">{c.name}</span>
                       ))
-                    : <span className="text-slate-400 text-xs">—</span>}
+                    : <span className="text-slate-400 text-xs">-</span>}
                 </div>
               </div>
               {viewItem.bio && (

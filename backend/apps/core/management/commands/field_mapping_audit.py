@@ -32,14 +32,14 @@ from django.core.management.base import BaseCommand
 #: champ listé ici n'est pas un défaut — c'est une décision, et elle est
 #: écrite.
 DELIBERATE_OMISSIONS = {
-    "submitted_ip": "Donnée technique de traçabilité — jamais sur un document remis.",
-    "sheet_path": "Chemin de stockage interne — le publier faciliterait un accès direct.",
+    "submitted_ip": "Donnée technique de traçabilité - jamais sur un document remis.",
+    "sheet_path": "Chemin de stockage interne - le publier faciliterait un accès direct.",
     "sheet_sha256": "Empreinte technique du fichier.",
     "sheet_size": "Métadonnée technique.",
     "sheet_version": "Métadonnée technique.",
     "sheet_error": "Diagnostic interne, affiché à l'administration seule.",
     "sheet_generated_at": "Métadonnée technique.",
-    "entity": "Imposée par le serveur d'après la route — jamais lue du client.",
+    "entity": "Imposée par le serveur d'après la route - jamais lue du client.",
     "reference": "Attribuée par le serveur.",
     "status": "Piloté par le parcours d'admission, pas par le formulaire.",
     "recommended_group": "Renseigné après le test de placement.",
@@ -49,7 +49,7 @@ DELIBERATE_OMISSIONS = {
     "updated_at": "Horodatage serveur.",
     "id": "Identifiant technique.",
     "is_read": "État de lecture interne, pas une saisie du visiteur.",
-    "child_photo": "Fichier binaire — servi par une vue dédiée, pas dans un CSV.",
+    "child_photo": "Fichier binaire - servi par une vue dédiée, pas dans un CSV.",
 }
 
 
@@ -203,7 +203,7 @@ class Command(BaseCommand):
             self.stdout.write(
                 "Ce fichier est **produit par `manage.py field_mapping_audit`**, "
                 "pas rédigé à la main. Un tableau écrit reste juste le jour où "
-                "on l'écrit et devient faux au premier champ ajouté — c'est "
+                "on l'écrit et devient faux au premier champ ajouté - c'est "
                 "exactement ainsi que le numéro WhatsApp a disparu : présent "
                 "dans le modèle et dans le formulaire, absent du serializer.\n"
             )
@@ -224,7 +224,7 @@ class Command(BaseCommand):
                 self.stdout.write(self.style.MIGRATE_HEADING(f"\n{title}"))
 
             for row in rows:
-                mark = lambda ok: "✅" if ok else "—"  # noqa: E731
+                mark = lambda ok: "✅" if ok else "-"  # noqa: E731
                 # Un champ SAISI mais jamais RELU est le défaut que cet
                 # audit existe pour trouver : la donnée entre en base et
                 # n'en ressort nulle part.

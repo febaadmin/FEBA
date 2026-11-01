@@ -611,7 +611,7 @@ def create_version(*, academy, kind, uploaded_file, user=None, page_format="auto
         raise
 
     log(template, "uploaded", user,
-        f"{template.original_filename} — {conversion.FORMATS[fmt]['label']}"
+        f"{template.original_filename} - {conversion.FORMATS[fmt]['label']}"
         + (f" converti en {engine.upper()} ({report.get('engine')}, {report.get('seconds', 0)} s)"
            if render_relative else "")
         + f", {template.file_size} octets, empreinte {template.file_sha256[:16]}…"

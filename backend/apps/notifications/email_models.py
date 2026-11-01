@@ -46,14 +46,14 @@ class EmailDelivery(models.Model):
     FAILED = "failed"
     RETRY = "retry"
     STATUS_CHOICES = [
-        (QUEUED, "Enregistré — en file d'attente"),
+        (QUEUED, "Enregistré - en file d'attente"),
         (PENDING, "Envoi en cours"),
         (ACCEPTED, "Accepté par le fournisseur"),
         # « sent » = le serveur SMTP a ACCEPTÉ le message. Cela ne prouve pas
         # qu'il est arrivé dans la boîte du destinataire.
         (SENT, "Accepté par le serveur de messagerie"),
         (FAILED, "Échec définitif"),
-        (RETRY, "Échec temporaire — nouvel essai programmé"),
+        (RETRY, "Échec temporaire - nouvel essai programmé"),
     ]
 
     # ── Transport réellement utilisé (octobre 2026) ───────────────────
@@ -72,7 +72,7 @@ class EmailDelivery(models.Model):
         (TRANSPORT_CONSOLE, "Console du serveur (aucun envoi)"),
         (TRANSPORT_MEMORY, "Mémoire (tests, aucun envoi)"),
         (TRANSPORT_FILE, "Fichier local (aucun envoi)"),
-        (TRANSPORT_CAPTURE, "Serveur de test (Mailpit) — capturé, non distribué"),
+        (TRANSPORT_CAPTURE, "Serveur de test (Mailpit) - capturé, non distribué"),
         (TRANSPORT_SMTP, "Serveur SMTP réel"),
         (TRANSPORT_UNCONFIGURED, "SMTP sans hôte configuré"),
         (TRANSPORT_OTHER, "Fournisseur tiers (API)"),
@@ -194,11 +194,11 @@ class EmailDelivery(models.Model):
         """Libellé honnête de ce qui est arrivé au message."""
         if self.status in (self.SENT, self.ACCEPTED):
             if self.transport == self.TRANSPORT_CAPTURE:
-                return "Capturé par le serveur de test (Mailpit) — non distribué sur Internet"
+                return "Capturé par le serveur de test (Mailpit) - non distribué sur Internet"
             if self.transport in (self.TRANSPORT_CONSOLE, self.TRANSPORT_MEMORY, self.TRANSPORT_FILE):
-                return "Écrit localement — aucun envoi réel"
+                return "Écrit localement - aucun envoi réel"
             if not self.transport and not self.used_real_provider:
-                return "Écrit localement — aucun envoi réel"
+                return "Écrit localement - aucun envoi réel"
             return "Accepté par le serveur de messagerie (réception non garantie)"
         return self.get_status_display()
 

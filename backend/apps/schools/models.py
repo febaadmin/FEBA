@@ -75,8 +75,8 @@ class School(models.Model):
     TYPE_PHYSICAL_SECONDARY = "physical_secondary"
     ACADEMY_TYPE_CHOICES = [
         (TYPE_ONLINE, "Académie en ligne"),
-        (TYPE_PHYSICAL_PRIMARY, "Académie physique — primaire"),
-        (TYPE_PHYSICAL_SECONDARY, "Académie physique — secondaire (collège et lycée)"),
+        (TYPE_PHYSICAL_PRIMARY, "Académie physique - primaire"),
+        (TYPE_PHYSICAL_SECONDARY, "Académie physique - secondaire (collège et lycée)"),
     ]
     #: Cycles de niveau admis par type. Une académie en ligne peut couvrir
     #: tous les âges (FEBA FHA accueille des enfants de 6 à 17 ans).
@@ -118,7 +118,7 @@ class School(models.Model):
         max_length=32, unique=True, null=True, blank=True,
         help_text=(
             "Identifiant interne STABLE de l'entité (ex: FEBA, FEBA_FHA). "
-            "Utilisé par la logique métier — ne jamais le dériver du nom affiché."
+            "Utilisé par la logique métier - ne jamais le dériver du nom affiché."
         ),
     )
     entity_type = models.CharField(

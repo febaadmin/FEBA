@@ -93,7 +93,7 @@ class Command(BaseCommand):
             if not disabled and self._applied(app, prefix):
                 self.stdout.write(
                     f"  • {app}/{prefix} déjà appliquée par la chaîne de "
-                    f"migrations — rien à rejouer.")
+                    f"migrations - rien à rejouer.")
                 continue
             module = importlib.import_module(module_path)
             getattr(module, func_name)(global_apps, None)
@@ -122,6 +122,6 @@ class Command(BaseCommand):
             exemples = list(deviants.values_list("id", "note_coefficient")[:5])
             raise CommandError(
                 f"{count} note(s) ont un poids d'évaluation ≠ "
-                f"{ASSESSMENT_WEIGHT} — la base n'est PAS conforme à la règle "
+                f"{ASSESSMENT_WEIGHT} - la base n'est PAS conforme à la règle "
                 f"V8. Exemples (id, poids) : {exemples}")
         self.stdout.write(self.style.SUCCESS("  ✔ conforme"))

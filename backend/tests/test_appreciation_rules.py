@@ -198,7 +198,7 @@ class ScaleAndBoundaryTests(Base):
         self.assertEqual(get_appreciation(12, academy=self.p.school), "PEUT MIEUX FAIRE")
 
     def test_matiere_non_notee_sans_appreciation(self):
-        self.assertEqual(get_appreciation(None, academy=self.p.school), "—")
+        self.assertEqual(get_appreciation(None, academy=self.p.school), "-")
 
 
 class BulletinRenderingTests(Base):
@@ -215,15 +215,15 @@ class BulletinRenderingTests(Base):
         rules = rules_payload(self.s.school)
         for rule in rules:
             if rule["label_fr"] == "ACCEPTABLE":
-                rule["label_fr"] = "BIEN — EN PROGRÈS"
+                rule["label_fr"] = "BIEN - EN PROGRÈS"
         client = APIClient()
         client.force_authenticate(self.s.admin)
         self.assertEqual(self.put(rules, client=client).status_code, 200)
 
         after = generate_bulletin(self.s.student, "T1", self.s.year)
         text = pdf_text(after)
-        self.assertEqual(after.appreciation, "BIEN — EN PROGRÈS")
-        self.assertIn("BIEN — EN PROGRÈS", text)
+        self.assertEqual(after.appreciation, "BIEN - EN PROGRÈS")
+        self.assertIn("BIEN - EN PROGRÈS", text)
         # Notes, moyennes et lettres inchangées : seul le libellé a changé.
         self.assertEqual(after.average, old_average)
         self.assertEqual(get_letter_grade(after.average), get_letter_grade(old_average))

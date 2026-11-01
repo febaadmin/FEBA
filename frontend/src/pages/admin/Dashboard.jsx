@@ -40,7 +40,7 @@ export default function AdminDashboard() {
           <span className="w-2 h-2 rounded-full bg-green-500 inline-block" />
           <span className="text-sm font-medium text-blue-800">{t("Année scolaire active :")} <strong>{d.active_year.name}</strong>
           </span>
-          <span className="text-xs text-blue-500 ml-1">— {t("statistiques filtrées sur cette année")}</span>
+          <span className="text-xs text-blue-500 ml-1">- {t("statistiques filtrées sur cette année")}</span>
         </div>
       )}
 

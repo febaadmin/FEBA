@@ -161,7 +161,7 @@ class PaymentViewSet(BulkDeleteMixin, viewsets.ModelViewSet):
                     # French Heritage Academy recevait « 125.50 FCFA » pour
                     # un paiement de 125,50 $.
                     f"Paiement enregistré : {payment.formatted_amount}",
-                    f"Référence {payment.reference_number} — {payment.get_payment_type_display()}",
+                    f"Référence {payment.reference_number} - {payment.get_payment_type_display()}",
                     related_url=notification_path(payment.student.user, "payments"),
                 )
             # FIX (notifications) : les paiements concernent au premier chef
@@ -172,7 +172,7 @@ class PaymentViewSet(BulkDeleteMixin, viewsets.ModelViewSet):
                     ps.parent.user, "payment",
                     f"Paiement enregistré pour {payment.student.get_full_name()} : "
                     f"{payment.formatted_amount}",
-                    f"Référence {payment.reference_number} — {payment.get_payment_type_display()}",
+                    f"Référence {payment.reference_number} - {payment.get_payment_type_display()}",
                     related_url=notification_path(ps.parent.user, "payments"),
                 )
         except Exception as exc:

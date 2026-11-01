@@ -62,7 +62,7 @@ def _rows_for_section(key, section):
             rows.append(("Temps cumulé", f"{section['total_minutes']} minutes"))
         for seance in section.get("seances", []):
             rows.append((f"Séance du {seance['date']}",
-                         f"{seance['salle']} — {seance['duree_minutes']} min"))
+                         f"{seance['salle']} - {seance['duree_minutes']} min"))
         for creneau in section.get("creneaux", []):
             rows.append(("Créneau hebdomadaire",
                          f"{creneau['jour']} {creneau['heure_utc']} UTC - "
@@ -72,7 +72,7 @@ def _rows_for_section(key, section):
     if key == "homework":
         rows = [("Devoirs sur la période", section["total"])]
         for devoir in section.get("devoirs", []):
-            rows.append((f"{devoir['matiere']} — {devoir['echeance']}",
+            rows.append((f"{devoir['matiere']} - {devoir['echeance']}",
                          f"{devoir['titre']}\n{devoir['consigne']}"))
         return rows
 
@@ -83,7 +83,7 @@ def _rows_for_section(key, section):
         for note in section.get("notes", []):
             valeur = ("non notée" if note["valeur"] is None
                       else f"{note['valeur']} / {note['bareme']}")
-            rows.append((f"{note['matiere']} — {note['type']}",
+            rows.append((f"{note['matiere']} - {note['type']}",
                          f"{valeur} (coefficient {note['coefficient']})"))
             if note["commentaire"]:
                 rows.append(("Appréciation", note["commentaire"]))
@@ -188,7 +188,7 @@ def generate_report_pdf(report):
                                fontName="Helvetica-Bold", alignment=1,
                                textColor=primary, spaceBefore=6, spaceAfter=2))
     eleve = (report.generated_data or {}).get("eleve", {}).get("nom", "")
-    story.append(pdf_paragraph(f"{eleve} — {report.period_label()}", fontSize=11,
+    story.append(pdf_paragraph(f"{eleve} - {report.period_label()}", fontSize=11,
                                fontName="Helvetica-Bold", alignment=1,
                                textColor=secondary, spaceAfter=8))
 

@@ -70,7 +70,7 @@ export default function AdminLevels() {
   const openEdit = (l) => { setEditItem(l); reset({ name: l.name, order: l.order, cycle: l.cycle }); setModalOpen(true); };
   const cycleLabel = (code) => {
     const row = CYCLES.find(([c]) => c === code);
-    return row ? `${t(row[1])} · /${row[2]}` : code || "—";
+    return row ? `${t(row[1])} · /${row[2]}` : code || "-";
   };
   const onSubmit = (d) => {
     if (editItem) updateMut.mutate({ id: editItem.id, data: d });
@@ -135,7 +135,7 @@ export default function AdminLevels() {
                     <td className="py-3 px-4 text-slate-600" data-testid={`level-cycle-${level.id}`}>
                       {cycleLabel(level.cycle)}
                     </td>
-                    <td className="py-3 px-4 text-slate-500">{level.school_name || "—"}</td>
+                    <td className="py-3 px-4 text-slate-500">{level.school_name || "-"}</td>
                     <td className="py-3 px-4">
                       <div className="flex items-center gap-1 justify-end">
                         <button onClick={() => openEdit(level)} className="p-1.5 rounded-lg hover:bg-primary-50 text-slate-400 hover:text-primary">

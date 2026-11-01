@@ -823,7 +823,7 @@ class InstalledTemplatesTests(TestCase):
             values = {
                 field.name: ("01/01/2026" if field.type == "date"
                              else "Exemple Comparaison" if field.name == "student_name"
-                             else "—")
+                             else "-")
                 for field in template.fields
             }
             content = render_document(template.id, values)
@@ -872,7 +872,7 @@ class InstalledTemplatesTests(TestCase):
             self.assertLess(
                 ratio_pct, 0.05,
                 f"{template.id} : {ratio_pct:.4f} % des pixels STATIQUES "
-                f"diffèrent du fond — un ornement a bougé.",
+                f"diffèrent du fond - un ornement a bougé.",
             )
 
     def test_les_cinq_noms_difficiles_sont_rendus_sans_troncature(self):

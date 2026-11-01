@@ -23,7 +23,7 @@ class Command(BaseCommand):
                 continue
             unclassified += 1
             suggestion, reason = classify(school.entity_type, cycles)
-            hint = f" — proposition : {dict(School.ACADEMY_TYPE_CHOICES)[suggestion]}" if suggestion else ""
+            hint = f" - proposition : {dict(School.ACADEMY_TYPE_CHOICES)[suggestion]}" if suggestion else ""
             self.stdout.write(self.style.WARNING(
                 f"  {school.code or school.pk:<14} NON CLASSÉE : {reason}{hint}"))
         if unclassified:

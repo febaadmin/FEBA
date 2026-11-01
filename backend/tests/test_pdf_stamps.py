@@ -212,7 +212,7 @@ class ReceiptStampTests(TestCase):
             student=self.student, school_year=self.year, amount=Decimal("1250000"),
             payment_type="tuition", payment_method="transfer",
             received_by=self.cashier,
-            notes="Paiement partiel — solde restant à régler avant la fin du trimestre.")
+            notes="Paiement partiel - solde restant à régler avant la fin du trimestre.")
         _, doc = self._receipt(payment)
         text = "\n".join(p.get_text() for p in doc)
         self.assertEqual(doc.page_count, 1)
@@ -350,7 +350,7 @@ class ReceiptTextWrapTests(ReceiptStampTests):
         reçu — perte de texte sur un document comptable.
         """
         from apps.payments.models import Payment
-        note = ("Frais de scolarité & cantine <trimestre 2> — réglés à 100 % "
+        note = ("Frais de scolarité & cantine <trimestre 2> - réglés à 100 % "
                 'par "chèque" n° 4412.')
         payment = Payment.objects.create(
             student=self.student, school_year=self.year, amount=Decimal("50000"),

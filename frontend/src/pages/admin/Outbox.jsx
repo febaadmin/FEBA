@@ -69,7 +69,7 @@ const SMS_TONE = {
 /** Statut du SMS miroir : DISTINCT de celui de l'e-mail. */
 function SmsBadge({ sms }) {
   const label = sms.status === "skipped" && sms.skip_reason_display
-    ? `${t("SMS non envoyé")} — ${t(sms.skip_reason_display)}`
+    ? `${t("SMS non envoyé")} - ${t(sms.skip_reason_display)}`
     : `SMS : ${t(sms.status_display)}`;
   return <div><Badge tone={SMS_TONE[sms.status] || ""}>{label}</Badge></div>;
 }
@@ -133,7 +133,7 @@ export default function Outbox() {
               {rows.map((r) => (
                 <tr key={r.id} className="border-b border-slate-50 hover:bg-slate-50 cursor-pointer align-top" onClick={() => setOpenId(r.id)}>
                   <td className="py-2 pr-3 whitespace-nowrap">{formatDateTime(r.created_at)}</td>
-                  <td className="py-2 pr-3 text-xs">{r.academy?.code || "—"}</td>
+                  <td className="py-2 pr-3 text-xs">{r.academy?.code || "-"}</td>
                   <td className="py-2 pr-3 break-all">{r.to_email}</td>
                   <td className="py-2 pr-3">
                     {r.subject}
@@ -220,9 +220,9 @@ function OutboxDetail({ id, onClose }) {
           <>
             <dl className="grid grid-cols-[9rem_1fr] gap-x-3 gap-y-1">
               <dt className="text-slate-500">{t("Date et heure")}</dt><dd>{formatDateTime(d.created_at)}</dd>
-              <dt className="text-slate-500">{t("Expéditeur")}</dt><dd className="break-all">{d.from_email || "—"}</dd>
+              <dt className="text-slate-500">{t("Expéditeur")}</dt><dd className="break-all">{d.from_email || "-"}</dd>
               <dt className="text-slate-500">{t("Destinataire")}</dt><dd className="break-all">{d.to_email}</dd>
-              <dt className="text-slate-500">{t("Académie")}</dt><dd>{d.academy?.name || "—"}</dd>
+              <dt className="text-slate-500">{t("Académie")}</dt><dd>{d.academy?.name || "-"}</dd>
               <dt className="text-slate-500">{t("Origine")}</dt><dd>{t(d.purpose_label)} {d.reference && <span className="text-slate-400">· {d.reference}</span>}</dd>
               <dt className="text-slate-500">{t("Statut")}</dt><dd><StatusCell row={d} /></dd>
               <dt className="text-slate-500">{t("Transport")}</dt><dd>{t(d.transport_display)} {d.smtp_host && <span className="text-slate-400">({d.smtp_host})</span>}</dd>
@@ -257,7 +257,7 @@ function OutboxDetail({ id, onClose }) {
                 {d.is_redacted && <p className="text-xs text-amber-700">{t(d.redaction_note)}</p>}
                 <section>
                   <h3 className="font-semibold text-slate-700 mb-1">{t("Contenu texte")}</h3>
-                  <pre className="whitespace-pre-wrap rounded-lg bg-slate-50 p-3 font-sans text-slate-700 text-wrapsafe">{d.text_body || "—"}</pre>
+                  <pre className="whitespace-pre-wrap rounded-lg bg-slate-50 p-3 font-sans text-slate-700 text-wrapsafe">{d.text_body || "-"}</pre>
                 </section>
                 {d.html_body && (
                   <section>
@@ -360,9 +360,9 @@ function SmtpPanel() {
       {open && (
         <div className="space-y-2 pt-2 border-t border-current/10">
           <dl className="grid grid-cols-[10rem_1fr] gap-x-3 text-xs">
-            <dt>{t("Serveur")}</dt><dd>{c.host || "—"}:{c.port}</dd>
+            <dt>{t("Serveur")}</dt><dd>{c.host || "-"}:{c.port}</dd>
             <dt>TLS / SSL</dt><dd>{String(c.use_tls)} / {String(c.use_ssl)}</dd>
-            <dt>{t("Utilisateur")}</dt><dd>{c.user || "—"}</dd>
+            <dt>{t("Utilisateur")}</dt><dd>{c.user || "-"}</dd>
             <dt>{t("Mot de passe")}</dt><dd>{c.password_set ? t("défini (masqué)") : t("vide")}</dd>
             <dt>{t("Expéditeur")}</dt><dd>{c.default_from}</dd>
             {c.reachability && (<><dt>{t("Réseau")}</dt><dd>{c.reachability.detail}</dd></>)}

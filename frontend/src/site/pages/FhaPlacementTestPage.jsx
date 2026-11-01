@@ -181,7 +181,7 @@ export default function FhaPlacementTestPage() {
   return (
     <>
       <Seo
-        title={`${t("Test de placement", "Placement assessment")} — ${FHA_NAME}`}
+        title={`${t("Test de placement", "Placement assessment")} - ${FHA_NAME}`}
         description={t(
           "Réservez le test de placement en français de votre enfant (15 à 20 minutes).",
           "Book your child's French placement assessment (15 to 20 minutes).",

@@ -59,7 +59,7 @@ beforeEach(() => {
   siteAPI.gallery.mockResolvedValue({ data: [] });
 });
 
-describe("Site vitrine — layout et navigation", () => {
+describe("Site vitrine - layout et navigation", () => {
   it("affiche le header avec le menu complet et le bouton Connexion vers /login", async () => {
     renderWithProviders(
       <Routes>
@@ -96,7 +96,7 @@ describe("Site vitrine — layout et navigation", () => {
   });
 });
 
-describe("Site vitrine — page d'accueil", () => {
+describe("Site vitrine - page d'accueil", () => {
   it("rend le carrousel administrable et les sections sans crash", async () => {
     renderWithProviders(<HomePage />);
     await waitFor(() => {
@@ -123,7 +123,7 @@ describe("Site vitrine — page d'accueil", () => {
   });
 });
 
-describe("Site vitrine — actualités", () => {
+describe("Site vitrine - actualités", () => {
   it("affiche l'état vide sans fausse actualité", async () => {
     renderWithProviders(<NewsPage />);
     await waitFor(() => {
@@ -154,7 +154,7 @@ describe("Site vitrine — actualités", () => {
   });
 });
 
-describe("Site vitrine — formulaire de contact", () => {
+describe("Site vitrine - formulaire de contact", () => {
   it("valide les champs obligatoires côté frontend", async () => {
     renderWithProviders(<ContactForm />);
     fireEvent.click(screen.getByRole("button", { name: /Envoyer le message/ }));
@@ -198,7 +198,7 @@ describe("Site vitrine — formulaire de contact", () => {
   });
 });
 
-describe("Site vitrine — formulaire de préinscription", () => {
+describe("Site vitrine - formulaire de préinscription", () => {
   it("exige parent, téléphone, enfant et niveau", async () => {
     renderWithProviders(<PreRegistrationForm />);
     fireEvent.click(screen.getByRole("button", { name: /Envoyer ma demande/ }));
@@ -252,7 +252,7 @@ describe("Site vitrine — formulaire de préinscription", () => {
   });
 });
 
-describe("Site vitrine — 404 publique", () => {
+describe("Site vitrine - 404 publique", () => {
   it("affiche la page introuvable avec retour à l'accueil", () => {
     renderWithProviders(<SiteNotFound />, { route: "/nimporte-quoi" });
     expect(screen.getByText("404")).toBeInTheDocument();

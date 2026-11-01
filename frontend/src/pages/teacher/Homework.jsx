@@ -90,7 +90,7 @@ export default function TeacherHomework() {
           </a>
         ))}
       </div>
-    ) : "—" },
+    ) : "-" },
     { key: "due", label: t("Date limite"), render: r => (
       <span className={(new Date(r.due_date) < new Date()) ? "text-danger font-medium" : "text-slate-700"}>
         <CalendarClock className="w-3 h-3 inline mr-1" />{r.due_date}

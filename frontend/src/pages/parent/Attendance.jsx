@@ -30,8 +30,8 @@ export default function ParentAttendance() {
     ageColumn("student_age"),
     { key: "date", label: t("Date"), accessor: "date" },
     { key: "status", label: t("Statut"), render: r => <StatusBadge status={r.status} /> },
-    { key: "subject", label: t("Matière"), render: r => r.subject_name || "—" },
-    { key: "justification", label: t("Justification"), render: r => r.justification || "—" },
+    { key: "subject", label: t("Matière"), render: r => r.subject_name || "-" },
+    { key: "justification", label: t("Justification"), render: r => r.justification || "-" },
   ];
 
   const absentCount = records.filter(r => r.status === "absent").length;

@@ -143,7 +143,7 @@ class Grade(models.Model):
     note_coefficient = models.PositiveSmallIntegerField(
         default=ASSESSMENT_WEIGHT,
         validators=[MinValueValidator(1)],
-        help_text="Poids de l'évaluation — toujours 1 (règle FEBA V8).",
+        help_text="Poids de l'évaluation - toujours 1 (règle FEBA V8).",
     )
     comment    = models.TextField(blank=True)
     graded_at  = models.DateField(null=True, blank=True)
@@ -273,7 +273,7 @@ class Grade(models.Model):
             if avg is not None:
                 letter, meaning, stars = get_letter_grade(avg)
             else:
-                letter, meaning, stars = '—', 'Non noté', 0
+                letter, meaning, stars = '-', 'Non noté', 0
             result[sid] = {
                 'subject_id':   sid,
                 'subject_name': subj.name,
@@ -551,7 +551,7 @@ class GradeHistory(models.Model):
         ordering = ['-changed_at']
 
     def __str__(self):
-        return f'{self.grade} — {self.action} par {self.changed_by} le {self.changed_at}'
+        return f'{self.grade} - {self.action} par {self.changed_by} le {self.changed_at}'
 
 
 # ─── Appréciations administrables (P0 du 26/10/2026) ─────────────────────────

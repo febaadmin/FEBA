@@ -62,7 +62,7 @@ class Command(BaseCommand):
             ))
             self.stdout.write(
                 f"  devise {branding.currency_code} {branding.currency_symbol} · "
-                f"langue {branding.language} · fuseau {branding.timezone or '—'}"
+                f"langue {branding.language} · fuseau {branding.timezone or '-'}"
             )
             self.stdout.write(
                 f"  couleurs {branding.primary_color} / {branding.secondary_color} / "
@@ -77,7 +77,7 @@ class Command(BaseCommand):
             if branding.palette_is_neutral:
                 warnings += 1
                 self.stdout.write(self.style.WARNING(
-                    "  ! palette neutre — cette académie n'a pas encore ses "
+                    "  ! palette neutre - cette académie n'a pas encore ses "
                     "propres couleurs (settings['branding'])"
                 ))
 
@@ -85,7 +85,7 @@ class Command(BaseCommand):
                 if not getattr(branding, field):
                     warnings += 1
                     self.stdout.write(self.style.WARNING(
-                        f"  ! {label} absent — la zone restera vide "
+                        f"  ! {label} absent - la zone restera vide "
                         f"(aucune image n'est inventée)"
                     ))
 
@@ -104,6 +104,6 @@ class Command(BaseCommand):
             raise SystemExit(1)
 
         self.stdout.write(self.style.SUCCESS(
-            f"{academies.count()} académie(s) — identité essentielle complète"
+            f"{academies.count()} académie(s) - identité essentielle complète"
             + (f", {warnings} avertissement(s)" if warnings else "")
         ))

@@ -94,7 +94,7 @@ afterEach(() => {
   useAuthStore.setState({ user: null });
 });
 
-describe("Rejoindre — ouverture dans un nouvel onglet", () => {
+describe("Rejoindre - ouverture dans un nouvel onglet", () => {
   it("ouvre la route plein écran de la salle, pas une modale", async () => {
     afficher();
     const bouton = await screen.findByRole("button", { name: /Rejoindre/i });

@@ -305,7 +305,7 @@ from django.db import connection
 @unittest.skipIf(
     connection.vendor == "sqlite",
     "Test de concurrence multi-threads : SQLite en mémoire verrouille la "
-    "table entière (« database table is locked ») — nécessite un vrai serveur "
+    "table entière (« database table is locked ») - nécessite un vrai serveur "
     "de base de données. Exécuté sur PostgreSQL (settings.test_postgres / "
     "stack docker).",
 )

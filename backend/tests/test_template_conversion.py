@@ -608,7 +608,7 @@ class MarkerNeighbourTests(MarkerLayoutTests):
     def test_pptx_le_nom_de_l_academie_ne_recouvre_pas_le_tiret(self):
         data, pdf = self.produce_with("diplome_diapo_marqueurs.pptx")
         academy = next(f for f in data["fields"] if f["name"] == "academy_name")
-        tiret = char_span(pdf, "—")
+        tiret = char_span(pdf, "-")
         self.assertIsNotNone(tiret)
         self.assertLessEqual(academy["x_mm"] + academy["width_mm"], tiret[0] / 72 * 25.4)
         nom = char_span(pdf, self.A.school.legal_name or self.A.school.name)

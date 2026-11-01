@@ -303,9 +303,9 @@ class Command(BaseCommand):
                         )
                     student_list.append(student)
                     idx += 1
-            self.stdout.write(f"  ✅ {len(student_list)} élèves — historique 3 années avec progression réelle")
+            self.stdout.write(f"  ✅ {len(student_list)} élèves - historique 3 années avec progression réelle")
         else:
-            self.stdout.write("  ↷ Élèves déjà présents — section ignorée (idempotence)")
+            self.stdout.write("  ↷ Élèves déjà présents - section ignorée (idempotence)")
 
         enrollments = {
             (e.student_id, e.school_year_id): e
@@ -419,7 +419,7 @@ class Command(BaseCommand):
                                 "enrollment": enr,
                                 "average": avg,
                                 "appreciation": appreciation,
-                                "general_comment": f"Bulletin {period} — {sy.name}",
+                                "general_comment": f"Bulletin {period} - {sy.name}",
                             },
                         )
             self.stdout.write("  ✅ Bulletins avec moyennes du moteur central (2 années)")
@@ -451,7 +451,7 @@ class Command(BaseCommand):
                 cls = classes[(year_curr.id, lname)]
                 for subj in list(cls.subjects.all())[:2]:
                     Homework.objects.create(
-                        title=f"{subj.name} — exercices chapitre 3",
+                        title=f"{subj.name} - exercices chapitre 3",
                         description="Faire les exercices 1 à 5 page 42. Rédiger proprement.",
                         subject=subj, teacher=teachers[0], cls=cls,
                         due_date=today + datetime.timedelta(days=random.randint(3, 14)),
@@ -494,7 +494,7 @@ class Command(BaseCommand):
         self.stdout.write("  ⏭  Salles virtuelles : réservées à FEBA FHA (académie en ligne)")
 
         # ── RÉSUMÉ ───────────────────────────────────────────────────────
-        self.stdout.write(self.style.SUCCESS("\n✅ Seed terminé — application immédiatement exploitable."))
+        self.stdout.write(self.style.SUCCESS("\n✅ Seed terminé - application immédiatement exploitable."))
         self.stdout.write(f"   Années   : {year_n2.name} / {year_n1.name} / {year_curr.name} (active)")
         self.stdout.write(f"   Élèves   : {len(student_list)} (historique 3 ans, redoublants inclus)")
         self.stdout.write("")
@@ -570,7 +570,7 @@ class Command(BaseCommand):
                 "legal_name": "FEBA French Heritage Academy",
                 "slug": "feba-fha",
                 "entity_type": "online",
-                "address": "Programme 100 % en ligne — cours dispensés depuis FEBA, Cotonou.",
+                "address": "Programme 100 % en ligne - cours dispensés depuis FEBA, Cotonou.",
                 "city": "Cotonou", "country": "Bénin",
                 "phone": official_phone(),
                 "whatsapp": "+1 (215) 715-5406",
@@ -639,10 +639,10 @@ class Command(BaseCommand):
         # aucun bulletin n'a de contenu : la démonstration s'arrêtait là.
         fha_subjects = {}
         for nom, langue, ordre in (
-            ("Français — expression", "fr", 1),
-            ("Français — lecture", "fr", 2),
+            ("Français - expression", "fr", 1),
+            ("Français - lecture", "fr", 2),
             ("Culture francophone", "fr", 3),
-            ("English — conversation", "en", 4),
+            ("English - conversation", "en", 4),
             ("African Heritage & Culture", "en", 5),
         ):
             fha_subjects[nom], _ = Subject.objects.get_or_create(
@@ -740,7 +740,7 @@ class Command(BaseCommand):
         for key, label in groups.items():
             VirtualRoom.objects.get_or_create(
                 school=fha, class_obj=groups[key],
-                name=f"Cours en direct — {groups[key].name}",
+                name=f"Cours en direct - {groups[key].name}",
                 defaults={
                     "school_year": year,
                     "description": "Séance hebdomadaire en visioconférence.",
@@ -822,7 +822,7 @@ class Command(BaseCommand):
                     payment_method="card",
                     payment_date=today - datetime.timedelta(days=10 + index),
                     received_by=fha_admin,
-                    notes="Paiement de démonstration — montant non contractuel.",
+                    notes="Paiement de démonstration - montant non contractuel.",
                 )
         self.stdout.write("  ✅ Paiements FHA en dollars (démonstration, montants non contractuels)")
 

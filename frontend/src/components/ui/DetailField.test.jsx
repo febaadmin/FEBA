@@ -147,7 +147,7 @@ describe("DetailField", () => {
   });
 
   it("conserve les accents et les guillemets français", () => {
-    const valeur = "Élève à Cotonou — coût « 25 000 F CFA »";
+    const valeur = "Élève à Cotonou - coût « 25 000 F CFA »";
     render(<DetailField label="Note" value={valeur} />);
     expect(screen.getByText(valeur)).toBeTruthy();
   });

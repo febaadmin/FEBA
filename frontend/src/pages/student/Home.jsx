@@ -30,12 +30,12 @@ export default function StudentHome() {
     <div className="space-y-6">
       <PageHeader
         title={t("Bonjour, {name}", { name: student.first_name || "" })}
-        subtitle={`${student.class || "—"} • ${t("Matricule")}: ${student.matricule || "—"}`}
+        subtitle={`${student.class || "-"} • ${t("Matricule")}: ${student.matricule || "-"}`}
       />
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard title={t("Moyenne générale")} icon={GraduationCap} color="primary"
-          value={kpis.average != null ? `${Number(kpis.average).toFixed(2)}/20` : "—"}
+          value={kpis.average != null ? `${Number(kpis.average).toFixed(2)}/20` : "-"}
           trend={kpis.progression != null && kpis.progression < 0 ? "down" : "up"}
           trendValue={
             kpis.progression != null
@@ -65,7 +65,7 @@ export default function StudentHome() {
               value == null ? "text-slate-300"
                 : value >= 10 ? "text-success" : "text-danger"
             }`}>
-              {value != null ? `${Number(value).toFixed(2)}/20` : "—"}
+              {value != null ? `${Number(value).toFixed(2)}/20` : "-"}
             </p>
           </div>
         ))}

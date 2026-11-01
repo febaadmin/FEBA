@@ -121,7 +121,7 @@ class StudentMatriculeSequence(models.Model):
         ]
 
     def __str__(self):
-        return f"{self.school_id or '—'} / {self.year} → {self.last_number:04d}"
+        return f"{self.school_id or '-'} / {self.year} → {self.last_number:04d}"
 
 
 class Student(models.Model):
@@ -149,7 +149,7 @@ class Student(models.Model):
     enrollment_date = models.DateField(auto_now_add=True)
 
     EXIT_REASON_CHOICES = [
-        ("", "—"),
+        ("", "-"),
         ("graduated", "Diplômé / fin de cycle"),
         ("transferred_out", "Transféré vers un autre établissement"),
         ("excluded", "Exclu"),
@@ -233,5 +233,5 @@ class StudentEnrollment(models.Model):
         unique_together = [["student", "school_year"]]
 
     def __str__(self):
-        cls_name = self.class_obj.name if self.class_obj else "—"
-        return f"{self.student} — {self.school_year} — {cls_name}"
+        cls_name = self.class_obj.name if self.class_obj else "-"
+        return f"{self.student} - {self.school_year} - {cls_name}"

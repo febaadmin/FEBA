@@ -26,7 +26,7 @@ class Command(BaseCommand):
         found = problems() + (network_problems() if options["network"] else [])
         errors = [p for p in found if p[0] == ERROR]
         if not options["quiet"]:
-            self.stdout.write(f"Contrôle de configuration — étape « {stage()} », empreinte {fingerprint()}")
+            self.stdout.write(f"Contrôle de configuration - étape « {stage()} », empreinte {fingerprint()}")
         for level, code, message in found:
             if options["quiet"] and level != ERROR:
                 continue

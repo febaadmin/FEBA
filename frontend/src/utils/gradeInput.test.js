@@ -5,7 +5,7 @@
 import { describe, it, expect } from "vitest";
 import { normalizeGradeInput, isValidGrade, gradePayloadValue } from "./gradeInput";
 
-describe("normalizeGradeInput — aucune altération de la valeur", () => {
+describe("normalizeGradeInput - aucune altération de la valeur", () => {
   it("laisse 10 strictement égal à 10", () => {
     expect(normalizeGradeInput("10")).toBe("10");
     expect(gradePayloadValue("10")).toBe("10");
@@ -28,7 +28,7 @@ describe("normalizeGradeInput — aucune altération de la valeur", () => {
   });
 });
 
-describe("isValidGrade — bornes 0..20", () => {
+describe("isValidGrade - bornes 0..20", () => {
   it("accepte 0 → 20 et les décimales", () => {
     for (const v of ["0", "0.25", "10", "10.75", "19.99", "20"]) expect(isValidGrade(v)).toBe(true);
   });
@@ -41,7 +41,7 @@ describe("isValidGrade — bornes 0..20", () => {
   });
 });
 
-describe("gradePayloadValue — null si invalide", () => {
+describe("gradePayloadValue - null si invalide", () => {
   it("renvoie null pour une saisie invalide (pas de valeur inventée)", () => {
     expect(gradePayloadValue("")).toBeNull();
     expect(gradePayloadValue("21")).toBeNull();

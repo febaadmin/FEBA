@@ -81,7 +81,7 @@ describe("langues admises", () => {
   });
 });
 
-describe("validation — les huit cas du cahier des charges", () => {
+describe("validation - les huit cas du cahier des charges", () => {
   it("CAS A : francophone, 4 FR, 0 EN → valide", () => {
     // Exactement la capture d'écran du rapport.
     const erreurs = validateSelection(classe(TRACK_FRANCOPHONE), [FR(1), FR(2), FR(3), FR(4)]);

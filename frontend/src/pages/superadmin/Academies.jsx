@@ -248,7 +248,7 @@ export default function SuperAdminAcademies() {
                     <div className="font-semibold text-slate-800">{a.name}</div>
                     <div className="text-xs text-slate-500">{[a.city, a.country].filter(Boolean).join(", ")}</div>
                   </td>
-                  <td className="py-3 px-4 font-mono text-xs">{a.code || "—"}</td>
+                  <td className="py-3 px-4 font-mono text-xs">{a.code || "-"}</td>
                   <td className="py-3 px-4">
                     {a.academy_type ? (
                       <span>{t(typeLabel(a.academy_type))}</span>
@@ -266,7 +266,7 @@ export default function SuperAdminAcademies() {
                       ? <span>{t(curriculumLabel(a.curriculum_language_mode))}</span>
                       : <span className="text-amber-700">{t("À configurer")}</span>}
                   </td>
-                  <td className="py-3 px-4">{a.students_count ?? "—"}</td>
+                  <td className="py-3 px-4">{a.students_count ?? "-"}</td>
                   <td className="py-3 px-4">
                     <span className={a.is_active ? "text-emerald-700" : "text-slate-500"}>
                       {a.is_active ? t("Active") : t("Désactivée")}

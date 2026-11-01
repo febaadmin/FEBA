@@ -104,7 +104,7 @@ class AttendanceViewSet(BulkDeleteMixin, viewsets.ModelViewSet):
                 for ps in record.student.parents.select_related("parent__user").all():
                     create_notification(
                         ps.parent.user, "absence",
-                        f"{record.student.get_full_name()} — {record.get_status_display()}",
+                        f"{record.student.get_full_name()} - {record.get_status_display()}",
                         f"Le {record.date} : {record.get_status_display()}",
                         related_url=notification_path(ps.parent.user, "attendance"),
                     )

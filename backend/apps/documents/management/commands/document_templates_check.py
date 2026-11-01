@@ -38,7 +38,7 @@ class Command(BaseCommand):
                 template = load_template(template_id, use_cache=False)
             except TemplateError as exc:
                 unusable += 1
-                self.stdout.write(self.style.ERROR(f"  ✗ {template_id} — gabarit invalide"))
+                self.stdout.write(self.style.ERROR(f"  ✗ {template_id} - gabarit invalide"))
                 self.stdout.write(f"      {exc.messages[0] if exc.messages else exc}")
                 continue
 

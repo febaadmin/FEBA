@@ -82,8 +82,8 @@ export default function ParentProfile() {
             </div>
             {parent && (
               <>
-                <div><label className="label">{t("Profession")}</label><input value={parent.profession || "—"} disabled className="input bg-slate-50 text-slate-400" /></div>
-                <div><label className="label">{t("Adresse")}</label><input value={parent.address || "—"} disabled className="input bg-slate-50 text-slate-400" /></div>
+                <div><label className="label">{t("Profession")}</label><input value={parent.profession || "-"} disabled className="input bg-slate-50 text-slate-400" /></div>
+                <div><label className="label">{t("Adresse")}</label><input value={parent.address || "-"} disabled className="input bg-slate-50 text-slate-400" /></div>
               </>
             )}
             <button type="submit" disabled={updateMut.isPending} className="btn-primary flex items-center gap-2">
@@ -108,7 +108,7 @@ export default function ParentProfile() {
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold text-slate-800">{link.student_name || `Élève #${link.student}`}</p>
                     <div className="flex items-center gap-3 mt-0.5 flex-wrap">
-                      <span className="text-xs text-slate-400">{t(link.relationship_label || "—")}</span>
+                      <span className="text-xs text-slate-400">{t(link.relationship_label || "-")}</span>
                       <span className="text-xs text-slate-500">{ageText(link.student_age, link.student_age_status)}</span>
                       {link.class_name && (
                         <span className="text-xs bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded-md font-medium">

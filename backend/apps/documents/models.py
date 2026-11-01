@@ -216,7 +216,7 @@ class GeneratedDocument(models.Model):
         ]
 
     def __str__(self):
-        return f"{self.number or '(sans numéro)'} — {self.student} — {self.get_status_display()}"
+        return f"{self.number or '(sans numéro)'} - {self.student} - {self.get_status_display()}"
 
     # ── Fichier ───────────────────────────────────────────────────────
 
@@ -240,7 +240,7 @@ class GeneratedDocument(models.Model):
         if self.is_frozen:
             raise ValidationError(
                 f"Ce document est « {self.get_status_display()} » : son fichier "
-                f"ne peut plus changer. Émettez un remplaçant — l'ancien reste "
+                f"ne peut plus changer. Émettez un remplaçant - l'ancien reste "
                 f"dans l'historique, car quelqu'un le détient peut-être encore."
             )
 
@@ -359,7 +359,7 @@ class DocumentEvent(models.Model):
         ordering = ["-performed_at"]
 
     def __str__(self):
-        return f"{self.document_id} — {self.action} — {self.performed_at:%d/%m/%Y %H:%M}"
+        return f"{self.document_id} - {self.action} - {self.performed_at:%d/%m/%Y %H:%M}"
 
 
 def academy_templates_root():
@@ -409,7 +409,7 @@ class AcademyDocumentTemplate(models.Model):
     STATUS_CHOICES = [
         (DRAFT, "Téléversé, non validé"),
         (VALIDATED, "Valide, prêt à être activé"),
-        (ACTIVE, "Actif — utilisé pour les documents"),
+        (ACTIVE, "Actif - utilisé pour les documents"),
         (DISABLED, "Désactivé"),
         (ARCHIVED, "Remplacé par une version plus récente"),
         (INVALID, "Invalide ou incompatible"),
@@ -489,7 +489,7 @@ class AcademyDocumentTemplate(models.Model):
         ]
 
     def __str__(self):
-        return f"{self.academy} — {self.get_kind_display()} v{self.version} ({self.status})"
+        return f"{self.academy} - {self.get_kind_display()} v{self.version} ({self.status})"
 
     @property
     def absolute_path(self):

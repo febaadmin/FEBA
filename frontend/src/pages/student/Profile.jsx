@@ -112,9 +112,9 @@ export default function StudentProfile() {
               ["Prénom", user?.first_name],
               ["Nom", user?.last_name],
               ["Email", user?.email],
-              ["Téléphone", user?.phone || "—"],
+              ["Téléphone", user?.phone || "-"],
               ["Rôle", "Élève"],
-              ["Compte créé le", user?.created_at?.slice(0, 10) || "—"],
+              ["Compte créé le", user?.created_at?.slice(0, 10) || "-"],
             ].map(([label, val]) => (
               <div key={label} className="flex justify-between py-2 border-b border-slate-50 last:border-0">
                 <dt className="text-slate-500 font-medium">{label}</dt>
@@ -131,13 +131,13 @@ export default function StudentProfile() {
             <dl className="space-y-3 text-sm">
               {[
                 ["Matricule", student.matricule],
-                ["Classe", student.class_name || student.current_class?.name || "—"],
-                ["Année scolaire", currentYear?.name || "—"],
-                ["Date de naissance", student.date_of_birth || "—"],
-                ["Genre", student.gender === "M" ? "Masculin" : student.gender === "F" ? t("Féminin") : "—"],
-                ["Adresse", student.address || "—"],
+                ["Classe", student.class_name || student.current_class?.name || "-"],
+                ["Année scolaire", currentYear?.name || "-"],
+                ["Date de naissance", student.date_of_birth || "-"],
+                ["Genre", student.gender === "M" ? "Masculin" : student.gender === "F" ? t("Féminin") : "-"],
+                ["Adresse", student.address || "-"],
                 ["Statut", student.is_active ? t("Actif") : t("Inactif")],
-                ["Inscrit le", student.enrollment_date || "—"],
+                ["Inscrit le", student.enrollment_date || "-"],
               ].map(([label, val]) => (
                 <div key={label} className="flex justify-between py-2 border-b border-slate-50 last:border-0">
                   <dt className="text-slate-500 font-medium">{label}</dt>

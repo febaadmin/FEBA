@@ -236,7 +236,7 @@ class GradeViewSet(BulkDeleteMixin, viewsets.ModelViewSet):
                 create_notification(
                     grade.student.user, "grade",
                     f"Nouvelle note en {grade.subject.name}: {grade.value}/20",
-                    f"Période {grade.period} — {grade.subject.name}: {grade.value}/20",
+                    f"Période {grade.period} - {grade.subject.name}: {grade.value}/20",
                     related_url=notification_path(grade.student.user, "grades"),
                 )
             # FIX (notifications) : les parents ne recevaient jamais de
@@ -245,7 +245,7 @@ class GradeViewSet(BulkDeleteMixin, viewsets.ModelViewSet):
                 create_notification(
                     ps.parent.user, "grade",
                     f"Nouvelle note pour {grade.student.get_full_name()} en {grade.subject.name}: {grade.value}/20",
-                    f"Période {grade.period} — {grade.subject.name}: {grade.value}/20",
+                    f"Période {grade.period} - {grade.subject.name}: {grade.value}/20",
                     related_url=notification_path(ps.parent.user, "grades"),
                 )
         except Exception as exc:
@@ -313,7 +313,7 @@ class GradeViewSet(BulkDeleteMixin, viewsets.ModelViewSet):
             instance.deleted_by = request.user
             instance.save(update_fields=["is_deleted", "deleted_at", "deleted_by"])
             _log_grade(instance, old_value, instance.comment, "delete", request.user, justification=justification)
-        logger.info(f"Grade soft-deleted: {instance} by {request.user.email} — {justification}")
+        logger.info(f"Grade soft-deleted: {instance} by {request.user.email} - {justification}")
         return Response(status=status.HTTP_204_NO_CONTENT)
 
     # ──────────────────────────────────────────────────────────────────────────
@@ -332,6 +332,7 @@ class GradeViewSet(BulkDeleteMixin, viewsets.ModelViewSet):
         cherchée dans la portée de l'académie, et un enseignant doit avoir
         le droit de noter cet élève dans cette matière.
         """
+        from django.db import transaction
         from django.shortcuts import get_object_or_404
         from rest_framework.exceptions import PermissionDenied
 
@@ -348,14 +349,17 @@ class GradeViewSet(BulkDeleteMixin, viewsets.ModelViewSet):
                        if teacher else (False, "Profil enseignant introuvable."))
             if not ok:
                 raise PermissionDenied(err)
-        if not grade.is_deleted:
-            return Response({"detail": "Cette note n'est pas supprimée."}, status=400)
-        grade.is_deleted = False
-        grade.deleted_at = None
-        grade.deleted_by = None
-        grade.save(update_fields=["is_deleted", "deleted_at", "deleted_by"])
-        _log_grade(grade, grade.value, grade.comment, "update", request.user,
-                   justification="Restauration de note supprimée")
+        # Note et historique ensemble ; le verrou départage deux restaurations simultanées.
+        with transaction.atomic():
+            grade = Grade.objects.select_for_update().get(pk=grade.pk)
+            if not grade.is_deleted:
+                return Response({"detail": "Cette note n'est pas supprimée."}, status=400)
+            grade.is_deleted = False
+            grade.deleted_at = None
+            grade.deleted_by = None
+            grade.save(update_fields=["is_deleted", "deleted_at", "deleted_by"])
+            _log_grade(grade, grade.value, grade.comment, "update", request.user,
+                       justification="Restauration de note supprimée")
         return Response(GradeSerializer(grade).data)
 
     @action(detail=True, methods=["get"])
@@ -776,7 +780,7 @@ class GradeViewSet(BulkDeleteMixin, viewsets.ModelViewSet):
             # FIX v33 : average peut être None (matière non notée, exclue des moyennes)
             subj_letter, subj_meaning, subj_stars = get_letter_grade(info["average"])
             if subj_letter is None:
-                subj_letter, subj_meaning, subj_stars = "—", "Non noté", 0
+                subj_letter, subj_meaning, subj_stars = "-", "Non noté", 0
             notes_serialized = [
                 {
                     "id": n.id,
@@ -1040,10 +1044,10 @@ def all_history_view(request):
         data.append({
             "id":             h.id,
             "grade_id":       h.grade_id,
-            "student_name":   h.grade.student.get_full_name() if h.grade.student else "—",
+            "student_name":   h.grade.student.get_full_name() if h.grade.student else "-",
             "student_id":     h.grade.student_id,
-            "subject_name":   h.grade.subject.name if h.grade.subject else "—",
-            "school_year":    h.grade.school_year.name if h.grade.school_year else "—",
+            "subject_name":   h.grade.subject.name if h.grade.subject else "-",
+            "school_year":    h.grade.school_year.name if h.grade.school_year else "-",
             "period":         h.grade.period,
             "old_value":      float(h.old_value) if h.old_value is not None else None,
             "new_value":      float(h.new_value) if h.new_value is not None else None,
@@ -1052,7 +1056,7 @@ def all_history_view(request):
             "justification":  h.justification,
             "action":         h.action,
             "action_display": "Création" if h.action == "create" else "Modification",
-            "changed_by":     h.changed_by.get_full_name() if h.changed_by else "—",
+            "changed_by":     h.changed_by.get_full_name() if h.changed_by else "-",
             "changed_at":     h.changed_at.isoformat(),
         })
     return Response({"results": data, "count": len(data)})

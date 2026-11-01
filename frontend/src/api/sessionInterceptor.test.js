@@ -58,7 +58,7 @@ afterEach(() => {
   Object.defineProperty(window, "location", { configurable: true, value: originalLocation });
 });
 
-describe("intercepteur 401 — jeton expiré pendant un cours", () => {
+describe("intercepteur 401 - jeton expiré pendant un cours", () => {
   it("6 requêtes expirées simultanément : toutes rejouées, un seul renouvellement, aucune déconnexion", async () => {
     const urls = ["/notifications/unread-count/", "/messages/inbox", "/virtual-rooms/", "/classes/", "/auth/me/", "/students/"];
     const responses = await Promise.all(urls.map((u) => api.get(u)));

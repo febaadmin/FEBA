@@ -26,7 +26,7 @@ class AcademyScopeAuditTests(SimpleTestCase):
         self.assertGreater(examinees, 0,
                            "l'audit n'a examiné aucune vue : il ne prouve rien")
         details = "\n".join(
-            f"  · {p['vue']} ({p['modele']}) — {p['motif']} [{p['chemin']}]"
+            f"  · {p['vue']} ({p['modele']}) - {p['motif']} [{p['chemin']}]"
             for p in problemes)
         self.assertEqual(problemes, [], f"\n{details}")
 

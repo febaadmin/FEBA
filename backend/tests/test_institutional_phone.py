@@ -102,7 +102,7 @@ class InstitutionModuleTests(TestCase):
 
     def test_le_numero_retire_est_oté_des_champs_libres(self):
         nettoye = strip_retired_phones(
-            "Akpakpa, Cotonou, Bénin — Tél: 01 96 69 73 63")
+            "Akpakpa, Cotonou, Bénin - Tél: 01 96 69 73 63")
         self.assertNotIn("96697363", normalised(nettoye))
         self.assertIn("Akpakpa", nettoye)
         self.assertIn("Cotonou", nettoye)
@@ -113,7 +113,7 @@ class InstitutionModuleTests(TestCase):
         adresse = "Akpakpa, Cotonou, Bénin"
         self.assertEqual(strip_retired_phones(adresse), adresse)
         # Un numéro LÉGITIME dans un champ libre n'est pas emporté.
-        avec_officiel = "Cotonou — Tél: 0160011717"
+        avec_officiel = "Cotonou - Tél: 0160011717"
         self.assertEqual(strip_retired_phones(avec_officiel), avec_officiel)
 
     def test_digits_ignore_la_mise_en_forme(self):
@@ -153,7 +153,7 @@ class BrandingPhoneTests(TestCase):
 
     def test_un_numero_retire_recopie_dans_l_adresse_ne_ressort_pas(self):
         academie = self._academie(School.CODE_FEBA)
-        academie.address = "Akpakpa, Cotonou, Bénin — Tél 01 96 69 73 63"
+        academie.address = "Akpakpa, Cotonou, Bénin - Tél 01 96 69 73 63"
         academie.save(update_fields=["address"])
 
         ligne = get_branding(academie).address_line
@@ -221,7 +221,7 @@ class DocumentsPortentLeNumeroOfficielTests(TestCase):
             # ÉTAT EXACT DE LA BASE DE PRODUCTION : l'ancien numéro est
             # dans la colonne, et recopié dans l'adresse libre.
             academie.phone = RETIRED
-            academie.address = f"{academie.address} — Tél {RETIRED}"
+            academie.address = f"{academie.address} - Tél {RETIRED}"
             academie.save(update_fields=["phone", "address"])
 
             annee = SchoolYear.objects.create(

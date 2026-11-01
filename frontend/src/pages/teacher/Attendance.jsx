@@ -75,11 +75,11 @@ export default function TeacherAttendance() {
     ageColumn("student_age"),
     { key: "date", label: t("Date"), accessor: "date" },
     { key: "status", label: t("Statut"), render: r => <StatusBadge status={r.status} /> },
-    { key: "justification", label: t("Justification"), render: r => r.justification || "—" },
+    { key: "justification", label: t("Justification"), render: r => r.justification || "-" },
     { key: "file", label: t("Justificatif"), sortable: false, render: r => r.justification_file ? (
       <a href={r.justification_file} target="_blank" rel="noreferrer" className="flex items-center gap-1 text-xs text-primary hover:underline">
         <FileText className="w-3 h-3" />{t("Voir")}</a>
-    ) : "—" },
+    ) : "-" },
   ];
 
   return (

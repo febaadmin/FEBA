@@ -41,7 +41,7 @@ class Command(BaseCommand):
         parser.add_argument("--output", help="Chemin du PDF produit.")
         parser.add_argument(
             "--sample-name", default="ABCDEFGHIJKLM NOPQRSTUVWXYZ",
-            help="Texte témoin placé dans les champs — sert à voir les débordements.",
+            help="Texte témoin placé dans les champs - sert à voir les débordements.",
         )
 
     def handle(self, *args, **options):

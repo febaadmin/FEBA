@@ -298,7 +298,7 @@ export default function AdminEnrollments() {
   const uniqueClasses = [...new Map(classes.map(c => [c.id, c])).values()];
   const classToOption = (c, withYear) => ({
     value: c.id,
-    label: `${c.name}${withYear && c.school_year_name ? ` — ${c.school_year_name}` : ""} (${c.class_level || c.level_name || ""})`,
+    label: `${c.name}${withYear && c.school_year_name ? ` - ${c.school_year_name}` : ""} (${c.class_level || c.level_name || ""})`,
   });
   // Liste pour UNE année précise : pas de doublon possible, libellé court.
   const classOptionsForYear = (yearId) => uniqueClasses
@@ -309,7 +309,7 @@ export default function AdminEnrollments() {
   const classOptionsAllYears = uniqueClasses.map(c => classToOption(c, true));
   const studentOptions = students.map(s => ({
     value: s.id,
-    label: `${s.first_name} ${s.last_name} — ${s.class_name || "Sans classe"} (${s.matricule || ""}) · ${ageText(s.age, s.age_status)}`,
+    label: `${s.first_name} ${s.last_name} - ${s.class_name || "Sans classe"} (${s.matricule || ""}) · ${ageText(s.age, s.age_status)}`,
   }));
 
   const statusBadge = (status) => {
@@ -661,7 +661,7 @@ export default function AdminEnrollments() {
                       </div>
                       <div>
                         <p className="text-xs text-slate-400">{t("Classe")}</p>
-                        <p className="font-medium text-slate-800">{e.class_name || "—"}</p>
+                        <p className="font-medium text-slate-800">{e.class_name || "-"}</p>
                       </div>
                       <div>
                         <p className="text-xs text-slate-400">{t("Décision")}</p>
@@ -669,7 +669,7 @@ export default function AdminEnrollments() {
                       </div>
                       <div>
                         <p className="text-xs text-slate-400">{t("Inscrit le")}</p>
-                        <p className="text-slate-600">{e.enrolled_at?.slice(0, 10) || "—"}</p>
+                        <p className="text-slate-600">{e.enrolled_at?.slice(0, 10) || "-"}</p>
                       </div>
                     </div>
                     {e.is_current_year && (
@@ -678,7 +678,7 @@ export default function AdminEnrollments() {
                   </div>
                   {e.stats && (
                     <div className="mt-3 pt-3 border-t border-slate-200/70 grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2 text-xs">
-                      <div><p className="text-slate-400">{t("Moyenne")}</p><p className="font-semibold text-slate-800">{e.stats.grades_average != null ? `${e.stats.grades_average}/20` : "—"}</p></div>
+                      <div><p className="text-slate-400">{t("Moyenne")}</p><p className="font-semibold text-slate-800">{e.stats.grades_average != null ? `${e.stats.grades_average}/20` : "-"}</p></div>
                       <div><p className="text-slate-400">{t("Notes")}</p><p className="font-semibold text-slate-800">{e.stats.grades_count}</p></div>
                       <div><p className="text-slate-400">{t("Absences")}</p><p className="font-semibold text-slate-800">{e.stats.absences}</p></div>
                       <div><p className="text-slate-400">{t("Retards")}</p><p className="font-semibold text-slate-800">{e.stats.lates}</p></div>

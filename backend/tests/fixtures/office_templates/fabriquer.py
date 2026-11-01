@@ -97,7 +97,7 @@ def diploma_docx(path, markers=True):
     head = document.add_table(rows=1, cols=1)
     head.alignment = WD_TABLE_ALIGNMENT.CENTER
     shade(head.rows[0].cells[0], "1E3A6E")
-    run = head.rows[0].cells[0].paragraphs[0].add_run("ACADÉMIE D'ESSAI — RÉPUBLIQUE DES TESTS")
+    run = head.rows[0].cells[0].paragraphs[0].add_run("ACADÉMIE D'ESSAI - RÉPUBLIQUE DES TESTS")
     head.rows[0].cells[0].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
     run.font.color.rgb = RGBColor(255, 255, 255)
     run.font.bold = True
@@ -110,7 +110,7 @@ def diploma_docx(path, markers=True):
     paragraph(document, "décerné à", size=14, italic=True, color=(90, 90, 90))
     paragraph(document, "{{ student_full_name }}" if markers else " ", size=24, bold=True,
               color=(176, 138, 46))
-    paragraph(document, ("pour l'année scolaire {{ school_year }} — {{ academy_name }}"
+    paragraph(document, ("pour l'année scolaire {{ school_year }} - {{ academy_name }}"
                          if markers else "pour l'année scolaire en cours"), size=13)
 
     table = document.add_table(rows=2, cols=3)
@@ -159,10 +159,10 @@ def multipage_docx(path):
     document = Document()
     section = document.sections[0]
     section.page_width, section.page_height = Mm(210), Mm(297)
-    paragraph(document, "NOTICE — page 1, à ne pas imprimer", size=20, bold=True)
+    paragraph(document, "NOTICE - page 1, à ne pas imprimer", size=20, bold=True)
     paragraph(document, "Cette page explique l'usage du modèle.", size=12)
     document.add_page_break()
-    paragraph(document, "ATTESTATION — page 2", size=24, bold=True, color=(120, 30, 30))
+    paragraph(document, "ATTESTATION - page 2", size=24, bold=True, color=(120, 30, 30))
     paragraph(document, "Élève : {{ student_name }}", size=16, align="left")
     paragraph(document, "Classe : {{ class_name }}", size=14, align="left")
     document.save(path)
@@ -194,7 +194,7 @@ def diploma_pptx(path):
 
     text("DIPLÔME D'HONNEUR", 70, 32, PptColor(0x6A, 0x1B, 0x9A), True)
     text("{{ student_name }}", 100, 26)
-    text("{{ academy_name }} — {{ school_year }}", 125, 16)
+    text("{{ academy_name }} - {{ school_year }}", 125, 16)
     text("Délivré le {{ issue_date }}", 170, 12)
     presentation.save(path)
 

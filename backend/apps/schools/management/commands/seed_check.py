@@ -32,7 +32,7 @@ class Command(BaseCommand):
             if condition:
                 self.stdout.write(self.style.SUCCESS(f"  ✓ {label}"))
             else:
-                problems.append(f"{label}{f' — {detail}' if detail else ''}")
+                problems.append(f"{label}{f' - {detail}' if detail else ''}")
                 self.stdout.write(self.style.ERROR(f"  ✗ {label} {detail}"))
 
         self.stdout.write(self.style.MIGRATE_HEADING("Contrôle d'intégrité multi-académies"))
@@ -211,4 +211,4 @@ class Command(BaseCommand):
                 f"\n✗ {len(problems)} problème(s) sur {checks} contrôles."
             ))
             sys.exit(1)
-        self.stdout.write(self.style.SUCCESS(f"\n✓ {checks} contrôles passés — isolation intacte."))
+        self.stdout.write(self.style.SUCCESS(f"\n✓ {checks} contrôles passés - isolation intacte."))

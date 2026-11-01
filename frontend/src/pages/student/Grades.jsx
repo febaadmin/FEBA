@@ -103,12 +103,12 @@ export default function StudentGrades() {
       key: "note_type", label: t("Type"),
       render: r => (
         <span className={`px-2 py-0.5 rounded-lg text-xs font-medium ${NOTE_TYPE_BADGE[r.note_type] || ""}`}>
-          {r.note_type_label || r.note_type || "—"}
+          {r.note_type_label || r.note_type || "-"}
         </span>
       ),
     },
     { key: "value",   label: t("Note"),         render: r => <span className={nc(r.value)}>{r.value}/20</span> },
-    { key: "appr",    label: t("Appréciation"), accessor: "appreciation", render: r => r.appreciation ? t(r.appreciation) : "—" },
+    { key: "appr",    label: t("Appréciation"), accessor: "appreciation", render: r => r.appreciation ? t(r.appreciation) : "-" },
   ];
 
   return (
@@ -121,7 +121,7 @@ export default function StudentGrades() {
           <div key={p} className="card text-center">
             <p className="text-xs font-medium text-slate-500 mb-1">{p}</p>
             <p className={`text-2xl font-bold ${avg !== null ? (parseFloat(avg) >= 10 ? "text-success" : "text-danger") : "text-slate-300"}`}>
-              {avg !== null ? `${parseFloat(avg).toFixed(2)}/20` : "—"}
+              {avg !== null ? `${parseFloat(avg).toFixed(2)}/20` : "-"}
             </p>
           </div>
         ))}

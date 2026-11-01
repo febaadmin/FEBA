@@ -76,7 +76,7 @@ class Palette:
 
 def _fmt(val):
     if val is None:
-        return '—'
+        return '-'
     return f'{float(val):.2f}'
 
 
@@ -96,7 +96,7 @@ def _fmt_scale(val, scale):
     appréciations restent calculées sur l'échelle interne /20.
     """
     if val is None:
-        return '—'
+        return '-'
     return f'{float(convert_average_for_scale(val, scale)):.2f}'
 
 
@@ -107,7 +107,7 @@ def _fmt_note(val, scale):
     de précision en divisant par deux (17,5/20 → 8,75/10).
     """
     if val is None:
-        return '—'
+        return '-'
     converted = convert_average_for_scale(val, scale)
     digits = 1 if Decimal(str(scale)) == Decimal('20') else 2
     return f'{float(converted):.{digits}f}'
@@ -116,7 +116,7 @@ def _fmt_note(val, scale):
 def _fmt_scale_denom(val, scale):
     """Idem avec le dénominateur explicite : « 6.00/10 » ou « 12.00/20 »."""
     if val is None:
-        return '—'
+        return '-'
     return f'{_fmt_scale(val, scale)}/{int(scale)}'
 
 
@@ -241,7 +241,7 @@ _APPRECIATION_SCOPE = contextvars.ContextVar("bulletin_appreciation_scope", defa
 
 def _appreciation(value):
     if value is None:
-        return '—'
+        return '-'
     scope = _APPRECIATION_SCOPE.get() or {}
     return get_appreciation(value, academy=scope.get('academy'), cycle=scope.get('cycle'),
                             cache=scope.get('cache'))
@@ -488,7 +488,7 @@ def _add_header(story, student, period, school_year, palette, title):
     # une appréciation à discuter) était la seule à ne pas porter le
     # numéro. `address_line` est la ligne d'identité commune à tous les
     # documents — même adresse, même numéro institutionnel, même e-mail.
-    subtitle = brand.address_line or "—"
+    subtitle = brand.address_line or "-"
     logo_path = brand.document_logo
     if logo_path and os.path.exists(logo_path):
         try:
@@ -507,7 +507,7 @@ def _add_header(story, student, period, school_year, palette, title):
                    alignment=1, textColor=palette.primary, spaceAfter=2 * sp))
     story.append(P(subtitle, fontSize=9 * h, leading=11 * h, alignment=1, spaceAfter=2 * sp))
     story.append(HRFlowable(width='100%', thickness=3, color=palette.gold))
-    story.append(P(f'{title} — {_period_label(period)}',
+    story.append(P(f'{title} - {_period_label(period)}',
                    fontSize=13 * h, leading=15.5 * h, fontName='Helvetica-Bold', alignment=1,
                    textColor=palette.gold, spaceBefore=4 * sp))
     story.append(P(f'Année scolaire / School Year : {school_year.name}',
@@ -517,9 +517,9 @@ def _add_header(story, student, period, school_year, palette, title):
 
 def _add_student_info(story, student, period, school_year, palette):
     """Bloc identité — SANS le rang (BUG N°2)."""
-    class_name = student.current_class.name if student.current_class else '—'
+    class_name = student.current_class.name if student.current_class else '-'
     level_name = (student.current_class.level.name
-                  if student.current_class and student.current_class.level else '—')
+                  if student.current_class and student.current_class.level else '-')
     def lbl(t):
         return C(t, bold=True, size=8.5)
 
@@ -533,7 +533,7 @@ def _add_student_info(story, student, period, school_year, palette):
         [lbl('Classe / Class:'), val(class_name), lbl('Niveau / Level:'), val(level_name)],
         [lbl('Période / Period:'), val(_period_label(period)), lbl('Année / Year:'), val(school_year.name)],
         [lbl('Date de naissance:'), val(format_birth_date(student.date_of_birth)),
-         lbl('Sexe / Gender:'), val(student.get_gender_display() if student.gender else '—')],
+         lbl('Sexe / Gender:'), val(student.get_gender_display() if student.gender else '-')],
     ]
     info_tbl = Table(info, colWidths=[3.5 * cm, 5.8 * cm, 3.5 * cm, 5.7 * cm])
     info_tbl.setStyle(TableStyle([
@@ -593,8 +593,8 @@ def _subject_rows_trimester(entries, scale=20):
             str(info['coefficient']),
             C(details, align='CENTER', size=7.5),
             _fmt_scale_denom(avg, scale),
-            f'{weighted:.2f}' if weighted is not None else '—',
-            letter or '—',
+            f'{weighted:.2f}' if weighted is not None else '-',
+            letter or '-',
             C(_appreciation(avg), align='CENTER'),
         ])
     return rows
@@ -614,7 +614,7 @@ def _subject_rows_annual(entries, scale=20):
             _fmt_scale(t_avgs.get('T2'), scale),
             _fmt_scale(t_avgs.get('T3'), scale),
             _fmt_scale_denom(avg, scale),
-            letter or '—',
+            letter or '-',
             C(_appreciation(avg), align='CENTER'),
         ])
     return rows
@@ -656,11 +656,11 @@ def _add_language_section(story, title, entries, period, head_color, zebra_color
     letter, _, _ = get_letter_grade(section_avg)
     total_label = C('MOYENNE DE LA PARTIE', bold=True)
     total_row = ([total_label, '', '', '', '',
-                  _fmt_scale_denom(section_avg, scale), letter or '—',
+                  _fmt_scale_denom(section_avg, scale), letter or '-',
                   C(_appreciation(section_avg), align='CENTER', bold=True)]
                  if period == 'annual' else
                  [total_label, '', '', _fmt_scale_denom(section_avg, scale), '',
-                  letter or '—', C(_appreciation(section_avg), align='CENTER', bold=True)])
+                  letter or '-', C(_appreciation(section_avg), align='CENTER', bold=True)])
 
     full_rows = [header] + rows + [total_row]
     tbl = Table(full_rows, colWidths=col_widths, repeatRows=1)
@@ -756,19 +756,19 @@ def _add_stats_section(story, bilingual_data, class_stats, average, bulletin, pe
         fonds.append((len(rows), palette.light))
         rows.append([C('Moyenne Française / French Average'),
                      _fmt_scale_denom(fr_avg, scale), _fmt_scale(class_stats.get('fr_min'), scale),
-                     _fmt_scale(class_stats.get('fr_max'), scale), fr_letter or '—'])
+                     _fmt_scale(class_stats.get('fr_max'), scale), fr_letter or '-'])
     if montrer_en:
         fonds.append((len(rows), EN_BG))
         rows.append([C('Moyenne Anglaise / English Average'),
                      _fmt_scale_denom(en_avg, scale), _fmt_scale(class_stats.get('en_min'), scale),
-                     _fmt_scale(class_stats.get('en_max'), scale), en_letter or '—'])
+                     _fmt_scale(class_stats.get('en_max'), scale), en_letter or '-'])
     ligne_bi = None
     if montrer_bi:
         ligne_bi = len(rows)
         fonds.append((ligne_bi, colors.HexColor('#FFF3CD')))
         rows.append([C('Moyenne Bilingue / Bilingual Average ★', bold=True),
                      _fmt_scale_denom(bi_avg, scale), _fmt_scale(class_stats.get('bi_min'), scale),
-                     _fmt_scale(class_stats.get('bi_max'), scale), bi_letter or '—'])
+                     _fmt_scale(class_stats.get('bi_max'), scale), bi_letter or '-'])
 
     tbl = Table(rows, colWidths=[6.9 * cm, 2.9 * cm, 3.2 * cm, 3.2 * cm, 2.3 * cm])
     style = [
@@ -806,9 +806,9 @@ def _add_stats_section(story, bilingual_data, class_stats, average, bulletin, pe
         C(_fmt_scale_denom(average, scale), align='CENTER', bold=True, size=9,
           color=palette.primary),
         C('Lettre', align='CENTER', bold=True, size=9),
-        C(f'{letter or "—"}', align='CENTER', bold=True, size=9),
+        C(f'{letter or "-"}', align='CENTER', bold=True, size=9),
         C('Appréciation', align='CENTER', bold=True, size=9),
-        C(bulletin.appreciation or '—', align='CENTER', bold=True, size=9),
+        C(bulletin.appreciation or '-', align='CENTER', bold=True, size=9),
     ]]
     s_tbl = Table(summary_data, colWidths=[3.5 * cm, 2.7 * cm, 1.7 * cm, 1.6 * cm, 3.0 * cm, 6.0 * cm])
     s_tbl.setStyle(TableStyle([
@@ -1026,8 +1026,8 @@ def _render_maternelle_once(buffer, student, period, school_year, subject_data,
             letter, meaning, stars = get_letter_grade(info['average'])
             rows.append([
                 C(info['subject_name'], bold=True),
-                letter or '—',
-                C(meaning or '—', align='CENTER'),
+                letter or '-',
+                C(meaning or '-', align='CENTER'),
                 stars or '',
             ])
         return rows
@@ -1094,7 +1094,7 @@ def _render_maternelle_once(buffer, student, period, school_year, subject_data,
                      C('Note / Grade', align='CENTER', bold=True, color=colors.white),
                      C('Commentaire', bold=True, color=colors.white)]]
     for item in conduct_items:
-        conduct_data.append([C(item), C('—', align='CENTER'), ''])
+        conduct_data.append([C(item), C('-', align='CENTER'), ''])
     c_tbl = Table(conduct_data, colWidths=[8.0 * cm, 3.0 * cm, 7.5 * cm])
     c_tbl.setStyle(TableStyle([
         ('BACKGROUND', (0, 0), (-1, 0), palette.primary),

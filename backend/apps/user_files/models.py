@@ -58,7 +58,7 @@ class UserFile(models.Model):
         ordering = ["-uploaded_at"]
 
     def __str__(self):
-        return f"{self.user} — {self.name}"
+        return f"{self.user} - {self.name}"
 
     def save(self, *args, **kwargs):
         if self.file:

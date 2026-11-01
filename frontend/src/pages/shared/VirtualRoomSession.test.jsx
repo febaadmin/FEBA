@@ -59,7 +59,7 @@ let academie = { scopeReady: true, hasAcademyError: false };
 
 const SALLE = {
   id: 7,
-  name: "Cours de français — French Ambassadors",
+  name: "Cours de français - French Ambassadors",
   room_code: "feba-fha-7-abc",
   join_domain: "meet.globalfeba.com",
   jwt: "jeton.signe.par.le.backend",
@@ -98,7 +98,7 @@ afterEach(() => {
   useAuthStore.setState({ user: null });
 });
 
-describe("VirtualRoomSession — adhésion", () => {
+describe("VirtualRoomSession - adhésion", () => {
   it("adhère une seule fois et transmet la salle à la conférence", async () => {
     ouvrir();
     await flush();
@@ -131,7 +131,7 @@ describe("VirtualRoomSession — adhésion", () => {
   });
 });
 
-describe("VirtualRoomSession — le jeton ne transite pas par l'URL", () => {
+describe("VirtualRoomSession - le jeton ne transite pas par l'URL", () => {
   it("l'URL ne contient que l'identifiant de la salle", async () => {
     ouvrir();
     await flush();
@@ -152,7 +152,7 @@ describe("VirtualRoomSession — le jeton ne transite pas par l'URL", () => {
   });
 });
 
-describe("VirtualRoomSession — départ", () => {
+describe("VirtualRoomSession - départ", () => {
   it("signale le départ une seule fois quand on raccroche", async () => {
     ouvrir();
     await flush();
@@ -197,7 +197,7 @@ describe("VirtualRoomSession — départ", () => {
   });
 });
 
-describe("VirtualRoomSession — pas de mise en page FEBA", () => {
+describe("VirtualRoomSession - pas de mise en page FEBA", () => {
   it("n'affiche ni barre latérale ni en-tête autour de la conférence", async () => {
     const { container } = ouvrir();
     await flush();
@@ -219,7 +219,7 @@ describe("VirtualRoomSession — pas de mise en page FEBA", () => {
   });
 });
 
-describe("VirtualRoomSession — échecs", () => {
+describe("VirtualRoomSession - échecs", () => {
   it("dit pourquoi quand le backend refuse l'accès", async () => {
     virtualAPI.join.mockRejectedValue({
       response: { status: 403, data: { detail: "Vous n'êtes pas convié à cette salle." } },
@@ -250,7 +250,7 @@ describe("VirtualRoomSession — échecs", () => {
 });
 
 
-describe("VirtualRoomSession — la portée d'académie d'abord", () => {
+describe("VirtualRoomSession - la portée d'académie d'abord", () => {
   /**
    * DEUX DÉFAUTS TROUVÉS EN NAVIGATEUR, PAS EN TEST UNITAIRE.
    *
@@ -418,7 +418,7 @@ describe("plugNmeet : l'onglet rejoint la salle par un jeton à usage unique", (
   });
 });
 
-describe("VirtualRoomSession — onglet à l'identité de l'académie de la salle", () => {
+describe("VirtualRoomSession - onglet à l'identité de l'académie de la salle", () => {
   it("titre exact de l'académie, pas le nom de la salle", async () => {
     virtualAPI.join.mockResolvedValue({ data: { ...SALLE, academy_code: "FEBA_FHA" } });
     ouvrir();

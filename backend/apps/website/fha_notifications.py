@@ -78,7 +78,7 @@ def notify_application_submitted(application):
             f"Votre numéro de dossier est : {reference}\n\n"
             "Prochaine étape : la réservation du test de placement "
             "(15 à 20 minutes).\n\n"
-            f"— {entity.legal_name or entity.name}"
+            f"- {entity.legal_name or entity.name}"
         )
     else:
         subject = f"[{entity.name}] Your enrollment form, file {reference}"
@@ -89,7 +89,7 @@ def notify_application_submitted(application):
             f"Your file number is: {reference}\n\n"
             "Next step: booking the French placement assessment "
             "(15 to 20 minutes).\n\n"
-            f"— {entity.legal_name or entity.name}"
+            f"- {entity.legal_name or entity.name}"
         )
 
     sent = _send(subject, body, [application.parent1_email], entity=entity, reference=reference)
@@ -123,18 +123,18 @@ def notify_status_changed(application, previous_status):
 
     is_fr = application.parent1_preferred_language == "fr"
     if is_fr:
-        subject = f"[{entity.name}] Dossier {reference} — {label}"
+        subject = f"[{entity.name}] Dossier {reference} - {label}"
         body = (
             f"Bonjour {application.parent1_first_name},\n\n"
             f"L'état de votre dossier {reference} a évolué : {label}.\n\n"
-            f"— {entity.legal_name or entity.name}"
+            f"- {entity.legal_name or entity.name}"
         )
     else:
         subject = f"[{entity.name}] File {reference} - status updated"
         body = (
             f"Hello {application.parent1_first_name},\n\n"
             f"Your file {reference} has a new status: {label}.\n\n"
-            f"— {entity.legal_name or entity.name}"
+            f"- {entity.legal_name or entity.name}"
         )
 
     logger.info(
@@ -165,7 +165,7 @@ def notify_placement_test_requested(test_request):
             "Le test dure 15 à 20 minutes et se déroule en visioconférence. "
             "Nous vous confirmerons prochainement un créneau, affiché dans "
             "votre fuseau horaire.\n\n"
-            f"— {entity.legal_name or entity.name}"
+            f"- {entity.legal_name or entity.name}"
         )
     else:
         subject = f"[{entity.name}] Placement assessment request, file {reference}"
@@ -177,7 +177,7 @@ def notify_placement_test_requested(test_request):
             "The assessment takes 15 to 20 minutes and is held by video "
             "conference. We will confirm a time slot shortly, shown in your "
             "local time zone.\n\n"
-            f"— {entity.legal_name or entity.name}"
+            f"- {entity.legal_name or entity.name}"
         )
 
     sent = _send(subject, body, [test_request.parent_email], entity=entity, reference=reference)
@@ -192,7 +192,7 @@ def notify_placement_test_requested(test_request):
         f"Parent : {test_request.parent_first_name} {test_request.parent_last_name} "
         f"<{test_request.parent_email}>\n"
         f"Fuseau : {test_request.parent_timezone or 'non précisé'}\n"
-        f"Créneau souhaité : {test_request.preferred_date or '—'} "
+        f"Créneau souhaité : {test_request.preferred_date or '-'} "
         f"{test_request.preferred_time or ''}\n"
     )
     _send(admin_subject, admin_body, _admissions_recipients(entity), entity=entity, reference=reference)
@@ -234,7 +234,7 @@ def notify_placement_test_scheduled(test_request):
             "Merci de prévoir un ordinateur ou une tablette avec caméra et "
             "micro, dans un endroit calme. La présence d'un parent est "
             "recommandée pour les plus jeunes.\n\n"
-            f"— {entity.legal_name or entity.name}"
+            f"- {entity.legal_name or entity.name}"
         )
     else:
         subject = f"[{entity.name}] Placement assessment confirmed - {reference}"
@@ -249,7 +249,7 @@ def notify_placement_test_scheduled(test_request):
             "Please have a computer or tablet with a camera and microphone "
             "ready, in a quiet place. A parent's presence is recommended for "
             "younger children.\n\n"
-            f"— {entity.legal_name or entity.name}"
+            f"- {entity.legal_name or entity.name}"
         )
 
     logger.info("FHA - notification « test planifié » émise pour %s", reference)

@@ -47,10 +47,16 @@ class Bulletin(models.Model):
 
     @property
     def pdf_outdated(self):
-        """Vrai si le PDF manque ou précède la dernière modification du commentaire."""
+        """Vrai si le PDF manque ou précède le dernier changement du commentaire ou d'une note."""
         if not self.pdf_file:
             return True
-        return bool(self.comment_updated_at and self.comment_updated_at > self.generated_at)
+        if self.comment_updated_at and self.comment_updated_at > self.generated_at:
+            return True
+        from apps.grades.models import GradeHistory
+        return GradeHistory.objects.filter(
+            grade__student_id=self.student_id, grade__school_year_id=self.school_year_id,
+            grade__period=self.period, changed_at__gt=self.generated_at,
+        ).exists()
 
 
 class BulletinOperation(models.Model):
@@ -101,4 +107,4 @@ class BulletinOperation(models.Model):
         ordering = ["-created_at"]
 
     def __str__(self):
-        return f"{self.get_action_display()} — {self.get_scope_display()} ({self.status})"
+        return f"{self.get_action_display()} - {self.get_scope_display()} ({self.status})"

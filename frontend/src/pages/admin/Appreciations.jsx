@@ -188,7 +188,7 @@ export default function AdminAppreciations() {
                   onChange={(e) => { if (!dirty || window.confirm(t("Abandonner les modifications non enregistrées ?"))) setScope(e.target.value); }}>
             {SCOPES.map(([value, label]) => (
               <option key={value} value={value}>
-                {t(label)}{value && payload?.cycles_with_override?.includes(value) ? ` — ${t("barème propre")}` : ""}
+                {t(label)}{value && payload?.cycles_with_override?.includes(value) ? ` - ${t("barème propre")}` : ""}
               </option>
             ))}
           </select>
@@ -259,7 +259,7 @@ export default function AdminAppreciations() {
                             /10 : {fmt(range.min / 10)}{range.top ? "–10" : `–${fmt(range.max / 10)}`}
                           </span>
                         </>
-                      ) : "—"}
+                      ) : "-"}
                     </td>
                     <td className="py-2 px-2">
                       <input type="checkbox" checked={r.is_active} aria-label={t("Active")}

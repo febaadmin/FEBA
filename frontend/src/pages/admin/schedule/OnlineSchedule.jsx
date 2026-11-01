@@ -350,7 +350,7 @@ export default function OnlineSchedule() {
                       )}
                     </span>
                   </td>
-                  <td className="py-3 pr-3 text-slate-600">{s.teacher_name || "—"}</td>
+                  <td className="py-3 pr-3 text-slate-600">{s.teacher_name || "-"}</td>
                   <td className="py-3 pr-3 text-slate-600">
                     {s.virtual_room_name ? (
                       <span className="inline-flex items-center gap-1">

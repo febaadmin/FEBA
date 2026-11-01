@@ -25,7 +25,7 @@ function assertValidPosition(pos, label) {
   expect(Number(m[2])).toBeLessThanOrEqual(100);
 }
 
-describe("mediaMeta — registre des points focaux", () => {
+describe("mediaMeta - registre des points focaux", () => {
   it("chaque slug du registre correspond à des fichiers packagés réels (800 et 1600)", () => {
     for (const slug of Object.keys(MEDIA_META)) {
       for (const size of [800, 1600]) {

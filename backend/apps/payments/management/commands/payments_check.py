@@ -39,7 +39,7 @@ class Command(BaseCommand):
 
         enabled = getattr(settings, "CARD_PAYMENTS_ENABLED", False)
         self.line("Paiement par carte activé", enabled,
-                  "CARD_PAYMENTS_ENABLED=False — le bouton de paiement reste masqué.")
+                  "CARD_PAYMENTS_ENABLED=False - le bouton de paiement reste masqué.")
         if not enabled:
             self.stdout.write(
                 "\n  Le paiement par carte est désactivé sur cette instance.\n"
@@ -78,7 +78,7 @@ class Command(BaseCommand):
         if options["offline"]:
             self.stdout.write(
                 "\n  Mode hors ligne : les identifiants n'ont PAS été soumis au "
-                "prestataire.\n  Une clé bien formée peut être révoquée — seul "
+                "prestataire.\n  Une clé bien formée peut être révoquée - seul "
                 "« make payments-check » en ligne le dira.\n"
             )
         elif not failures:
