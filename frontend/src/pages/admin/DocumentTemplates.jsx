@@ -50,7 +50,7 @@ const PAGE_FORMAT_LABELS = {
 /** Extension de l'original téléchargé, par format réel. */
 const SOURCE_EXTENSIONS = { jpeg: "jpg", tiff: "tif" };
 
-const fmtDate = (value) => (value ? new Date(value).toLocaleString() : "—");
+const fmtDate = (value) => (value ? new Date(value).toLocaleString() : "-");
 const fmtSize = (bytes) => `${(bytes / 1024 / 1024).toFixed(2)} Mo`;
 
 function openBlob(blob, filename) {

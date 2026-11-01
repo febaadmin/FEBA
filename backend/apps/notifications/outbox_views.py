@@ -19,6 +19,7 @@ import logging
 import socket
 from datetime import timedelta
 
+from apps.core.textes import sans_tiret
 from apps.core.request_text import text_field
 from django.conf import settings
 from django.core.cache import cache
@@ -106,7 +107,7 @@ def _row(d):
                     if d.entity_id else None),
         "to_email": d.to_email,
         "from_email": d.from_email,
-        "subject": d.subject,
+        "subject": sans_tiret(d.subject),
         "status": d.status,
         "status_display": d.get_status_display(),
         "delivery_summary": d.delivery_summary(),

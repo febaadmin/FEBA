@@ -126,7 +126,7 @@ DEFAULT_CURRENCY = "XOF"
 
 #: Choix proposés à l'administration. Une académie ne peut pas se voir
 #: attribuer une devise absente du registre : le formatage n'existerait pas.
-CURRENCY_CHOICES = [(code, f"{c.code} — {c.name}") for code, c in CURRENCIES.items()]
+CURRENCY_CHOICES = [(code, f"{c.code} - {c.name}") for code, c in CURRENCIES.items()]
 
 
 def get_currency(code):

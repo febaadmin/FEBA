@@ -30,10 +30,10 @@ class SmsMessage(models.Model):
         (SENDING, "Envoi en cours"),
         (SENT, "Accepté par le fournisseur SMS"),
         (DELIVERED, "Remis au téléphone (accusé du fournisseur)"),
-        (RETRY, "Échec temporaire — nouvel essai programmé"),
+        (RETRY, "Échec temporaire - nouvel essai programmé"),
         (FAILED, "Échec définitif"),
         (SKIPPED, "Non envoyé"),
-        (CAPTURED, "Capturé (transport de test) — non envoyé"),
+        (CAPTURED, "Capturé (transport de test) - non envoyé"),
     ]
     FINAL = {SENT, DELIVERED, FAILED, SKIPPED, CAPTURED}
 
@@ -110,7 +110,7 @@ class SmsMessage(models.Model):
     @property
     def masked_number(self):
         n = self.to_number or self.raw_phone
-        return f"{n[:4]}…{n[-2:]}" if len(n) > 6 else ("—" if not n else "…")
+        return f"{n[:4]}…{n[-2:]}" if len(n) > 6 else ("-" if not n else "…")
 
 
 class SmsPart(models.Model):

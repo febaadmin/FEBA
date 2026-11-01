@@ -161,7 +161,7 @@ class ClassesVisiblesDansLesListesTests(BaseDeuxAcademies):
         self.assertEqual(
             noms, {"French Ambassadors", "French Explorers", "Junior Roots"},
             "Les listes déroulantes retombent à zéro dès qu'aucune année "
-            "n'est activée — c'est le défaut signalé.")
+            "n'est activée - c'est le défaut signalé.")
 
     def test_l_ecran_et_le_formulaire_montrent_la_meme_chose(self):
         """
@@ -853,7 +853,7 @@ class AuditDeLaPorteeAcademiqueTests(BaseDeuxAcademies):
                 vides.append(f"{url} ({nom})")
         self.assertEqual(
             vides, [],
-            "listes vides alors que l'académie a ces données — le filtre "
+            "listes vides alors que l'académie a ces données - le filtre "
             "« année active » retombe à zéro :\n  " + "\n  ".join(vides))
 
     def test_feba_voit_toujours_ses_listes(self):

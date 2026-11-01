@@ -147,11 +147,11 @@ export default function AdminBulletins() {
     { key: "class",        label: t("Classe"),        accessor: "student_class" },
     { key: "period",       label: t("Période"),       accessor: "period_label" },
     { key: "year",         label: t("Année"),         accessor: "school_year_name" },
-    { key: "avg",          label: t("Moyenne"),       render: r => r.average ? `${parseFloat(r.average).toFixed(2)}/20` : "—" },
-    { key: "appreciation", label: t("Appréciation"),  accessor: "appreciation", render: r => r.appreciation ? t(r.appreciation) : "—" },
+    { key: "avg",          label: t("Moyenne"),       render: r => r.average ? `${parseFloat(r.average).toFixed(2)}/20` : "-" },
+    { key: "appreciation", label: t("Appréciation"),  accessor: "appreciation", render: r => r.appreciation ? t(r.appreciation) : "-" },
     { key: "comment",      label: t("Commentaire du directeur"), render: r => (
       <span className="block max-w-[220px] truncate text-xs" title={r.general_comment || ""}>
-        {r.general_comment || <span className="text-slate-400">—</span>}
+        {r.general_comment || <span className="text-slate-400">-</span>}
       </span>
     ) },
     { key: "date",         label: t("Généré le"),     render: r => (
@@ -280,7 +280,7 @@ export default function AdminBulletins() {
             <div className="space-y-3" data-testid="generation-review">
               <div className="bg-slate-50 rounded-xl p-3 text-sm">
                 <p><strong>{review.class ? `${t("Classe")} ${review.class.name}` : review.academy?.name}</strong>
-                  {" "}— {review.school_year?.name}, {t(PERIODS.find(p => p.value === review.period)?.label || "")}</p>
+                  {" "}- {review.school_year?.name}, {t(PERIODS.find(p => p.value === review.period)?.label || "")}</p>
                 <p>{t("{n} élève(s)", { n: review.students })} · {t("Bulletins existants")} : {review.existing_bulletins}
                   {" "}· {t("Bulletins absents")} : {review.missing_with_grades + review.missing_without_grades}
                   {" "}({t("dont {n} sans aucune note", { n: review.missing_without_grades })})</p>

@@ -47,7 +47,7 @@ MESSAGE_5000 = (
     + "\n\nCordialement,\nFamille Adjovi-Bokô"
 )
 TEXTE_HTML = "<script>alert('x')</script><b>gras</b> & <i>italique</i>"
-ACCENTS = "Élève à Cotonou — coût « 25 000 F CFA » ; prénom : Kofí Ọ̀ṣun"
+ACCENTS = "Élève à Cotonou - coût « 25 000 F CFA » ; prénom : Kofí Ọ̀ṣun"
 
 JEU_D_ESSAI = [
     ("message_5000", MESSAGE_5000),

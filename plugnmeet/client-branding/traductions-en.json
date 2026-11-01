@@ -1,0 +1,14 @@
+{
+  "notifications.video-paused-weak-connection": "Weak connection - video paused to keep audio clear.",
+  "notifications.presentation-paused-weak-connection": "Presentation paused - your connection is weak.",
+  "notifications.connection-still-weak": "Connection is still weak - video may freeze.",
+  "notifications.video-resumed": "Connection improved - video resumed.",
+  "header.connection-status.video-paused-banner": "Weak connection - video paused to keep audio clear.",
+  "header.connection-status.video-stays-paused-banner": "Weak connection - video paused until you re-enable it.",
+  "footer.icons.paused-by-connection-tooltip": "Paused automatically due to weak connection - click to re-enable",
+  "footer.modal.mic-test-speak": "Speak now - watch the bars move",
+  "footer.modal.mic-test-good": "Great - others will hear you",
+  "footer.modal.mic-virtual-hint": "Loopback / virtual - usually NOT your mic",
+  "polls.anonymous-voting-desc": "Voter choices stay hidden - even admins can't see who voted.",
+  "polls.notifications.ai-generated": "AI draft ready - review and create."
+}

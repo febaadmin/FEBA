@@ -56,7 +56,7 @@ beforeEach(() => {
   announcementsAPI.list.mockResolvedValue({ data: { results: [] } });
 });
 
-describe("ParentHome — données valides", () => {
+describe("ParentHome - données valides", () => {
   it("rend les moyennes trimestrielles SANS crash (régression « t2 is not a function »)", async () => {
     dashboardAPI.parent.mockResolvedValue({ data: { children: [CHILD] } });
     renderHome();
@@ -97,7 +97,7 @@ describe("ParentHome — données valides", () => {
   });
 });
 
-describe("ParentHome — données dégradées", () => {
+describe("ParentHome - données dégradées", () => {
   it("gère un enfant sans aucune moyenne (valeurs null) sans crash", async () => {
     dashboardAPI.parent.mockResolvedValue({
       data: {
@@ -139,7 +139,7 @@ describe("ParentHome — données dégradées", () => {
   });
 });
 
-describe("ParentHome — annonces", () => {
+describe("ParentHome - annonces", () => {
   it("affiche les annonces récentes", async () => {
     dashboardAPI.parent.mockResolvedValue({ data: { children: [CHILD] } });
     announcementsAPI.list.mockResolvedValue({

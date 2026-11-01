@@ -242,7 +242,7 @@ class IndividualCommentTests(BulletinCommentBase):
     def test_caracteres_speciaux_et_retours_a_la_ligne(self):
         """Scénario 11."""
         b = self.generate(self.a.students[0])
-        texte = ("Élève très à l'aise — « bravo » !\nProgrès <nets> & réguliers : 100 %.\n"
+        texte = ("Élève très à l'aise - « bravo » !\nProgrès <nets> & réguliers : 100 %.\n"
                  "Ligne 3 : ç, œ, ü, ß, 你好, emoji ✓")
         r = self.comment(b, texte + "\r\n\r\n\r\n  ")
         self.assertEqual(r.status_code, 200)
@@ -572,7 +572,7 @@ class CommentTargetTests(BulletinCommentBase):
         self.generate(s)
         urls = set()
         for i in range(5):
-            for text in (f"Ajout {i} — « é à ç »\nligne 2", f"Modification {i}", ""):
+            for text in (f"Ajout {i} - « é à ç »\nligne 2", f"Modification {i}", ""):
                 r = self.target(s, text, expected_comment=Bulletin.objects.get(student=s).general_comment)
                 self.assertEqual(r.status_code, 200, (i, text, r.data))
                 b = Bulletin.objects.get(student=s, period="T1")
@@ -708,12 +708,12 @@ class PreviewTests(BulletinCommentBase):
     def test_apercu_avant_generation_sans_aucune_ecriture(self):
         s = self.a.students[0]
         before = self.media_files()
-        r = self.preview(s, "Commentaire saisi dans l'aperçu — « é ».\nLigne 2")
+        r = self.preview(s, "Commentaire saisi dans l'aperçu - « é ».\nLigne 2")
         self.assertEqual(r.status_code, 200, getattr(r, "data", None))
         self.assertEqual(r["Content-Type"], "application/pdf")
         self.assertEqual(r["Cache-Control"], "no-store")
         text = self.text(r.content)
-        self.assertIn("Commentaire saisi dans l'aperçu — « é ». Ligne 2", text)
+        self.assertIn("Commentaire saisi dans l'aperçu - « é ». Ligne 2", text)
         self.assertIn("APERÇU", text)
         self.assertFalse(Bulletin.objects.exists())                    # rien n'est créé
         self.assertEqual(self.media_files(), before)                   # aucun fichier écrit

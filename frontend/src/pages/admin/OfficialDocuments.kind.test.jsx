@@ -13,7 +13,7 @@ vi.mock("react-hot-toast", () => ({ default: { success: vi.fn(), error: vi.fn() 
 vi.mock("../../components/ui/SearchableSelect", () => ({
   default: ({ options, onChange }) => (
     <select data-testid="student-select" onChange={(e) => onChange(Number(e.target.value))}>
-      <option value="">—</option>
+      <option value="">-</option>
       {options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
     </select>
   ),

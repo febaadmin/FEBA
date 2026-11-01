@@ -137,7 +137,7 @@ class PrivilegeEscalationTest(TestCase):
             created_user = CustomUser.objects.get(email="teacher2@test.bj")
             self.assertEqual(
                 created_user.school_id, self.school.id,
-                "L'admin a créé un compte dans une autre école — IDOR tenant!"
+                "L'admin a créé un compte dans une autre école - IDOR tenant!"
             )
 
 

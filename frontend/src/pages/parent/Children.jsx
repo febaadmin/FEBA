@@ -62,20 +62,20 @@ export default function ParentChildren() {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
             <div>
               <p className="text-xs text-slate-400 mb-0.5">{t("Nom complet")}</p>
-              <p className="font-semibold text-slate-800">{parent.full_name || "—"}</p>
+              <p className="font-semibold text-slate-800">{parent.full_name || "-"}</p>
             </div>
             <div className="flex items-center gap-2">
               <Phone className="w-4 h-4 text-slate-400 shrink-0" />
               <div>
                 <p className="text-xs text-slate-400 mb-0.5">{t("Téléphone")}</p>
-                <p className="font-medium text-slate-700">{parent.user_phone || "—"}</p>
+                <p className="font-medium text-slate-700">{parent.user_phone || "-"}</p>
               </div>
             </div>
             <div className="flex items-center gap-2">
               <Mail className="w-4 h-4 text-slate-400 shrink-0" />
               <div>
                 <p className="text-xs text-slate-400 mb-0.5">{t("Email")}</p>
-                <p className="font-medium text-slate-700 text-xs">{parent.user_email || "—"}</p>
+                <p className="font-medium text-slate-700 text-xs">{parent.user_email || "-"}</p>
               </div>
             </div>
           </div>
@@ -92,7 +92,7 @@ export default function ParentChildren() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {children.map((link, i) => {
             const child = link.student_detail || {};
-            const relLabel = RELATIONSHIP_LABELS[link.relationship] || link.relationship || "—";
+            const relLabel = RELATIONSHIP_LABELS[link.relationship] || link.relationship || "-";
 
             return (
               <motion.div key={i} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
@@ -105,7 +105,7 @@ export default function ParentChildren() {
                   </div>
                   <div className="flex-1">
                     <p className="font-bold text-slate-800 text-lg">
-                      {child.full_name || `${child.first_name || ""} ${child.last_name || ""}`.trim() || "—"}
+                      {child.full_name || `${child.first_name || ""} ${child.last_name || ""}`.trim() || "-"}
                     </p>
                     <p className="text-sm text-slate-500">{relLabel} · {t("Âge")} : {ageText(child.age, child.age_status)}</p>
                     {link.is_primary_contact && (
@@ -121,17 +121,17 @@ export default function ParentChildren() {
                       <GraduationCap className="w-4 h-4 text-slate-400" />
                       <span className="text-xs font-medium text-slate-500">{t("Classe")}</span>
                     </div>
-                    <p className="font-semibold text-slate-800">{child.class_name || "—"}</p>
-                    <p className="text-xs text-slate-400">{child.school_year_name || "—"}</p>
+                    <p className="font-semibold text-slate-800">{child.class_name || "-"}</p>
+                    <p className="text-xs text-slate-400">{child.school_year_name || "-"}</p>
                   </div>
                   <div className="bg-slate-50 rounded-xl p-3">
                     <div className="flex items-center gap-2 mb-1">
                       <Calendar className="w-4 h-4 text-slate-400" />
                       <span className="text-xs font-medium text-slate-500">{t("Matricule")}</span>
                     </div>
-                    <p className="font-semibold text-slate-800 text-sm font-mono">{child.matricule || "—"}</p>
+                    <p className="font-semibold text-slate-800 text-sm font-mono">{child.matricule || "-"}</p>
                     <p className="text-xs text-slate-400">
-                      {child.gender === "M" ? "Garçon" : child.gender === "F" ? t("Fille") : "—"}
+                      {child.gender === "M" ? "Garçon" : child.gender === "F" ? t("Fille") : "-"}
                     </p>
                   </div>
                 </div>

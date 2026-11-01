@@ -424,7 +424,7 @@ class TestFichePdf:
         demande = PreRegistration.objects.create(
             entity=academies[0], parent_name="Kofí Ọ̀ṣun", phone="+229",
             child_name="Amélie", desired_level="ci",
-            message="Coût « 25 000 F » & <urgent> — à Cotonou")
+            message="Coût « 25 000 F » & <urgent> - à Cotonou")
         texte, _ = texte_du_pdf(generate_prereg_sheet(demande))
         plat = texte.replace("\n", "")
         assert "Amélie" in plat

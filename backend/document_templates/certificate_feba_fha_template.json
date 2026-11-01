@@ -2,7 +2,7 @@
   "id": "certificate_feba_fha",
   "version": 1,
   "label": "Certificat FEBA French Heritage Academy",
-  "description": "Certificat de réussite de l'académie en ligne — fond verrouillé propre à FEBA FHA.",
+  "description": "Certificat de réussite de l'académie en ligne - fond verrouillé propre à FEBA FHA.",
   "background": {
     "file": "certificat_feba_fha.png",
     "directory": "sources/feba_fha",
@@ -57,7 +57,7 @@
       "center_x_mm": 256.79,
       "center_y_mm": 38.42,
       "radius_mm": 11.74,
-      "note": "Neutralise la mention d'exemple « YOUR SEAL » et ses trois étoiles, posées sur le disque marine du médaillon. Le masque est RADIAL et ne repeint que les pixels qui s'écartent de la couleur médiane de leur anneau : un rectangle inscrit dans le disque ne couvrirait pas tout le texte, et un rectangle qui le couvre mordrait sur l'anneau doré. Le dégradé du disque est reconstruit par la médiane du fond à chaque distance du centre ; l'anneau, les festons et le ruban ne sont jamais touchés. Le cachet officiel de l'académie vient ensuite se poser par-dessus — mais s'il manque, aucune mention d'exemple ne reste visible.",
+      "note": "Neutralise la mention d'exemple « YOUR SEAL » et ses trois étoiles, posées sur le disque marine du médaillon. Le masque est RADIAL et ne repeint que les pixels qui s'écartent de la couleur médiane de leur anneau : un rectangle inscrit dans le disque ne couvrirait pas tout le texte, et un rectangle qui le couvre mordrait sur l'anneau doré. Le dégradé du disque est reconstruit par la médiane du fond à chaque distance du centre ; l'anneau, les festons et le ruban ne sont jamais touchés. Le cachet officiel de l'académie vient ensuite se poser par-dessus - mais s'il manque, aucune mention d'exemple ne reste visible.",
       "ink_tolerance": 10,
       "ink_dilation": 3
     }
@@ -88,7 +88,7 @@
       "_commentaire_boite": "Centrée sur la règle d'écriture (67,39 → 229,61 mm, milieu 148,5 mm) avec 3,6 mm de retrait de chaque côté.",
       "bleed_mm": 3.0,
       "_commentaire_debord": "Les jambages descendants (« p », « g », « j ») passent sous la ligne de base et franchissent la règle d'écriture. Ce débord appartient à la zone VARIABLE : sans lui, la comparaison compterait le jambage d'un nom comme une altération du fond.",
-      "_commentaire_lignes": "DEUX lignes autorisées. Un patronyme composé de la diaspora dépasse couramment soixante-dix caractères : sur une seule ligne il ne tient pas, et refuser de produire n'est pas un service rendu à l'élève. Le repli est calculé par apps/documents/textfit.py à partir des métriques réelles de la police — boîte englobante du dessin de chaque lettre — et non d'une estimation du type « hauteur = corps × 0,75 », qui se trompait de 30 % et faisait remonter la première ligne sur la phrase gravée dans le fond.",
+      "_commentaire_lignes": "DEUX lignes autorisées. Un patronyme composé de la diaspora dépasse couramment soixante-dix caractères : sur une seule ligne il ne tient pas, et refuser de produire n'est pas un service rendu à l'élève. Le repli est calculé par apps/documents/textfit.py à partir des métriques réelles de la police - boîte englobante du dessin de chaque lettre - et non d'une estimation du type « hauteur = corps × 0,75 », qui se trompait de 30 % et faisait remonter la première ligne sur la phrase gravée dans le fond.",
       "safe_zone": {
         "y_top_mm": 126.3,
         "y_bottom_mm": 137.24,
@@ -97,7 +97,7 @@
         "engraved_phrase_bottom_mm": 125.7,
         "writing_rule_top_mm": 138.24,
         "_mesure": "MESURÉ sur le fond réellement dessiné, pas estimé. Bord inférieur de la phrase gravée « Ce certificat est fièrement décerné à » : px y 611–630, soit 125.7 mm ; dégagement 0.6 mm. Bord supérieur de la règle d'écriture : px y 694–697, soit 138.24 mm ; dégagement 1.0 mm. La règle s'étend de 77.04 à 219.96 mm : le nom reste à l'intérieur du trait sur lequel il est écrit.",
-        "_commande": "manage.py document_calibrate --template <id> — la commande réimprime ces nombres depuis le fond installé et échoue si le fond a bougé."
+        "_commande": "manage.py document_calibrate --template <id> - la commande réimprime ces nombres depuis le fond installé et échoue si le fond a bougé."
       },
       "line_spacing": 1.0,
       "baseline_reserve_em": 0.23
@@ -184,11 +184,11 @@
       "cover": {
         "color": "#FCF5EE"
       },
-      "_commentaire": "Le blason est INCRUSTÉ dans le fond. Tant qu'aucun logo n'est téléversé et activé, rien n'est apposé : le visuel officiel reste intact. Dès qu'un logo est activé, la zone mesurée du blason (pixels relevés sur le fond, échelle 0,199 mm/px) est recouverte de la couleur du papier, puis le logo actif y est apposé — un document ne sort jamais avec l'ancien logo."
+      "_commentaire": "Le blason est INCRUSTÉ dans le fond. Tant qu'aucun logo n'est téléversé et activé, rien n'est apposé : le visuel officiel reste intact. Dès qu'un logo est activé, la zone mesurée du blason (pixels relevés sur le fond, échelle 0,199 mm/px) est recouverte de la couleur du papier, puis le logo actif y est apposé - un document ne sort jamais avec l'ancien logo."
     },
     {
       "name": "official_seal",
-      "label": "Sceau officiel — remplace « YOUR SEAL »",
+      "label": "Sceau officiel - remplace « YOUR SEAL »",
       "required": false,
       "resource": "seal_official",
       "box": {
@@ -201,7 +201,7 @@
       "backdrop": "#F7F2E6",
       "backdrop_shape": "circle",
       "backdrop_diameter_mm": 22.5,
-      "_commentaire": "Disque intérieur du médaillon MESURÉ : centre (255,59 · 39,31) mm, ⌀ 23,69 mm (px : centre 1283,5 · 197,5, ⌀ 119). Le fond de disque fait 22,5 mm — délibérément PLUS PETIT que le disque, pour que l'anneau marine reste visible et que la couronne dorée crantée ne soit jamais recouverte. Le sceau lui-même s'inscrit dans 21 mm.",
+      "_commentaire": "Disque intérieur du médaillon MESURÉ : centre (255,59 · 39,31) mm, ⌀ 23,69 mm (px : centre 1283,5 · 197,5, ⌀ 119). Le fond de disque fait 22,5 mm - délibérément PLUS PETIT que le disque, pour que l'anneau marine reste visible et que la couronne dorée crantée ne soit jamais recouverte. Le sceau lui-même s'inscrit dans 21 mm.",
       "_commentaire_absence": "Sans sceau officiel dans les ressources du projet, la mention « YOUR SEAL » du fond RESTE VISIBLE. Elle n'est ni masquée ni remplacée par un ersatz : c'est le signal, pour l'établissement, que le document n'est pas finalisé."
     },
     {

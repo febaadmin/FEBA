@@ -47,7 +47,7 @@ export default function LongText({
   // agit sur le bloc intérieur.
   maxHeight = "24rem",
   copyable = true,
-  emptyLabel = "—",
+  emptyLabel = "-",
   // `plain` retire le fond gris et les marges de la carte : le composant
   // devient un simple bloc de texte, utilisable au fil d'une fiche.
   plain = false,

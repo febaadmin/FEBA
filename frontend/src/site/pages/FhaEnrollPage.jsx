@@ -415,7 +415,7 @@ export default function FhaEnrollPage() {
                 <p className="text-xs mt-3">
                   {t("Groupe suggéré (selon l'âge)", "Suggested group (by age)")} :{" "}
                   <strong>{done.suggested_group.replace(/_/g, " ")}</strong>
-                  {" — "}
+                  {" - "}
                   {t(
                     "le placement définitif dépend du test de placement.",
                     "final placement depends on the placement assessment.",
@@ -441,7 +441,7 @@ export default function FhaEnrollPage() {
   return (
     <>
       <Seo
-        title={`${t("Inscription", "Enrollment")} — ${FHA_NAME}`}
+        title={`${t("Inscription", "Enrollment")} - ${FHA_NAME}`}
         description={FHA_TAGLINE}
       />
 
@@ -464,7 +464,7 @@ export default function FhaEnrollPage() {
               <span>
                 {isReview
                   ? t("Récapitulatif", "Summary")
-                  : `${t("Étape", "Step")} ${step + 1}/${STEP_TITLES.length} — ${
+                  : `${t("Étape", "Step")} ${step + 1}/${STEP_TITLES.length} - ${
                       STEP_TITLES[step][lang === "fr" ? 0 : 1]
                     }`}
               </span>
@@ -549,7 +549,7 @@ export default function FhaEnrollPage() {
               </Field>
               <Field label={t("Âge (calculé)", "Age (calculated)")}>
                 <div className={`${inputClass} bg-feba-cream font-semibold`}>
-                  {age === null ? "—" : `${age} ${t("ans", "years")}`}
+                  {age === null ? "-" : `${age} ${t("ans", "years")}`}
                 </div>
               </Field>
               <Field label={t("Sexe", "Sex")} required error={errors.child_gender}>
@@ -821,7 +821,7 @@ export default function FhaEnrollPage() {
                     onChange={(e) => set("weekday_or_weekend", e.target.value)}
                     className={inputClass}
                   >
-                    <option value="">—</option>
+                    <option value="">-</option>
                     <option value="weekday">{t("Semaine", "Weekday")}</option>
                     <option value="weekend">{t("Week-end", "Weekend")}</option>
                     <option value="both">{t("Les deux", "Both")}</option>
@@ -1009,15 +1009,15 @@ export default function FhaEnrollPage() {
               <dl className="space-y-2.5 text-sm">
                 {[
                   [t("Enfant", "Child"), `${form.child_first_name} ${form.child_last_name}`],
-                  [t("Âge", "Age"), age === null ? "—" : `${age}`],
+                  [t("Âge", "Age"), age === null ? "-" : `${age}`],
                   [
                     t("Sexe", "Sex"),
-                    { F: t("Féminin", "Female"), M: t("Masculin", "Male") }[form.child_gender] || "—",
+                    { F: t("Féminin", "Female"), M: t("Masculin", "Male") }[form.child_gender] || "-",
                   ],
-                  [t("Ville", "City"), form.child_city || "—"],
-                  [t("Pays", "Country"), form.child_country || "—"],
-                  [t("Langue principale", "Main language"), form.home_main_language || "—"],
-                  [t("Autres langues", "Other languages"), form.other_languages || "—"],
+                  [t("Ville", "City"), form.child_city || "-"],
+                  [t("Pays", "Country"), form.child_country || "-"],
+                  [t("Langue principale", "Main language"), form.home_main_language || "-"],
+                  [t("Autres langues", "Other languages"), form.other_languages || "-"],
                   [
                     t("Niveau de français", "French level"),
                     form.french_levels.length
@@ -1027,7 +1027,7 @@ export default function FhaEnrollPage() {
                             return row ? t(row[1], row[2]) : code;
                           })
                           .join(", ")
-                      : "—",
+                      : "-",
                   ],
                   [
                     t("Objectifs", "Goals"),
@@ -1038,7 +1038,7 @@ export default function FhaEnrollPage() {
                             return row ? t(row[1], row[2]) : code;
                           })
                           .join(", ")
-                      : "—",
+                      : "-",
                   ],
                   [
                     t("Parent", "Parent"),
@@ -1046,15 +1046,15 @@ export default function FhaEnrollPage() {
                   ],
                   [t("E-mail", "E-mail"), form.parent1_email],
                   [t("Téléphone", "Phone"), form.parent1_phone],
-                  [t("WhatsApp", "WhatsApp"), form.parent1_whatsapp || "—"],
-                  [t("Fuseau horaire", "Time zone"), form.family_timezone || "—"],
+                  [t("WhatsApp", "WhatsApp"), form.parent1_whatsapp || "-"],
+                  [t("Fuseau horaire", "Time zone"), form.family_timezone || "-"],
                   [
                     t("Jours disponibles", "Available days"),
                     form.available_days.length
                       ? form.available_days
                           .map((d) => t(DAYS[d - 1][1], DAYS[d - 1][2]))
                           .join(", ")
-                      : "—",
+                      : "-",
                   ],
                   // P4 — la formule choisie doit être relue avant l'envoi :
                   // c'est l'information qui engage le budget de la famille.
@@ -1182,7 +1182,7 @@ function ParentBlock({ index, form, set, errors, t }) {
             onChange={(e) => set(`${p}preferred_language`, e.target.value)}
             className={inputClass}
           >
-            {index === 2 && <option value="">—</option>}
+            {index === 2 && <option value="">-</option>}
             <option value="en">English</option>
             <option value="fr">Français</option>
           </select>

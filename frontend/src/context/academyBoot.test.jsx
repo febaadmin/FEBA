@@ -102,7 +102,7 @@ beforeEach(() => {
   });
 });
 
-describe("ordre de démarrage — aucune requête métier avant la portée", () => {
+describe("ordre de démarrage - aucune requête métier avant la portée", () => {
   it("n'appelle pas /auth/users/ tant que /auth/entity-context/ n'a pas répondu", async () => {
     const ctx = deferred();
     api.get.mockReturnValue(ctx.promise.then((data) => ({ data })));
@@ -164,7 +164,7 @@ describe("le tableau de bord n'affiche jamais de faux zéro", () => {
     },
   );
 
-  it("reste en attente — sans afficher 0 — quand la requête est annulée", async () => {
+  it("reste en attente - sans afficher 0 - quand la requête est annulée", async () => {
     api.get.mockResolvedValue({ data: CONTEXT_ALL });
     const canceled = Object.assign(new Error("canceled"), { code: "ERR_CANCELED" });
     authAPI.listUsers.mockRejectedValue(canceled);

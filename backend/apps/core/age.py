@@ -85,7 +85,7 @@ def as_date(value):
     return _as_date(value)
 
 
-def format_birth_date(value, empty="—"):
+def format_birth_date(value, empty="-"):
     """Date de naissance au format JJ/MM/AAAA, quel que soit son type d'origine."""
     value = _as_date(value)
     return value.strftime("%d/%m/%Y") if value else empty

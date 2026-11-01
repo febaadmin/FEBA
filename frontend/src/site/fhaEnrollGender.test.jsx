@@ -45,7 +45,7 @@ beforeEach(() => {
   localStorage.setItem("feba-fha-lang", "fr");
 });
 
-describe("Fiche FHA — sexe de l'enfant", () => {
+describe("Fiche FHA - sexe de l'enfant", () => {
   it("affiche le champ Sexe obligatoire avec Féminin et Masculin", () => {
     renderPage();
     const select = screen.getByTestId("child-gender");

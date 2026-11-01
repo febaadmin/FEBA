@@ -258,7 +258,7 @@ class CreateCardPaymentView(APIView):
         label = fee.display_label if fee else dict(Payment.PAYMENT_TYPES).get(
             attempt.payment_type, attempt.payment_type,
         )
-        description = f"{student.get_full_name()} — {label}"
+        description = f"{student.get_full_name()} - {label}"
 
         try:
             session_id, checkout_url = provider.create_checkout(

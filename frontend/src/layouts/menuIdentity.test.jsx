@@ -38,7 +38,7 @@ import StudentLayout from "./StudentLayout";
 import TeacherLayout from "./TeacherLayout";
 import ParentLayout from "./ParentLayout";
 
-const LONG = "Académie Évangélique Saint-Éloi de Natitingou — Programme Francophone";
+const LONG = "Académie Évangélique Saint-Éloi de Natitingou - Programme Francophone";
 const TESTETE = {
   id: 3, code: "TESTETE", name: LONG, short_name: LONG, entity_type: "online",
   features: { placement_tests: true, online_admissions: false, monthly_reports: false },

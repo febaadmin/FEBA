@@ -52,7 +52,7 @@ describe("aucun fichier important { t } ne doit masquer t par une liaison locale
       const m = src.match(pattern);
       if (m) {
         const line = src.slice(0, m.index).split("\n").length;
-        offenders.push(`${path.relative(SRC, file)}:${line} — ${label}`);
+        offenders.push(`${path.relative(SRC, file)}:${line} - ${label}`);
       }
     }
   }

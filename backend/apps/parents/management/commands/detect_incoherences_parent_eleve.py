@@ -57,7 +57,7 @@ class Command(BaseCommand):
         if multi_count:
             self.stdout.write(self.style.SUCCESS(
                 f"ℹ️  {multi_count} élève(s) avec plusieurs parents enregistrés "
-                f"— c'est attendu depuis la v29 (multi-parents), pas une erreur."
+                f"- c'est attendu depuis la v29 (multi-parents), pas une erreur."
             ))
 
         # --- Check 1 (v29) : fuite cross-tenant parent ↔ élève ----------------
@@ -78,7 +78,7 @@ class Command(BaseCommand):
                     "detail": (
                         f"Le parent#{ps.parent.id} (établissement {parent_school_id}) "
                         f"est lié à l'élève#{ps.student.id} (établissement "
-                        f"{student_school_id}) — établissements différents."
+                        f"{student_school_id}) - établissements différents."
                     ),
                 })
 

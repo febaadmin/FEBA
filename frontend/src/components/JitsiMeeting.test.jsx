@@ -84,7 +84,7 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-describe("JitsiMeeting — création de la conférence", () => {
+describe("JitsiMeeting - création de la conférence", () => {
   it("crée exactement une conférence", async () => {
     render(<JitsiMeeting {...PROPS} onClose={() => {}} />);
     await flush();
@@ -106,7 +106,7 @@ describe("JitsiMeeting — création de la conférence", () => {
   });
 });
 
-describe("JitsiMeeting — le défaut d'origine", () => {
+describe("JitsiMeeting - le défaut d'origine", () => {
   it("un onClose d'identité NOUVELLE ne détruit pas la conférence", async () => {
     // Reproduit exactement le parent fautif : une fonction fléchée
     // recréée à chaque rendu.
@@ -173,7 +173,7 @@ describe("JitsiMeeting — le défaut d'origine", () => {
   });
 });
 
-describe("JitsiMeeting — changement réel de salle", () => {
+describe("JitsiMeeting - changement réel de salle", () => {
   it("recrée la conférence et détruit l'ancienne", async () => {
     const { rerender } = render(<JitsiMeeting {...PROPS} onClose={() => {}} />);
     await flush();
@@ -197,7 +197,7 @@ describe("JitsiMeeting — changement réel de salle", () => {
   });
 });
 
-describe("JitsiMeeting — démontage", () => {
+describe("JitsiMeeting - démontage", () => {
   it("détruit la conférence une seule fois", async () => {
     const { unmount } = render(<JitsiMeeting {...PROPS} onClose={() => {}} />);
     await flush();
@@ -237,7 +237,7 @@ describe("JitsiMeeting — démontage", () => {
   });
 });
 
-describe("JitsiMeeting — erreurs", () => {
+describe("JitsiMeeting - erreurs", () => {
   it("affiche un message, jamais un écran noir muet", async () => {
     delete window.JitsiMeetExternalAPI;
 
@@ -266,7 +266,7 @@ describe("JitsiMeeting — erreurs", () => {
   });
 });
 
-describe("JitsiMeeting — §12 : le cycle de vie, compté", () => {
+describe("JitsiMeeting - §12 : le cycle de vie, compté", () => {
   /**
    * Le cahier des charges demande ce scénario précis, et il est
    * bloquant. Les tests plus haut vérifient l'ABSENCE de destruction

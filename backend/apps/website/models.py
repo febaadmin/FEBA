@@ -100,7 +100,7 @@ class SiteSettings(models.Model):
     # SEO par défaut
     meta_title = models.CharField(
         max_length=120, blank=True,
-        default="FEBA — Faith & Excellence Bilingual Academy | École bilingue à Cotonou",
+        default="FEBA - Faith & Excellence Bilingual Academy | École bilingue à Cotonou",
     )
     meta_description = models.CharField(
         max_length=300, blank=True,
@@ -133,7 +133,7 @@ class SiteSettings(models.Model):
         verbose_name_plural = 'Paramètres du site'
 
     def __str__(self):
-        return f"Paramètres du site — {self.school_name}"
+        return f"Paramètres du site - {self.school_name}"
 
     @classmethod
     def load(cls):
@@ -169,7 +169,7 @@ class HeroSlide(ImageSourceMixin):
         ordering = ['order', 'id']
 
     def __str__(self):
-        return f"Slide {self.order} — {self.title}"
+        return f"Slide {self.order} - {self.title}"
 
 
 class NewsPost(ImageSourceMixin):
@@ -258,7 +258,7 @@ class GalleryItem(ImageSourceMixin):
         ordering = ['album', 'order', 'id']
 
     def __str__(self):
-        return f"{self.album} — {self.caption or self.image_src or self.video_url}"
+        return f"{self.album} - {self.caption or self.image_src or self.video_url}"
 
 
 class ContactMessage(models.Model):
@@ -322,7 +322,7 @@ class ContactMessage(models.Model):
         ordering = ['-created_at']
 
     def __str__(self):
-        return f"{self.name} — {self.subject} ({self.created_at:%d/%m/%Y})"
+        return f"{self.name} - {self.subject} ({self.created_at:%d/%m/%Y})"
 
 
 class PreRegistration(models.Model):
@@ -425,7 +425,7 @@ class PreRegistration(models.Model):
         ordering = ['-created_at']
 
     def __str__(self):
-        return f"{self.child_name} ({self.get_desired_level_display()}) — {self.parent_name}"
+        return f"{self.child_name} ({self.get_desired_level_display()}) - {self.parent_name}"
 
     def save(self, *args, **kwargs):
         creating = self._state.adding
@@ -724,7 +724,7 @@ class FHAEnrollmentApplication(models.Model):
     # (voir FHAApplicationAdminSerializer / permissions renforcées).
     special_needs = models.TextField(
         blank=True,
-        help_text="CONFIDENTIEL — adaptations pédagogiques, difficultés, besoins de soutien.",
+        help_text="CONFIDENTIEL - adaptations pédagogiques, difficultés, besoins de soutien.",
     )
 
     # ── Étape 12 : formule annuelle souhaitée ───────────────────────────
@@ -737,9 +737,9 @@ class FHAEnrollmentApplication(models.Model):
     PLAN_EXCELLENCE = 'EXCELLENCE'
     PLAN_UNDECIDED = 'UNDECIDED'
     PLAN_CHOICES = [
-        (PLAN_STANDARD, 'Standard — 699 $/an'),
-        (PLAN_PREMIUM, 'Premium — 999 $/an'),
-        (PLAN_EXCELLENCE, 'Excellence — 1 299 $/an'),
+        (PLAN_STANDARD, 'Standard - 699 $/an'),
+        (PLAN_PREMIUM, 'Premium - 999 $/an'),
+        (PLAN_EXCELLENCE, 'Excellence - 1 299 $/an'),
         (PLAN_UNDECIDED, 'Non décidé'),
     ]
     desired_plan = models.CharField(
@@ -808,7 +808,7 @@ class FHAEnrollmentApplication(models.Model):
         ]
 
     def __str__(self):
-        return f"{self.reference or '(sans réf.)'} — {self.child_first_name} {self.child_last_name}"
+        return f"{self.reference or '(sans réf.)'} - {self.child_first_name} {self.child_last_name}"
 
     @property
     def child_age(self):
@@ -950,7 +950,7 @@ class FHAApplicationStatusHistory(models.Model):
         ordering = ['-created_at']
 
     def __str__(self):
-        return f"{self.application_id} : {self.from_status or '—'} → {self.to_status}"
+        return f"{self.application_id} : {self.from_status or '-'} → {self.to_status}"
 
 
 class FHAPlacementTestRequest(models.Model):
@@ -1048,7 +1048,7 @@ class FHAPlacementTestRequest(models.Model):
     )
 
     special_needs = models.TextField(
-        blank=True, help_text="CONFIDENTIEL — besoin particulier signalé par la famille.",
+        blank=True, help_text="CONFIDENTIEL - besoin particulier signalé par la famille.",
     )
     consent_video = models.BooleanField(
         default=False, help_text="Consentement à la participation en visioconférence.",
@@ -1082,7 +1082,7 @@ class FHAPlacementTestRequest(models.Model):
         ]
 
     def __str__(self):
-        return f"{self.reference or '(sans réf.)'} — {self.child_first_name} {self.child_last_name}"
+        return f"{self.reference or '(sans réf.)'} - {self.child_first_name} {self.child_last_name}"
 
     @property
     def child_age(self):
@@ -1173,4 +1173,4 @@ class FHAPlacementTestResult(models.Model):
         verbose_name_plural = "Résultats de test de placement FHA"
 
     def __str__(self):
-        return f"Résultat {self.request.reference} — {self.get_starting_level_display() or 'niveau à définir'}"
+        return f"Résultat {self.request.reference} - {self.get_starting_level_display() or 'niveau à définir'}"

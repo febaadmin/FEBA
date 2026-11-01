@@ -72,7 +72,7 @@ function hardcodedFrench(code) {
 }
 
 describe("Couverture i18n du site public", () => {
-  it("le layout — donc toutes les pages — est traduit", () => {
+  it("le layout - donc toutes les pages - est traduit", () => {
     const layout = fs.readFileSync(path.join(SITE, "SiteLayout.jsx"), "utf8");
     expect(layout).toContain("useSiteLang");
     expect(layout).toMatch(/buildNavLinks\(lang\)/);

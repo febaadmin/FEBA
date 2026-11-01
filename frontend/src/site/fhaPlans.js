@@ -150,7 +150,7 @@ export const FHA_PLANS = [
 export const PLAN_OPTIONS = [
   ...FHA_PLANS.map((p) => ({
     code: p.code,
-    label: { fr: `${p.name.fr} — ${p.price.fr}`, en: `${p.name.en} — ${p.price.en}` },
+    label: { fr: `${p.name.fr} - ${p.price.fr}`, en: `${p.name.en} - ${p.price.en}` },
   })),
   {
     code: "UNDECIDED",

@@ -57,6 +57,6 @@ export function ageColumn(field = "age") {
 export function studentOptionLabel(s, { withMatricule = false } = {}) {
   const name = s.full_name || `${s.first_name || ""} ${s.last_name || ""}`.trim();
   const klass = s.class_name || "?";
-  const ident = withMatricule ? `${name} — ${s.matricule || ""} (${klass})` : `${name} — ${klass}`;
+  const ident = withMatricule ? `${name} - ${s.matricule || ""} (${klass})` : `${name} - ${klass}`;
   return `${ident} · ${ageText(s.age, s.age_status)}`;
 }

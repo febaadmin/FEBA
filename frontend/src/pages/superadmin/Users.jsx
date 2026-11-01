@@ -216,7 +216,7 @@ export default function SuperAdminUsers() {
             </div>
             <div className="space-y-2 text-sm">
               <div className="flex justify-between py-2 border-b border-slate-50"><span className="text-slate-500">{t("Rôle")}</span><span className="font-medium capitalize">{viewItem.role}</span></div>
-              <div className="flex justify-between py-2 border-b border-slate-50"><span className="text-slate-500">{t("Téléphone")}</span><span>{viewItem.phone || "—"}</span></div>
+              <div className="flex justify-between py-2 border-b border-slate-50"><span className="text-slate-500">{t("Téléphone")}</span><span>{viewItem.phone || "-"}</span></div>
               <div className="flex justify-between py-2 border-b border-slate-50"><span className="text-slate-500">{t("Statut")}</span><span className={viewItem.is_active ? "text-success font-medium" : "text-danger font-medium"}>{viewItem.is_active ? t("Actif") : t("Inactif")}</span></div>
               <div className="flex justify-between py-2"><span className="text-slate-500">{t("Créé le")}</span><span>{viewItem.created_at?.slice(0,10)}</span></div>
             </div>

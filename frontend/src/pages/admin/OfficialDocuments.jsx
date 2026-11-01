@@ -222,7 +222,7 @@ export default function AdminOfficialDocuments() {
       key: "hash", label: t("Empreinte"), sortable: false,
       render: r => r.file_sha256
         ? <code className="text-xs text-slate-500">{r.file_sha256.slice(0, 12)}…</code>
-        : <span className="text-slate-400">—</span>,
+        : <span className="text-slate-400">-</span>,
     },
     {
       key: "actions", label: "", sortable: false,
@@ -415,7 +415,7 @@ export default function AdminOfficialDocuments() {
                     <div key={name} className="contents">
                       <dt className="text-slate-500">{t(label)}</dt>
                       <dd className="text-slate-800">{check.values[name]
-                        || (name === "document_number" ? t("(attribué à la délivrance)") : "—")}</dd>
+                        || (name === "document_number" ? t("(attribué à la délivrance)") : "-")}</dd>
                     </div>
                   ))}
                 </dl>
@@ -534,7 +534,7 @@ export default function AdminOfficialDocuments() {
                   <li key={r.student_id} className="py-1.5 flex gap-2">
                     <span className={r.ok ? "text-green-700" : "text-red-700"}>{r.ok ? "✓" : "✗"}</span>
                     <span className="font-medium">{r.student}</span>
-                    {!r.ok && <span className="text-slate-600">— {r.reason}</span>}
+                    {!r.ok && <span className="text-slate-600">- {r.reason}</span>}
                   </li>
                 ))}
               </ul>

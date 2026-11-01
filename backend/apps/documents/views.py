@@ -24,6 +24,7 @@ from rest_framework.views import APIView
 
 from apps.core.request_text import identifiant
 from apps.core.tenancy import get_request_school
+from apps.core.textes import sans_tiret
 from apps.documents.models import DocumentEvent, GeneratedDocument
 from apps.documents.services import create_document, issue_document, replace_document
 from apps.documents.templates_registry import (
@@ -413,7 +414,7 @@ class DocumentHistoryView(APIView):
                 "to_status": event.to_status,
                 "performed_by": (event.performed_by.get_full_name()
                                  if event.performed_by else None),
-                "detail": event.detail,
+                "detail": sans_tiret(event.detail),
                 "performed_at": event.performed_at,
             }
             for event in document.events.all()

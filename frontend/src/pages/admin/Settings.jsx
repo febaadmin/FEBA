@@ -262,7 +262,7 @@ export default function AdminSettings() {
   // ── Column defs ────────────────────────────────────────────────────────────
   const roomCols = [
     { key: "name",     label: t("Nom"),      accessor: "name" },
-    { key: "type",     label: t("Type"),     render: r => t(r.display_type || r.room_type_label || r.room_type || "—") },
+    { key: "type",     label: t("Type"),     render: r => t(r.display_type || r.room_type_label || r.room_type || "-") },
     { key: "capacity", label: t("Capacité"), accessor: "capacity" },
     {
       key: "status", label: t("Statut"),

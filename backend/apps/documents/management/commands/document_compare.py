@@ -103,7 +103,7 @@ class Command(BaseCommand):
             elif field.name == "student_name":
                 values[field.name] = "Exemple Comparaison"
             else:
-                values[field.name] = "—"
+                values[field.name] = "-"
         content = render_document(template.id, values,
                                   branding=get_branding_by_code(options["academy"]))
 
@@ -216,7 +216,7 @@ class Command(BaseCommand):
             handle.write("\n")
 
         self.stdout.write(self.style.MIGRATE_HEADING(
-            f"\nComparaison — {template.label}\n"
+            f"\nComparaison - {template.label}\n"
         ))
         self.stdout.write(
             f"  Fond original    : {template.background_path}\n"

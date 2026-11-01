@@ -54,7 +54,7 @@ class Command(BaseCommand):
             return
         try:
             message_id, state = provider.send(target, settings.SMS_FROM_NUMBER,
-                                              "FEBA — test de configuration SMS. Merci d'ignorer ce message.")
+                                              "FEBA - test de configuration SMS. Merci d'ignorer ce message.")
         except SmsProviderError as exc:
             self.stderr.write(self.style.ERROR(f"Envoi refusé : {exc}"))
             raise SystemExit(1)

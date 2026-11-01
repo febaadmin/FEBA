@@ -46,7 +46,7 @@ beforeEach(() => {
   schoolsAPI.list.mockResolvedValue({ data: ALL });
 });
 
-describe("Paramètres — académie active", () => {
+describe("Paramètres - académie active", () => {
   it("modifie l'académie sélectionnée, pas la première de la liste", async () => {
     ctx = { allEntitiesMode: false, activeEntity: { id: 2 } };
     renderPage();

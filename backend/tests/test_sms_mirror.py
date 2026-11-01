@@ -100,7 +100,7 @@ class SmsBaseMixin:
 class EncodingTests(TestCase):
     def test_gsm_et_unicode(self):
         self.assertEqual(encoding_of("Bonjour, réglez 150 000 FCFA avant le 30/09."), "GSM-7")
-        self.assertEqual(encoding_of("Échéance de l'élève : 1re tranche — merci"), "UCS-2")  # « — »
+        self.assertEqual(encoding_of("Échéance de l'élève : 1re tranche \u2014 merci"), "UCS-2")  # tiret cadratin hors GSM-7
         self.assertEqual(segment_count("a" * 160), 1)
         self.assertEqual(segment_count("a" * 161), 2)
         self.assertEqual(segment_count("ê" * 70), 1)
@@ -122,7 +122,7 @@ class EncodingTests(TestCase):
 
 @override_settings(**SMS_ON)
 class EmailMirrorTests(SmsBaseMixin, outbox.OutboxBase):
-    def send(self, to, text="Bonjour,\nRéunion jeudi 18 h — salle B.\nhttps://globalfeba.com/x", **kw):
+    def send(self, to, text="Bonjour,\nRéunion jeudi 18 h - salle B.\nhttps://globalfeba.com/x", **kw):
         with self.captureOnCommitCallbacks(execute=True):
             return send_tracked_email(purpose="test_mirror", to_email=to, subject="Objet",
                                       text_body=text, entity=self.a, **kw)
@@ -134,7 +134,7 @@ class EmailMirrorTests(SmsBaseMixin, outbox.OutboxBase):
         sent = self.twilio.sent[0]
         self.assertEqual(sent["to"], PARENT_PHONE)
         self.assertEqual(sent["from"], FROM)
-        self.assertEqual(sent["body"], "Bonjour,\nRéunion jeudi 18 h — salle B.\nhttps://globalfeba.com/x")
+        self.assertEqual(sent["body"], "Bonjour,\nRéunion jeudi 18 h - salle B.\nhttps://globalfeba.com/x")
         self.assertTrue(sent["auth"].startswith("Basic "))
         sms = SmsMessage.objects.get()
         self.assertEqual((sms.status, sms.email_delivery_id, sms.user_id), ("sent", d.pk, self.parent_a.pk))

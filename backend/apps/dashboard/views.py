@@ -143,7 +143,7 @@ class AdminDashboardView(APIView):
                 {
                     "id": p.id,
                     "student": p.student.get_full_name(),
-                    "student_class": p.student.current_class.name if p.student.current_class else "—",
+                    "student_class": p.student.current_class.name if p.student.current_class else "-",
                     "amount": safe_float(p.amount),
                     "amount_minor": p.amount_minor,
                     "currency": p.currency,
@@ -168,7 +168,7 @@ class AdminDashboardView(APIView):
                 {
                     "id": s.id,
                     "name": s.get_full_name(),
-                    "class": s.current_class.name if s.current_class else "—",
+                    "class": s.current_class.name if s.current_class else "-",
                     "matricule": s.matricule,
                     "enrollment_date": str(s.enrollment_date),
                 }
@@ -239,7 +239,7 @@ class TeacherDashboardView(APIView):
                 {
                     "id": c.id,
                     "name": c.name,
-                    "level": c.level.name if c.level else "—",
+                    "level": c.level.name if c.level else "-",
                     "student_count": Student.objects.filter(current_class=c, is_active=True).count(),
                 }
                 for c in my_classes.select_related("level")
@@ -340,10 +340,10 @@ class ParentDashboardView(APIView):
                 "last_name": child.last_name,
                 "matricule": child.matricule,
                 "gender": child.gender,
-                "class": child.current_class.name if child.current_class else "—",
+                "class": child.current_class.name if child.current_class else "-",
                 "class_id": child.current_class.id if child.current_class else None,
-                "level": child.current_class.level.name if child.current_class and child.current_class.level else "—",
-                "school_year": child.school_year.name if child.school_year else "—",
+                "level": child.current_class.level.name if child.current_class and child.current_class.level else "-",
+                "school_year": child.school_year.name if child.school_year else "-",
                 "average": safe_float(avg) if avg is not None else None,
                 "average_t1": safe_float(avg_t1) if avg_t1 is not None else None,
                 "average_t2": safe_float(avg_t2) if avg_t2 is not None else None,
@@ -452,10 +452,10 @@ class StudentDashboardView(APIView):
                 "first_name": student.first_name,
                 "last_name": student.last_name,
                 "matricule": student.matricule,
-                "class": student.current_class.name if student.current_class else "—",
+                "class": student.current_class.name if student.current_class else "-",
                 "class_id": student.current_class.id if student.current_class else None,
-                "level": student.current_class.level.name if student.current_class and student.current_class.level else "—",
-                "school_year": student.school_year.name if student.school_year else "—",
+                "level": student.current_class.level.name if student.current_class and student.current_class.level else "-",
+                "school_year": student.school_year.name if student.school_year else "-",
                 "gender": student.gender,
             },
             "kpis": {

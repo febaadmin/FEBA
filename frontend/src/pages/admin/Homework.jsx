@@ -79,7 +79,7 @@ export default function AdminHomework() {
           </a>
         ))}
       </div>
-    ) : "—" },
+    ) : "-" },
     { key: "due", label: t("Date limite"), render: r => (
       <span className={(new Date(r.due_date) < new Date()) ? "text-danger font-medium" : "text-slate-700"}>
         <CalendarClock className="w-3 h-3 inline mr-1" />{r.due_date}
@@ -124,11 +124,11 @@ export default function AdminHomework() {
             </div>
             <div className="space-y-3 text-sm">
               <div><span className="text-slate-500 font-medium">{t("Titre")}</span><p className="mt-0.5 text-slate-800 font-semibold">{viewItem.title}</p></div>
-              <div><span className="text-slate-500 font-medium">{t("Description")}</span><p className="mt-0.5 text-slate-700 text-longform">{viewItem.description || "—"}</p></div>
+              <div><span className="text-slate-500 font-medium">{t("Description")}</span><p className="mt-0.5 text-slate-700 text-longform">{viewItem.description || "-"}</p></div>
               <div className="grid grid-cols-2 gap-3">
-                <div><span className="text-slate-500 font-medium">{t("Classe")}</span><p className="mt-0.5">{viewItem.class_name || "—"}</p></div>
-                <div><span className="text-slate-500 font-medium">{t("Matière")}</span><p className="mt-0.5">{viewItem.subject_name || "—"}</p></div>
-                <div><span className="text-slate-500 font-medium">{t("Enseignant")}</span><p className="mt-0.5">{viewItem.teacher_name || "—"}</p></div>
+                <div><span className="text-slate-500 font-medium">{t("Classe")}</span><p className="mt-0.5">{viewItem.class_name || "-"}</p></div>
+                <div><span className="text-slate-500 font-medium">{t("Matière")}</span><p className="mt-0.5">{viewItem.subject_name || "-"}</p></div>
+                <div><span className="text-slate-500 font-medium">{t("Enseignant")}</span><p className="mt-0.5">{viewItem.teacher_name || "-"}</p></div>
                 <div><span className="text-slate-500 font-medium">{t("Date limite")}</span><p className={`mt-0.5 font-medium ${new Date(viewItem.due_date) < new Date() ? "text-danger" : "text-slate-700"}`}>{viewItem.due_date}</p></div>
               </div>
               {viewItem.attachments?.length > 0 && (

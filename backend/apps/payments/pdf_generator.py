@@ -178,7 +178,7 @@ def generate_receipt(payment):
                    alignment=1, textColor=statut_color, spaceAfter=6))
 
     # Référence
-    year_name = payment.school_year.name if payment.school_year else "—"
+    year_name = payment.school_year.name if payment.school_year else "-"
     # Heures dans le fuseau DE L'ACADÉMIE : `timezone.now().strftime()`
     # imprimait l'heure UTC (une heure de moins à Cotonou, cinq de plus que
     # New York).
@@ -217,9 +217,9 @@ def generate_receipt(payment):
     student_data = [
         ["Nom complet / Full Name:", P(student.get_full_name(), fontSize=9, leading=11, wordWrap="CJK")],
         ["Matricule / Student ID:", student.matricule],
-        ["Classe / Class:", student.current_class.name if student.current_class else "—"],
+        ["Classe / Class:", student.current_class.name if student.current_class else "-"],
         ["Niveau / Level:", (student.current_class.level.name
-                             if student.current_class and student.current_class.level else "—")],
+                             if student.current_class and student.current_class.level else "-")],
     ]
     try:
         link = student.parents.select_related("parent__user").first()
@@ -252,7 +252,7 @@ def generate_receipt(payment):
          P(amount_in_words(payment.amount, payment.currency),
            fontSize=9, leading=11, wordWrap="CJK")],
         ["Mode de paiement / Method:", payment.get_payment_method_display()],
-        ["Reçu par / Received by:", payment.received_by.get_full_name() if payment.received_by else "—"],
+        ["Reçu par / Received by:", payment.received_by.get_full_name() if payment.received_by else "-"],
         ["Statut / Status:", "Confirmé ✓" if confirmed else "En attente"],
     ]
     if getattr(payment, 'notes', None):

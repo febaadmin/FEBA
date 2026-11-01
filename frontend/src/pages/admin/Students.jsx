@@ -92,7 +92,7 @@ export default function AdminStudents() {
     value: c.id,
     label: selectedYearId
       ? `${c.name}${c.level_name ? ` (${c.level_name})` : ""}`
-      : `${c.name} — ${c.school_year_name || "?"}${c.level_name ? ` (${c.level_name})` : ""}`,
+      : `${c.name} - ${c.school_year_name || "?"}${c.level_name ? ` (${c.level_name})` : ""}`,
   }));
 
   // Changer d'année invalide la classe choisie si elle n'appartient plus à l'année
@@ -260,7 +260,7 @@ export default function AdminStudents() {
     <div className="space-y-6">
       <PageHeader
         title={t("Élèves")}
-        subtitle={t("{n} élève(s)", { n: students.length }) + " — " + (years.find(y => y.id === yearFilter)?.name || (yearFilter === "all" ? t("Toutes les années") : ""))}
+        subtitle={t("{n} élève(s)", { n: students.length }) + " - " + (years.find(y => y.id === yearFilter)?.name || (yearFilter === "all" ? t("Toutes les années") : ""))}
         action={
           <div className="flex items-center gap-2 flex-wrap justify-end">
             <button onClick={exportStudents} className="btn-secondary flex items-center gap-2 text-sm">
@@ -345,13 +345,13 @@ export default function AdminStudents() {
             <div className="space-y-0 text-sm divide-y divide-slate-100">
               {[
                 ["Genre",          viewItem.gender === "M" ? t("Masculin") : t("Féminin")],
-                ["Date naissance", viewItem.date_of_birth || "—"],
+                ["Date naissance", viewItem.date_of_birth || "-"],
                 ["Âge",            ageText(viewItem.age, viewItem.age_status)],
-                ["Niveau",         viewItem.class_level || "—"],
-                ["Classe",         viewItem.class_name || "—"],
-                ["Année scolaire", viewItem.school_year_name || "—"],
-                ["Adresse",        viewItem.address || "—"],
-                ["Inscription",    viewItem.enrollment_date || "—"],
+                ["Niveau",         viewItem.class_level || "-"],
+                ["Classe",         viewItem.class_name || "-"],
+                ["Année scolaire", viewItem.school_year_name || "-"],
+                ["Adresse",        viewItem.address || "-"],
+                ["Inscription",    viewItem.enrollment_date || "-"],
               ].map(([label, val]) => (
                 <div key={label} className="flex justify-between py-2">
                   <span className="text-slate-500">{label}</span>
@@ -561,7 +561,7 @@ export default function AdminStudents() {
                   <label className="label">{t("Classe source *")}</label>
                   <select {...re("class_id", { required: true })} className="input" style={{ minHeight: "2.5rem" }}>
                     <option value="">{t("Choisir une classe...")}</option>
-                    {classes.map(c => <option key={c.id} value={c.id}>{c.name}{c.level_name ? ` — ${c.level_name}` : ""}</option>)}
+                    {classes.map(c => <option key={c.id} value={c.id}>{c.name}{c.level_name ? ` - ${c.level_name}` : ""}</option>)}
                   </select>
                 </div>
               )}
@@ -590,7 +590,7 @@ export default function AdminStudents() {
                     : classes
                   ).map(c => (
                     <option key={c.id} value={c.id}>
-                      {c.name}{enrollTargetYear ? "" : ` — ${c.school_year_name || "?"}`}{c.level_name ? ` (${c.level_name})` : ""}
+                      {c.name}{enrollTargetYear ? "" : ` - ${c.school_year_name || "?"}`}{c.level_name ? ` (${c.level_name})` : ""}
                     </option>
                   ))}
                 </select>

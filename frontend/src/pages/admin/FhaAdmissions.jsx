@@ -69,7 +69,7 @@ function Badge({ children, tone = "bg-slate-100 text-slate-700" }) {
 function groupByAcademy(rows) {
   const groups = new Map();
   for (const row of rows) {
-    const code = row.entity_code || "—";
+    const code = row.entity_code || "-";
     if (!groups.has(code)) groups.set(code, []);
     groups.get(code).push(row);
   }
@@ -121,7 +121,7 @@ function downloadBlob(filename, data, mimetype) {
  * par qui le cherche déjà.
  */
 function EmailStatus({ state }) {
-  if (!state) return <span className="text-slate-400">—</span>;
+  if (!state) return <span className="text-slate-400">-</span>;
 
   if (state.status === "none") {
     return <Badge tone="bg-slate-100 text-slate-500">{t("Aucun envoi")}</Badge>;
@@ -568,7 +568,7 @@ function ApplicationTable({ rows, onOpen, onStatus, onSheet, onResend, pending, 
                   )}
                 </td>
                 <td className="py-2.5 pr-3 text-slate-500">
-                  {(row.recommended_group || row.suggested_group || "—").replace(/_/g, " ")}
+                  {(row.recommended_group || row.suggested_group || "-").replace(/_/g, " ")}
                 </td>
                 <td className="py-2.5 pr-3">
                   <div>{row.parent1_first_name} {row.parent1_last_name}</div>
@@ -675,7 +675,7 @@ function ApplicationDetail({ id, onClose }) {
           <Section title={t("Dossier")}>
             <Row label={t("Numéro")} value={row.reference} />
             <Row label={t("Académie")}
-                 value={`${row.entity_short_name || ""} [${row.entity_code || "—"}]`} />
+                 value={`${row.entity_short_name || ""} [${row.entity_code || "-"}]`} />
             <Row label={t("Statut")} value={row.status_display || row.status} />
             <Row label={t("Reçue le")} value={(row.created_at || "").slice(0, 16).replace("T", " ")} />
           </Section>
@@ -857,7 +857,7 @@ function ApplicationDetail({ id, onClose }) {
               <ul className="space-y-1.5">
                 {row.status_history.map((h, i) => (
                   <li key={i} className="text-xs text-slate-500 text-longform">
-                    {(h.created_at || "").slice(0, 16)} · {h.from_status || "—"} → {h.to_status}
+                    {(h.created_at || "").slice(0, 16)} · {h.from_status || "-"} → {h.to_status}
                     {h.changed_by && ` · ${h.changed_by}`}
                     {h.reason && ` · ${h.reason}`}
                   </li>
@@ -987,7 +987,7 @@ function PlacementTable({ rows, onSchedule }) {
                 <div className="text-slate-400 text-xs">{row.parent_email}</div>
               </td>
               <td className="py-2.5 pr-3 text-slate-500">
-                {row.preferred_date || "—"} {row.preferred_time || ""}
+                {row.preferred_date || "-"} {row.preferred_time || ""}
                 {row.parent_timezone && (
                   <div className="text-xs text-slate-400">{row.parent_timezone}</div>
                 )}

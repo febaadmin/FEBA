@@ -59,7 +59,7 @@ const LETTER_COLORS = {
 };
 
 function LetterBadge({ letter }) {
-  if (!letter) return <span className="text-gray-400">—</span>;
+  if (!letter) return <span className="text-gray-400">-</span>;
   const cls = LETTER_COLORS[letter] || "bg-gray-100 text-gray-700";
   return <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-bold ${cls}`}>{letter}</span>;
 }
@@ -299,7 +299,7 @@ export default function AdminGrades() {
 
   const cols = [
     { key: "student", label: t("Élève"),   render: r => r.student_name || r.student },
-    { key: "class",   label: t("Classe"),  render: r => r.student_class || r.class_name || "—" },
+    { key: "class",   label: t("Classe"),  render: r => r.student_class || r.class_name || "-" },
     { key: "subject", label: t("Matière"), render: r => r.subject_name || r.subject },
     { key: "period",  label: t("Période"), accessor: "period" },
     { key: "type",    label: t("Type"),    render: r => r.note_type_display || r.note_type },
@@ -614,7 +614,7 @@ export default function AdminGrades() {
                     ].map(({ label, value }) => (
                       <div key={label} className="flex justify-between py-1.5 border-b border-gray-50 text-sm">
                         <span className="text-gray-500">{label}</span>
-                        <span className="font-medium text-gray-800">{value || "—"}</span>
+                        <span className="font-medium text-gray-800">{value || "-"}</span>
                       </div>
                     ))}
                     <div className="flex justify-between py-1.5 border-b border-gray-50 text-sm">
@@ -686,8 +686,8 @@ export default function AdminGrades() {
                   <p className="text-blue-200 text-sm">{summary.class_name} : {selectedPeriod} : {summary.school_year}</p>
                 </div>
                 <div className="ml-auto text-right">
-                  <div className="text-2xl font-bold text-yellow-400">{summary.average ? `${parseFloat(summary.average).toFixed(2)}/20` : "—"}</div>
-                  <div className="text-blue-200 text-xs">{t("Rang")} : {summary.rank || "—"}</div>
+                  <div className="text-2xl font-bold text-yellow-400">{summary.average ? `${parseFloat(summary.average).toFixed(2)}/20` : "-"}</div>
+                  <div className="text-blue-200 text-xs">{t("Rang")} : {summary.rank || "-"}</div>
                 </div>
               </div>
               <table className="w-full">
@@ -712,7 +712,7 @@ export default function AdminGrades() {
                         }`}>{subj.language === 'en' ? 'EN' : subj.language === 'fr' ? 'FR' : 'BI'}</span>
                       </td>
                       <td className="px-4 py-2 text-center text-sm font-semibold text-gray-800">
-                        {subj.average != null ? `${parseFloat(subj.average).toFixed(2)}/20` : "—"}
+                        {subj.average != null ? `${parseFloat(subj.average).toFixed(2)}/20` : "-"}
                       </td>
                       <td className="px-4 py-2 text-center"><LetterBadge letter={subj.letter} /></td>
                       <td className="px-4 py-2 text-xs text-gray-500">
@@ -785,7 +785,7 @@ export default function AdminGrades() {
                           item.color === 'purple' ? 'text-purple-700' :
                           item.color === 'green' ? 'text-green-700' : 'text-blue-700'
                         }`}>
-                          {item.value != null ? parseFloat(item.value).toFixed(2) : "—"}
+                          {item.value != null ? parseFloat(item.value).toFixed(2) : "-"}
                         </div>
                         <div className="text-gray-500 text-sm mt-1">{item.label}</div>
                       </div>
@@ -813,17 +813,17 @@ export default function AdminGrades() {
                         return (
                           <tr key={per}>
                             <td className="px-4 py-2 font-medium text-gray-700">{per}</td>
-                            <td className="px-4 py-2 text-center text-blue-700">{td.fr_average != null ? parseFloat(td.fr_average).toFixed(2) : "—"}</td>
-                            <td className="px-4 py-2 text-center text-green-700">{td.en_average != null ? parseFloat(td.en_average).toFixed(2) : "—"}</td>
-                            <td className="px-4 py-2 text-center font-semibold text-purple-700">{td.bilingual_average != null ? parseFloat(td.bilingual_average).toFixed(2) : "—"}</td>
+                            <td className="px-4 py-2 text-center text-blue-700">{td.fr_average != null ? parseFloat(td.fr_average).toFixed(2) : "-"}</td>
+                            <td className="px-4 py-2 text-center text-green-700">{td.en_average != null ? parseFloat(td.en_average).toFixed(2) : "-"}</td>
+                            <td className="px-4 py-2 text-center font-semibold text-purple-700">{td.bilingual_average != null ? parseFloat(td.bilingual_average).toFixed(2) : "-"}</td>
                           </tr>
                         );
                       })}
                       <tr className="bg-yellow-50 font-bold">
                         <td className="px-4 py-2 text-gray-800">{t("ANNUELLE ★")}</td>
-                        <td className="px-4 py-2 text-center text-blue-800">{bilingual.annual?.fr_average != null ? parseFloat(bilingual.annual.fr_average).toFixed(2) : "—"}</td>
-                        <td className="px-4 py-2 text-center text-green-800">{bilingual.annual?.en_average != null ? parseFloat(bilingual.annual.en_average).toFixed(2) : "—"}</td>
-                        <td className="px-4 py-2 text-center text-purple-800 text-lg">{bilingual.annual?.bilingual_average != null ? parseFloat(bilingual.annual.bilingual_average).toFixed(2) : "—"}</td>
+                        <td className="px-4 py-2 text-center text-blue-800">{bilingual.annual?.fr_average != null ? parseFloat(bilingual.annual.fr_average).toFixed(2) : "-"}</td>
+                        <td className="px-4 py-2 text-center text-green-800">{bilingual.annual?.en_average != null ? parseFloat(bilingual.annual.en_average).toFixed(2) : "-"}</td>
+                        <td className="px-4 py-2 text-center text-purple-800 text-lg">{bilingual.annual?.bilingual_average != null ? parseFloat(bilingual.annual.bilingual_average).toFixed(2) : "-"}</td>
                       </tr>
                     </tbody>
                   </table>
@@ -871,7 +871,7 @@ export default function AdminGrades() {
                   <td className="px-4 py-2 text-slate-600">{g.subject_name}</td>
                   <td className="px-4 py-2 text-slate-500">{g.period}</td>
                   <td className="px-4 py-2 text-right font-mono text-red-700 line-through">{g.value}/20</td>
-                  <td className="px-4 py-2 text-slate-400 text-xs">{g.deleted_by_name || "—"}</td>
+                  <td className="px-4 py-2 text-slate-400 text-xs">{g.deleted_by_name || "-"}</td>
                   <td className="px-4 py-2">
                     <button onClick={() => restoreMut.mutate(g.id)}
                       className="px-2 py-1 rounded bg-green-100 text-green-700 text-xs hover:bg-green-200">{t("Restaurer")}</button>
@@ -931,7 +931,7 @@ export default function AdminGrades() {
                 {allHistRows.map(h => (
                   <tr key={h.id} className="hover:bg-gray-50">
                     <td className="px-4 py-2 text-xs text-gray-500 whitespace-nowrap">
-                      {h.changed_at ? new Date(h.changed_at).toLocaleString(dateLocale()) : "—"}
+                      {h.changed_at ? new Date(h.changed_at).toLocaleString(dateLocale()) : "-"}
                     </td>
                     <td className="px-4 py-2 font-medium text-gray-800">{h.student_name}</td>
                     <td className="px-4 py-2 text-gray-600">{h.subject_name}</td>
@@ -943,9 +943,9 @@ export default function AdminGrades() {
                         {h.action_display}
                       </span>
                     </td>
-                    <td className="px-4 py-2 text-center text-gray-500">{h.old_value != null ? `${parseFloat(h.old_value).toFixed(2)}/20` : "—"}</td>
-                    <td className="px-4 py-2 text-center font-semibold">{h.new_value != null ? `${parseFloat(h.new_value).toFixed(2)}/20` : "—"}</td>
-                    <td className="px-4 py-2 text-xs text-gray-500 max-w-[180px] truncate" title={h.justification}>{h.justification || "—"}</td>
+                    <td className="px-4 py-2 text-center text-gray-500">{h.old_value != null ? `${parseFloat(h.old_value).toFixed(2)}/20` : "-"}</td>
+                    <td className="px-4 py-2 text-center font-semibold">{h.new_value != null ? `${parseFloat(h.new_value).toFixed(2)}/20` : "-"}</td>
+                    <td className="px-4 py-2 text-xs text-gray-500 max-w-[180px] truncate" title={h.justification}>{h.justification || "-"}</td>
                     <td className="px-4 py-2 text-xs text-gray-500">{h.changed_by}</td>
                   </tr>
                 ))}
@@ -1077,11 +1077,11 @@ export default function AdminGrades() {
               <div className="grid grid-cols-2 gap-3 text-sm">
                 <div>
                   <span className="text-slate-500">{t("Ancienne valeur :")}</span>
-                  <span className="ml-1 font-semibold text-red-600">{h.old_value != null ? `${h.old_value}/20` : '—'}</span>
+                  <span className="ml-1 font-semibold text-red-600">{h.old_value != null ? `${h.old_value}/20` : '-'}</span>
                 </div>
                 <div>
                   <span className="text-slate-500">{t("Nouvelle valeur :")}</span>
-                  <span className="ml-1 font-semibold text-green-700">{h.new_value != null ? `${h.new_value}/20` : '—'}</span>
+                  <span className="ml-1 font-semibold text-green-700">{h.new_value != null ? `${h.new_value}/20` : '-'}</span>
                 </div>
               </div>
               {h.justification && (

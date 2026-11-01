@@ -98,7 +98,7 @@ def _refuser_service(request, exc, groupe):
     à trois heures du matin.
     """
     logger.exception(
-        "Limiteur de débit indisponible sur %s (%s) : %s — la requête est "
+        "Limiteur de débit indisponible sur %s (%s) : %s - la requête est "
         "REFUSÉE, le compteur ne peut pas être tenu.",
         getattr(request, "path", "?"), groupe, exc,
     )

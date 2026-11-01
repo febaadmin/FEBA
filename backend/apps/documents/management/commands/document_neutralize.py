@@ -52,7 +52,7 @@ class Command(BaseCommand):
         if not template.masks:
             self.stdout.write(
                 f"  Le gabarit « {template.id} » ne déclare aucune mention "
-                f"d'exemple à neutraliser. Rien à faire — le rendu utilisera "
+                f"d'exemple à neutraliser. Rien à faire - le rendu utilisera "
                 f"l'original."
             )
             return
@@ -97,7 +97,7 @@ class Command(BaseCommand):
             return int(round((mm_value - off_y) * height / draw_h))
 
         self.stdout.write(self.style.MIGRATE_HEADING(
-            f"\nNeutralisation — {template.label}\n"
+            f"\nNeutralisation - {template.label}\n"
         ))
 
         def band_median(y_center_mm, x0, x1):

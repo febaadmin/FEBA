@@ -36,7 +36,7 @@ describe("t / translate", () => {
   });
 });
 
-describe("tBoth (affichage bilingue simultané — page de connexion)", () => {
+describe("tBoth (affichage bilingue simultané - page de connexion)", () => {
   it("affiche « FR / EN »", () => {
     expect(tBoth("Connexion")).toBe("Connexion / Login");
     expect(tBoth("Mot de passe")).toBe("Mot de passe / Password");

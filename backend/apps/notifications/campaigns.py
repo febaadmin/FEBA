@@ -348,7 +348,7 @@ def enqueue_campaign(campaign_id):
 def _bodies(campaign):
     academy = campaign.academy
     footer = (
-        f"\n\n—\n{academy.name}\n"
+        f"\n\n-\n{academy.name}\n"
         "Message envoyé depuis la plateforme de gestion de l'académie. Merci de ne pas transférer "
         "ce message s'il contient des informations personnelles."
     )

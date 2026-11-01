@@ -33,7 +33,7 @@ describe("une académie active", () => {
   it("testete (présentielle) : un seul onglet, à son nom", () => {
     render(<AdminSchedule />);
     expect(tabs()).toHaveLength(1);
-    expect(tabs()[0].textContent).toMatch("Académie Évangélique Saint-Éloi de Natitingou — cours présentiels");
+    expect(tabs()[0].textContent).toMatch("Académie Évangélique Saint-Éloi de Natitingou - cours présentiels");
     expect(body()).not.toMatch(/FEBA/);
     expect(screen.getByTestId("campus-view")).toBeTruthy();
   });
@@ -43,7 +43,7 @@ describe("une académie active", () => {
     setCtx({ active: online, allowed: [online] });
     render(<AdminSchedule />);
     expect(tabs()).toHaveLength(1);
-    expect(tabs()[0].textContent).toMatch("Lycée Numérique du Zou — séances en ligne");
+    expect(tabs()[0].textContent).toMatch("Lycée Numérique du Zou - séances en ligne");
     expect(screen.getByTestId("online-view")).toBeTruthy();
   });
 
@@ -68,8 +68,8 @@ describe("« Toutes les Académies »", () => {
       expect(tabs()).toHaveLength(2);
       const campusTab = screen.getByTestId("schedule-tab-campus");
       const onlineTab = screen.getByTestId("schedule-tab-online");
-      expect(campusTab.textContent).toMatch(`Cours présentiels — ${campus.length} académie(s)`);
-      expect(onlineTab.textContent).toMatch(`Séances en ligne — ${online.length} académie(s)`);
+      expect(campusTab.textContent).toMatch(`Cours présentiels - ${campus.length} académie(s)`);
+      expect(onlineTab.textContent).toMatch(`Séances en ligne - ${online.length} académie(s)`);
       // Toutes les académies figurent dans l'info-bulle, même au-delà de 3.
       expect(campusTab.getAttribute("title").split(", ")).toHaveLength(campus.length);
       if (campus.length > 3) expect(campusTab.textContent).toMatch(`et ${campus.length - 3} autres`);

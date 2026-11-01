@@ -69,8 +69,8 @@ class Command(BaseCommand):
         if unknown:
             raise CommandError(f"Types inconnus : {', '.join(sorted(unknown))}")
         since = None if all else branding_changed_at(school)
-        self.stdout.write(f"Académie {school.code} — logo effectif modifié le {since or '—'}"
-                          f" — mode {'APPLICATION' if apply else 'APERÇU (rien n’est modifié)'}")
+        self.stdout.write(f"Académie {school.code} - logo effectif modifié le {since or '-'}"
+                          f" - mode {'APPLICATION' if apply else 'APERÇU (rien n’est modifié)'}")
         total_failed = 0
         for kind in kinds:
             items = list(getattr(self, f"_{kind}")(school))

@@ -302,7 +302,7 @@ class Command(BaseCommand):
             if academy is not None:
                 if academy_path is None:
                     report["anomalies"].append(
-                        f"{label} : aucun rattachement d'académie fiable — "
+                        f"{label} : aucun rattachement d'académie fiable - "
                         f"ignoré en mode --academy (nettoyé en mode global)."
                     )
                     continue
@@ -568,5 +568,5 @@ class Command(BaseCommand):
                 w(f"    ! {item}")
         w(f"  Statut         : {report['status']}")
         if report["mode"] == "dry-run":
-            w("  (simulation — aucune écriture effectuée)")
+            w("  (simulation - aucune écriture effectuée)")
         w("")

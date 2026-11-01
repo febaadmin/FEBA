@@ -77,7 +77,7 @@ class PaymentTransaction(models.Model):
 
     academy = models.ForeignKey(
         "schools.School", on_delete=models.PROTECT, related_name="payment_transactions",
-        help_text="Académie propriétaire — impose la devise.",
+        help_text="Académie propriétaire - impose la devise.",
     )
     payer = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
@@ -93,7 +93,7 @@ class PaymentTransaction(models.Model):
     )
     payment_type = models.CharField(
         max_length=15, default="mensualite",
-        help_text="Nature de la somme réglée — reprise sur le Payment créé.",
+        help_text="Nature de la somme réglée - reprise sur le Payment créé.",
     )
     fee_schedule = models.ForeignKey(
         "payments.FeeSchedule", on_delete=models.SET_NULL, null=True, blank=True,
@@ -129,7 +129,7 @@ class PaymentTransaction(models.Model):
     )
     provider_intent_id = models.CharField(
         max_length=255, blank=True, db_index=True,
-        help_text="Identifiant du PaymentIntent — clé du rapprochement.",
+        help_text="Identifiant du PaymentIntent - clé du rapprochement.",
     )
     provider_status = models.CharField(
         max_length=50, blank=True,
@@ -187,7 +187,7 @@ class PaymentTransaction(models.Model):
         ]
 
     def __str__(self):
-        return f"{self.provider} {self.reference} — {self.money.formatted()} — {self.status}"
+        return f"{self.provider} {self.reference} - {self.money.formatted()} - {self.status}"
 
     @property
     def reference(self):
@@ -249,7 +249,7 @@ class PaymentTransaction(models.Model):
                 paid_at=confirmed_at,
                 paid_at_source=Payment.PAID_AT_CARD,
                 received_by=None,
-                notes=f"Paiement par carte — {self.provider} {self.reference}",
+                notes=f"Paiement par carte - {self.provider} {self.reference}",
             )
             self.payment = payment
 

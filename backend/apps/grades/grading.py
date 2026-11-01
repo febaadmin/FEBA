@@ -125,7 +125,7 @@ def format_average(value, scale):
     """Rendu « 6.00/10 » ou « 12.00/20 » (dénominateur explicite)."""
     converted = convert_average_for_scale(value, scale)
     if converted is None:
-        return "—"
+        return "-"
     return f"{converted:.2f}/{int(Decimal(str(scale)))}"
 
 

@@ -2,7 +2,7 @@
   "academy_code": "FEBA",
   "school_year": "2026-2027",
   "currency": "XOF",
-  "source": "Affiche « Frais de scolarité 2026-2027 » — École Bilingue Foi & Excellence (fournie avec la demande de correction d'octobre 2026).",
+  "source": "Affiche « Frais de scolarité 2026-2027 » - École Bilingue Foi & Excellence (fournie avec la demande de correction d'octobre 2026).",
   "a_confirmer": [
     "L'affiche indique le MOIS de chaque tranche (septembre, novembre, janvier) mais pas le jour : ce fichier retient le dernier jour du mois. À confirmer par l'administration avant activation des relances.",
     "Les frais d'inscription (10 000 FCFA) n'ont pas de date sur l'affiche : échéance fixée au 30 septembre 2026, à confirmer.",
@@ -15,7 +15,7 @@
       "installments": [{"label": "Inscription", "due_date": "2026-09-30", "amount": 10000}]
     },
     {
-      "payment_type": "mensualite", "label": "Scolarité — Maternelle 1 & 2",
+      "payment_type": "mensualite", "label": "Scolarité - Maternelle 1 & 2",
       "levels": ["Maternelle 1", "Maternelle 2", "Maternelle I", "Maternelle II", "PS", "MS", "GS"],
       "mandatory": true, "mode": "split", "amount": 325900,
       "installments": [
@@ -25,7 +25,7 @@
       ]
     },
     {
-      "payment_type": "mensualite", "label": "Scolarité — CI & CP",
+      "payment_type": "mensualite", "label": "Scolarité - CI & CP",
       "levels": ["CI", "CP"],
       "mandatory": true, "mode": "split", "amount": 315500,
       "installments": [
@@ -35,7 +35,7 @@
       ]
     },
     {
-      "payment_type": "mensualite", "label": "Scolarité — CE1 & CE2",
+      "payment_type": "mensualite", "label": "Scolarité - CE1 & CE2",
       "levels": ["CE1", "CE2"],
       "mandatory": true, "mode": "split", "amount": 329800,
       "installments": [
@@ -45,7 +45,7 @@
       ]
     },
     {
-      "payment_type": "mensualite", "label": "Scolarité — CM1 & CM2",
+      "payment_type": "mensualite", "label": "Scolarité - CM1 & CM2",
       "levels": ["CM1", "CM2"],
       "mandatory": true, "mode": "split", "amount": 349500,
       "installments": [

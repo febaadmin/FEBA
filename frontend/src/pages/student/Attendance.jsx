@@ -14,7 +14,7 @@ export default function StudentAttendance() {
   const cols = [
     { key: "date", label: t("Date"), accessor: "date" },
     { key: "status", label: t("Statut"), accessor: "status", render: r => <StatusBadge status={r.status} /> },
-    { key: "justification", label: t("Justification"), accessor: "justification", render: r => r.justification || "—" },
+    { key: "justification", label: t("Justification"), accessor: "justification", render: r => r.justification || "-" },
   ];
 
   return (

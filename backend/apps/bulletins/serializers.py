@@ -13,7 +13,7 @@ class BulletinSerializer(TenantRelationsMixin, AcademyMetadataMixin, StudentAgeM
     academy_source = "student.school"
 
     student_name = serializers.CharField(source="student.get_full_name", read_only=True)
-    student_class = serializers.CharField(source="student.current_class.name", read_only=True, default="—")
+    student_class = serializers.CharField(source="student.current_class.name", read_only=True, default="-")
     school_year_name = serializers.CharField(source="school_year.name", read_only=True)
     period_label = serializers.CharField(source="get_period_display", read_only=True)
     pdf_url = serializers.SerializerMethodField()

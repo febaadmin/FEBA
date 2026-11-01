@@ -44,7 +44,7 @@ class Command(BaseCommand):
         orphans = buckets[ORPHELIN]
 
         self.stdout.write(self.style.MIGRATE_HEADING(
-            "Réparation des devises — corrections sûres uniquement"
+            "Réparation des devises - corrections sûres uniquement"
         ))
 
         if not safe:
@@ -77,13 +77,13 @@ class Command(BaseCommand):
         if ambiguous or orphans:
             self.stdout.write("")
             self.stdout.write(self.style.WARNING(
-                "REVUE MANUELLE REQUISE — non corrigés volontairement :"
+                "REVUE MANUELLE REQUISE - non corrigés volontairement :"
             ))
             for payment, expected in ambiguous:
                 money = Money(payment.amount_minor, payment.currency or DEFAULT_CURRENCY)
                 self.stdout.write(
                     f"  #{payment.pk:<5} {money.formatted():<16} enregistré en "
-                    f"{payment.currency}, académie attendue en {expected} — "
+                    f"{payment.currency}, académie attendue en {expected} - "
                     f"la valeur elle-même est peut-être à revoir."
                 )
             for payment, _ in orphans:

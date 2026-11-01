@@ -35,7 +35,7 @@ logger = logging.getLogger("apps")
 #: Marqueur d'absence de réponse. Une cellule vide se confond avec une
 #: rubrique qu'on aurait oublié d'imprimer ; le tiret dit « la question a
 #: été posée, la famille n'a pas répondu ».
-EMPTY = "—"
+EMPTY = "-"
 
 
 def _date(value, fmt="%d/%m/%Y"):

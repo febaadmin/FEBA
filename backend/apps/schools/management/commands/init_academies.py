@@ -121,7 +121,7 @@ class Command(BaseCommand):
                 "legal_name": "FEBA French Heritage Academy",
                 "slug": "feba-fha",
                 "entity_type": "online",
-                "address": "Programme 100 % en ligne — cours dispensés depuis FEBA, Cotonou, Bénin.",
+                "address": "Programme 100 % en ligne - cours dispensés depuis FEBA, Cotonou, Bénin.",
                 "city": "Cotonou",
                 "country": "Bénin",
                 "phone": official_phone(),
@@ -175,9 +175,9 @@ class Command(BaseCommand):
                 academy.curriculum_language_mode = School.CURRICULUM_BILINGUAL
                 academy.save(update_fields=["curriculum_language_mode"])
                 created_any = True
-                self.stdout.write(f"  Programme linguistique : bilingue — {academy.name}")
+                self.stdout.write(f"  Programme linguistique : bilingue - {academy.name}")
 
         created_any |= self._align_management_phones()
 
         if not created_any:
-            self.stdout.write("Aucune modification — les deux académies existaient déjà.")
+            self.stdout.write("Aucune modification - les deux académies existaient déjà.")

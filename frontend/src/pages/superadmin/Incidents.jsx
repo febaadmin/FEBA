@@ -55,7 +55,7 @@ const fmt = (value) =>
   value ? new Date(value).toLocaleString(dateLocale(), {
     day: "2-digit", month: "2-digit", year: "numeric",
     hour: "2-digit", minute: "2-digit",
-  }) : "—";
+  }) : "-";
 
 export default function SuperAdminIncidents() {
   const { id } = useParams();
@@ -240,14 +240,14 @@ export default function SuperAdminIncidents() {
                 ["Module", incident.module],
                 ["Action tentée", incident.attempted_action],
                 ["Route frontend", incident.frontend_route],
-                ["Utilisateur", incident.user_email ? `${incident.user_email} (${incident.user_role})` : "—"],
-                ["Établissement", incident.school_name || "—"],
+                ["Utilisateur", incident.user_email ? `${incident.user_email} (${incident.user_role})` : "-"],
+                ["Établissement", incident.school_name || "-"],
                 ["Environnement", incident.environment],
                 ["Première / dernière", `${fmt(incident.first_seen_at)} → ${fmt(incident.last_seen_at)}`],
               ].map(([label, value]) => (
                 <div key={label}>
                   <p className="text-[11px] uppercase tracking-wide text-slate-400 font-semibold">{t(label)}</p>
-                  <p className="text-slate-700 break-words">{value || "—"}</p>
+                  <p className="text-slate-700 break-words">{value || "-"}</p>
                 </div>
               ))}
             </div>

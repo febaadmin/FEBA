@@ -42,7 +42,7 @@ class Command(BaseCommand):
         secret = getattr(settings, "STRIPE_WEBHOOK_SECRET", "")
         if secret:
             self.stdout.write(self.style.SUCCESS(
-                "  ✓ Secret de signature configuré — les événements non signés "
+                "  ✓ Secret de signature configuré - les événements non signés "
                 "sont refusés."
             ))
         else:
@@ -61,7 +61,7 @@ class Command(BaseCommand):
             self.stdout.write(self.style.WARNING(
                 "  ⚠ Aucun événement reçu.\n"
                 "    Soit personne n'a payé, soit le prestataire n'atteint pas\n"
-                "    cette adresse — vérifiez qu'elle est publiquement joignable\n"
+                "    cette adresse - vérifiez qu'elle est publiquement joignable\n"
                 "    (en développement : « stripe listen --forward-to … »)."
             ))
         else:
@@ -93,7 +93,7 @@ class Command(BaseCommand):
             for attempt in stale[:10]:
                 self.stdout.write(
                     f"    · #{attempt.pk} {attempt.academy.code} "
-                    f"{attempt.money.formatted()} — {attempt.get_status_display()} "
+                    f"{attempt.money.formatted()} - {attempt.get_status_display()} "
                     f"(créée le {attempt.created_at:%d/%m/%Y %H:%M})"
                 )
             self.stdout.write(

@@ -45,7 +45,7 @@ beforeEach(() => {
   siteAPI.gallery.mockResolvedValue({ data: [] });
 });
 
-describe("Conformité V6.2 — fallback (siteDefaults)", () => {
+describe("Conformité V6.2 - fallback (siteDefaults)", () => {
   it("slide 1 du carrousel = campus-logo (panneau « Faith & Excellence »)", () => {
     expect(DEFAULT_SLIDES[0].image_src).toContain("campus-logo-");
   });
@@ -66,7 +66,7 @@ describe("Conformité V6.2 — fallback (siteDefaults)", () => {
   });
 });
 
-describe("Conformité V6.2 — Correction 1 (mosaïque d'accueil)", () => {
+describe("Conformité V6.2 - Correction 1 (mosaïque d'accueil)", () => {
   it("utilise campus-facade-logo et PAS l'ancienne vue campus-fresque", async () => {
     renderPage(<HomePage />);
     await waitFor(() => expect(hasSlug("campus-facade-logo")).toBe(true));
@@ -74,7 +74,7 @@ describe("Conformité V6.2 — Correction 1 (mosaïque d'accueil)", () => {
   });
 });
 
-describe("Conformité V6.2 — Correction 2 (À propos · La direction)", () => {
+describe("Conformité V6.2 - Correction 2 (À propos · La direction)", () => {
   it("« La direction » = photo au bureau (apropos-direction-2), pas le portrait serré", async () => {
     renderPage(<AboutPage />);
     await waitFor(() => expect(hasSlug("apropos-direction-2")).toBe(true));
@@ -90,7 +90,7 @@ describe("Conformité V6.2 — Correction 2 (À propos · La direction)", () => 
   });
 });
 
-describe("Conformité V6.2 — Correction 3 (Académique · cadrage)", () => {
+describe("Conformité V6.2 - Correction 3 (Académique · cadrage)", () => {
   it("bilingue-accompagnement présent avec un point focal descendu (têtes visibles)", async () => {
     renderPage(<AcademicsPage />);
     await waitFor(() => expect(hasSlug("bilingue-accompagnement")).toBe(true));
@@ -99,7 +99,7 @@ describe("Conformité V6.2 — Correction 3 (Académique · cadrage)", () => {
   });
 });
 
-describe("Conformité V6.2 — cohérence du registre", () => {
+describe("Conformité V6.2 - cohérence du registre", () => {
   it("les nouveaux slugs ont un point focal délibéré", () => {
     for (const slug of ["campus-facade-logo", "campus-devise", "apropos-direction-2"]) {
       expect(metaFor(`/site/img/${slug}-1600.webp`).position).toMatch(/^\d{1,3}% \d{1,3}%$/);

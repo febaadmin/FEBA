@@ -50,7 +50,7 @@ PDF_SUBSTITUTIONS = {
     "‑": "-",
 }
 
-EMPTY = "—"
+EMPTY = "-"
 
 
 def _safe(value):

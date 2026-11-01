@@ -49,10 +49,10 @@ export default function ParentPayments() {
     { key: "ref",     label: t("Référence"),  accessor: "reference_number" },
     { key: "student", label: t("Élève"),      accessor: "student_name" },
     ageColumn("student_age"),
-    { key: "type",    label: t("Type"),       render: r => t(r.payment_type_label || r.payment_type || "—") },
+    { key: "type",    label: t("Type"),       render: r => t(r.payment_type_label || r.payment_type || "-") },
     { key: "amount",  label: t("Montant"),    render: r =>
         <span className="font-bold text-success">{money.amountOf(r)}</span> },
-    { key: "method",  label: t("Mode"),       render: r => t(r.payment_method_label || r.payment_method || "—") },
+    { key: "method",  label: t("Mode"),       render: r => t(r.payment_method_label || r.payment_method || "-") },
     { key: "date",    label: t("Date et heure"), accessor: "paid_at_display", sortValue: paymentSortValue,
       render: r => <span className="whitespace-nowrap">{paymentDateTimeText(r)}</span> },
     // `is_confirmed = false` signifie ANNULÉ (annulation justifiée par
@@ -67,7 +67,7 @@ export default function ParentPayments() {
         ? <a href={r.receipt_url || r.receipt_file} target="_blank" rel="noreferrer"
              className="flex items-center gap-1 text-xs text-primary hover:underline font-medium">
             <Download className="w-3 h-3" />{t("PDF")}</a>
-        : <span className="text-xs text-slate-400">—</span>
+        : <span className="text-xs text-slate-400">-</span>
     },
   ];
 
@@ -75,7 +75,7 @@ export default function ParentPayments() {
     <div className="space-y-6">
       <PageHeader
         title={t("Paiements")}
-        subtitle={t("Total confirmé : {n}", { n: total }) + (activeYear ? ` — ${activeYear.name}` : "")}
+        subtitle={t("Total confirmé : {n}", { n: total }) + (activeYear ? ` - ${activeYear.name}` : "")}
       />
 
       {returnState === "succes" && (

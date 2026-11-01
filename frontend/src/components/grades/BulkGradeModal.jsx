@@ -228,7 +228,7 @@ export default function BulkGradeModal({
                 <div className="col-span-2 lg:col-span-1 flex items-center">
                   <span className="lg:hidden label mr-2">{t("Appréciation")}</span>
                   <span className={`text-xs font-semibold ${appr ? "text-feba-navy" : "text-slate-300"}`}>
-                    {appr ? t(appr) : "—"}
+                    {appr ? t(appr) : "-"}
                   </span>
                 </div>
                 <div className="col-span-2 lg:col-span-1 flex gap-1 justify-end lg:justify-start">

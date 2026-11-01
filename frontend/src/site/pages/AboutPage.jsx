@@ -68,14 +68,14 @@ export default function AboutPage() {
               )}
             </p>
             <p className="mt-3 leading-relaxed">
-              <strong className="text-feba-navy">{t("Notre mission", "Our mission")}</strong>{" — "}
+              <strong className="text-feba-navy">{t("Notre mission", "Our mission")}</strong>{" - "}
               {t(
                 "révéler le potentiel de chaque élève et lui donner les outils pour réussir, en français comme en anglais.",
                 "to reveal every pupil's potential and give them the tools to succeed, in French as well as in English.",
               )}
             </p>
             <p className="mt-3 leading-relaxed">
-              <strong className="text-feba-navy">{t("Notre vision", "Our vision")}</strong>{" — "}
+              <strong className="text-feba-navy">{t("Notre vision", "Our vision")}</strong>{" - "}
               {t(
                 "une génération d'enfants enracinés dans leurs valeurs, fiers de leur culture et ouverts sur le monde.",
                 "a generation of children rooted in their values, proud of their culture and open to the world.",

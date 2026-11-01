@@ -151,7 +151,7 @@ class Command(BaseCommand):
             f"motif écrit.")
         for probleme in problemes:
             self.stdout.write(self.style.ERROR(
-                f"  ✗ {probleme['vue']} ({probleme['modele']}) — "
+                f"  ✗ {probleme['vue']} ({probleme['modele']}) - "
                 f"{probleme['motif']}\n     route : {probleme['chemin']}"))
 
         if not problemes:

@@ -198,7 +198,7 @@ class MonthlyStudentReport(models.Model):
         ]
 
     def __str__(self):
-        return f"{self.reference or '(sans référence)'} — {self.student}"
+        return f"{self.reference or '(sans référence)'} - {self.student}"
 
     # ── Identité ─────────────────────────────────────────────────────
 
@@ -349,4 +349,4 @@ class MonthlyReportAttempt(models.Model):
 
     def __str__(self):
         etat = "réussie" if self.succeeded else "échouée"
-        return f"{self.report_id} — tentative {etat} le {self.attempted_at:%d/%m/%Y %H:%M}"
+        return f"{self.report_id} - tentative {etat} le {self.attempted_at:%d/%m/%Y %H:%M}"

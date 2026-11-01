@@ -165,7 +165,7 @@ export default function FhaPage() {
   return (
     <>
       <Seo
-        title={`${FHA_NAME} — ${FHA_TAGLINE}`}
+        title={`${FHA_NAME} - ${FHA_TAGLINE}`}
         description={
           lang === "fr"
             ? "FEBA French Heritage Academy : programme de français en ligne, culture et héritage africains pour les enfants de la diaspora aux États-Unis, au Canada et ailleurs."
@@ -574,7 +574,7 @@ export default function FhaPage() {
                   {y.year}
                 </span>
                 <h3 className="text-lg font-bold text-feba-navy">
-                  {lang === "fr" ? `Année ${y.year} — ` : `Year ${y.year} — `}
+                  {lang === "fr" ? `Année ${y.year} - ` : `Year ${y.year} - `}
                   {L(y.title)}
                 </h3>
               </div>
@@ -759,7 +759,7 @@ export default function FhaPage() {
               <p className="text-sm leading-relaxed">
                 {program.annual_fee} {program.currency}
                 {program.installments_allowed
-                  ? ` — ${program.installments_allowed}`
+                  ? ` - ${program.installments_allowed}`
                   : ""}
               </p>
             ) : (

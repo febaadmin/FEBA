@@ -2,7 +2,7 @@
   "id": "diploma_feba_fha",
   "version": 1,
   "label": "Diplôme FEBA French Heritage Academy",
-  "description": "Diplôme de fin de cycle de l'académie en ligne — fond verrouillé propre à FEBA FHA, seuls les champs variables sont rendus.",
+  "description": "Diplôme de fin de cycle de l'académie en ligne - fond verrouillé propre à FEBA FHA, seuls les champs variables sont rendus.",
   "background": {
     "file": "diplome_feba_fha.png",
     "directory": "sources/feba_fha",
@@ -10,7 +10,7 @@
     "width_px": 1492,
     "height_px": 1054,
     "original_filename": "diplome_feba_fha.png",
-    "_commentaire": "Visuel officiel de FEBA French Heritage Academy, transmis par le dépôt Git (branche feba-fha-assets, commit 9841977). L'empreinte ci-dessus est celle du fichier reçu et fait autorité : elle est vérifiée au démarrage, et un fond remplacé — même par une version visuellement identique mais ré-encodée — fait refuser la production plutôt que de sortir un document altéré sans prévenir.",
+    "_commentaire": "Visuel officiel de FEBA French Heritage Academy, transmis par le dépôt Git (branche feba-fha-assets, commit 9841977). L'empreinte ci-dessus est celle du fichier reçu et fait autorité : elle est vérifiée au démarrage, et un fond remplacé - même par une version visuellement identique mais ré-encodée - fait refuser la production plutôt que de sortir un document altéré sans prévenir.",
     "_commentaire_academie": "Ce fond porte « FRENCH HERITAGE ACADEMY ». Il ne doit JAMAIS servir à un élève de l'école de Cotonou, et le fond de Cotonou ne doit jamais servir ici : le document sortirait au nom de l'une et à l'effigie de l'autre.",
     "date_integration": "2026-08-02",
     "academie_proprietaire": "FEBA_FHA",
@@ -23,7 +23,7 @@
     "width_mm": 297.0,
     "height_mm": 210.0,
     "fit": "contain",
-    "_commentaire_fit": "Rapport d'aspect du fond 1492/1054 = 1,41556 contre 1,41429 pour l'A4 paysage. Le fond occupe 297,00 × 209,81 mm, centré, avec 0,095 mm de bande en haut et en bas. L'étirer déplacerait chaque élément d'environ 0,1 mm — la moitié de la tolérance."
+    "_commentaire_fit": "Rapport d'aspect du fond 1492/1054 = 1,41556 contre 1,41429 pour l'A4 paysage. Le fond occupe 297,00 × 209,81 mm, centré, avec 0,095 mm de bande en haut et en bas. L'étirer déplacerait chaque élément d'environ 0,1 mm - la moitié de la tolérance."
   },
   "origin": "top-left",
   "_commentaire_origin": "Millimètres depuis le coin SUPÉRIEUR gauche. 1 px = 0,19906 mm dans les deux axes (1492 px pour 297 mm).",
@@ -99,10 +99,10 @@
       "truncate": false,
       "_commentaire_couleur": "Or moyen relevé sur la mention d'exemple du fond (moyenne des pixels dorés du bloc y 653–685).",
       "_commentaire_boite": "Largeur volontairement inférieure à celle de la règle (143,13 mm) : un nom qui touche les extrémités du trait paraît à l'étroit.",
-      "_commentaire_alignement": "vertical_align=bottom : la ligne de base se pose au bas de la zone, donc juste au-dessus de la règle d'écriture — comme une signature manuscrite.",
+      "_commentaire_alignement": "vertical_align=bottom : la ligne de base se pose au bas de la zone, donc juste au-dessus de la règle d'écriture - comme une signature manuscrite.",
       "bleed_mm": 3.0,
       "_commentaire_debord": "Les jambages descendants (« p », « g », « j ») passent sous la ligne de base et franchissent la règle d'écriture. Ce débord appartient à la zone VARIABLE : sans lui, la comparaison compterait le jambage d'un nom comme une altération du fond.",
-      "_commentaire_lignes": "DEUX lignes autorisées. Un patronyme composé de la diaspora dépasse couramment soixante-dix caractères : sur une seule ligne il ne tient pas, et refuser de produire n'est pas un service rendu à l'élève. Le repli est calculé par apps/documents/textfit.py à partir des métriques réelles de la police — boîte englobante du dessin de chaque lettre — et non d'une estimation du type « hauteur = corps × 0,75 », qui se trompait de 30 % et faisait remonter la première ligne sur la phrase gravée dans le fond.",
+      "_commentaire_lignes": "DEUX lignes autorisées. Un patronyme composé de la diaspora dépasse couramment soixante-dix caractères : sur une seule ligne il ne tient pas, et refuser de produire n'est pas un service rendu à l'élève. Le repli est calculé par apps/documents/textfit.py à partir des métriques réelles de la police - boîte englobante du dessin de chaque lettre - et non d'une estimation du type « hauteur = corps × 0,75 », qui se trompait de 30 % et faisait remonter la première ligne sur la phrase gravée dans le fond.",
       "_commentaire_plafond": "Le haut de la zone est pose SOUS la phrase « Ce diplome est fierement decerne a », dont le fond occupe les pixels y 606-612 (120,6-121,8 mm). Le bas ne bouge pas : avec vertical_align=bottom, la ligne unique se pose exactement au meme endroit qu'avant. Seul le repli sur deux lignes gagne un plafond, et cesse de mordre sur la phrase.",
       "safe_zone": {
         "y_top_mm": 126.5,
@@ -112,7 +112,7 @@
         "engraved_phrase_bottom_mm": 125.9,
         "writing_rule_top_mm": 143.62,
         "_mesure": "MESURÉ sur le fond réellement dessiné, pas estimé. Bord inférieur de la phrase gravée « Ce diplôme est fièrement décerné à » : px y 605–631, soit 125.9 mm ; dégagement 0.6 mm. Bord supérieur de la règle d'écriture : px y 721–723, soit 143.62 mm ; dégagement 1.0 mm. La règle s'étend de 84.0 à 215.58 mm : le nom reste à l'intérieur du trait sur lequel il est écrit.",
-        "_commande": "manage.py document_calibrate --template <id> — la commande réimprime ces nombres depuis le fond installé et échoue si le fond a bougé."
+        "_commande": "manage.py document_calibrate --template <id> - la commande réimprime ces nombres depuis le fond installé et échoue si le fond a bougé."
       },
       "line_spacing": 1.0,
       "baseline_reserve_em": 0.23
@@ -137,7 +137,7 @@
       },
       "color": "#1E3A6E",
       "format": "%d/%m/%Y",
-      "_commentaire_ancre": "MESURÉ sur le fond FEBA FHA par « manage.py document_analyze » : règle d'écriture px y 923–924, soit 183.83 mm, x 1157–1308 px. Le bas de la boîte est la ligne de base, posée 0.6 mm au-dessus du trait — même convention que le fond de Cotonou. Les coordonnées précédentes venaient de ce fond-là : sur celui-ci, les trois règles sont à la même hauteur, et les signatures flottaient huit millimètres au-dessus de la leur. CORRECTION APRÈS INSPECTION VISUELLE : ce fond pose un FLEURON centré AU-DESSUS de chaque trait, px y 901–922, haut de 4,4 mm et large de 15,9 mm — exactement sous le texte centré. Calée sur le trait (183,23 mm), la signature traversait l'ornement. La ligne d'écriture utile est le SOMMET du fleuron, 179.45 mm, moins 0,5 mm de dégagement. Le fond de Cotonou n'a pas ce motif : ses ornements sont aux extrémités du trait, pas au milieu."
+      "_commentaire_ancre": "MESURÉ sur le fond FEBA FHA par « manage.py document_analyze » : règle d'écriture px y 923–924, soit 183.83 mm, x 1157–1308 px. Le bas de la boîte est la ligne de base, posée 0.6 mm au-dessus du trait - même convention que le fond de Cotonou. Les coordonnées précédentes venaient de ce fond-là : sur celui-ci, les trois règles sont à la même hauteur, et les signatures flottaient huit millimètres au-dessus de la leur. CORRECTION APRÈS INSPECTION VISUELLE : ce fond pose un FLEURON centré AU-DESSUS de chaque trait, px y 901–922, haut de 4,4 mm et large de 15,9 mm - exactement sous le texte centré. Calée sur le trait (183,23 mm), la signature traversait l'ornement. La ligne d'écriture utile est le SOMMET du fleuron, 179.45 mm, moins 0,5 mm de dégagement. Le fond de Cotonou n'a pas ce motif : ses ornements sont aux extrémités du trait, pas au milieu."
     },
     {
       "name": "director_name",
@@ -159,7 +159,7 @@
       },
       "color": "#1E3A6E",
       "_commentaire": "Rendu UNIQUEMENT si aucune signature officielle n'est disponible. Un nom dactylographié n'est pas une signature et ne prétend pas l'être.",
-      "_commentaire_ancre": "MESURÉ sur le fond FEBA FHA par « manage.py document_analyze » : règle d'écriture px y 923–924, soit 183.83 mm, x 295–550 px. Le bas de la boîte est la ligne de base, posée 0.6 mm au-dessus du trait — même convention que le fond de Cotonou. Les coordonnées précédentes venaient de ce fond-là : sur celui-ci, les trois règles sont à la même hauteur, et les signatures flottaient huit millimètres au-dessus de la leur. CORRECTION APRÈS INSPECTION VISUELLE : ce fond pose un FLEURON centré AU-DESSUS de chaque trait, px y 901–922, haut de 4,4 mm et large de 15,9 mm — exactement sous le texte centré. Calée sur le trait (183,23 mm), la signature traversait l'ornement. La ligne d'écriture utile est le SOMMET du fleuron, 179.45 mm, moins 0,5 mm de dégagement. Le fond de Cotonou n'a pas ce motif : ses ornements sont aux extrémités du trait, pas au milieu."
+      "_commentaire_ancre": "MESURÉ sur le fond FEBA FHA par « manage.py document_analyze » : règle d'écriture px y 923–924, soit 183.83 mm, x 295–550 px. Le bas de la boîte est la ligne de base, posée 0.6 mm au-dessus du trait - même convention que le fond de Cotonou. Les coordonnées précédentes venaient de ce fond-là : sur celui-ci, les trois règles sont à la même hauteur, et les signatures flottaient huit millimètres au-dessus de la leur. CORRECTION APRÈS INSPECTION VISUELLE : ce fond pose un FLEURON centré AU-DESSUS de chaque trait, px y 901–922, haut de 4,4 mm et large de 15,9 mm - exactement sous le texte centré. Calée sur le trait (183,23 mm), la signature traversait l'ornement. La ligne d'écriture utile est le SOMMET du fleuron, 179.45 mm, moins 0,5 mm de dégagement. Le fond de Cotonou n'a pas ce motif : ses ornements sont aux extrémités du trait, pas au milieu."
     },
     {
       "name": "teacher_name",
@@ -180,7 +180,7 @@
         "min_size_pt": 7
       },
       "color": "#1E3A6E",
-      "_commentaire_ancre": "MESURÉ sur le fond FEBA FHA par « manage.py document_analyze » : règle d'écriture px y 923–924, soit 183.83 mm, x 893–1082 px. Le bas de la boîte est la ligne de base, posée 0.6 mm au-dessus du trait — même convention que le fond de Cotonou. Les coordonnées précédentes venaient de ce fond-là : sur celui-ci, les trois règles sont à la même hauteur, et les signatures flottaient huit millimètres au-dessus de la leur. CORRECTION APRÈS INSPECTION VISUELLE : ce fond pose un FLEURON centré AU-DESSUS de chaque trait, px y 901–922, haut de 4,4 mm et large de 15,9 mm — exactement sous le texte centré. Calée sur le trait (183,23 mm), la signature traversait l'ornement. La ligne d'écriture utile est le SOMMET du fleuron, 179.45 mm, moins 0,5 mm de dégagement. Le fond de Cotonou n'a pas ce motif : ses ornements sont aux extrémités du trait, pas au milieu."
+      "_commentaire_ancre": "MESURÉ sur le fond FEBA FHA par « manage.py document_analyze » : règle d'écriture px y 923–924, soit 183.83 mm, x 893–1082 px. Le bas de la boîte est la ligne de base, posée 0.6 mm au-dessus du trait - même convention que le fond de Cotonou. Les coordonnées précédentes venaient de ce fond-là : sur celui-ci, les trois règles sont à la même hauteur, et les signatures flottaient huit millimètres au-dessus de la leur. CORRECTION APRÈS INSPECTION VISUELLE : ce fond pose un FLEURON centré AU-DESSUS de chaque trait, px y 901–922, haut de 4,4 mm et large de 15,9 mm - exactement sous le texte centré. Calée sur le trait (183,23 mm), la signature traversait l'ornement. La ligne d'écriture utile est le SOMMET du fleuron, 179.45 mm, moins 0,5 mm de dégagement. Le fond de Cotonou n'a pas ce motif : ses ornements sont aux extrémités du trait, pas au milieu."
     },
     {
       "name": "document_number",
@@ -221,7 +221,7 @@
       "cover": {
         "color": "#F7EFE0"
       },
-      "_commentaire": "Le blason est INCRUSTÉ dans le fond. Tant qu'aucun logo n'est téléversé et activé, rien n'est apposé : le visuel officiel reste intact. Dès qu'un logo est activé, la zone mesurée du blason (pixels relevés sur le fond, échelle 0,199 mm/px) est recouverte de la couleur du papier, puis le logo actif y est apposé — un document ne sort jamais avec l'ancien logo."
+      "_commentaire": "Le blason est INCRUSTÉ dans le fond. Tant qu'aucun logo n'est téléversé et activé, rien n'est apposé : le visuel officiel reste intact. Dès qu'un logo est activé, la zone mesurée du blason (pixels relevés sur le fond, échelle 0,199 mm/px) est recouverte de la couleur du papier, puis le logo actif y est apposé - un document ne sort jamais avec l'ancien logo."
     },
     {
       "name": "director_signature",

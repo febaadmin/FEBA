@@ -122,9 +122,9 @@ function StatusTab() {
           <dt className="text-slate-500">{t("Interrupteur serveur")}</dt><dd>{status.global_enabled ? t("Activé") : t("Désactivé")}</dd>
           <dt className="text-slate-500">{t("Serveur SMTP")}</dt><dd>{status.smtp_configured ? t("Configuré") : t("Non configuré")}</dd>
           <dt className="text-slate-500">{t("Dernière planification")}</dt>
-          <dd>{status.last_beat_run ? `${formatDateTime(status.last_beat_run.started_at)} — ${t(status.last_beat_run.status_display)}` : "—"}</dd>
+          <dd>{status.last_beat_run ? `${formatDateTime(status.last_beat_run.started_at)} - ${t(status.last_beat_run.status_display)}` : "-"}</dd>
           <dt className="text-slate-500">{t("Dernier envoi réel")}</dt>
-          <dd>{status.last_run ? formatDateTime(status.last_run.started_at) : "—"}</dd>
+          <dd>{status.last_run ? formatDateTime(status.last_run.started_at) : "-"}</dd>
         </dl>
       </section>
 
@@ -237,9 +237,9 @@ function PreviewTab() {
                   <td className="py-2 pr-3 whitespace-nowrap font-semibold">{r.outstanding_display}</td>
                   <td className="py-2 pr-3"><Badge tone={DUE_TONE[r.status]}>{t(r.status_label)}</Badge>
                     {r.blockers.map((b) => <div key={b} className="text-xs text-red-600 mt-1">{b}</div>)}</td>
-                  <td className="py-2 pr-3 whitespace-nowrap">{r.days_overdue ? t("{n} j", { n: r.days_overdue }) : "—"}</td>
+                  <td className="py-2 pr-3 whitespace-nowrap">{r.days_overdue ? t("{n} j", { n: r.days_overdue }) : "-"}</td>
                   <td className="py-2 pr-3 text-xs">
-                    {r.planned_reminders.length === 0 ? "—" : r.planned_reminders.map((p) => (
+                    {r.planned_reminders.length === 0 ? "-" : r.planned_reminders.map((p) => (
                       <div key={p.email}>{t("Relance n°{n}", { n: p.level })} → {p.recipient}</div>
                     ))}
                   </td>
@@ -409,7 +409,7 @@ function ArrangementsModal({ fee, onClose }) {
   });
   const delMut = useMutation({ mutationFn: feeSchedulesAPI.deleteArrangement, onSuccess: refresh, onError: (e) => toast.error(extractApiError(e)) });
   return (
-    <Modal open onClose={onClose} title={`${t("Élèves")} — ${fee.label || t(fee.payment_type_label)}`} size="lg">
+    <Modal open onClose={onClose} title={`${t("Élèves")} - ${fee.label || t(fee.payment_type_label)}`} size="lg">
       <div className="space-y-4 text-sm">
         <form className="grid grid-cols-2 gap-2" onSubmit={(e) => { e.preventDefault(); addMut.mutate(); }}>
           <select className="input col-span-2" required value={form.student} onChange={(e) => setForm({ ...form, student: e.target.value })}>

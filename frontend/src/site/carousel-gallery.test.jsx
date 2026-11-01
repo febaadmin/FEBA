@@ -28,7 +28,7 @@ function wrap(ui) {
   );
 }
 
-describe("HeroCarousel — jamais d'image statique", () => {
+describe("HeroCarousel - jamais d'image statique", () => {
   it("aucune slide administrée → 5 slides de repli (pas un hero figé)", () => {
     wrap(<HeroCarousel slides={[]} />);
     // Les 5 thèmes de repli sont présents comme onglets (indicateurs).
@@ -64,7 +64,7 @@ describe("HeroCarousel — jamais d'image statique", () => {
   });
 });
 
-describe("GalleryPage — jamais vide", () => {
+describe("GalleryPage - jamais vide", () => {
   beforeEach(() => vi.clearAllMocks());
 
   it("API vide → albums de repli (médias packagés)", async () => {
@@ -101,7 +101,7 @@ describe("GalleryPage — jamais vide", () => {
   });
 });
 
-describe("siteDefaults — cohérence", () => {
+describe("siteDefaults - cohérence", () => {
   it("5 slides de repli, chacun avec image, titre, CTA et focal", () => {
     expect(DEFAULT_SLIDES).toHaveLength(5);
     for (const s of DEFAULT_SLIDES) {

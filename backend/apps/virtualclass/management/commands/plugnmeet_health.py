@@ -13,7 +13,7 @@ class Command(BaseCommand):
         from apps.virtualclass.plugnmeet import health
 
         result = health()
-        self.stdout.write(f"plugNmeet : {result['status']} — {result['server_url'] or '(non configuré)'}")
+        self.stdout.write(f"plugNmeet : {result['status']} - {result['server_url'] or '(non configuré)'}")
         for check in result["checks"]:
             style = self.style.SUCCESS if check["ok"] else self.style.ERROR
             self.stdout.write(style(f"  [{'OK' if check['ok'] else 'KO'}] {check['name']} : {check['detail']}"))

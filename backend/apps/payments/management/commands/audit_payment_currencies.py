@@ -107,7 +107,7 @@ class Command(BaseCommand):
             return
 
         self.stdout.write(self.style.MIGRATE_HEADING(
-            f"Audit des devises — {total} paiement(s)"
+            f"Audit des devises - {total} paiement(s)"
         ))
 
         for situation in (ORPHELIN, AMBIGU, AFFICHAGE, CONFORME):
@@ -131,11 +131,11 @@ class Command(BaseCommand):
             for payment, expected in rows[:50]:
                 academy = getattr(getattr(payment, "student", None), "school", None)
                 money = Money(payment.amount_minor, payment.currency or DEFAULT_CURRENCY)
-                auto = "oui" if situation == AFFICHAGE else "NON — revue manuelle"
+                auto = "oui" if situation == AFFICHAGE else "NON - revue manuelle"
                 self.stdout.write(
-                    f"  {payment.pk:<5} {(academy.code if academy else '—'):<12} "
-                    f"{money.formatted():<18} {(payment.currency or '—'):<16} "
-                    f"{(expected or '—'):<16} {auto}"
+                    f"  {payment.pk:<5} {(academy.code if academy else '-'):<12} "
+                    f"{money.formatted():<18} {(payment.currency or '-'):<16} "
+                    f"{(expected or '-'):<16} {auto}"
                 )
             if len(rows) > 50:
                 self.stdout.write(f"  … et {len(rows) - 50} de plus (utilisez --format=csv)")

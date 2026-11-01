@@ -30,14 +30,14 @@ class Command(BaseCommand):
         self.stdout.write(self.style.MIGRATE_HEADING("\nConfiguration d'envoi EFFECTIVE\n"))
         self.stdout.write(f"  Transport Django : {config['transport_backend']}")
         self.stdout.write(f"  Qualification    : {config['transport_display']}")
-        self.stdout.write(f"  Hôte:port        : {config['host'] or '—'}:{config['port']}")
+        self.stdout.write(f"  Hôte:port        : {config['host'] or '-'}:{config['port']}")
         self.stdout.write(f"  TLS / SSL        : {config['use_tls']} / {config['use_ssl']}")
         self.stdout.write(f"  Utilisateur      : {config['user'] or '(aucun)'}")
         self.stdout.write(f"  Mot de passe     : {'défini (masqué)' if config['password_set'] else 'vide'}")
-        self.stdout.write(f"  Expéditeur       : {config['default_from'] or '—'}")
+        self.stdout.write(f"  Expéditeur       : {config['default_from'] or '-'}")
         self.stdout.write(f"  Délai max        : {config['timeout']} s")
         for row in config["academy_senders"]:
-            self.stdout.write(f"  Expéditeur {row['code'] or '—'} : {row['from'] or 'aucun'}")
+            self.stdout.write(f"  Expéditeur {row['code'] or '-'} : {row['from'] or 'aucun'}")
         self.stdout.write("")
         self.stdout.write(config["explanation"])
         if config["capture_ui_url"]:
@@ -60,7 +60,7 @@ class Command(BaseCommand):
         from apps.notifications.mailer import send_tracked_email
 
         delivery = send_tracked_email(
-            purpose="email_check", to_email=target, subject="Test de configuration — FEBA",
+            purpose="email_check", to_email=target, subject="Test de configuration - FEBA",
             text_body=("Ce message confirme que la configuration d'envoi fonctionne.\n"
                        "Si vous le recevez, le serveur peut joindre son fournisseur."),
             html_body="<p>Ce message confirme que la configuration d'envoi fonctionne.</p>",

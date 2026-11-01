@@ -31,8 +31,8 @@ export default function ParentBulletins() {
     { key: "year",    label: t("Année"), accessor: "school_year_name" },
     { key: "avg",     label: t("Moyenne"), render: r => r.average
         ? <span className="font-bold text-primary">{parseFloat(r.average).toFixed(2)}/20</span>
-        : "—" },
-    { key: "appreciation", label: t("Appréciation"), accessor: "appreciation", render: r => r.appreciation ? t(r.appreciation) : "—" },
+        : "-" },
+    { key: "appreciation", label: t("Appréciation"), accessor: "appreciation", render: r => r.appreciation ? t(r.appreciation) : "-" },
     { key: "pdf", label: t("PDF"), accessor: "pdf_url", sortable: false,
       render: r => (r.pdf_url || r.pdf_file)
         ? <a href={r.pdf_url || r.pdf_file} target="_blank" rel="noreferrer"

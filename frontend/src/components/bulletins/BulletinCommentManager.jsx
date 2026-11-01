@@ -275,7 +275,7 @@ export default function BulletinCommentManager({ open, onClose, initial = {} }) 
             bulletin?.pdf_url ? "bg-slate-50" : "bg-amber-50 border border-amber-200 text-amber-800"}`}
             data-testid="bulletin-state">
             {bulletin?.pdf_url ? (
-              <span>{t("Bulletin généré le")} {bulletin.generated_at ? new Date(bulletin.generated_at).toLocaleString() : "—"}</span>
+              <span>{t("Bulletin généré le")} {bulletin.generated_at ? new Date(bulletin.generated_at).toLocaleString() : "-"}</span>
             ) : (
               <span>
                 {t("Bulletin pas encore généré : le commentaire est enregistré et sera imprimé à la génération.")}
@@ -356,7 +356,7 @@ export default function BulletinCommentManager({ open, onClose, initial = {} }) 
         {confirming && preview && (
           <div className="border border-amber-300 bg-amber-50 rounded-xl p-3 text-sm space-y-2" data-testid="confirm-box">
             <p>
-              {action === "clear_comment" ? t("Supprimer le commentaire") : t("Appliquer le commentaire")} —
+              {action === "clear_comment" ? t("Supprimer le commentaire") : t("Appliquer le commentaire")} -
               {" "}<strong>{scopeLabel}</strong> : {t("{n} bulletin(s) existant(s)", { n: preview.existing_bulletins })}
               {createMissing && action === "set_comment"
                 ? `, ${t("{n} bulletin(s) à créer", { n: preview.missing_with_grades })}` : ""}.

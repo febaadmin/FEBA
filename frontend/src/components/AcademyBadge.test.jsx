@@ -20,7 +20,7 @@ describe("AcademyBadge", () => {
   });
 
   it("sans abréviation : le nom ; nom long tronqué, complet en info-bulle", () => {
-    const long = "Académie Évangélique Saint-Éloi de Natitingou — Programme Francophone";
+    const long = "Académie Évangélique Saint-Éloi de Natitingou - Programme Francophone";
     render(<AcademyBadge code="TESTETE" name={long} />);
     const text = screen.getByText(long);
     expect(text.className).toMatch(/truncate/);

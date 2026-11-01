@@ -220,7 +220,7 @@ class PaymentSerializer(AcademyMetadataMixin, StudentAgeMixin, serializers.Model
     def get_student_class(self, obj):
         if obj.student.current_class:
             return obj.student.current_class.name
-        return "—"
+        return "-"
 
     def get_received_by_name(self, obj):
         return obj.received_by.get_full_name() if obj.received_by else ""

@@ -100,7 +100,7 @@ class FHAEnrollmentCreateView(APIView):
         application = create_application(serializer)
 
         logger.info(
-            "FEBA FHA — fiche d'inscription enregistrée (dossier %s, groupe "
+            "FEBA FHA - fiche d'inscription enregistrée (dossier %s, groupe "
             "suggéré %s)",
             application.reference, application.suggested_group or "à déterminer",
         )

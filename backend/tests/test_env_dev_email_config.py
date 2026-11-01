@@ -54,7 +54,7 @@ class EnvDevExampleMailpitDefaultTests(SimpleTestCase):
             self.values.get("EMAIL_BACKEND"),
             "django.core.mail.backends.smtp.EmailBackend",
             "EMAIL_BACKEND doit pointer vers SMTP (Mailpit), pas vers le "
-            "backend console — sinon tout envoi échoue par conception dès "
+            "backend console - sinon tout envoi échoue par conception dès "
             "l'installation, alors que Mailpit tourne déjà pour ça.",
         )
 

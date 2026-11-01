@@ -71,12 +71,12 @@ export default function AdminSchedule() {
   const tabs = available.map((type) => {
     const { icon, what, hint } = TYPE_TEXT[type];
     if (!isAllAcademies) {
-      return { key: type, icon, label: `${nameOf(activeAcademy)} — ${what}`, hint };
+      return { key: type, icon, label: `${nameOf(activeAcademy)} - ${what}`, hint };
     }
     const list = byType[type];
     return {
       key: type, icon,
-      label: `${what.charAt(0).toUpperCase()}${what.slice(1)} — ${t("{n} académie(s)", { n: list.length })}`,
+      label: `${what.charAt(0).toUpperCase()}${what.slice(1)} - ${t("{n} académie(s)", { n: list.length })}`,
       hint: academyList(list),
       title: list.map(nameOf).join(", "),
     };

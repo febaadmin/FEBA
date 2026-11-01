@@ -93,13 +93,13 @@ class Command(BaseCommand):
                 matched_levels.update(level.pk for level in targets)
                 if not targets:
                     self.stdout.write(self.style.WARNING(
-                        f"  ! « {spec['label']} » : aucun niveau reconnu parmi {spec['levels']} — ignoré."
+                        f"  ! « {spec['label']} » : aucun niveau reconnu parmi {spec['levels']} - ignoré."
                     ))
                     continue
             for level in targets:
                 actions.append((spec, level, rows))
 
-        self.stdout.write(f"Académie : {academy.name} — année {year.name} — devise {academy.currency_code}")
+        self.stdout.write(f"Académie : {academy.name} - année {year.name} - devise {academy.currency_code}")
         for spec, level, rows in actions:
             existing = FeeSchedule.objects.filter(
                 academy=academy, payment_type=spec["payment_type"], school_year=year, level=level,

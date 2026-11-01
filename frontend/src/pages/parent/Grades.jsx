@@ -135,15 +135,15 @@ export default function ParentGrades() {
     { key: "period",  label: t("Période"),     accessor: "period_label" },
     { key: "value",   label: t("Note"),        render: r => <span className={noteColor(r.value)}>{r.value}/20</span> },
     { key: "coeff",   label: t("Coeff"),       accessor: "subject_coefficient" },
-    { key: "appr",    label: t("Appréciation"),accessor: "appreciation", render: r => r.appreciation ? t(r.appreciation) : "—" },
-    { key: "comment", label: t("Commentaire"), render: r => r.comment || "—" },
+    { key: "appr",    label: t("Appréciation"),accessor: "appreciation", render: r => r.appreciation ? t(r.appreciation) : "-" },
+    { key: "comment", label: t("Commentaire"), render: r => r.comment || "-" },
   ];
 
   return (
     <div className="space-y-6">
       <PageHeader
         title={t("Notes de mes enfants")}
-        subtitle={t("{n} note(s)", { n: grades.length }) + (activeYear ? ` — ${activeYear.name}` : "")}
+        subtitle={t("{n} note(s)", { n: grades.length }) + (activeYear ? ` - ${activeYear.name}` : "")}
       />
 
       {/* ── Filtres ────────────────────────────────────────────────────────── */}

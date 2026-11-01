@@ -44,7 +44,7 @@ class FeeSchedule(models.Model):
 
     academy = models.ForeignKey(
         "schools.School", on_delete=models.CASCADE, related_name="fee_schedules",
-        help_text="Académie qui publie ce tarif — impose la devise.",
+        help_text="Académie qui publie ce tarif - impose la devise.",
     )
     school_year = models.ForeignKey(
         "schools.SchoolYear", on_delete=models.CASCADE, null=True, blank=True,

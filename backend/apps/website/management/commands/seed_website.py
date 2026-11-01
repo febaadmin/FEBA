@@ -29,8 +29,8 @@ from apps.website.models import (
 EN = {
     # Slides du carrousel
     "Bienvenue à FEBA": "Welcome to FEBA",
-    "Faith & Excellence Bilingual Academy — école bilingue à Akpakpa, Cotonou.":
-        "Faith & Excellence Bilingual Academy — a bilingual school in Akpakpa, Cotonou.",
+    "Faith & Excellence Bilingual Academy - école bilingue à Akpakpa, Cotonou.":
+        "Faith & Excellence Bilingual Academy - a bilingual school in Akpakpa, Cotonou.",
     "Découvrir l'école": "Discover the school",
     "Grandir dans l'excellence": "Growing in excellence",
     "Un encadrement de qualité, des valeurs et un suivi personnalisé.":
@@ -90,7 +90,7 @@ EN = {
     "Jeux dans la cour": "Playground games",
     "Marelle en maternelle": "Hopscotch in kindergarten",
     "Le bâtiment principal": "The main building",
-    "Façade FEBA — logo et fresques": "FEBA frontage — logo and murals",
+    "Façade FEBA - logo et fresques": "FEBA frontage - logo and murals",
     "La devise de l'école": "The school motto",
     "La cour de récréation": "The playground",
     "La crèche FEBA": "The FEBA crèche",
@@ -127,7 +127,7 @@ IMG = "/site/img/{}-1600.webp"
 HERO_SLIDES = [
     {
         "order": 1, "title": "Bienvenue à FEBA",
-        "subtitle": "Faith & Excellence Bilingual Academy — école bilingue à Akpakpa, Cotonou.",
+        "subtitle": "Faith & Excellence Bilingual Academy - école bilingue à Akpakpa, Cotonou.",
         "cta_label": "Découvrir l'école", "cta_url": "/a-propos",
         # V6.1 : bâtiment principal avec panneau « Faith & Excellence » lisible.
         "image_path": IMG.format("campus-logo"),
@@ -258,7 +258,7 @@ ALBUMS = [
     # au logo/fresques et la façade à la devise. Ordre identique au fallback.
     ("Notre campus", "Les espaces de l'école à Akpakpa.", [
         ("campus-logo", "Le bâtiment principal"),
-        ("campus-facade-logo", "Façade FEBA — logo et fresques"),
+        ("campus-facade-logo", "Façade FEBA - logo et fresques"),
         ("campus-devise", "La devise de l'école"),
         ("campus-cour", "La cour de récréation"),
     ]),

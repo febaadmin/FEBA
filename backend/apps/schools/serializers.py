@@ -89,7 +89,7 @@ class LevelSerializer(TenantRelationsMixin, AcademyMetadataMixin, serializers.Mo
     # P3 : chaque objet expose son académie, sans quoi la vue
     # « Toutes les Académies » ne peut pas étiqueter ses lignes.
     academy_source = "school"
-    school_name = serializers.CharField(source='school.name', read_only=True, default='—')
+    school_name = serializers.CharField(source='school.name', read_only=True, default='-')
 
     class Meta:
         model = Level
@@ -246,7 +246,7 @@ class SchoolPlatformSerializer(SchoolSerializer):
                 labels = dict(Level.CYCLE_CHOICES)
                 raise serializers.ValidationError({'academy_type': (
                     f"Type refusé : {len(conflicts)} niveau(x) portent un cycle qu'il n'admet pas ("
-                    + ", ".join(f"{lvl.name} — {labels.get(lvl.cycle, lvl.cycle)}" for lvl in conflicts[:6])
+                    + ", ".join(f"{lvl.name} - {labels.get(lvl.cycle, lvl.cycle)}" for lvl in conflicts[:6])
                     + "). Corrigez ou déplacez ces niveaux d'abord : sinon leurs bulletins "
                       "seraient notés sur le mauvais barème.")})
         if instance is not None and 'curriculum_language_mode' in attrs:
@@ -316,7 +316,7 @@ class SchoolYearSerializer(AcademyMetadataMixin, serializers.ModelSerializer):
     # P3 : chaque objet expose son académie, sans quoi la vue
     # « Toutes les Académies » ne peut pas étiqueter ses lignes.
     academy_source = "school"
-    school_name = serializers.CharField(source='school.name', read_only=True, default='—')
+    school_name = serializers.CharField(source='school.name', read_only=True, default='-')
 
     class Meta:
         model = SchoolYear

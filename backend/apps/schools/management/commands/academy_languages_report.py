@@ -32,14 +32,14 @@ class Command(BaseCommand):
                 else:
                     conflicts += 1
                     self.stdout.write(self.style.WARNING(
-                        f"{line} — {len(diagnostic['subjects'])} matière(s) hors programme, "
+                        f"{line} - {len(diagnostic['subjects'])} matière(s) hors programme, "
                         f"{diagnostic['grades']} note(s) rattachée(s) (conservées)"))
                 continue
             pending += 1
             languages = Subject.objects.filter(school=school).values_list("language", flat=True)
             tracks = Class.objects.filter(school_year__school=school).values_list("language_track", flat=True)
             suggestion, reason = classify_curriculum(languages, tracks, allows_monolingual(school))
-            hint = f" — proposition : {labels[suggestion]}" if suggestion else ""
+            hint = f" - proposition : {labels[suggestion]}" if suggestion else ""
             self.stdout.write(self.style.WARNING(f"  {code:<18} À CONFIGURER : {reason}{hint}"))
         if pending or conflicts:
             self.stdout.write(self.style.WARNING(

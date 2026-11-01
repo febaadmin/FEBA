@@ -99,7 +99,7 @@ class FiveDossiersSheetDownloadTests(TestCase):
                               f"ne correspond pas au fichier stocké pour ce dossier")
             self.assertNotIn(digest, seen_hashes,
                               f"le document de {application.reference} est identique "
-                              f"à celui d'un dossier précédent — c'est le bug signalé")
+                              f"à celui d'un dossier précédent - c'est le bug signalé")
             seen_hashes.add(digest)
 
     def test_chaque_nom_de_fichier_porte_sa_propre_reference(self):

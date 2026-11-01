@@ -109,10 +109,10 @@ class EmailCampaignRecipient(models.Model):
         (SENT, "Remis au serveur de messagerie"),
         (RETRY, "Nouvel essai programmé"),
         (FAILED, "Échec"),
-        (SKIPPED_NO_EMAIL, "Ignoré — aucune adresse"),
-        (SKIPPED_INVALID, "Ignoré — adresse invalide"),
-        (SKIPPED_INACTIVE, "Ignoré — compte inactif"),
-        (SKIPPED_DUPLICATE, "Ignoré — adresse en double"),
+        (SKIPPED_NO_EMAIL, "Ignoré - aucune adresse"),
+        (SKIPPED_INVALID, "Ignoré - adresse invalide"),
+        (SKIPPED_INACTIVE, "Ignoré - compte inactif"),
+        (SKIPPED_DUPLICATE, "Ignoré - adresse en double"),
     ]
     SKIPPED = {SKIPPED_NO_EMAIL, SKIPPED_INVALID, SKIPPED_INACTIVE, SKIPPED_DUPLICATE}
     RETRYABLE = {FAILED, RETRY}
@@ -149,7 +149,7 @@ class EmailCampaignRecipient(models.Model):
         indexes = [models.Index(fields=["campaign", "status"])]
 
     def __str__(self):
-        return f"{self.campaign_id} → {self.email or '—'} [{self.status}]"
+        return f"{self.campaign_id} → {self.email or '-'} [{self.status}]"
 
     @property
     def tracking_reference(self):

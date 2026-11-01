@@ -96,7 +96,7 @@ def appreciation_for(value, max_value=20, *, academy=None, cycle=None,
     donnée invalide est refusée, jamais traduite en appréciation trompeuse.
     """
     if value is None:
-        return '—'
+        return '-'
     try:
         v = Decimal(str(value))
         m = Decimal(str(max_value))

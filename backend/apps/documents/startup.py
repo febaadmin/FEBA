@@ -132,7 +132,7 @@ def _sample_values(template):
         elif field.name == "student_name":
             values[field.name] = "Contrôle Démarrage"
         else:
-            values[field.name] = "—"
+            values[field.name] = "-"
     return values
 
 
@@ -198,13 +198,13 @@ def log_startup_report():
     failures = [r for r in results if not r.ok]
     if failures:
         logger.warning(
-            "Documents officiels — %d contrôle(s) en échec : %s",
+            "Documents officiels - %d contrôle(s) en échec : %s",
             len(failures),
             " | ".join(f"{r.name} : {r.detail}" for r in failures),
         )
     else:
         logger.info(
-            "Documents officiels — %d contrôles passés, émission possible.",
+            "Documents officiels - %d contrôles passés, émission possible.",
             len(results),
         )
     return results

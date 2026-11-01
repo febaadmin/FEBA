@@ -62,7 +62,7 @@ def notify_superadmins(incident):
                 type="announcement",  # canal interne existant (cloche)
                 title=f"Incident technique {incident.reference}",
                 message=(
-                    f"{incident.exception_type or 'Erreur serveur'} — "
+                    f"{incident.exception_type or 'Erreur serveur'} - "
                     f"{incident.endpoint or incident.module or 'application'}"
                 ),
                 # Le clic ouvre l'INCIDENT, pas la page Annonces.

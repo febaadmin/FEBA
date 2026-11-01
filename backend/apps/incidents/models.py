@@ -147,7 +147,7 @@ class TechnicalIncident(models.Model):
         ]
 
     def __str__(self):
-        return f"{self.reference} — {self.exception_type or 'Erreur'}"
+        return f"{self.reference} - {self.exception_type or 'Erreur'}"
 
     def save(self, *args, **kwargs):
         if not self.reference:

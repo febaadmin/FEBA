@@ -300,7 +300,7 @@ export default function VirtualRooms() {
               <div>
                 <label className="label">{t("Matière")}</label>
                 <select {...register("subject")} className="input">
-                  <option value="">—</option>
+                  <option value="">-</option>
                   {subjects.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
                 </select>
               </div>
@@ -403,7 +403,7 @@ function RecordingsModal({ room, onClose }) {
     }
   };
   return (
-    <Modal open onClose={onClose} title={`${t("Enregistrements")} — ${room.name}`}>
+    <Modal open onClose={onClose} title={`${t("Enregistrements")} - ${room.name}`}>
       {isLoading ? (
         <p className="text-slate-400 text-sm">{t("Chargement…")}</p>
       ) : error ? (
