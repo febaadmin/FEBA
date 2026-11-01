@@ -2,6 +2,7 @@ from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
+from apps.core.request_text import liste_identifiants
 from apps.accounts.permissions import IsAdminOrReadOnly
 from apps.core.tenancy import get_request_school, IsSameTenant
 from apps.schools.academic_year import scope_to_active_year
@@ -152,8 +153,8 @@ class ClassViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=["post"], url_path="bulk-delete")
     def bulk_delete(self, request, *args, **kwargs):
         """FIX v37 — même garde en masse : seules les classes SANS dépendances sont supprimées."""
-        ids = request.data.get("ids", [])
-        if not ids or not isinstance(ids, list):
+        ids = liste_identifiants(request.data.get("ids", []))
+        if not ids:
             return Response({"error": "ids list required"}, status=400)
         deleted, blocked = 0, []
         for cls in self.get_queryset().filter(id__in=ids):
@@ -176,6 +177,12 @@ class ClassViewSet(viewsets.ModelViewSet):
     def students(self, request, pk=None):
         from apps.students.serializers import StudentSerializer
         cls = self.get_object()
+        # Fiches d'élèves : l'administration et les enseignants de la classe seulement.
+        user = request.user
+        if user.role_level < 80:
+            enseignant = getattr(user, "teacher_profile", None) if user.is_teacher() else None
+            if enseignant is None or not enseignant.classes.filter(pk=cls.pk).exists():
+                return Response({"detail": "Accès refusé."}, status=403)
         students = cls.students.filter(is_active=True).select_related("user", "school_year", "school")
         return Response(StudentSerializer(students, many=True).data)
 
