@@ -2797,4 +2797,13 @@ export const EN = {
   "Rejoindre à nouveau": "Join again",
   "Retour à l'accueil": "Back to home",
   "Chargement": "Loading",
+  "Correctif développé": "Fix developed",
+  "Correctif testé automatiquement": "Fix covered by automated tests",
+  "Correctif testé localement": "Fix tested locally",
+  "Correctif testé en production": "Fix tested in production",
+  "Parcours réel validé par l'utilisateur concerné": "Real flow validated by the user concerned",
+  "Niveaux de validation": "Validation levels",
+  "Manquant": "Missing",
+  "Preuve": "Evidence",
+  "Enregistrer les validations": "Save validations",
 };

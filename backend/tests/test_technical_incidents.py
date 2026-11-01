@@ -14,6 +14,7 @@ from rest_framework.permissions import AllowAny
 from rest_framework.test import APIClient
 
 from apps.accounts.models import CustomUser
+from apps.incidents.models import NIVEAUX_VALIDATION
 from apps.incidents.models import (
     TechnicalIncident, build_fingerprint, sanitize_data, sanitize_text,
 )
@@ -212,6 +213,8 @@ class IncidentTreatmentTests(IncidentFixture):
         self.assertEqual(self.incident.resolution_notes, "Analyse en cours")
 
     def test_resolution_puis_reouverture(self):
+        self.incident.validations = {n: {"fait": True, "preuve": "preuve"} for n in NIVEAUX_VALIDATION}
+        self.incident.save(update_fields=["validations"])
         resp = self.client_sa.post(f"{URL}{self.incident.id}/resolve/",
                                    {"resolution_notes": "Corrigé en V8"}, format="json")
         self.assertEqual(resp.status_code, status.HTTP_200_OK, resp.data)
@@ -253,7 +256,7 @@ class IncidentResolvedAtTests(IncidentFixture):
         incident = report_incident(ValueError("boum"), module="grades")
         client = self.as_(self.superadmin)
         resp = client.patch(f"/api/incidents/{incident.id}/",
-                            {"status": "resolved"}, format="json")
+                            {"status": "resolved", "validations": {n: {"fait": True, "preuve": "preuve"} for n in NIVEAUX_VALIDATION}}, format="json")
         self.assertEqual(resp.status_code, 200, resp.data)
         incident.refresh_from_db()
         self.assertEqual(incident.status, "resolved")
@@ -263,7 +266,7 @@ class IncidentResolvedAtTests(IncidentFixture):
     def test_reouverture_efface_la_date(self):
         incident = report_incident(ValueError("boum"), module="grades")
         client = self.as_(self.superadmin)
-        client.patch(f"/api/incidents/{incident.id}/", {"status": "resolved"}, format="json")
+        client.patch(f"/api/incidents/{incident.id}/", {"status": "resolved", "validations": {n: {"fait": True, "preuve": "preuve"} for n in NIVEAUX_VALIDATION}}, format="json")
         client.patch(f"/api/incidents/{incident.id}/", {"status": "reopened"}, format="json")
         incident.refresh_from_db()
         self.assertEqual(incident.status, "reopened")

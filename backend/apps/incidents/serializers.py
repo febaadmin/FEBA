@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from .models import IncidentStatusEvent, TechnicalIncident
+from .models import NIVEAUX_VALIDATION, IncidentStatusEvent, TechnicalIncident, validations_manquantes
 
 
 class TechnicalIncidentListSerializer(serializers.ModelSerializer):
@@ -32,20 +32,41 @@ class TechnicalIncidentDetailSerializer(TechnicalIncidentListSerializer):
     status_events = IncidentStatusEventSerializer(many=True, read_only=True)
     assigned_to_email = serializers.CharField(source="assigned_to.email",
                                               read_only=True, default=None)
+    validations_manquantes = serializers.SerializerMethodField()
 
     class Meta(TechnicalIncidentListSerializer.Meta):
         fields = TechnicalIncidentListSerializer.Meta.fields + [
             "environment", "frontend_route", "message", "location",
             "attempted_action", "context_data", "user_agent", "app_version",
             "release", "fingerprint", "assigned_to", "assigned_to_email",
-            "resolution_notes", "resolved_at", "status_events",
+            "resolution_notes", "resolved_at", "status_events", "validations", "validations_manquantes",
         ]
         # Seuls le traitement (statut, assignation, notes) est modifiable :
         # les données techniques de l'incident restent immuables.
         read_only_fields = [
             f for f in fields
-            if f not in {"status", "assigned_to", "resolution_notes", "severity"}
+            if f not in {"status", "assigned_to", "resolution_notes", "severity", "validations"}
         ]
+
+    def get_validations_manquantes(self, obj):
+        return validations_manquantes(obj)
+
+    def validate_validations(self, value):
+        if not isinstance(value, dict) or set(value) - set(NIVEAUX_VALIDATION):
+            raise serializers.ValidationError("Niveau de validation inconnu.")
+        for niveau in value.values():
+            if not isinstance(niveau, dict) or not isinstance(niveau.get("fait"), bool) \
+                    or not isinstance(niveau.get("preuve", ""), str):
+                raise serializers.ValidationError("Chaque niveau indique « fait » et « preuve ».")
+        return value
+
+    def validate(self, attrs):
+        if attrs.get("status") == "resolved" and (self.instance is None or self.instance.status != "resolved"):
+            brouillon = TechnicalIncident(validations=attrs.get("validations", self.instance.validations))
+            manque = validations_manquantes(brouillon)
+            if manque:
+                raise serializers.ValidationError({"status": f"Validations manquantes : {', '.join(manque)}."})
+        return attrs
 
     def update(self, instance, validated_data):
         """Tient `resolved_at` à jour quel que soit le chemin employé.
