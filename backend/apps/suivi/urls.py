@@ -14,4 +14,5 @@ router.register("plans", views.PlanViewSet, basename="suivi-plan")
 router.register("actions", views.ActionViewSet, basename="suivi-action")
 router.register("eleves", views.EleveViewSet, basename="suivi-eleve")
 router.register("parametres", views.ParametresViewSet, basename="suivi-parametres")
+router.register("activation", views.ActivationViewSet, basename="suivi-activation")
 urlpatterns = router.urls

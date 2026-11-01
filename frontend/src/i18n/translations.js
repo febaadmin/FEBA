@@ -3071,4 +3071,8 @@ export const EN = {
   "Évaluation de fin de formation": "End-of-course assessment",
   "Évaluation de positionnement": "Placement assessment",
   "Évaluation diagnostique": "Diagnostic assessment",
+  "Modules pédagogiques": "Learning modules",
+  "Accès des élèves et des parents au suivi": "Student and parent access to learning progress",
+  "Enregistré. Rechargez la page pour voir le menu mis à jour.": "Saved. Reload the page to see the updated menu.",
+  "Désactivés par défaut. Ouvrir l'accès des familles publie le suivi validé aux élèves et aux parents.": "Off by default. Opening family access publishes validated progress to students and parents.",
 };

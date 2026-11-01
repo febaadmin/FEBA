@@ -92,6 +92,7 @@ const AdminPayments = lazy(() => import("../pages/admin/Payments"));
 const AdminCardTransactions = lazy(() => import("../pages/admin/CardTransactions"));
 const AdminOfficialDocuments = lazy(() => import("../pages/admin/OfficialDocuments"));
 const AdminDocumentTemplates = lazy(() => import("../pages/admin/DocumentTemplates"));
+const ModulesPedagogiques = lazy(() => import("../pages/superadmin/ModulesPedagogiques"));
 const EvalEpreuves = lazy(() => import("../pages/shared/evaluations/Epreuves"));
 const EvalBanque = lazy(() => import("../pages/shared/evaluations/Banque"));
 const EvalDetail = lazy(() => import("../pages/shared/evaluations/EpreuveDetail"));
@@ -380,6 +381,7 @@ export default function AppRouter() {
             backend refuse toute autre académie, l'entrée de menu ne fait
             que suivre. */}
         <Route path="monthly-reports" element={<FeatureGate feature="monthly_reports"><MonthlyReports /></FeatureGate>} />
+        <Route path="modules"       element={<ModulesPedagogiques />} />
         <Route path="incidents"     element={<SuperAdminIncidents />} />
         <Route path="incidents/:id" element={<SuperAdminIncidents />} />
         <Route path="profile"       element={<SuperAdminProfile />} />

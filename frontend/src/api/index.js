@@ -778,6 +778,8 @@ export const suiviAPI = {
   modifierPlan: (id, d) => api.patch(`/suivi/plans/${id}/`, d),
   creerAction: (d) => api.post("/suivi/actions/", d),
   modifierAction: (id, d) => api.patch(`/suivi/actions/${id}/`, d),
+  activation: () => api.get("/suivi/activation/"),
+  activer: (id, d) => api.patch(`/suivi/activation/${id}/`, d),
   parametres: () => api.get("/suivi/parametres/"),
   modifierParametres: (d) => api.patch("/suivi/parametres/modifier/", d),
 };

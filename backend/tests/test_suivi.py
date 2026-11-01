@@ -322,3 +322,20 @@ class ReglagesTests(Base):
     def test_compte_reference_inconnue_n_echoue_pas(self):
         self.en(self.admin)
         self.assertEqual(self.client.get("/api/suivi/eleves/abc/fiche/").status_code, 404)
+
+
+class ActivationTests2(Base):
+    def test_seul_le_superadmin_active(self):
+        url = f"/api/suivi/activation/{self.school.pk}/"
+        for u in (self.admin, self.prof, self.compte, self.parent):
+            self.en(u)
+            self.assertEqual(self.client.patch(url, {"suivi_familles": True}, format="json").status_code, 403)
+        self.school.refresh_from_db()
+        self.assertFalse(self.school.has_feature("suivi_familles"))
+        self.en(make_user("su@s.bj", "superadmin", None))
+        self.assertEqual(self.client.patch(url, {"suivi_familles": "oui"}, format="json").status_code, 400)
+        self.assertEqual(self.client.patch(url, {"autre": True}, format="json").status_code, 400)
+        self.assertTrue(self.client.patch(url, {"suivi_familles": True}, format="json").data["suivi_familles"])
+        self.school.refresh_from_db()
+        self.assertTrue(self.school.has_feature("suivi_familles"))
+        self.assertTrue(self.school.has_feature("suivi_pedagogique"), "les autres réglages restent")
