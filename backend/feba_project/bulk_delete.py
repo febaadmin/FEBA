@@ -10,6 +10,7 @@ Body: { "ids": [1, 2, 3] }
 - Logs each deletion in Django's auth log (or any future audit system)
 - Returns 204 on success, 400 if no ids provided, 403 if not permitted
 """
+from apps.core.request_text import liste_identifiants
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework import status
@@ -48,8 +49,8 @@ class BulkDeleteMixin:
         for permission in self.get_bulk_delete_permissions():
             if not permission.has_permission(request, self):
                 self.permission_denied(request, message=getattr(permission, "message", None))
-        ids = request.data.get("ids", [])
-        if not ids or not isinstance(ids, list):
+        ids = liste_identifiants(request.data.get("ids", []))
+        if not ids:
             return Response({"error": "ids list required"}, status=status.HTTP_400_BAD_REQUEST)
 
         qs = self.get_bulk_delete_queryset(ids)

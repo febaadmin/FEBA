@@ -206,7 +206,7 @@ function PreviewTab() {
 
       {data?.anomalies?.length > 0 && (
         <div className="card border border-red-200 bg-red-50 text-sm text-red-800 space-y-1">
-          <p className="font-semibold">{t("Anomalies — aucune relance n'est envoyée pour les éléments concernés :")}</p>
+          <p className="font-semibold">{t("Anomalies : aucune relance n'est envoyée pour les éléments concernés :")}</p>
           {data.anomalies.map((a, i) => <p key={i}>• {a.message}</p>)}
         </div>
       )}
@@ -331,9 +331,9 @@ function SchedulesTab() {
               <Trash2 className="w-4 h-4" />
             </button>
           </div>
-          <p className="text-sm text-slate-600">{t("Total")} : <strong>{fee.amount_display}</strong> — {t("échéances")} : {fee.installments_total_display}</p>
+          <p className="text-sm text-slate-600">{t("Total")} : <strong>{fee.amount_display}</strong> : {t("échéances")} : {fee.installments_total_display}</p>
           <ul className="text-sm text-slate-700 grid sm:grid-cols-3 gap-1">
-            {fee.installments.map((i) => <li key={i.id}>{i.label} — {formatCalendarDate(i.due_date)} — {i.amount_display}</li>)}
+            {fee.installments.map((i) => <li key={i.id}>{i.label} : {formatCalendarDate(i.due_date)} : {i.amount_display}</li>)}
           </ul>
         </section>
       ))}
@@ -414,7 +414,7 @@ function ArrangementsModal({ fee, onClose }) {
         <form className="grid grid-cols-2 gap-2" onSubmit={(e) => { e.preventDefault(); addMut.mutate(); }}>
           <select className="input col-span-2" required value={form.student} onChange={(e) => setForm({ ...form, student: e.target.value })}>
             <option value="">{t("Choisir un élève")}</option>
-            {students.map((s) => <option key={s.id} value={s.id}>{s.full_name} — {s.class_name || "?"}</option>)}
+            {students.map((s) => <option key={s.id} value={s.id}>{s.full_name} : {s.class_name || "?"}</option>)}
           </select>
           <select className="input" value={form.kind} onChange={(e) => setForm({ ...form, kind: e.target.value })}>
             <option value="subscription">{t("Abonnement au service")}</option>
@@ -433,7 +433,7 @@ function ArrangementsModal({ fee, onClose }) {
           {rows.length === 0 && <li className="py-2 text-slate-400">{t("Aucune disposition pour ce tarif.")}</li>}
           {rows.map((r) => (
             <li key={r.id} className="py-2 flex items-center justify-between gap-2">
-              <span><strong>{r.student_name}</strong> — {t(r.kind_label)} {r.discount_display && `(${r.discount_display})`} {r.reason && <span className="text-slate-400">· {r.reason}</span>}</span>
+              <span><strong>{r.student_name}</strong> : {t(r.kind_label)} {r.discount_display && `(${r.discount_display})`} {r.reason && <span className="text-slate-400">· {r.reason}</span>}</span>
               <button type="button" aria-label={t("Supprimer")} className="text-slate-400 hover:text-danger" onClick={() => delMut.mutate(r.id)}><Trash2 className="w-4 h-4" /></button>
             </li>
           ))}
@@ -466,7 +466,7 @@ function HistoryTab() {
                   <td className="py-2 pr-3 whitespace-nowrap">{formatDateTime(r.created_at)}</td>
                   <td className="py-2 pr-3">{r.student}</td>
                   <td className="py-2 pr-3">{r.recipient}<div className="text-xs text-slate-400">{r.email_to}</div></td>
-                  <td className="py-2 pr-3">{r.fee_label} — {r.installment_label}</td>
+                  <td className="py-2 pr-3">{r.fee_label} : {r.installment_label}</td>
                   <td className="py-2 pr-3 whitespace-nowrap">{formatCalendarDate(r.due_date)}</td>
                   <td className="py-2 pr-3 whitespace-nowrap">{r.amount_due_display}</td>
                   <td className="py-2 pr-3">{r.level}</td>

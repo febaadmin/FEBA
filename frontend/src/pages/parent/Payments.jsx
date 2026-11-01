@@ -86,7 +86,7 @@ export default function ParentPayments() {
               {t("Paiement en cours de vérification")}
             </p>
             <p className="text-sm text-slate-600 mt-1">
-              {t("Votre banque a accepté l'opération. Elle est confirmée par notre prestataire, puis apparaît dans la liste ci-dessous avec son reçu — généralement en quelques secondes.")}
+              {t("Votre banque a accepté l'opération. Elle est confirmée par notre prestataire, puis apparaît dans la liste ci-dessous avec son reçu, généralement en quelques secondes.")}
             </p>
           </div>
         </div>

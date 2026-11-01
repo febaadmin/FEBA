@@ -286,6 +286,6 @@ class MonthlyReportViewSet(viewsets.ModelViewSet):
             raise ValidationError("Le mois doit être compris entre 1 et 12.")
 
         resultats = generate_month(fha, year, month, user=request.user)
-        logger.info("Rapports mensuels — lot %04d-%02d déclenché par %s : %s",
+        logger.info("Rapports mensuels : lot %04d-%02d déclenché par %s : %s",
                     year, month, request.user.email, resultats)
         return Response(resultats)

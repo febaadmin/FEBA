@@ -315,7 +315,7 @@ export default function MassEmail() {
               {preview.skipped.length > 0 && (
                 <ul className="text-xs text-slate-500 list-disc pl-4">
                   {preview.skipped.slice(0, 8).map((s) => (
-                    <li key={s.user_id}>{s.full_name} — {t(SKIP_REASON[s.status] || s.status)}</li>
+                    <li key={s.user_id}>{s.full_name} : {t(SKIP_REASON[s.status] || s.status)}</li>
                   ))}
                 </ul>
               )}
@@ -473,7 +473,7 @@ function CampaignReport({ id, academyId, onClose }) {
                       {/* Backend console/locmem : « remis » ne veut pas dire « parti ». */}
                       {r.status === "sent" && !r.used_real_provider && (
                         <div className="mt-1"><Badge tone="bg-amber-50 text-amber-700">
-                          {t(r.delivery_summary || "Journalisé — aucun fournisseur réel")}
+                          {t(r.delivery_summary || "Journalisé : aucun fournisseur réel")}
                         </Badge></div>
                       )}
                     </td>

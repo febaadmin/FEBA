@@ -29,5 +29,5 @@ def classify(entity_type, cycles):
         return "physical_secondary", "niveaux de collège / lycée uniquement"
     return None, (
         "niveaux de primaire ET de secondaire (" + ", ".join(sorted(cycles)) + ") : "
-        "aucun des trois types ne les couvre tous — classement à décider par le super administrateur"
+        "aucun des trois types ne les couvre tous, classement à décider par le super administrateur"
     )

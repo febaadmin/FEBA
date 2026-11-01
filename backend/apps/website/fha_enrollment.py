@@ -85,7 +85,7 @@ def generate_and_store_sheet(application):
     except Exception as exc:
         application.sheet_error = f"{type(exc).__name__}: {exc}"[:2000]
         application.save(update_fields=["sheet_error", "updated_at"])
-        logger.exception("FHA — fiche PDF non produite pour %s", application.reference)
+        logger.exception("FHA - fiche PDF non produite pour %s", application.reference)
         return None
 
     application.store_sheet(content)
@@ -94,7 +94,7 @@ def generate_and_store_sheet(application):
         "sheet_version", "sheet_error", "updated_at",
     ])
     logger.info(
-        "FHA — fiche %s produite (%d octets, empreinte %s…)",
+        "FHA - fiche %s produite (%d octets, empreinte %s…)",
         application.reference, application.sheet_size,
         application.sheet_sha256[:16],
     )
@@ -119,7 +119,7 @@ def parent_ack_bodies(application):
     reference = application.reference
 
     if english:
-        subject = f"[{brand.short_name}] Enrollment form received — file {reference}"
+        subject = f"[{brand.short_name}] Enrollment form received, file {reference}"
         greeting = f"Hello {application.parent1_first_name},"
         lines = [
             f"We have received the enrollment form for {child}.",
@@ -131,7 +131,7 @@ def parent_ack_bodies(application):
         ]
         closing = "Kind regards,"
     else:
-        subject = f"[{brand.short_name}] Fiche d'inscription reçue — dossier {reference}"
+        subject = f"[{brand.short_name}] Fiche d'inscription reçue : dossier {reference}"
         greeting = f"Bonjour {application.parent1_first_name},"
         lines = [
             f"Nous avons bien reçu la fiche de renseignements de {child}.",
@@ -182,7 +182,7 @@ def admin_alert_bodies(application):
 
     brand = get_branding(application.entity)
     reference = application.reference
-    subject = f"[{brand.short_name}] Nouvelle fiche d'inscription — {reference}"
+    subject = f"[{brand.short_name}] Nouvelle fiche d'inscription - {reference}"
 
     rows = [
         ("Dossier", reference),
@@ -337,10 +337,10 @@ def _create_in_app_notifications(application):
     ) + list(CustomUser.objects.filter(role="superadmin", is_active=True))
 
     seen = set()
-    title = f"Nouvelle fiche d'inscription — {application.reference}"
+    title = f"Nouvelle fiche d'inscription - {application.reference}"
     message = (
         f"{application.child_first_name} {application.child_last_name} "
-        f"({application.child_age} ans) — déposée par "
+        f"({application.child_age} ans) : déposée par "
         f"{application.parent1_first_name} {application.parent1_last_name}."
     )
     for user in recipients:
@@ -371,10 +371,10 @@ RESULT_RECENTLY_SENT = "recently_sent"
 RESULT_NOT_FOUND = "not_found"
 RESULT_LABELS = {
     RESULT_SENT: "Remis au serveur de messagerie",
-    RESULT_RETRY: "Échec temporaire — nouvel essai programmé",
+    RESULT_RETRY: "Échec temporaire : nouvel essai programmé",
     RESULT_FAILED: "Échec",
     RESULT_MISSING_RECIPIENT: "Destinataire manquant ou invalide",
-    RESULT_ALREADY_SENT: "Déjà envoyé — non renvoyé",
+    RESULT_ALREADY_SENT: "Déjà envoyé : non renvoyé",
     RESULT_RECENTLY_SENT: "Envoi déjà en cours ou tout juste effectué",
     RESULT_NOT_FOUND: "Dossier introuvable dans votre académie",
 }
@@ -486,7 +486,7 @@ def resend_parent_acknowledgement(application, user=None):
         )
 
     logger.info(
-        "FHA — accusé de réception relancé pour %s par %s : %s",
+        "FHA - accusé de réception relancé pour %s par %s : %s",
         application.reference, getattr(user, "email", "système"), delivery.status,
     )
     return delivery

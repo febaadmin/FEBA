@@ -37,6 +37,30 @@ def routes():
     return sorted(vues)
 
 
+def routes_detail():
+    """Routes GET à un identifiant, avec « {} » à la place de l'identifiant."""
+    def parcourir(motifs, prefixe=""):
+        for motif in motifs:
+            texte = prefixe + str(motif.pattern)
+            if isinstance(motif, URLResolver):
+                yield from parcourir(motif.url_patterns, texte)
+            elif isinstance(motif, URLPattern):
+                yield texte
+
+    import re
+    vues = set()
+    for texte in parcourir(get_resolver().url_patterns):
+        if "format" in texte:
+            continue
+        chemin = re.sub(r"\(\?P<\w*(pk|id)\w*>[^)]*\)|<(int:)?\w*(pk|id)\w*>", "{}", texte)
+        chemin = chemin.replace("^", "").replace("$", "").rstrip("\\")
+        if not chemin.startswith("api/"):
+            continue
+        if chemin.count("{}") == 1 and "<" not in chemin and "(" not in chemin:
+            vues.add("/" + chemin)
+    return sorted(vues)
+
+
 class BalayageTests(TestCase):
     def academie(self, code, marque):
         school = School.objects.create(name=f"Ecole{marque}", code=code, email=f"{code}@t.bj", phone="1",
@@ -128,3 +152,111 @@ class BalayageTests(TestCase):
             c.force_authenticate(user)
             ouvertes = {r for r in routes() if c.post(r, {}, format="json").status_code not in (401, 403, 404, 405)}
             self.assertEqual(ouvertes - permis, set(), user.email)
+
+    def test_comptes_sans_profil_jamais_d_erreur_serveur(self):
+        for role in ("teacher", "student", "parent"):
+            user = make_user(f"sans-profil-{role}@t.bj", role, self.a)
+            erreurs = [(c, s) for c, s, _ in self.balayer(user) if s >= 500 and s != 503]
+            self.assertEqual(erreurs, [], role)
+
+    def test_champs_malformes_jamais_d_erreur_serveur(self):
+        # Origine des incidents de notes : un objet reçu à la place d'un texte.
+        cles = ("justification", "message", "comment", "body", "subject", "reason", "name", "title",
+                "description", "notes", "email", "recipient", "recipient_id", "student", "student_id",
+                "class_id", "school_year", "school_year_id", "period", "status", "scope", "kind", "template",
+                "values", "copy_from", "ids", "amount", "academy_id", "subject_id", "date", "records")
+        c = APIClient()
+        c.raise_request_exception = False
+        c.force_authenticate(self.admin)
+        erreurs = []
+        for valeur in ({"objet": 1}, ["liste"], "abc", 123456789):
+            charge = {cle: valeur for cle in cles}
+            erreurs += [(r, repr(valeur)) for r in routes() if c.post(r, charge, format="json").status_code == 500]
+        self.assertEqual(erreurs, [])
+
+    def test_lien_parent_eleve_d_une_autre_academie_intouchable(self):
+        lien = ParentStudent.objects.get(student=self.e1)
+        admin_b = make_user("admb@t.bj", "admin", self.b)
+        c = APIClient()
+        c.force_authenticate(admin_b)
+        rep = c.post("/api/parents/remove_child/", {"parent_id": lien.parent_id, "student_id": self.e1.pk}, format="json")
+        self.assertEqual(rep.status_code, 404)
+        self.assertTrue(ParentStudent.objects.filter(pk=lien.pk).exists())
+        c.force_authenticate(self.admin)
+        rep = c.post("/api/parents/remove_child/", {"parent_id": lien.parent_id, "student_id": self.e1.pk}, format="json")
+        self.assertEqual(rep.status_code, 200)
+        self.assertFalse(ParentStudent.objects.filter(pk=lien.pk).exists())
+
+    def test_parents_d_un_eleve_illisibles_depuis_une_autre_academie(self):
+        admin_b = make_user("admb2@t.bj", "admin", self.b)
+        c = APIClient()
+        c.force_authenticate(admin_b)
+        rep = c.get(self.chemin_parents_eleve(), {"student_id": self.e1.pk})
+        self.assertFalse(rep.data["assigned"])
+        c.force_authenticate(self.admin)
+        self.assertTrue(c.get(self.chemin_parents_eleve(), {"student_id": self.e1.pk}).data["assigned"])
+        for user in (self.voisin.user, self.parent, self.prof):
+            c.force_authenticate(user)
+            self.assertEqual(c.get(self.chemin_parents_eleve(), {"student_id": self.e1.pk}).status_code, 403)
+
+    def chemin_parents_eleve(self):
+        return "/api/parents/check_child_assignment/"
+
+    def test_routes_a_identifiant_et_parametres_sans_fuite(self):
+        from datetime import date
+
+        from apps.bulletins.models import Bulletin
+        from apps.payments.models import Payment
+
+        Payment.objects.create(student=self.voisin, school_year=self.voisin.school_year, amount=10,
+                               payment_type="mensualite", payment_method="cash", payment_date=date(2026, 10, 1))
+        Bulletin.objects.create(student=self.voisin, school_year=self.voisin.school_year, period="T1",
+                                pdf_file="bulletins/v.pdf")
+        admin_b = make_user("adm3@t.bj", "admin", self.b)
+        identifiants = range(1, 13)
+        self.assertGreater(len(routes_detail()), 60)
+        for user in (self.e1.user, self.parent, self.prof, admin_b):
+            c = APIClient()
+            c.raise_request_exception = False
+            c.force_authenticate(user)
+            fuites = []
+            for gabarit in routes_detail():
+                for pk in identifiants:
+                    rep = c.get(gabarit.format(pk))
+                    if rep.status_code == 200 and not getattr(rep, "streaming", False) and b"ZZVOISIN" in rep.content:
+                        fuites.append(gabarit)
+            params = {"student": self.voisin.pk, "student_id": self.voisin.pk, "school": self.a.pk,
+                      "school_id": self.a.pk, "class": self.voisin.current_class_id,
+                      "class_id": self.voisin.current_class_id, "academy": self.a.pk}
+            for chemin in routes():
+                rep = c.get(chemin, params)
+                if rep.status_code == 200 and not getattr(rep, "streaming", False) and b"ZZVOISIN" in rep.content:
+                    fuites.append(chemin + "?")
+            self.assertEqual(sorted(set(fuites)), [], user.email)
+
+    def test_fiches_et_moyennes_de_classe_reservees(self):
+        classe = self.e1.current_class
+        chemins = (f"/api/classes/{classe.pk}/students/", f"/api/grades/class-averages/?class={classe.pk}")
+        c = APIClient()
+        for user, attendus in ((self.e1.user, (403,)), (self.parent, (403,)), (self.voisin.user, (403, 404)),
+                               (self.prof, (200,)), (self.admin, (200,))):
+            c.force_authenticate(user)
+            for chemin in chemins:
+                self.assertIn(c.get(chemin).status_code, attendus, (user.email, chemin))
+        autre_prof = make_user("t2@t.bj", "teacher", self.a)
+        Teacher.objects.create(user=autre_prof)
+        c.force_authenticate(autre_prof)
+        for chemin in chemins:
+            self.assertIn(c.get(chemin).status_code, (403, 404), chemin)
+
+    def test_moyennes_d_un_eleve_reservees(self):
+        c = APIClient()
+        for chemin in ("/api/grades/averages/", "/api/grades/bilingual/", "/api/grades/student-summary/"):
+            for user, cible, permis in ((self.voisin.user, self.e1, False), (self.parent, self.voisin, False),
+                                        (self.prof, self.voisin, False), (self.e1.user, self.e1, True),
+                                        (self.parent, self.e1, True), (self.prof, self.e1, True),
+                                        (self.admin, self.voisin, True)):
+                c.force_authenticate(user)
+                statut = c.get(chemin, {"student": cible.pk}).status_code
+                self.assertEqual(statut != 403, permis, (chemin, user.email, statut))
+

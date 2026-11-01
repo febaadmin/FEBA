@@ -31,7 +31,7 @@ export function useAuth() {
     // doit d'abord choisir son propre mot de passe (parcours obligatoire).
     if (me.data.must_change_password) {
       navigate("/change-password-required");
-      toast(translate("Veuillez définir votre nouveau mot de passe."), { icon: "🔑" });
+      toast(translate("Veuillez définir votre nouveau mot de passe."));
       return;
     }
     const role = me.data.role;

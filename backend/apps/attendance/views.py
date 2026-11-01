@@ -7,6 +7,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
+from apps.core.request_text import identifiant
 from apps.core.tenancy import get_request_school, IsSameTenant
 from .models import Attendance
 from .serializers import AttendanceSerializer
@@ -126,6 +127,8 @@ class AttendanceViewSet(BulkDeleteMixin, viewsets.ModelViewSet):
 
         school = get_request_school(request)
         records = request.data.get("records", [])
+        if not isinstance(records, list) or not all(isinstance(r, dict) for r in records):
+            return Response({"error": "records : liste de présences attendue."}, status=400)
         created = []
         errors = []
         for r in records:
@@ -159,7 +162,7 @@ class AttendanceViewSet(BulkDeleteMixin, viewsets.ModelViewSet):
         student_id = request.query_params.get("student")
         if not student_id:
             return Response({"error": "student requis"}, 400)
-        qs = self.get_queryset().filter(student_id=student_id)
+        qs = self.get_queryset().filter(student_id=identifiant(student_id))
         return Response({
             "total": qs.count(),
             "present": qs.filter(status="present").count(),

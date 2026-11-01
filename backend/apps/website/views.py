@@ -101,7 +101,7 @@ class ContactMessageCreateView(APIView):
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         msg = serializer.save()
-        logger.info("Site vitrine — message de contact reçu (#%d)", msg.pk)
+        logger.info("Site vitrine : message de contact reçu (#%d)", msg.pk)
         return Response(
             {"detail": "Merci ! Votre message a bien été envoyé. Nous vous répondrons rapidement."},
             status=status.HTTP_201_CREATED,
@@ -131,10 +131,10 @@ class PreRegistrationCreateView(APIView):
             # On ne le cache pas, mais on ne le fait pas peser sur la
             # famille non plus : sa demande est bien enregistrée. L'échec
             # part vers le super administrateur et l'écran d'administration.
-            logger.error("Site vitrine — fiche non produite pour %s : %s",
+            logger.error("Site vitrine : fiche non produite pour %s : %s",
                          prereg.reference, outcome["sheet_error"])
 
-        logger.info("Site vitrine — préinscription %s reçue (#%d), fiche : %s",
+        logger.info("Site vitrine : préinscription %s reçue (#%d), fiche : %s",
                     prereg.reference, prereg.pk,
                     "produite" if outcome["sheet_generated"] else "en échec")
         return Response(
@@ -160,7 +160,7 @@ class AdminSiteSettingsView(APIView):
         serializer = SiteSettingsAdminSerializer(obj, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         serializer.save()
-        logger.info("Site vitrine — paramètres modifiés par %s", request.user.email)
+        logger.info("Site vitrine : paramètres modifiés par %s", request.user.email)
         return Response(serializer.data)
 
 
@@ -338,7 +338,7 @@ class AdminPreRegistrationViewSet(viewsets.ModelViewSet):
         # Une pièce de dossier ne doit rester ni dans un cache partagé, ni
         # dans le cache disque du navigateur d'un poste mutualisé.
         response["Cache-Control"] = "private, no-store"
-        logger.info("Préinscription — fiche %s téléchargée par %s",
+        logger.info("Préinscription : fiche %s téléchargée par %s",
                     demande.reference, request.user.email)
         return response
 
@@ -352,7 +352,7 @@ class AdminPreRegistrationViewSet(viewsets.ModelViewSet):
                  "error": demande.sheet_error},
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
-        logger.info("Préinscription — fiche %s régénérée par %s",
+        logger.info("Préinscription : fiche %s régénérée par %s",
                     demande.reference, request.user.email)
         return Response(PreRegistrationAdminSerializer(demande).data)
 
@@ -382,7 +382,7 @@ class AdminPreRegistrationViewSet(viewsets.ModelViewSet):
         for demande in rows:
             writer.writerow([_prereg_export_value(demande, key)
                              for _, key in colonnes])
-        logger.info("Préinscriptions — export CSV (%d lignes) par %s",
+        logger.info("Préinscriptions : export CSV (%d lignes) par %s",
                     rows.count(), request.user.email)
         return response
 

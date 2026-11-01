@@ -72,7 +72,7 @@ describe("État des gabarits sur l'écran de production", () => {
   it("annonce pour chaque type la source réellement utilisée et ses blocages", async () => {
     renderPage();
     const diploma = await screen.findByTestId("template-state-diploma");
-    expect(diploma).toHaveTextContent("Gabarit téléversé de l'académie — version 2");
+    expect(diploma).toHaveTextContent("Gabarit téléversé de l'académie, version 2");
     const certificate = screen.getByTestId("template-state-certificate");
     expect(certificate).toHaveTextContent("Gabarit intégré « Certificat FEBA »");
     expect(certificate).toHaveTextContent("n'est pas installé");
@@ -84,7 +84,7 @@ describe("Production par type de document", () => {
     await openAndPick();
     await waitFor(() => expect(documentsAPI.check).toHaveBeenCalledWith(
       { student: 7, kind: "diploma", values: {} }));
-    expect(await screen.findByText("Gabarit téléversé de l'académie — version 2")).toBeInTheDocument();
+    expect(await screen.findByText("Gabarit téléversé de l'académie, version 2")).toBeInTheDocument();
     expect(screen.getByText("X-1")).toBeInTheDocument();
     const produce = screen.getByRole("button", { name: "Produire" });
     expect(produce).toBeDisabled();

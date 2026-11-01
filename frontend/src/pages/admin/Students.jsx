@@ -149,7 +149,7 @@ export default function AdminStudents() {
   });
   const deleteMut = useMutation({
     mutationFn: studentsAPI.delete,   // backend = DÉSACTIVATION (soft)
-    onSuccess: (r) => { qc.invalidateQueries({ queryKey: ["students"] }); toast.success(r.data?.detail || "Élève désactivé — historique conservé."); setDeleteItem(null); },
+    onSuccess: (r) => { qc.invalidateQueries({ queryKey: ["students"] }); toast.success(r.data?.detail || "Élève désactivé : historique conservé."); setDeleteItem(null); },
     onError: (e) => toast.error(extractApiError(e)),
   });
   const hardDeleteMut = useMutation({
@@ -173,7 +173,7 @@ export default function AdminStudents() {
   });
   const selectedYearName = years.find(y => String(y.id) === String(yearFilter))?.name;
   const bulkConfirmMessage = (n) => yearScoped
-    ? `Retirer ${n} élève(s) de l'année ${selectedYearName} ?\n\nSeules leurs inscriptions ${selectedYearName} seront supprimées — leurs autres années restent intactes.`
+    ? `Retirer ${n} élève(s) de l'année ${selectedYearName} ?\n\nSeules leurs inscriptions ${selectedYearName} seront supprimées : leurs autres années restent intactes.`
     : `Désactiver ${n} élève(s) (toutes années) ?\n\nIls disparaîtront des listes actives mais tout leur historique est conservé (réactivation possible).`;
 
   const closeModal = () => { setModalOpen(false); setEditItem(null); setPhotoFile(null); reset(); };
@@ -437,7 +437,7 @@ export default function AdminStudents() {
               <Controller name="level_filter" control={control}
                 render={({ field }) => (
                   <SearchableSelect
-                    options={[{ value: "", label: "— Tous les niveaux —" }, ...levelOpts]}
+                    options={[{ value: "", label: "Tous les niveaux" }, ...levelOpts]}
                     value={field.value}
                     onChange={(val) => { field.onChange(val); setValue("current_class", ""); }}
                     placeholder={t("Filtrer par niveau…")}
@@ -535,7 +535,7 @@ export default function AdminStudents() {
           <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setEnrollModal(null)} />
           <div className="relative bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6 space-y-4 max-h-[90vh] overflow-y-auto z-10">
             <div className="flex items-center justify-between">
-              <h2 className="font-bold text-slate-800 text-lg">{t("Inscrire — nouvelle année")}</h2>
+              <h2 className="font-bold text-slate-800 text-lg">{t("Inscrire : nouvelle année")}</h2>
               <button onClick={() => setEnrollModal(null)} className="text-slate-400 hover:text-slate-600 text-2xl">×</button>
             </div>
             <div className="grid grid-cols-3 gap-2">
@@ -584,7 +584,7 @@ export default function AdminStudents() {
               <div>
                 <label className="label">{t("Nouvelle classe (optionnel)")}</label>
                 <select {...re("class_obj")} className="input" style={{ minHeight: "2.5rem" }}>
-                  <option value="">{t("— Pas encore affecté —")}</option>
+                  <option value="">{t("Pas encore affecté")}</option>
                   {(enrollTargetYear
                     ? classes.filter(c => String(c.school_year) === String(enrollTargetYear))
                     : classes

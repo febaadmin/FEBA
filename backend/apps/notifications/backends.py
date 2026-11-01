@@ -99,7 +99,7 @@ class TrackingEmailBackend(BaseEmailBackend):
                 raise
         self._record(deliveries, error)
         if error:
-            logger.warning("E-mail hors couche centrale (%s) : échec — %s", message.subject, error)
+            logger.warning("E-mail hors couche centrale (%s) : échec : %s", message.subject, error)
         return sent
 
     @staticmethod

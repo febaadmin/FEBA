@@ -490,8 +490,8 @@ export default function FhaPage() {
               src={FHA_FLYER_PATH}
               alt={
                 lang === "fr"
-                  ? "Flyer FEBA French Heritage Academy — formules et informations pratiques"
-                  : "FEBA French Heritage Academy flyer — plans and practical information"
+                  ? "Flyer FEBA French Heritage Academy, formules et informations pratiques"
+                  : "FEBA French Heritage Academy flyer, plans and practical information"
               }
               className="w-full h-auto"
               loading="lazy"
@@ -833,7 +833,7 @@ export default function FhaPage() {
               rel="noreferrer"
               className="px-6 py-3 rounded-xl bg-[#25D366] text-white font-bold text-sm hover:brightness-110 transition"
             >
-              {L(T.whatsapp)} — {whatsapp}
+              {L(T.whatsapp)} : {whatsapp}
             </a>
           )}
         </div>

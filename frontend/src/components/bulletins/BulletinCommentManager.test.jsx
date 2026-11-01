@@ -153,7 +153,7 @@ describe("opération groupée", () => {
 
     const report = await screen.findByTestId("operation-report");
     await waitFor(() => expect(report).toHaveTextContent("Opération terminée avec des échecs"));
-    expect(report).toHaveTextContent("Kofi Mensah — police introuvable");
+    expect(report).toHaveTextContent("Kofi Mensah : police introuvable");
     expect(bulletinsAPI.createOperation).toHaveBeenCalledWith(expect.objectContaining({
       scope: "class", class_id: 3, action: "set_comment", comment: "Bravo", school_year_id: 1,
     }));

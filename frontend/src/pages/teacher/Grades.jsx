@@ -7,7 +7,7 @@
  *  3. Message explicite si aucun élève trouvé (classes non assignées)
  *  4. Période "Toutes" disponible pour voir tout d'un coup
  */
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Plus, Save, Pencil, Trash2, AlertCircle, Layers } from "lucide-react";
 import { useForm, Controller } from "react-hook-form";
@@ -42,6 +42,7 @@ export default function TeacherGrades() {
   const [showDeleted,  setShowDeleted]  = useState(false);
   const [editItem,     setEditItem]     = useState(null);
   const [deleteItem,   setDeleteItem]   = useState(null);
+  const suppressionEnCours = useRef(false);
 
   const { register, handleSubmit, reset, control, formState: { errors } } = useForm({
     defaultValues: { period: "T1", note_type: "devoir" },
@@ -184,7 +185,7 @@ export default function TeacherGrades() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title={t("Mes Notes")} subtitle={`${grades.length} note(s) — ${period === "all" ? "Toutes périodes" : period} — ${currentYear?.name || "…"}`}
+      <PageHeader title={t("Mes Notes")} subtitle={`${grades.length} note(s) : ${period === "all" ? "Toutes périodes" : period} : ${currentYear?.name || "…"}`}
         action={
           <div className="flex gap-2">
             <button onClick={() => setShowDeleted(!showDeleted)}
@@ -243,7 +244,7 @@ export default function TeacherGrades() {
           onRowClick={r => !r.is_deleted && setViewItem(r)}
           actions={row => (
             <div className="flex items-center gap-1 justify-end">
-              {!row.is_deleted && (
+              {!row.is_deleted && row.peut_modifier !== false && (
                 <>
                   <button onClick={(e) => { e.stopPropagation(); openEdit(row); }} className="p-1.5 rounded-lg hover:bg-primary-50 text-slate-400 hover:text-primary"><Pencil className="w-4 h-4" /></button>
                   <button onClick={(e) => { e.stopPropagation(); setDeleteItem(row); }} className="p-1.5 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-500"><Trash2 className="w-4 h-4" /></button>
@@ -263,7 +264,7 @@ export default function TeacherGrades() {
           <div className="absolute inset-0 bg-black/40" onClick={() => setViewItem(null)} />
           <div className="relative bg-white rounded-2xl shadow-2xl max-w-2xl w-full p-6 max-h-[80vh] overflow-y-auto space-y-4">
             <div className="flex items-center justify-between">
-              <h2 className="font-bold text-slate-800">{t("Historique")} — {viewItem.student_name} / {viewItem.subject_name}</h2>
+              <h2 className="font-bold text-slate-800">{t("Historique")} : {viewItem.student_name} / {viewItem.subject_name}</h2>
               <button onClick={() => setViewItem(null)} className="text-slate-400 hover:text-slate-600 text-2xl">×</button>
             </div>
             <DataTable columns={histCols} data={history} />
@@ -360,9 +361,15 @@ export default function TeacherGrades() {
         <form className="space-y-4" onSubmit={(e) => {
           e.preventDefault();
           const justification = new FormData(e.currentTarget).get("justification").trim();
-          if (justification) deleteMut.mutate({ id: deleteItem.id, justification });
+          // Un double clic part avant que le bouton soit désactivé.
+          if (justification && !suppressionEnCours.current) {
+            suppressionEnCours.current = true;
+            deleteMut.mutate({ id: deleteItem.id, justification }, {
+              onSettled: () => { suppressionEnCours.current = false; },
+            });
+          }
         }}>
-          <p className="text-sm text-slate-600">{`${deleteItem?.student_name} — ${deleteItem?.subject_name} (${deleteItem?.value}/20)`}</p>
+          <p className="text-sm text-slate-600">{`${deleteItem?.student_name}, ${deleteItem?.subject_name} (${deleteItem?.value}/20)`}</p>
           <div>
             <label className="label" htmlFor="grade-del-just">{t("Justification de suppression*")}</label>
             <textarea id="grade-del-just" name="justification" required className="input" rows={2} placeholder={t("Motif obligatoire : erreur de saisie, doublon…")} />

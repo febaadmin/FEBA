@@ -113,7 +113,7 @@ describe("couverture de traduction FR → EN", () => {
       // Appréciations : valeurs métier normalisées, non traduites
       "EXCELLENT", "ACCEPTABLE",
       // Chaînes déjà en anglais dans les deux langues
-      "Images, PDF, Word, Excel, CSV, ZIP — max 5 MB",
+      "Images, PDF, Word, Excel, CSV, ZIP, max 5 MB",
     ]);
     const suspicious = Object.entries(EN)
       .filter(([fr, en]) => fr === en && !legitimate.has(fr))

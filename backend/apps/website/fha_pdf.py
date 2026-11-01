@@ -347,7 +347,7 @@ def generate_enrollment_sheet(application):
     story.append(Spacer(1, 0.2 * cm))
     story.append(HRFlowable(width="100%", thickness=1, color=colors.lightgrey))
     footer = (
-        f"Document interne — données personnelles d'un mineur. "
+        f"Document interne : données personnelles d'un mineur. "
         f"Produit le {timezone.now():%d/%m/%Y à %H:%M} · Dossier "
         f"{application.reference}"
     )

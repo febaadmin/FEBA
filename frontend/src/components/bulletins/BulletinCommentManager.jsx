@@ -74,7 +74,7 @@ export function OperationReport({ op }) {
         <div>
           <p className="font-semibold">{t("Échecs")}</p>
           <ul className="list-disc ml-5">
-            {r.failures.map((f) => <li key={`f${f.student_id}`}>{f.student} — {f.reason}</li>)}
+            {r.failures.map((f) => <li key={`f${f.student_id}`}>{f.student} : {f.reason}</li>)}
           </ul>
         </div>
       )}
@@ -82,7 +82,7 @@ export function OperationReport({ op }) {
         <details>
           <summary className="cursor-pointer">{t("Élèves ignorés et raison")} ({r.skipped_items.length})</summary>
           <ul className="list-disc ml-5">
-            {r.skipped_items.map((s) => <li key={`s${s.student_id}`}>{s.student} — {s.reason}</li>)}
+            {r.skipped_items.map((s) => <li key={`s${s.student_id}`}>{s.student} : {s.reason}</li>)}
           </ul>
         </details>
       )}
@@ -297,7 +297,7 @@ export default function BulletinCommentManager({ open, onClose, initial = {} }) 
         {/* Portée groupée : chiffres du serveur */}
         {scope !== "student" && preview && (
           <div className="text-sm bg-slate-50 rounded-xl p-3 space-y-1" data-testid="scope-preview">
-            <p><strong>{scopeLabel}</strong> — {preview.school_year?.name}, {t(PERIODS.find((p) => p.value === period)?.label || "")}</p>
+            <p><strong>{scopeLabel}</strong> : {preview.school_year?.name}, {t(PERIODS.find((p) => p.value === period)?.label || "")}</p>
             <p>{t("{n} élève(s)", { n: preview.students })} · {t("Bulletins existants")} : {preview.existing_bulletins}
               {" "}· {t("Avec commentaire")} : {preview.with_comment}</p>
             <p>{t("Bulletins absents")} : {preview.missing_with_grades + preview.missing_without_grades}

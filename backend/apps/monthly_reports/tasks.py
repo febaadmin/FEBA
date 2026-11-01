@@ -106,7 +106,7 @@ def generate_month_task(self, academy_code=None, year=None, month=None,
     academy_code = academy_code or public_site_online_academy_code()
     academy = School.objects.filter(code=academy_code).first()
     if academy is None:
-        logger.error("Rapports mensuels — académie « %s » introuvable",
+        logger.error("Rapports mensuels : académie « %s » introuvable",
                      academy_code)
         return {"erreur": f"académie {academy_code} introuvable"}
 
@@ -118,7 +118,7 @@ def generate_month_task(self, academy_code=None, year=None, month=None,
 
     try:
         with batch_lock(f"{academy_code}:{year}-{month:02d}"):
-            logger.info("Rapports mensuels — lot %s %04d-%02d démarré",
+            logger.info("Rapports mensuels : lot %s %04d-%02d démarré",
                         academy_code, year, month)
             resultats = generate_month(academy, year, month)
 
@@ -135,7 +135,7 @@ def generate_month_task(self, academy_code=None, year=None, month=None,
                     try:
                         send_report(rapport)
                     except Exception:  # noqa: BLE001
-                        logger.exception("Rapport %s — envoi impossible",
+                        logger.exception("Rapport %s : envoi impossible",
                                          rapport.reference)
                     rapport.refresh_from_db()
                     if rapport.status == MonthlyReportStatus.SENT:
@@ -144,12 +144,12 @@ def generate_month_task(self, academy_code=None, year=None, month=None,
                         envois["echecs"] += 1
 
             resultats["envois"] = envois
-            logger.info("Rapports mensuels — lot %s %04d-%02d terminé : %s",
+            logger.info("Rapports mensuels : lot %s %04d-%02d terminé : %s",
                         academy_code, year, month, resultats)
             return resultats
     except LockUnavailable as exc:
         # Ce n'est PAS une erreur : c'est le verrou qui fait son travail.
-        logger.info("Rapports mensuels — lot ignoré : %s", exc)
+        logger.info("Rapports mensuels : lot ignoré : %s", exc)
         return {"ignore": str(exc)}
 
 

@@ -155,8 +155,8 @@ export const PLAN_OPTIONS = [
   {
     code: "UNDECIDED",
     label: {
-      fr: "Je ne sais pas encore — j'en discuterai avec l'équipe",
-      en: "Not decided yet — I'd like to discuss it with the team",
+      fr: "Je ne sais pas encore : j'en discuterai avec l'équipe",
+      en: "Not decided yet: I'd like to discuss it with the team",
     },
   },
 ];

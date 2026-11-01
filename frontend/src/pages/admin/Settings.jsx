@@ -457,7 +457,7 @@ export default function AdminSettings() {
                 <p className="text-xs text-slate-400">
                   Code: {s.code} | Coeff: {s.coefficient} |{" "}
                   <span className={`font-medium ${s.language === "fr" ? "text-blue-600" : s.language === "en" ? "text-green-600" : "text-purple-600"}`}>
-                    {s.language === "fr" ? "🇫🇷 Français" : s.language === "en" ? "🇬🇧 Anglais" : `🌐 ${t("Commune (bilingue)")}`}
+                    {s.language === "fr" ? "Français" : s.language === "en" ? "Anglais" : `${t("Commune (bilingue)")}`}
                   </span>
                 </p>
               </div>

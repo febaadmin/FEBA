@@ -89,7 +89,7 @@ export default function AdminSchedule() {
     : [];
 
   const subtitle = isAllAcademies
-    ? t("Mode « Toutes les Académies » — chaque ligne porte son académie.")
+    ? t("Mode « Toutes les Académies » : chaque ligne porte son académie.")
     : activeAcademy?.name || "";
 
   return (

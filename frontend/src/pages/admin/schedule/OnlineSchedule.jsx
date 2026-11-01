@@ -216,7 +216,7 @@ export default function OnlineSchedule() {
             </span>
           ) : (
             <button onClick={openCreate} className="btn-primary flex items-center gap-2">
-              <Plus className="w-4 h-4" />{t("Nouvelle séance")} — {activeAcademy?.short_name || activeAcademy?.name || ""}
+              <Plus className="w-4 h-4" />{t("Nouvelle séance")} : {activeAcademy?.short_name || activeAcademy?.name || ""}
             </button>
           )}
         </div>
@@ -281,8 +281,8 @@ export default function OnlineSchedule() {
                                 )}
                                 <p className="font-bold truncate">{item.group_name}</p>
                                 <p className="opacity-75 truncate">{item.subject_name}</p>
-                                <p className="opacity-60 truncate">🌐 {item.local_start_label} ({item.display_timezone})</p>
-                                {item.teacher_name && <p className="opacity-60 truncate">👤 {item.teacher_name}</p>}
+                                <p className="opacity-60 truncate"> {item.local_start_label} ({item.display_timezone})</p>
+                                {item.teacher_name && <p className="opacity-60 truncate"> {item.teacher_name}</p>}
                               </div>
                             );
                           })}
@@ -433,7 +433,7 @@ export default function OnlineSchedule() {
           <div className="rounded-xl border border-sky-200 bg-sky-50 p-3 space-y-3">
             <p className="text-xs text-sky-900">
               {t(
-                "L'heure est enregistrée en UTC. C'est la seule référence commune à des familles réparties entre les États-Unis, le Canada et le Bénin — et la seule qui reste juste au changement d'heure.",
+                "L'heure est enregistrée en UTC. C'est la seule référence commune à des familles réparties entre les États-Unis, le Canada et le Bénin, et la seule qui reste juste au changement d'heure.",
               )}
             </p>
             <div className="grid grid-cols-3 gap-4">

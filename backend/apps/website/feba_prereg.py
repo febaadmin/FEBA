@@ -42,7 +42,7 @@ def generate_and_store_prereg_sheet(demande):
     except Exception as exc:
         demande.sheet_error = f"{type(exc).__name__}: {exc}"[:2000]
         demande.save(update_fields=["sheet_error"])
-        logger.exception("FEBA — fiche de préinscription non produite pour %s",
+        logger.exception("FEBA - fiche de préinscription non produite pour %s",
                          demande.reference)
         return None
 
@@ -50,7 +50,7 @@ def generate_and_store_prereg_sheet(demande):
     demande.save(update_fields=[
         "sheet_path", "sheet_sha256", "sheet_generated_at", "sheet_error",
     ])
-    logger.info("FEBA — fiche %s produite (%d octets, empreinte %s…)",
+    logger.info("FEBA - fiche %s produite (%d octets, empreinte %s…)",
                 demande.reference, len(content), demande.sheet_sha256[:16])
     return content
 
@@ -82,7 +82,7 @@ def notify_sheet_failure(demande):
             # Le modèle n'a pas de type « erreur » ; en inventer un
             # obligerait à une migration pour un gain nul.
             type="announcement",
-            title=f"Fiche de préinscription non produite — {demande.reference}",
+            title=f"Fiche de préinscription non produite - {demande.reference}",
             message=(
                 f"La fiche PDF du dossier {demande.reference} "
                 f"({demande.child_name}) n'a pas pu être produite.\n\n"
@@ -109,7 +109,7 @@ def process_submission(demande):
         try:
             notify_sheet_failure(demande)
         except Exception:  # pragma: no cover — la notification est secondaire
-            logger.exception("FEBA — alerte de fiche non produite non envoyée")
+            logger.exception("FEBA - alerte de fiche non produite non envoyée")
         return {"sheet_generated": False, "sheet_error": demande.sheet_error}
 
     return {"sheet_generated": True, "sheet_error": ""}

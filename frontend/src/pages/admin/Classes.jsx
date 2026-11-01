@@ -209,7 +209,7 @@ export default function AdminClasses() {
     {
       key: "subjects_count", label: t("Matières"), render: r => (
         <span className="text-xs text-slate-500">
-          🇫🇷 {r.fr_subject_count || 0} · 🇬🇧 {r.en_subject_count || 0}
+          FR {r.fr_subject_count || 0} · EN {r.en_subject_count || 0}
         </span>
       )
     },
@@ -285,13 +285,13 @@ export default function AdminClasses() {
               <label className="label">{t("Année source *")}</label>
               <SearchableSelect
                 options={years.filter(y => String(y.id) !== String(copyTarget)).map(y => ({ value: y.id, label: y.name }))}
-                value={copySource} onChange={setCopySource} placeholder={t("— Sélectionner —")} />
+                value={copySource} onChange={setCopySource} placeholder={t("Sélectionner")} />
             </div>
             <div>
               <label className="label">{t("Année cible *")}</label>
               <SearchableSelect
                 options={years.map(y => ({ value: y.id, label: `${y.name}${y.is_current ? " ✓ Active" : ""}` }))}
-                value={copyTarget} onChange={setCopyTarget} placeholder={t("— Sélectionner —")} />
+                value={copyTarget} onChange={setCopyTarget} placeholder={t("Sélectionner")} />
             </div>
           </div>
           <div className="flex gap-3 justify-end pt-2">
@@ -355,7 +355,7 @@ export default function AdminClasses() {
       </Modal>
 
       {/* Modal gestion matières */}
-      <Modal open={!!subjectModal} onClose={() => setSubjectModal(null)} title={`Matières — ${subjectModal?.name || ""}`} size="lg">
+      <Modal open={!!subjectModal} onClose={() => setSubjectModal(null)} title={`Matières : ${subjectModal?.name || ""}`} size="lg">
         <div className="space-y-5">
           {/* Ce qui est ATTENDU dépend du parcours DÉCLARÉ de la classe.
               La phrase « au moins une matière française ET une anglaise
@@ -415,7 +415,7 @@ export default function AdminClasses() {
               return (
             <div data-testid="colonne-fr" data-admise={admise ? "oui" : "non"}>
               <h4 className={`flex items-center gap-2 font-semibold text-sm mb-2 ${admise ? "text-blue-700" : "text-slate-400"}`}>
-                🇫🇷 {t("Matières Françaises")}
+                {t("Matières Françaises")}
               </h4>
               {!admise && (
                 <p className="text-xs text-slate-500 bg-slate-50 border border-slate-200 rounded-lg p-2 mb-2">
@@ -456,7 +456,7 @@ export default function AdminClasses() {
               return (
             <div data-testid="colonne-en" data-admise={admise ? "oui" : "non"}>
               <h4 className={`flex items-center gap-2 font-semibold text-sm mb-2 ${admise ? "text-green-700" : "text-slate-400"}`}>
-                🇬🇧 {t("Matières Anglaises")}
+                {t("Matières Anglaises")}
               </h4>
               {!admise && (
                 <p className="text-xs text-slate-500 bg-slate-50 border border-slate-200 rounded-lg p-2 mb-2">

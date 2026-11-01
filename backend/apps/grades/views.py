@@ -14,7 +14,7 @@ Corrections :
 import logging
 from decimal import Decimal
 
-from apps.core.request_text import text_field
+from apps.core.request_text import identifiant, text_field
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -39,6 +39,25 @@ def _log_grade(grade, old_value, old_comment, action, request_user, justificatio
         justification=justification,
         action=action,
     )
+
+
+def _enseignant_voit_eleve(user, student):
+    """Un enseignant ne consulte que les élèves de ses classes."""
+    teacher = getattr(user, "teacher_profile", None)
+    return teacher is not None and teacher.classes.filter(pk=student.current_class_id).exists()
+
+
+def _peut_voir_notes(user, student):
+    """Moyennes d'un élève : administration, enseignant de sa classe, ses parents, lui-même."""
+    if user.role_level >= 80:
+        return True
+    if user.is_teacher():
+        return _enseignant_voit_eleve(user, student)
+    if user.is_student():
+        return student.user_id == user.pk
+    if user.is_parent():
+        return student.parents.filter(parent__user=user).exists()
+    return False
 
 
 class GradeViewSet(BulkDeleteMixin, viewsets.ModelViewSet):
@@ -620,7 +639,9 @@ class GradeViewSet(BulkDeleteMixin, viewsets.ModelViewSet):
             student_qs = Student.objects.all()
             if school is not None:
                 student_qs = student_qs.filter(school=school)
-            student = student_qs.get(pk=student_id)
+            student = student_qs.get(pk=identifiant(student_id))
+            if not _peut_voir_notes(user, student):
+                return Response({"error": "Accès refusé."}, status=403)
 
             # FIX v41 (500 console) : résolution robuste de l'année.
             # - superadmin/élève sans tenant : on résout sur l'établissement
@@ -705,12 +726,14 @@ class GradeViewSet(BulkDeleteMixin, viewsets.ModelViewSet):
             student_qs = Student.objects.all()
             if school is not None:
                 student_qs = student_qs.filter(school=school)
-            student = student_qs.get(pk=student_id)
+            student = student_qs.get(pk=identifiant(student_id))
         except Student.DoesNotExist:
             return Response({"error": "Élève introuvable"}, status=404)
 
         # RBAC: vérifier que le demandeur a le droit de voir cet élève
         user = request.user
+        if user.is_teacher() and not _enseignant_voit_eleve(user, student):
+            return Response({"error": "Accès refusé."}, status=403)
         if user.role_level < 50:  # Moins que teacher
             if user.is_parent():
                 has_access = student.parents.filter(parent__user=user).exists()
@@ -827,6 +850,13 @@ class GradeViewSet(BulkDeleteMixin, viewsets.ModelViewSet):
 
         if not class_id:
             return Response({"error": "class requis"}, status=400)
+        class_id = identifiant(class_id)
+
+        # Moyennes et rangs nominatifs : ni les familles ni un enseignant d'une autre classe.
+        if request.user.role_level < 80:
+            enseignant = getattr(request.user, "teacher_profile", None) if request.user.is_teacher() else None
+            if enseignant is None or not enseignant.classes.filter(pk=class_id).exists():
+                return Response({"detail": "Accès refusé."}, status=403)
 
         from apps.students.models import Student
         from apps.schools.models import SchoolYear
@@ -908,9 +938,11 @@ def bilingual_averages_view(request):
         student_qs = Student.objects.all()
         if school is not None:
             student_qs = student_qs.filter(school=school)
-        student = student_qs.get(pk=student_id)
+        student = student_qs.get(pk=identifiant(student_id))
     except Student.DoesNotExist:
         return Response({'error': 'Élève introuvable.'}, status=404)
+    if not _peut_voir_notes(user, student):
+        return Response({'error': 'Accès refusé.'}, status=403)
 
     # FIX v33 : superadmin (school=None) — résoudre l'année sur l'établissement
     # de l'élève, sinon le calcul bilingue était toujours "indisponible".

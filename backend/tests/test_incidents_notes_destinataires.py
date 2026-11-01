@@ -35,6 +35,13 @@ class SuppressionNoteTests(BulkGradeFixture):
         return self.client.delete(url or self.url, data if data is not None else {"justification": "Doublon"},
                                   format="json")
 
+    def test_l_ecran_sait_quelles_notes_sont_modifiables(self):
+        auth(self.client, "prof@test.bj")
+        self.assertTrue(self.client.get(self.url).data["peut_modifier"])
+        self.prof_teacher = self.grade.teacher
+        self.prof_teacher.subjects.remove(self.math)
+        self.assertFalse(self.client.get(self.url).data["peut_modifier"])
+
     def test_suppression_normale_tracee(self):
         self.assertEqual(self.supprimer().status_code, 204)
         self.grade.refresh_from_db()
@@ -183,3 +190,4 @@ class ReparationProfilsTests(TestCase):
         self.assertFalse(Teacher.objects.filter(user=user).exists())
         call_command("repair_missing_profiles", "--apply", stdout=StringIO())
         self.assertTrue(Teacher.objects.filter(user=user).exists())
+

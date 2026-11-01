@@ -201,7 +201,7 @@ def _plan_in_safe_zone(field, text):
     except CompositionRefused as exc:
         raise RenderError(
             f"Le champ « {field.label} » ne peut pas être composé : {exc} "
-            f"Le document n'est pas produit — un nom tronqué ou débordant "
+            f"Le document n'est pas produit : un nom tronqué ou débordant "
             f"sur un document officiel est une erreur qui circule sans se "
             f"voir."
         ) from exc
@@ -404,7 +404,7 @@ def _draw_watermark(pdf, layout, text):
     pdf.rotate(28)
     pdf.drawCentredString(0, 0, text)
     pdf.setFont("Helvetica-Bold", 13)
-    pdf.drawCentredString(0, -22, "APERÇU — NE PAS REMETTRE À UN ÉLÈVE")
+    pdf.drawCentredString(0, -22, "APERÇU - NE PAS REMETTRE À UN ÉLÈVE")
     pdf.restoreState()
 
 

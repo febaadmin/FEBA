@@ -28,6 +28,9 @@ class GradeSerializer(TenantRelationsMixin, AcademyMetadataMixin, StudentAgeMixi
     academy_source = "student.school"
 
     student_name    = serializers.SerializerMethodField()
+    # Faux pour une note lisible mais hors des matières de l'enseignant : l'écran
+    # n'y propose ni modification ni suppression.
+    peut_modifier   = serializers.SerializerMethodField()
     subject_name    = serializers.SerializerMethodField()
     teacher_name    = serializers.SerializerMethodField()
     school_year_name = serializers.SerializerMethodField()
@@ -46,6 +49,7 @@ class GradeSerializer(TenantRelationsMixin, AcademyMetadataMixin, StudentAgeMixi
         # V8 : note_coefficient est imposé à 1 par le backend — jamais saisi.
         read_only_fields = ['note_coefficient']
         fields = [
+            'peut_modifier',
             'id', 'student', 'student_name', 'subject', 'subject_name',
             'subject_coefficient', 'teacher', 'teacher_name',
             'school_year', 'school_year_name',
@@ -103,6 +107,23 @@ class GradeSerializer(TenantRelationsMixin, AcademyMetadataMixin, StudentAgeMixi
         if obj.deleted_by:
             return obj.deleted_by.get_full_name()
         return None
+
+    def get_peut_modifier(self, obj):
+        request = self.context.get("request")
+        user = getattr(request, "user", None)
+        if user is None or not getattr(user, "is_authenticated", False):
+            return False
+        if user.role_level >= 80:
+            return True
+        if not user.is_teacher():
+            return False
+        droits = self.context.get("_droits_enseignant")
+        if droits is None:
+            teacher = getattr(user, "teacher_profile", None)
+            droits = (set(teacher.subjects.values_list("id", flat=True)),
+                      set(teacher.classes.values_list("id", flat=True))) if teacher else (set(), set())
+            self.context["_droits_enseignant"] = droits
+        return obj.subject_id in droits[0] and obj.student.current_class_id in droits[1]
 
     def get_student_name(self, obj):
         return obj.student.get_full_name() if obj.student else None

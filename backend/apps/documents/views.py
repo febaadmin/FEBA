@@ -22,6 +22,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.core.request_text import identifiant
 from apps.core.tenancy import get_request_school
 from apps.documents.models import DocumentEvent, GeneratedDocument
 from apps.documents.services import create_document, issue_document, replace_document
@@ -219,7 +220,7 @@ class DocumentListCreateView(APIView):
             )
 
         student = _visible_students(user, request).filter(
-            pk=request.data.get("student"),
+            pk=identifiant(request.data.get("student")),
         ).first()
         if student is None:
             return Response({"detail": "Élève introuvable ou hors de votre périmètre."},
@@ -241,7 +242,7 @@ class DocumentListCreateView(APIView):
                                 status=status.HTTP_400_BAD_REQUEST)
             year = None
             if request.data.get("school_year"):
-                year = student.school.years.filter(pk=request.data.get("school_year")).first()
+                year = student.school.years.filter(pk=identifiant(request.data.get("school_year"))).first()
                 if year is None:
                     return Response({"detail": "Année scolaire introuvable pour cette académie."},
                                     status=status.HTTP_400_BAD_REQUEST)

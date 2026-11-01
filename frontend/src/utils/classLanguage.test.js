@@ -152,14 +152,14 @@ describe("résumé affiché", () => {
     // « Configuration complète » tout court ne disait rien — et c'est ce
     // vide qui rendait la contradiction si déroutante.
     expect(summarize(classe(TRACK_FRANCOPHONE), { fr: 4, en: 0 }))
-      .toBe("Configuration complète — 4 matière(s) française(s)");
+      .toBe("Configuration complète : 4 matière(s) française(s)");
     expect(summarize(classe(TRACK_ANGLOPHONE), { fr: 0, en: 3 }))
-      .toBe("Configuration complète — 3 matière(s) anglaise(s)");
+      .toBe("Configuration complète : 3 matière(s) anglaise(s)");
   });
 
   it("détaille les deux langues pour un parcours bilingue", () => {
     expect(summarize(classe(TRACK_BILINGUAL), { fr: 4, en: 3 }))
-      .toBe("Configuration bilingue complète — 4 FR / 3 EN");
+      .toBe("Configuration bilingue complète : 4 FR / 3 EN");
   });
 });
 

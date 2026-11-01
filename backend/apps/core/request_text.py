@@ -29,3 +29,22 @@ def checked_upload(upload):
         raise ValidationError({"attachment": str(exc)})
     upload.seek(0)
     return upload
+
+
+def identifiant(valeur):
+    """Identifiant reçu du client : un entier, sinon None (aucun objet ne correspond)."""
+    if isinstance(valeur, bool):
+        return None
+    if isinstance(valeur, int):
+        return valeur
+    if isinstance(valeur, str) and valeur.strip().isdigit():
+        return int(valeur)
+    return None
+
+
+def liste_identifiants(valeurs):
+    """Liste d'identifiants reçue du client : les entiers valides, ou None si la forme est fausse."""
+    if not isinstance(valeurs, list):
+        return None
+    ids = [identifiant(v) for v in valeurs]
+    return None if None in ids else ids

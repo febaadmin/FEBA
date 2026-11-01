@@ -70,7 +70,7 @@ def notify_application_submitted(application):
 
     # Le parent choisit sa langue : on envoie dans celle qu'il a déclarée.
     if application.parent1_preferred_language == "fr":
-        subject = f"[{entity.name}] Votre fiche d'inscription — dossier {reference}"
+        subject = f"[{entity.name}] Votre fiche d'inscription : dossier {reference}"
         body = (
             f"Bonjour {application.parent1_first_name},\n\n"
             f"Nous avons bien reçu la fiche de renseignements de "
@@ -81,7 +81,7 @@ def notify_application_submitted(application):
             f"— {entity.legal_name or entity.name}"
         )
     else:
-        subject = f"[{entity.name}] Your enrollment form — file {reference}"
+        subject = f"[{entity.name}] Your enrollment form, file {reference}"
         body = (
             f"Hello {application.parent1_first_name},\n\n"
             f"We have received the enrollment form for "
@@ -95,7 +95,7 @@ def notify_application_submitted(application):
     sent = _send(subject, body, [application.parent1_email], entity=entity, reference=reference)
 
     # Notification interne — uniquement aux admins de cette entité.
-    admin_subject = f"[{entity.name}] Nouvelle fiche d'inscription — {reference}"
+    admin_subject = f"[{entity.name}] Nouvelle fiche d'inscription - {reference}"
     admin_body = (
         f"Dossier : {reference}\n"
         f"Enfant : {application.child_first_name} {application.child_last_name} "
@@ -108,7 +108,7 @@ def notify_application_submitted(application):
     )
     _send(admin_subject, admin_body, _admissions_recipients(entity), entity=entity, reference=reference)
 
-    logger.info("FHA — notification « fiche reçue » émise pour %s", reference)
+    logger.info("FHA - notification « fiche reçue » émise pour %s", reference)
     return sent
 
 
@@ -130,7 +130,7 @@ def notify_status_changed(application, previous_status):
             f"— {entity.legal_name or entity.name}"
         )
     else:
-        subject = f"[{entity.name}] File {reference} — status updated"
+        subject = f"[{entity.name}] File {reference} - status updated"
         body = (
             f"Hello {application.parent1_first_name},\n\n"
             f"Your file {reference} has a new status: {label}.\n\n"
@@ -138,7 +138,7 @@ def notify_status_changed(application, previous_status):
         )
 
     logger.info(
-        "FHA — notification de changement d'état %s : %s → %s",
+        "FHA - notification de changement d'état %s : %s → %s",
         reference, previous_status, application.status,
     )
     return _send(subject, body, [application.parent1_email], entity=entity, reference=reference)
@@ -156,7 +156,7 @@ def notify_placement_test_requested(test_request):
     is_fr = test_request.preferred_language == "fr"
 
     if is_fr:
-        subject = f"[{entity.name}] Demande de test de placement — dossier {reference}"
+        subject = f"[{entity.name}] Demande de test de placement : dossier {reference}"
         body = (
             f"Bonjour {test_request.parent_first_name},\n\n"
             f"Nous avons bien reçu votre demande de test de placement pour "
@@ -168,7 +168,7 @@ def notify_placement_test_requested(test_request):
             f"— {entity.legal_name or entity.name}"
         )
     else:
-        subject = f"[{entity.name}] Placement assessment request — file {reference}"
+        subject = f"[{entity.name}] Placement assessment request, file {reference}"
         body = (
             f"Hello {test_request.parent_first_name},\n\n"
             f"We have received your placement assessment request for "
@@ -182,7 +182,7 @@ def notify_placement_test_requested(test_request):
 
     sent = _send(subject, body, [test_request.parent_email], entity=entity, reference=reference)
 
-    admin_subject = f"[{entity.name}] Nouvelle demande de test — {reference}"
+    admin_subject = f"[{entity.name}] Nouvelle demande de test - {reference}"
     admin_body = (
         f"Dossier : {reference}\n"
         f"Enfant : {test_request.child_first_name} {test_request.child_last_name} "
@@ -197,7 +197,7 @@ def notify_placement_test_requested(test_request):
     )
     _send(admin_subject, admin_body, _admissions_recipients(entity), entity=entity, reference=reference)
 
-    logger.info("FHA — notification « demande de test » émise pour %s", reference)
+    logger.info("FHA - notification « demande de test » émise pour %s", reference)
     return sent
 
 
@@ -222,7 +222,7 @@ def notify_placement_test_scheduled(test_request):
             when = f"{moment:%d/%m/%Y %H:%M} (UTC)"
 
     if is_fr:
-        subject = f"[{entity.name}] Test de placement confirmé — {reference}"
+        subject = f"[{entity.name}] Test de placement confirmé - {reference}"
         body = (
             f"Bonjour {test_request.parent_first_name},\n\n"
             f"Le test de placement de {test_request.child_first_name} est "
@@ -237,7 +237,7 @@ def notify_placement_test_scheduled(test_request):
             f"— {entity.legal_name or entity.name}"
         )
     else:
-        subject = f"[{entity.name}] Placement assessment confirmed — {reference}"
+        subject = f"[{entity.name}] Placement assessment confirmed - {reference}"
         body = (
             f"Hello {test_request.parent_first_name},\n\n"
             f"{test_request.child_first_name}'s placement assessment is "
@@ -252,5 +252,5 @@ def notify_placement_test_scheduled(test_request):
             f"— {entity.legal_name or entity.name}"
         )
 
-    logger.info("FHA — notification « test planifié » émise pour %s", reference)
+    logger.info("FHA - notification « test planifié » émise pour %s", reference)
     return _send(subject, body, [test_request.parent_email], entity=entity, reference=reference)

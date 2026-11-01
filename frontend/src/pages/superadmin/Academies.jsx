@@ -33,13 +33,13 @@ export const ACADEMY_TYPES = [
   },
   {
     value: "physical_primary",
-    label: "Académie physique — primaire",
+    label: "Académie physique : primaire",
     detail: "Maternelle 1 et 2, CI, CP, CE1, CE2, CM1, CM2 créés. Bulletins sur 10.",
     timezone: "Africa/Porto-Novo", currency: "XOF", language: "fr",
   },
   {
     value: "physical_secondary",
-    label: "Académie physique — secondaire (collège et lycée)",
+    label: "Académie physique : secondaire (collège et lycée)",
     detail: "6ème à 3ème (collège) et Seconde à Terminale (lycée) créés. Bulletins sur 20.",
     timezone: "Africa/Porto-Novo", currency: "XOF", language: "fr",
   },
@@ -78,7 +78,7 @@ export function CurriculumDiagnostic({ diagnostic }) {
       {diagnostic.classes?.length > 0 && (
         <ul className="list-disc ml-4">
           {diagnostic.classes.map((c) => (
-            <li key={c.id}>{c.name} ({c.school_year}) — {c.reasons.join(" ; ")}</li>
+            <li key={c.id}>{c.name} ({c.school_year}) {c.reasons.join(" ; ")}</li>
           ))}
         </ul>
       )}
@@ -300,7 +300,7 @@ export default function SuperAdminAcademies() {
         {created ? (
           <div className="space-y-4" data-testid="academy-created">
             <p className="text-sm">
-              <strong>{created.name}</strong> ({created.code}) — {t(typeLabel(created.academy_type))}
+              <strong>{created.name}</strong> ({created.code}) {t(typeLabel(created.academy_type))}
               {created.curriculum_language_mode && <> · {t(curriculumLabel(created.curriculum_language_mode))}</>}.
             </p>
             <p className="text-sm text-slate-600">
@@ -332,7 +332,7 @@ export default function SuperAdminAcademies() {
             <fieldset>
               <legend className="label">{t("Programme linguistique*")}</legend>
               <p className="text-xs text-slate-500 mb-2">
-                {t("Langues des matières, des parcours et des bulletins — distinct de la langue de l'interface.")}
+                {t("Langues des matières, des parcours et des bulletins, distinct de la langue de l'interface.")}
               </p>
               <div className="grid sm:grid-cols-3 gap-3">
                 {CURRICULUM_MODES.map((mode) => (
@@ -381,8 +381,8 @@ export default function SuperAdminAcademies() {
               </Field>
               <Field label={t("Devise")} error={errors.currency_code}>
                 <select className="input" value={form.currency_code} onChange={(e) => set("currency_code", e.target.value)}>
-                  <option value="XOF">XOF — Franc CFA</option>
-                  <option value="USD">USD — Dollar</option>
+                  <option value="XOF">XOF - Franc CFA</option>
+                  <option value="USD">USD - Dollar</option>
                 </select>
               </Field>
               <Field label={t("Langue de l'interface et des documents")} error={errors.default_language}>

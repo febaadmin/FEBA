@@ -144,7 +144,7 @@ export function validateSelection(classe, matieresSelectionnees) {
 export function summarize(classe, comptes) {
   const langues = requiredLanguages(classe);
   if (langues.length > 1) {
-    return t("Configuration bilingue complète — {fr} FR / {en} EN", {
+    return t("Configuration bilingue complète : {fr} FR / {en} EN", {
       fr: comptes.fr || 0,
       en: comptes.en || 0,
     });
@@ -152,8 +152,8 @@ export function summarize(classe, comptes) {
   const langue = langues[0];
   const n = comptes[langue] || 0;
   return langue === "fr"
-    ? t("Configuration complète — {n} matière(s) française(s)", { n })
-    : t("Configuration complète — {n} matière(s) anglaise(s)", { n });
+    ? t("Configuration complète : {n} matière(s) française(s)", { n })
+    : t("Configuration complète : {n} matière(s) anglaise(s)", { n });
 }
 
 /**
@@ -169,9 +169,9 @@ export function trackOptions(academy) {
 }
 
 export const SUBJECT_LANGUAGE_OPTIONS = [
-  { value: "fr", label: "🇫🇷 Française (moyenne FR)" },
-  { value: "en", label: "🇬🇧 Anglaise (moyenne EN)" },
-  { value: "bilingual", label: "🌐 Commune (bilingue) — moyenne générale seulement" },
+  { value: "fr", label: "Française (moyenne FR)" },
+  { value: "en", label: "Anglaise (moyenne EN)" },
+  { value: "bilingual", label: "Commune (bilingue) : moyenne générale seulement" },
 ];
 
 /**

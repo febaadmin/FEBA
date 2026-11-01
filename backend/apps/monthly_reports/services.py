@@ -127,7 +127,7 @@ def _fill(report, student, year, month, *, user=None):
         report.last_error = f"{type(exc).__name__}: {exc}"[:2000]
         report.save(update_fields=["generated_data", "last_error",
                                    "updated_by", "updated_at"])
-        logger.exception("Rapport mensuel — PDF non produit pour %s",
+        logger.exception("Rapport mensuel : PDF non produit pour %s",
                          report.reference)
         raise ReportError(report.last_error) from exc
 
@@ -158,7 +158,7 @@ def generate_month(academy, year, month, *, user=None):
         except Exception as exc:  # noqa: BLE001 — on veut TOUS les échecs
             resultats["echecs"].append({"eleve": str(student),
                                         "erreur": f"{type(exc).__name__}: {exc}"})
-            logger.exception("Rapport mensuel — échec pour %s", student)
+            logger.exception("Rapport mensuel : échec pour %s", student)
     return resultats
 
 
@@ -214,7 +214,7 @@ def send_report(report, *, user=None):
     if report.status == MonthlyReportStatus.SENT and report.really_sent:
         # Garde-fou anti-doublon : un rapport déjà accepté par un
         # fournisseur ne repart pas parce qu'une tâche a été rejouée.
-        logger.info("Rapport %s déjà envoyé — nouvel envoi ignoré",
+        logger.info("Rapport %s déjà envoyé, nouvel envoi ignoré",
                     report.reference)
         return report
 

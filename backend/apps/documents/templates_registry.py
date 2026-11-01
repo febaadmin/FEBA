@@ -746,7 +746,7 @@ def load_template(template_id, use_cache=True):
         try:
             data = json.load(handle)
         except json.JSONDecodeError as exc:
-            raise TemplateError(f"{path} : JSON invalide — {exc}") from exc
+            raise TemplateError(f"{path} : JSON invalide - {exc}") from exc
 
     template = DocumentTemplate(data, path)
     if use_cache:

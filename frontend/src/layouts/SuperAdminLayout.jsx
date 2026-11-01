@@ -200,7 +200,7 @@ export default function SuperAdminLayout() {
             <EntitySwitcher />
             <LanguageSwitcher />
             <span className="text-xs font-bold px-3 py-1 rounded-full bg-gradient-to-r from-purple-100 to-pink-100 text-purple-700">
-              🛡️ Super Admin
+              Super Admin
             </span>
             <div className="hidden sm:flex items-center gap-2 pl-3 border-l border-slate-100">
               <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-purple-600 to-pink-600 flex items-center justify-center text-white text-xs font-bold shrink-0">

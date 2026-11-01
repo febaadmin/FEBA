@@ -259,7 +259,7 @@ def _page_marks(canvas, doc):
     canvas.rotate(35)
     canvas.drawCentredString(0, 20, "APERÇU")
     canvas.setFont("Helvetica-Bold", 22)
-    canvas.drawCentredString(0, -20, "Document non officiel — Preview, not an official report")
+    canvas.drawCentredString(0, -20, "Document non officiel - Preview, not an official report")
     canvas.restoreState()
 
 
@@ -906,12 +906,12 @@ def _render_standard_once(buffer, student, period, school_year, subject_data,
     attendues = tuple(expected_languages or ("fr", "en"))
     if 'fr' in attendues or fr_entries:
         _add_language_section(
-            story, 'RÉSULTATS — PARTIE FRANÇAISE / FRENCH SECTION',
+            story, 'RÉSULTATS - PARTIE FRANÇAISE / FRENCH SECTION',
             fr_entries, period, palette.fr_head, palette.light, scale,
         )
     if 'en' in attendues or en_entries:
         _add_language_section(
-            story, 'ACADEMIC RESULTS — ENGLISH SECTION / PARTIE ANGLAISE',
+            story, 'ACADEMIC RESULTS - ENGLISH SECTION / PARTIE ANGLAISE',
             en_entries, period, EN_HEAD, EN_BG, scale,
         )
     if other_entries:
@@ -982,12 +982,12 @@ def _render_maternelle_once(buffer, student, period, school_year, subject_data,
         buffer, pagesize=A4,
         rightMargin=1.2 * cm, leftMargin=1.2 * cm,
         topMargin=1.0 * cm, bottomMargin=1.0 * cm,
-        title='Bulletin de notes — Maternelle', author=palette.brand.display_name,
+        title='Bulletin de notes : Maternelle', author=palette.brand.display_name,
     )
     story = []
 
     _add_header(story, student, period, school_year, palette,
-                'BULLETIN DE NOTES — MATERNELLE')
+                'BULLETIN DE NOTES - MATERNELLE')
     _add_student_info(story, student, period, school_year, palette)
 
     # Grading key — 13 colonnes égales sur la largeur utile (≤ 18.5 cm).

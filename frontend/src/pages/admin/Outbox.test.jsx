@@ -25,9 +25,9 @@ const ROW = {
   id: 7, created_at: "2026-10-10T09:15:00Z", academy: { id: 1, code: "FEBA", name: "FEBA" },
   to_email: "parent@ymail.com", subject: "Sortie scolaire", purpose: "academy_mass_email",
   purpose_label: "E-mail groupé", status: "sent", status_display: "Accepté par le serveur de messagerie",
-  delivery_summary: "Capturé par le serveur de test (Mailpit) — non distribué sur Internet",
+  delivery_summary: "Capturé par le serveur de test (Mailpit), non distribué sur Internet",
   used_real_provider: false, attachments_count: 1, transport: "capture",
-  transport_display: "Serveur de test (Mailpit) — capturé, non distribué", attempts: 1,
+  transport_display: "Serveur de test (Mailpit), capturé, non distribué", attempts: 1,
 };
 const DETAIL = {
   ...ROW, from_email: "noreply@globalfeba.com", text_body: "Bonjour,\nVoir le programme.",
@@ -48,7 +48,7 @@ beforeEach(() => {
   outboxAPI.list.mockResolvedValue({ data: { count: 1, page: 1, page_size: 25, results: [ROW], purposes: [] } });
   outboxAPI.detail.mockResolvedValue({ data: DETAIL });
   outboxAPI.config.mockResolvedValue({ data: {
-    transport: "capture", transport_display: "Serveur de test (Mailpit) — capturé, non distribué",
+    transport: "capture", transport_display: "Serveur de test (Mailpit), capturé, non distribué",
     real_provider: false, explanation: "Les messages sont CAPTURÉS par le serveur de test (Mailpit).",
     capture_ui_url: "http://localhost:8025",
   } });

@@ -33,14 +33,14 @@ function upsertCanonical(href) {
  */
 export function fullPageTitle(title, pathname) {
   if (pathname.startsWith("/feba-fha")) {
-    if (!title) return "FEBA FHA — FEBA French Heritage Academy";
+    if (!title) return "FEBA FHA - FEBA French Heritage Academy";
     return title.includes("FEBA FHA")
       ? `${title} | FEBA French Heritage Academy`
-      : `${title} — FEBA FHA | FEBA French Heritage Academy`;
+      : `${title} - FEBA FHA | FEBA French Heritage Academy`;
   }
   return title
-    ? `${title} — FEBA | Faith & Excellence Bilingual Academy`
-    : "FEBA — Faith & Excellence Bilingual Academy | École bilingue à Cotonou";
+    ? `${title} - FEBA | Faith & Excellence Bilingual Academy`
+    : "FEBA - Faith & Excellence Bilingual Academy | École bilingue à Cotonou";
 }
 
 export default function Seo({ title, description, image, type = "website" }) {

@@ -91,7 +91,7 @@ const STEP_META = [
     "Niveau actuel de français",
     "Current level of French",
     "Évaluez le niveau de votre enfant dans chaque compétence. Une estimation approximative suffit : le test de placement affinera le résultat.",
-    "Rate your child's level in each skill. A rough estimate is enough — the placement test will refine it.",
+    "Rate your child's level in each skill. A rough estimate is enough: the placement test will refine it.",
   ],
   [
     "Expérience d'apprentissage du français",
@@ -103,7 +103,7 @@ const STEP_META = [
     "Objectifs des parents pour l'enfant",
     "Your goals for your child",
     "Dites-nous ce que vous attendez de cette année : c'est ce qui guidera le travail de l'enseignant.",
-    "Tell us what you expect from this year — it will guide the teacher's work.",
+    "Tell us what you expect from this year: it will guide the teacher's work.",
   ],
   [
     "Coordonnées du parent ou du tuteur principal",
@@ -394,7 +394,7 @@ export default function FhaEnrollPage() {
   if (done) {
     return (
       <>
-        <Seo title={t("Fiche envoyée — FEBA FHA", "Form submitted — FEBA FHA")} />
+        <Seo title={t("Fiche envoyée : FEBA FHA", "Form submitted : FEBA FHA")} />
         <Section tone="white">
           <div className="max-w-2xl mx-auto text-center">
             <div className="w-16 h-16 rounded-2xl bg-feba-green flex items-center justify-center mx-auto mb-6">
@@ -559,7 +559,7 @@ export default function FhaEnrollPage() {
                   className={inputClass}
                   data-testid="child-gender"
                 >
-                  <option value="">{t("— Choisir —", "— Select —")}</option>
+                  <option value="">{t("Choisir", "Select")}</option>
                   <option value="F">{t("Féminin", "Female")}</option>
                   <option value="M">{t("Masculin", "Male")}</option>
                 </select>

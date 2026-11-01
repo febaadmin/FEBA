@@ -100,7 +100,7 @@ export default function SiteLayout() {
               horizontale apparaît dès qu'elle tient (≥1200px), sinon menu
               hamburger propre. */}
           <div className="flex items-center justify-between h-16 lg:h-[72px] gap-3 flex-nowrap">
-            <Link to="/" className="flex items-center gap-2.5 shrink-0" aria-label="FEBA — Accueil">
+            <Link to="/" className="flex items-center gap-2.5 shrink-0" aria-label="FEBA - Accueil">
               <img src={logoSrc} alt="Logo FEBA"
                 className="w-10 h-10 lg:w-11 lg:h-11 rounded-full bg-white object-contain border-2 border-feba-gold" />
               <span className="leading-tight">
@@ -279,7 +279,7 @@ export default function SiteLayout() {
         </div>
         <div className="border-t border-white/10">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-white/60">
-            <p>© {new Date().getFullYear()} Faith & Excellence Bilingual Academy — Akpakpa, Cotonou, Bénin</p>
+            <p>© {new Date().getFullYear()} Faith & Excellence Bilingual Academy, Akpakpa, Cotonou, Bénin</p>
             <p className="flex gap-4">
               <Link to="/mentions-legales" className="hover:text-feba-gold">{L(UI.legalNotice)}</Link>
               <Link to="/confidentialite" className="hover:text-feba-gold">{L(UI.privacy)}</Link>

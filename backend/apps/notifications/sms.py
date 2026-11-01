@@ -313,7 +313,7 @@ def deliver(sms_id):
             _record_opt_out(sms.user)
         _schedule_retry_or_fail(sms, str(exc), permanent=exc.permanent and not isinstance(exc, SmsNotConfigured))
         sms.save()
-        logger.warning("SMS %s (%s) : échec — %s", sms.pk, sms.purpose, exc)
+        logger.warning("SMS %s (%s) : échec : %s", sms.pk, sms.purpose, exc)
         return sms
     sms.status = SmsMessage.CAPTURED if getattr(provider, "captured", False) else SmsMessage.SENT
     sms.sent_at = timezone.now()

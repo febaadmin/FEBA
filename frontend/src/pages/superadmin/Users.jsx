@@ -120,7 +120,7 @@ export default function SuperAdminUsers() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title={t("Tous les utilisateurs")} subtitle={t("Gestion complète — accès Super Admin")}
+      <PageHeader title={t("Tous les utilisateurs")} subtitle={t("Gestion complète : accès Super Admin")}
         action={<button onClick={openCreate} className="btn-primary flex items-center gap-2"><Plus className="w-4 h-4" />{t("Nouvel utilisateur")}</button>} />
 
       {/* Role filter */}

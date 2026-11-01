@@ -29,8 +29,8 @@ export const DEFAULT_SLIDES = [
   {
     id: "def-1",
     title: "Bienvenue à FEBA", title_en: "Welcome to FEBA",
-    subtitle: "Faith & Excellence Bilingual Academy — école bilingue à Akpakpa, Cotonou.",
-    subtitle_en: "Faith & Excellence Bilingual Academy — a bilingual school in Akpakpa, Cotonou.",
+    subtitle: "Faith & Excellence Bilingual Academy, école bilingue à Akpakpa, Cotonou.",
+    subtitle_en: "Faith & Excellence Bilingual Academy, a bilingual school in Akpakpa, Cotonou.",
     cta_label: "Découvrir l'école", cta_label_en: "Discover the school", cta_url: "/a-propos",
     // V6.1 : bâtiment principal avec panneau « Faith & Excellence » lisible.
     image_src: img("campus-logo"), focal: focal("campus-logo"),
@@ -111,7 +111,7 @@ const ALBUM_DEFS = [
   [["Notre campus", "Our campus"],
    ["Les espaces de l'école à Akpakpa.", "The school's spaces in Akpakpa."], [
     ["campus-logo", "Le bâtiment principal", "The main building"],
-    ["campus-facade-logo", "Façade FEBA — logo et fresques", "FEBA frontage — logo and murals"],
+    ["campus-facade-logo", "Façade FEBA : logo et fresques", "FEBA frontage: logo and murals"],
     ["campus-devise", "La devise de l'école", "The school motto"],
     ["campus-cour", "La cour de récréation", "The playground"],
   ]],

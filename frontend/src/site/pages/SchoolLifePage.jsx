@@ -18,8 +18,8 @@ export default function SchoolLifePage() {
         )} />
       <PageBanner title={t("La vie à FEBA", "Life at FEBA")}
         intro={t(
-          "Apprendre, oui — mais aussi jouer, créer, chanter et grandir ensemble.",
-          "Learning, yes — but also playing, creating, singing and growing together.",
+          "Apprendre, oui, mais aussi jouer, créer, chanter et grandir ensemble.",
+          "Learning, yes, but also playing, creating, singing and growing together.",
         )}
         image="/site/img/activite-musique-groupe-1600.webp" />
 
@@ -63,8 +63,8 @@ export default function SchoolLifePage() {
               title={t("Grandir en confiance", "Growing in confidence")} />
             <p className="text-white/85 leading-relaxed">
               {t(
-                "Prendre la parole devant la classe, chanter dans l'orchestre de l'école, défendre les couleurs de son équipe : à FEBA, chaque enfant trouve un espace pour s'exprimer et prendre confiance en lui — dans le respect des autres et la joie de faire ensemble.",
-                "Speaking in front of the class, singing in the school band, playing for the team: at FEBA every child finds a space to express themselves and build confidence — respecting others and enjoying doing things together.",
+                "Prendre la parole devant la classe, chanter dans l'orchestre de l'école, défendre les couleurs de son équipe : à FEBA, chaque enfant trouve un espace pour s'exprimer et prendre confiance en lui, dans le respect des autres et la joie de faire ensemble.",
+                "Speaking in front of the class, singing in the school band, playing for the team: at FEBA every child finds a space to express themselves and build confidence, respecting others and enjoying doing things together.",
               )}
             </p>
           </div>

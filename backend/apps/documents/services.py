@@ -35,7 +35,7 @@ def build_values(template, student, extra=None):
     if missing:
         raise ValidationError(
             f"Champs obligatoires sans valeur : {', '.join(missing)}. "
-            f"Le document n'est pas produit — il sortirait avec des blancs."
+            f"Le document n'est pas produit : il sortirait avec des blancs."
         )
     return values
 
@@ -106,7 +106,7 @@ def create_document(*, template_id, student, user=None, school_year=None,
         document=document, action="created", to_status=document.status,
         performed_by=user,
         detail=f"Gabarit {template.id} v{template.version}"
-               + (" — aperçu non calibré" if preview else ""),
+               + (" - aperçu non calibré" if preview else ""),
     )
     return document
 
@@ -158,7 +158,7 @@ def issue_document(document, user=None):
     DocumentEvent.objects.create(
         document=document, action="issued", from_status=previous_status,
         to_status=document.status, performed_by=user,
-        detail=f"Numéro {document.number} — empreinte {document.file_sha256[:16]}…",
+        detail=f"Numéro {document.number} - empreinte {document.file_sha256[:16]}…",
     )
     return document
 
@@ -337,7 +337,7 @@ def _issue_uploaded(document, user=None):
     DocumentEvent.objects.create(
         document=document, action="issued", from_status=previous_status,
         to_status=document.status, performed_by=user,
-        detail=f"Numéro {document.number} — gabarit v{template.version} — "
+        detail=f"Numéro {document.number} - gabarit v{template.version} - "
                f"empreinte {document.file_sha256[:16]}…",
     )
     return document

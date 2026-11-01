@@ -105,7 +105,7 @@ function ResultBanner({ result, onClear }) {
         )}
         {nothingHint && <p className="text-sm">{nothingHint}</p>}
         {result.skipped !== undefined && result.skipped > 0 && (
-          <p className="text-sm opacity-75">{result.skipped} déjà inscrit(s) — ignoré(s)</p>
+          <p className="text-sm opacity-75">{result.skipped} déjà inscrit(s), ignoré(s)</p>
         )}
         {result.succeeded !== undefined && (
           <p><strong>{result.succeeded}/{result.total}</strong> {t("décision(s) appliquée(s)")}</p>
@@ -116,7 +116,7 @@ function ResultBanner({ result, onClear }) {
         {Array.isArray(result.failed) && result.failed.length > 0 && (
           <details className="mt-1 text-xs">
             <summary className="cursor-pointer font-medium">
-              {result.failed.length} échec(s) — cliquer pour détails
+              {result.failed.length} échec(s) : cliquer pour détails
             </summary>
             <ul className="mt-1 space-y-0.5 pl-2">
               {result.failed.slice(0, 10).map((f, i) => (
@@ -374,17 +374,17 @@ export default function AdminEnrollments() {
       {/* ── Tab 1 : Passage de niveau ──────────────────────────────────────── */}
       {tab === "bulk-year" && (
         <div className="card space-y-4">
-          <h3 className="font-bold text-slate-800">{t("Passage de niveau — Toute une année")}</h3>
+          <h3 className="font-bold text-slate-800">{t("Passage de niveau : Toute une année")}</h3>
           <p className="text-sm text-slate-500">
             <strong>{t("Réinscription globale.")}</strong> {t("Inscrit automatiquement TOUS les élèves de l'année source dans l'année cible, dans une classe du même nom lorsqu'elle existe. Chaque élève conserve ses données historiques. Idéal pour ouvrir une nouvelle année d'un coup.")}</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="label">{t("Année source (départ)")}</label>
-              <SearchableSelect options={yearOptions} value={byYearSrc} onChange={setByYearSrc} placeholder={t("— Sélectionner —")} />
+              <SearchableSelect options={yearOptions} value={byYearSrc} onChange={setByYearSrc} placeholder={t("Sélectionner")} />
             </div>
             <div>
               <label className="label">{t("Année cible (arrivée)")}</label>
-              <SearchableSelect options={yearOptions} value={byYearDst} onChange={setByYearDst} placeholder={t("— Sélectionner —")} />
+              <SearchableSelect options={yearOptions} value={byYearDst} onChange={setByYearDst} placeholder={t("Sélectionner")} />
             </div>
           </div>
           <ResultBanner result={byYearResult} onClear={() => setByYearResult(null)} />
@@ -413,18 +413,18 @@ export default function AdminEnrollments() {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
               <label className="label">{t("Classe source")}</label>
-              <SearchableSelect options={classOptionsAllYears} value={byClassSrc} onChange={setByClassSrc} placeholder={t("— Sélectionner —")} />
+              <SearchableSelect options={classOptionsAllYears} value={byClassSrc} onChange={setByClassSrc} placeholder={t("Sélectionner")} />
             </div>
             <div>
               <label className="label">{t("Année cible")}</label>
-              <SearchableSelect options={yearOptions} value={byClassYear} onChange={(v) => { setByClassYear(v); setByClassDst(""); }} placeholder={t("— Sélectionner —")} />
+              <SearchableSelect options={yearOptions} value={byClassYear} onChange={(v) => { setByClassYear(v); setByClassDst(""); }} placeholder={t("Sélectionner")} />
             </div>
             <div>
               <label className="label">{t("Nouvelle classe (optionnel)")}</label>
               <SearchableSelect
                 options={byClassYear ? classOptionsForYear(byClassYear) : []}
                 value={byClassDst} onChange={setByClassDst}
-                placeholder={byClassYear ? "— Même classe —" : "— Choisir d'abord l'année cible —"} />
+                placeholder={byClassYear ? "Même classe" : "Choisir d'abord l'année cible"} />
             </div>
           </div>
           <ResultBanner result={byClassResult} onClear={() => setByClassResult(null)} />
@@ -452,18 +452,18 @@ export default function AdminEnrollments() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="label">{t("Élève *")}</label>
-              <SearchableSelect options={studentOptions} value={indivStudent} onChange={setIndivStudent} placeholder={t("— Sélectionner un élève —")} />
+              <SearchableSelect options={studentOptions} value={indivStudent} onChange={setIndivStudent} placeholder={t("Sélectionner un élève")} />
             </div>
             <div>
               <label className="label">{t("Année scolaire cible *")}</label>
-              <SearchableSelect options={yearOptions} value={indivYear} onChange={(v) => { setIndivYear(v); setIndivClass(""); }} placeholder={t("— Sélectionner —")} />
+              <SearchableSelect options={yearOptions} value={indivYear} onChange={(v) => { setIndivYear(v); setIndivClass(""); }} placeholder={t("Sélectionner")} />
             </div>
             <div>
               <label className="label">{t("Classe cible (optionnel)")}</label>
               <SearchableSelect
                 options={indivYear ? classOptionsForYear(indivYear) : []}
                 value={indivClass} onChange={setIndivClass}
-                placeholder={indivYear ? "— Sans classe —" : "— Choisir d'abord l'année cible —"} />
+                placeholder={indivYear ? "Sans classe" : "Choisir d'abord l'année cible"} />
             </div>
             <div>
               <label className="label">{t("Statut de passage")}</label>
@@ -511,7 +511,7 @@ export default function AdminEnrollments() {
             <div>
               <label className="label">{t("Année scolaire cible (nouvelle année) *")}</label>
               <div className="sm:w-1/2">
-                <SearchableSelect options={yearOptions} value={eoyYear} onChange={(v) => { setEoyYear(v); setEoyClass(""); }} placeholder={t("— Sélectionner —")} />
+                <SearchableSelect options={yearOptions} value={eoyYear} onChange={(v) => { setEoyYear(v); setEoyClass(""); }} placeholder={t("Sélectionner")} />
               </div>
             </div>
 
@@ -521,7 +521,7 @@ export default function AdminEnrollments() {
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
                   <label className="label">{t("Élève")}</label>
-                  <SearchableSelect options={studentOptions} value={eoyStudentId} onChange={setEoyStudentId} placeholder={t("— Sélectionner un élève —")} />
+                  <SearchableSelect options={studentOptions} value={eoyStudentId} onChange={setEoyStudentId} placeholder={t("Sélectionner un élève")} />
                 </div>
                 <div>
                   <label className="label">{t("Action")}</label>
@@ -543,7 +543,7 @@ export default function AdminEnrollments() {
                     <SearchableSelect
                       options={eoyYear ? classOptionsForYear(eoyYear) : []}
                       value={eoyClass} onChange={setEoyClass}
-                      placeholder={eoyYear ? "— Non affectée —" : "— Choisir d'abord l'année cible —"} />
+                      placeholder={eoyYear ? "Non affectée" : "Choisir d'abord l'année cible"} />
                   </div>
                 )}
               </div>
@@ -630,7 +630,7 @@ export default function AdminEnrollments() {
           <h3 className="font-bold text-slate-800">{t("Parcours académique d'un élève")}</h3>
           <div className="flex gap-3">
             <div className="flex-1">
-              <SearchableSelect options={studentOptions} value={histStudent} onChange={setHistStudent} placeholder={t("— Sélectionner un élève —")} />
+              <SearchableSelect options={studentOptions} value={histStudent} onChange={setHistStudent} placeholder={t("Sélectionner un élève")} />
             </div>
             <button
               type="button"

@@ -51,7 +51,7 @@ export default function AboutPage() {
       <PageBanner title={t("À propos de FEBA", "About FEBA")}
         intro={t(
           "Une école bilingue, chaleureuse et exigeante, au cœur d'Akpakpa.",
-          "A bilingual school — warm and demanding — in the heart of Akpakpa.",
+          "A bilingual school: warm and demanding, in the heart of Akpakpa.",
         )}
         image="/site/img/campus-batiment-1600.webp" />
 

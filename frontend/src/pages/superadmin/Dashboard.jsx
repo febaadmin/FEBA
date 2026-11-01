@@ -45,7 +45,7 @@ export default function SuperAdminDashboard() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title={t("Super Admin — Vue globale")}
+        title={t("Super Admin : Vue globale")}
         subtitle={t("Contrôle total du système FEBA")}
       />
 

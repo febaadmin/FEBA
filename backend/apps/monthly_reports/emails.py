@@ -54,7 +54,7 @@ def build_bodies(report, language):
 
     if language == "en":
         mois = f"{MONTH_NAMES_EN[report.month]} {report.year}"
-        subject = f"[{brand.short_name}] Monthly report — {eleve} — {mois}"
+        subject = f"[{brand.short_name}] Monthly report - {eleve} - {mois}"
         lines = [
             "Hello,",
             "",
@@ -80,7 +80,7 @@ def build_bodies(report, language):
         ]
     else:
         mois = f"{MONTH_NAMES_FR[report.month]} {report.year}"
-        subject = f"[{brand.short_name}] Rapport mensuel — {eleve} — {mois}"
+        subject = f"[{brand.short_name}] Rapport mensuel - {eleve} - {mois}"
         lines = [
             "Bonjour,",
             "",
@@ -141,7 +141,7 @@ def send_monthly_report_email(report, recipients):
         with open(report.pdf_absolute_path, "rb") as handle:
             attachments = [(report_filename(report), handle.read(), "application/pdf")]
     except OSError as exc:
-        logger.exception("Rapport %s — PDF illisible", report.reference)
+        logger.exception("Rapport %s : PDF illisible", report.reference)
         return {"accepted": False, "used_real_provider": provider_is_external(),
                 "message_id": "", "error": f"PDF illisible : {type(exc).__name__}: {exc}"}
 

@@ -187,7 +187,7 @@ export default function AdminPayments() {
       <div className="flex items-center gap-3">
         <label className="text-sm font-semibold text-slate-600">{t("Année :")}</label>
         <select value={filterYear} onChange={e => setFilterYear(e.target.value)} className="input w-auto text-sm">
-          <option value="">— {t("Actuelle")} ({currentYear?.name || "—"}) —</option>
+          <option value="">— {t("Actuelle")} ({currentYear?.name || "—"})</option>
           {years.map(y => <option key={y.id} value={y.id}>{yearLabel(y)}{y.is_current ? " ✓" : ""}</option>)}
         </select>
       </div>
@@ -396,7 +396,7 @@ export default function AdminPayments() {
             <div>
               <label className="label">{t("Type *")}</label>
               <select {...register("payment_type", { required: true })} className="input">
-                <option value="">— Choisir —</option>
+                <option value="">Choisir</option>
                 <option value="inscription">{t("Inscription")}</option>
                 <option value="mensualite">{t("Mensualité")}</option>
                 <option value="cantine">{t("Cantine")}</option>

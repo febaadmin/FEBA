@@ -81,7 +81,7 @@ export default function AdminLevels() {
     <div className="space-y-6">
       <PageHeader
         title={t("Niveaux scolaires")}
-        subtitle={t("{n} niveau(x) — CI, CP, CM1, CM2, 6ème…", { n: levels.length })}
+        subtitle={t("{n} niveau(x) : CI, CP, CM1, CM2, 6ème…", { n: levels.length })}
         action={
           <button onClick={openCreate} disabled={isAllAcademies}
                   title={isAllAcademies ? t("Sélectionnez une académie pour créer un niveau.") : undefined}
@@ -169,7 +169,7 @@ export default function AdminLevels() {
             <label className="label">{t("Cycle scolaire*")}</label>
             <select {...register("cycle", { required: true })} className="input" data-testid="level-cycle">
               {allowedCycles.map(([code, label, scale]) => (
-                <option key={code} value={code}>{t(label)} — {t("bulletin sur")} {scale}</option>
+                <option key={code} value={code}>{t(label)} : {t("bulletin sur")} {scale}</option>
               ))}
             </select>
             <p className="text-xs text-slate-500 mt-1">

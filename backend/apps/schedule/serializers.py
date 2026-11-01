@@ -17,7 +17,7 @@ from .models import ClassSchedule, OnlineSessionSchedule
 class ClassScheduleSerializer(TenantRelationsMixin, AcademyMetadataMixin, serializers.ModelSerializer):
     #: Isolation des relations écrites (voir apps.core.tenancy.TenantRelationsMixin).
     tenant_relations = {"cls": "school_year.school", "subject": "school", "teacher": "user.school", "school_year": "school"}
-    """Créneau présentiel FEBA — classe, matière, enseignant, salle physique."""
+    """Créneau présentiel FEBA : classe, matière, enseignant, salle physique."""
 
     #: L'année scolaire porte l'académie (une classe n'a pas de champ école).
     academy_source = "school_year.school"

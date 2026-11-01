@@ -28,6 +28,7 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.core.request_text import identifiant
 from apps.core.currency import Money
 from apps.core.tenancy import get_request_school
 from apps.payments.providers import (
@@ -109,7 +110,7 @@ class PayableItemsView(APIView):
         from apps.payments.models import Payment
 
         student = _visible_students(request.user).filter(
-            pk=request.query_params.get("student"),
+            pk=identifiant(request.query_params.get("student")),
         ).select_related("school").first()
         if student is None:
             return Response({"detail": "Élève introuvable ou hors de votre périmètre."},
@@ -162,7 +163,7 @@ class CreateCardPaymentView(APIView):
         except PaymentProviderNotConfigured as exc:
             return Response({"detail": str(exc)}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
 
-        student_id = request.data.get("student")
+        student_id = identifiant(request.data.get("student"))
         student = _visible_students(request.user).filter(pk=student_id).first()
         if student is None:
             # Volontairement un 404 et non un 403 : confirmer l'existence
@@ -306,13 +307,13 @@ def stripe_webhook(request):
     try:
         event = provider.verify_webhook(request.body, signature)
     except PaymentProviderNotConfigured as exc:
-        logger.error("Webhook refusé — configuration absente : %s", exc)
+        logger.error("Webhook refusé : configuration absente : %s", exc)
         return Response({"detail": "Webhook non configuré."},
                         status=status.HTTP_503_SERVICE_UNAVAILABLE)
     except ValidationError as exc:
         # Sans signature valide, l'événement n'est qu'une affirmation :
         # n'importe qui connaissant l'URL pourrait déclarer un paiement.
-        logger.warning("Webhook refusé — signature invalide.")
+        logger.warning("Webhook refusé : signature invalide.")
         return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
 
     event_id = event.get("id") or ""
@@ -326,7 +327,7 @@ def stripe_webhook(request):
                 provider="stripe", event_id=event_id, event_type=event_type,
             )
     except IntegrityError:
-        logger.info("Événement %s déjà traité — ignoré.", event_id)
+        logger.info("Événement %s déjà traité, ignoré.", event_id)
         return Response({"received": True, "duplicate": True})
 
     try:

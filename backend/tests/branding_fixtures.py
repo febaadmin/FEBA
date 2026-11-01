@@ -51,7 +51,7 @@ def make_branding(**overrides) -> AcademyBranding:
         locale="fr-BJ",
         language="fr",
         timezone="Africa/Porto-Novo",
-        footer_text="Faith & Excellence Bilingual Academy — Akpakpa, Cotonou, Bénin",
+        footer_text="Faith & Excellence Bilingual Academy, Akpakpa, Cotonou, Bénin",
         document_prefix="FEBA",
     )
     base.update(overrides)
@@ -77,7 +77,7 @@ def make_fha_branding(**overrides) -> AcademyBranding:
         locale="en-US",
         language="en",
         timezone="America/New_York",
-        footer_text="FEBA French Heritage Academy — programme en ligne pour la diaspora",
+        footer_text="FEBA French Heritage Academy, programme en ligne pour la diaspora",
         document_prefix="FHA",
     )
     defaults.update(overrides)

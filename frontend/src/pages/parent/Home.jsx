@@ -17,7 +17,7 @@ export default function ParentHome() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title={t("Bonjour 👋")} subtitle={t("Tableau de bord — suivi de vos enfants")} />
+      <PageHeader title={t("Bonjour")} subtitle={t("Tableau de bord : suivi de vos enfants")} />
 
       {isLoading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

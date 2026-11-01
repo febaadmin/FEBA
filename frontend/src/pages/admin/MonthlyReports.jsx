@@ -198,7 +198,7 @@ export default function MonthlyReports() {
     <div className="space-y-5">
       <PageHeader
         title={activeEntity?.name
-          ? t("Rapports mensuels — {nom}", { nom: activeEntity.name })
+          ? t("Rapports mensuels : {nom}", { nom: activeEntity.name })
           : t("Rapports mensuels")}
         subtitle={t("Suivi mensuel des élèves de l'académie en ligne.")}
       />

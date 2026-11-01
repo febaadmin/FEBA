@@ -270,7 +270,7 @@ export default function AdminGrades() {
 
   const bulkDelMut = useMutation({
     mutationFn: (ids) => gradesAPI.bulkDelete(ids),
-    onSuccess: (data) => { toast.success(t("{n} note(s) supprimée(s) — visibles dans l'onglet Supprimées.", { n: data?.data?.deleted || "" })); setBulkSelected(new Set()); setSelectedRow(null); setHistItem(null); qc.invalidateQueries({ queryKey: ["grades"] }); qc.invalidateQueries({ queryKey: ["grades-deleted"] }); },
+    onSuccess: (data) => { toast.success(t("{n} note(s) supprimée(s) : visibles dans l'onglet Supprimées.", { n: data?.data?.deleted || "" })); setBulkSelected(new Set()); setSelectedRow(null); setHistItem(null); qc.invalidateQueries({ queryKey: ["grades"] }); qc.invalidateQueries({ queryKey: ["grades-deleted"] }); },
     onError: (e) => toast.error(extractApiError(e)),
   });
 
@@ -330,7 +330,7 @@ export default function AdminGrades() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title={t("Notes")} subtitle={t("Gestion des notes — {y}", { y: currentYear?.name || "" })}
+      <PageHeader title={t("Notes")} subtitle={t("Gestion des notes : {y}", { y: currentYear?.name || "" })}
         action={
           <div className="flex gap-2 flex-wrap">
             {view === "list" && grades.length > 0 && (
@@ -435,8 +435,8 @@ export default function AdminGrades() {
           <select value={filterLanguage} onChange={e => setFilterLanguage(e.target.value)}
             className="border border-gray-200 rounded-lg px-3 py-2 text-sm">
             <option value="">{t("FR + EN")}</option>
-            <option value="fr">🇫🇷 Français</option>
-            <option value="en">🇬🇧 Anglais</option>
+            <option value="fr">Français</option>
+            <option value="en">Anglais</option>
           </select>
         )}
         {(view === "summary" || view === "bilingual") && (
@@ -683,7 +683,7 @@ export default function AdminGrades() {
                 <BarChart2 className="w-6 h-6 text-yellow-400" />
                 <div>
                   <h3 className="font-bold">{summary.student_name}</h3>
-                  <p className="text-blue-200 text-sm">{summary.class_name} — {selectedPeriod} — {summary.school_year}</p>
+                  <p className="text-blue-200 text-sm">{summary.class_name} : {selectedPeriod} : {summary.school_year}</p>
                 </div>
                 <div className="ml-auto text-right">
                   <div className="text-2xl font-bold text-yellow-400">{summary.average ? `${parseFloat(summary.average).toFixed(2)}/20` : "—"}</div>
@@ -961,7 +961,7 @@ export default function AdminGrades() {
           {/* In edit mode: show read-only context, no reselection needed */}
           {editItem ? (
             <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 text-sm">
-              <div className="font-semibold text-blue-800 mb-1">{t("Note sélectionnée — modification")}</div>
+              <div className="font-semibold text-blue-800 mb-1">{t("Note sélectionnée : modification")}</div>
               <div className="text-blue-700 space-y-0.5">
                 <div><span className="text-blue-500">{t("Élève :")}</span> {editItem.student_name}</div>
                 <div><span className="text-blue-500">{t("Matière :")}</span> {editItem.subject_name}</div>
@@ -1054,7 +1054,7 @@ export default function AdminGrades() {
         </div>
       </Modal>
       {/* HISTORY MODAL */}
-      <Modal open={!!histItem} onClose={() => setHistItem(null)} title={`Historique — Note #${histItem?.id || ""}`} size="lg">
+      <Modal open={!!histItem} onClose={() => setHistItem(null)} title={`Historique : Note #${histItem?.id || ""}`} size="lg">
         <div className="space-y-3">
           {histData === undefined && histItem && (
             <div className="flex items-center justify-center py-8 text-slate-400">
@@ -1067,7 +1067,7 @@ export default function AdminGrades() {
             <div key={h.id || i} className="border border-slate-100 rounded-xl p-4 bg-slate-50">
               <div className="flex items-center justify-between mb-2">
                 <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${h.action === 'create' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
-                  {h.action === 'create' ? '✚ Création' : '✎ Modification'}
+                  {h.action === 'create' ? 'Création' : 'Modification'}
                 </span>
                 <span className="text-xs text-slate-400 flex items-center gap-1">
                   <Clock className="w-3 h-3" />

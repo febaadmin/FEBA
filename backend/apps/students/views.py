@@ -3,6 +3,7 @@ from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
+from apps.core.request_text import identifiant, liste_identifiants
 from apps.accounts.permissions import IsAdminOrAbove
 from apps.core.tenancy import get_request_school, IsSameTenant, require_school_or_403
 from .models import Student, StudentEnrollment
@@ -232,9 +233,9 @@ class StudentViewSet(BulkDeleteMixin, viewsets.ModelViewSet):
         sélectionnés. Les autres années restent strictement intactes.
         Body: { "ids": [...], "school_year_id": X }
         """
-        ids = request.data.get("ids", [])
-        year_id = request.data.get("school_year_id")
-        if not ids or not isinstance(ids, list) or not year_id:
+        ids = liste_identifiants(request.data.get("ids", []))
+        year_id = identifiant(request.data.get("school_year_id"))
+        if not ids or not year_id:
             return Response({"error": "ids (liste) et school_year_id requis."}, status=400)
 
         students = self.get_queryset().filter(id__in=ids)
@@ -266,8 +267,8 @@ class StudentViewSet(BulkDeleteMixin, viewsets.ModelViewSet):
         FIX v34 — la suppression en masse d'élèves DÉSACTIVE (soft delete)
         au lieu de détruire : l'historique multi-années est inviolable.
         """
-        ids = request.data.get("ids", [])
-        if not ids or not isinstance(ids, list):
+        ids = liste_identifiants(request.data.get("ids", []))
+        if not ids:
             return Response({"error": "ids list required"}, status=400)
         qs = self.get_queryset().filter(id__in=ids)
         count = qs.count()
@@ -277,7 +278,7 @@ class StudentViewSet(BulkDeleteMixin, viewsets.ModelViewSet):
         if user_ids:
             CustomUser.objects.filter(id__in=user_ids).update(is_active=False)
         return Response({"deleted": count, "soft": True,
-                         "detail": f"{count} élève(s) désactivé(s) — historique conservé."})
+                         "detail": f"{count} élève(s) désactivé(s) : historique conservé."})
 
     def destroy(self, request, *args, **kwargs):
         """
