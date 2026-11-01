@@ -7,7 +7,7 @@ from rest_framework.response import Response
 
 from apps.core.request_text import text_field
 
-from .models import IncidentStatusEvent, TechnicalIncident, changer_statut
+from .models import IncidentStatusEvent, TechnicalIncident, changer_statut, validations_manquantes
 from .serializers import (
     TechnicalIncidentDetailSerializer, TechnicalIncidentListSerializer,
 )
@@ -83,6 +83,10 @@ class TechnicalIncidentViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=["post"], url_path="resolve")
     def resolve(self, request, pk=None):
         incident = self.get_object()
+        manque = validations_manquantes(incident)
+        if manque:
+            return Response({"detail": f"Validations manquantes : {', '.join(manque)}.", "manquantes": manque},
+                            status=status.HTTP_400_BAD_REQUEST)
         notes = text_field(request.data, "resolution_notes")
         if notes:
             incident.resolution_notes = notes

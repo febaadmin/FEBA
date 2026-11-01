@@ -249,6 +249,7 @@ mkdir -p "$RUNTIME/client/dist/assets/feba"
 # Traductions française et anglaise du client relues (voir appliquer_traductions.py).
 python3 "$PNM/ops/appliquer_traductions.py" "$PNM/client-branding/traductions-fr.json" "$RUNTIME/client/dist/assets/locales/fr-FR/translation.json"
 python3 "$PNM/ops/appliquer_traductions.py" "$PNM/client-branding/traductions-en.json" "$RUNTIME/client/dist/assets/locales/en/translation.json"
+for module in "$RUNTIME"/client/dist/assets/js/main-module.*.js; do python3 "$PNM/ops/retirer_tiret_client.py" "$module"; done
 cp "$PNM/client-branding/feba-branding.js" "$RUNTIME/client/dist/assets/feba/feba-branding.js"
 python3 - "$RUNTIME/client/dist/index.html" "$FEBA_URL" <<'PY'
 import html, re, sys

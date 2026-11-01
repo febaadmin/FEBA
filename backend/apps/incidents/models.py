@@ -136,6 +136,8 @@ class TechnicalIncident(models.Model):
                                     related_name="assigned_incidents")
     resolution_notes = models.TextField(blank=True)
     resolved_at = models.DateTimeField(null=True, blank=True)
+    # {niveau: {"fait": bool, "preuve": texte}} ; voir NIVEAUX_VALIDATION.
+    validations = models.JSONField(default=dict, blank=True)
 
     class Meta:
         verbose_name = "Incident technique"
@@ -182,6 +184,18 @@ class IncidentStatusEvent(models.Model):
 
     def __str__(self):
         return f"{self.incident.reference} : {self.from_status} -> {self.to_status}"
+
+
+#: Un test local ou simulé ne remplace jamais les deux derniers niveaux.
+NIVEAUX_VALIDATION = ("developpe", "tests_auto", "test_local", "test_production", "utilisateur")
+NIVEAUX_OBLIGATOIRES = ("developpe", "tests_auto", "test_production", "utilisateur")
+
+
+def validations_manquantes(incident):
+    """Niveaux obligatoires sans preuve : tant qu'il en reste, l'incident n'est pas résolu."""
+    donnees = incident.validations or {}
+    return [n for n in NIVEAUX_OBLIGATOIRES
+            if not (donnees.get(n, {}).get("fait") and str(donnees.get(n, {}).get("preuve", "")).strip())]
 
 
 def changer_statut(incident, statut, user=None, note=""):

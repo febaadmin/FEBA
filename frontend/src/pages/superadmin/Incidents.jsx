@@ -57,6 +57,44 @@ const fmt = (value) =>
     hour: "2-digit", minute: "2-digit",
   }) : "-";
 
+const NIVEAUX = [
+  { key: "developpe", label: "Correctif développé" },
+  { key: "tests_auto", label: "Correctif testé automatiquement" },
+  { key: "test_local", label: "Correctif testé localement" },
+  { key: "test_production", label: "Correctif testé en production" },
+  { key: "utilisateur", label: "Parcours réel validé par l'utilisateur concerné" },
+];
+
+function NiveauxValidation({ incident, onSave }) {
+  const [valeurs, setValeurs] = useState(incident.validations || {});
+  const changer = (key, champ, valeur) => setValeurs((v) => ({
+    ...v, [key]: { fait: false, preuve: "", ...v[key], [champ]: valeur },
+  }));
+  const manque = incident.validations_manquantes || [];
+  return (
+    <div>
+      <p className="text-sm font-medium text-slate-700 mb-1">{t("Niveaux de validation")}</p>
+      <ul className="space-y-2">
+        {NIVEAUX.map(({ key, label }) => (
+          <li key={key} className="text-xs">
+            <label className="flex items-center gap-2 text-slate-700">
+              <input type="checkbox" checked={!!valeurs[key]?.fait}
+                onChange={(e) => changer(key, "fait", e.target.checked)} />
+              {t(label)}
+              {manque.includes(key) && <span className="text-amber-700">{t("Manquant")}</span>}
+            </label>
+            <input className="input mt-1 text-xs" placeholder={t("Preuve")} value={valeurs[key]?.preuve || ""}
+              onChange={(e) => changer(key, "preuve", e.target.value)} />
+          </li>
+        ))}
+      </ul>
+      <button type="button" className="btn-secondary mt-2 text-xs" onClick={() => onSave(valeurs)}>
+        {t("Enregistrer les validations")}
+      </button>
+    </div>
+  );
+}
+
 export default function SuperAdminIncidents() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -270,6 +308,8 @@ export default function SuperAdminIncidents() {
                 onChange={(e) => setNotes(e.target.value)} />
             </div>
 
+            <NiveauxValidation key={incident.id} incident={incident} onSave={(validations) => statusMut.mutate({ validations })} />
+
             {incident.status_events?.length > 0 && (
               <div>
                 <p className="text-sm font-medium text-slate-700 mb-1">{t("Historique des statuts")}</p>
@@ -278,6 +318,7 @@ export default function SuperAdminIncidents() {
                     <li key={ev.created_at}>
                       {fmt(ev.created_at)} : {t(libelleStatut(ev.from_status))} → {t(libelleStatut(ev.to_status))}
                       {ev.performed_by_email ? ` (${ev.performed_by_email})` : ""}
+                      {ev.note ? <span className="block whitespace-pre-wrap text-slate-400">{ev.note}</span> : null}
                     </li>
                   ))}
                 </ul>
