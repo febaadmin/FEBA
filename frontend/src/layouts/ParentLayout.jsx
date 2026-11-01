@@ -1,5 +1,5 @@
 import { NavLink, useNavigate } from "react-router-dom";
-import { Home, Users, ClipboardList, Calendar, FileText, MessageSquare, DollarSign, BookOpen, User, LogOut, School, Menu, X, Bell, Megaphone, Video } from "lucide-react";
+import { Home, Users, ClipboardList, Calendar, FileText, MessageSquare, DollarSign, BookOpen, User, LogOut, School, Menu, X, Bell, Megaphone, Video, TrendingUp } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
 import AcademyLogo from "../components/AcademyLogo";
 import AcademyName from "../components/AcademyName";
@@ -19,6 +19,7 @@ const nav = [
   { label: "Accueil",           icon: Home,           to: "/parent/home" },
   { label: "Mes enfants",       icon: Users,          to: "/parent/children" },
   { label: "Notes",             icon: ClipboardList,  to: "/parent/grades" },
+  { label: "Suivi pédagogique", icon: TrendingUp,    to: "/parent/suivi", feature: "suivi_familles" },
   { label: "Absences",          icon: Calendar,       to: "/parent/attendance" },
   { label: "Emploi du temps",   icon: Calendar,       to: "/parent/schedule" },
   // Fonctionnalité conditionnelle : réservée aux entités « académie en

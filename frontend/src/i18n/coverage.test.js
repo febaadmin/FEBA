@@ -92,7 +92,7 @@ describe("couverture de traduction FR → EN", () => {
       // Périodes scolaires et codes de langue
       "T1", "T2", "T3", "FR + EN", "FR+EN",
       // Mots identiques en français et en anglais
-      "Contact", "Question", "Sport", "Excellence", "Discipline", "Message",
+      "Contact", "Question", "Sport", "Participation", "{n} observation(s)", "Excellence", "Discipline", "Message",
       "Messages", "Notification", "Notifications", "Options", "Description",
       "Date", "Format", "Version", "Actions", "Documents", "Configuration",
       "Solution", "Type", "Support", "Types", "Import", "Total", "Transport",

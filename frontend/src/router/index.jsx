@@ -92,6 +92,9 @@ const AdminPayments = lazy(() => import("../pages/admin/Payments"));
 const AdminCardTransactions = lazy(() => import("../pages/admin/CardTransactions"));
 const AdminOfficialDocuments = lazy(() => import("../pages/admin/OfficialDocuments"));
 const AdminDocumentTemplates = lazy(() => import("../pages/admin/DocumentTemplates"));
+const SuiviEleves = lazy(() => import("../pages/shared/suivi/SuiviEleves"));
+const FicheSuivi = lazy(() => import("../pages/shared/suivi/FicheSuivi"));
+const SuiviReferentiels = lazy(() => import("../pages/shared/suivi/Referentiels"));
 const AdminAttendance = lazy(() => import("../pages/admin/Attendance"));
 const AdminHomework = lazy(() => import("../pages/admin/Homework"));
 const AdminAnnouncements = lazy(() => import("../pages/admin/Announcements"));
@@ -338,6 +341,9 @@ export default function AppRouter() {
         <Route path="classes"       element={<AdminClasses />} />
         <Route path="levels"        element={<AdminLevels />} />
         <Route path="grades"        element={<AdminGrades />} />
+        <Route path="suivi" element={<FeatureGate feature="suivi_pedagogique"><SuiviEleves /></FeatureGate>} />
+        <Route path="suivi/referentiels" element={<FeatureGate feature="suivi_pedagogique"><SuiviReferentiels /></FeatureGate>} />
+        <Route path="suivi/:id" element={<FeatureGate feature="suivi_pedagogique"><FicheSuivi /></FeatureGate>} />
         <Route path="bulletins"     element={<AdminBulletins />} />
         <Route path="payments"      element={<AdminPayments />} />
         <Route path="card-transactions" element={<AdminCardTransactions />} />
@@ -383,6 +389,9 @@ export default function AppRouter() {
         <Route path="classes"       element={<AdminClasses />} />
         <Route path="levels"        element={<AdminLevels />} />
         <Route path="grades"        element={<AdminGrades />} />
+        <Route path="suivi" element={<FeatureGate feature="suivi_pedagogique"><SuiviEleves /></FeatureGate>} />
+        <Route path="suivi/referentiels" element={<FeatureGate feature="suivi_pedagogique"><SuiviReferentiels /></FeatureGate>} />
+        <Route path="suivi/:id" element={<FeatureGate feature="suivi_pedagogique"><FicheSuivi /></FeatureGate>} />
         <Route path="payments"      element={<AdminPayments />} />
         <Route path="card-transactions" element={<AdminCardTransactions />} />
         <Route path="official-documents" element={<AdminOfficialDocuments />} />
@@ -422,6 +431,9 @@ export default function AppRouter() {
         <Route path="dashboard"     element={<TeacherDashboard />} />
         <Route path="classes"       element={<TeacherClasses />} />
         <Route path="grades"        element={<TeacherGrades />} />
+        <Route path="suivi" element={<FeatureGate feature="suivi_pedagogique"><SuiviEleves /></FeatureGate>} />
+        <Route path="suivi/referentiels" element={<FeatureGate feature="suivi_pedagogique"><SuiviReferentiels /></FeatureGate>} />
+        <Route path="suivi/:id" element={<FeatureGate feature="suivi_pedagogique"><FicheSuivi /></FeatureGate>} />
         <Route path="attendance"    element={<TeacherAttendance />} />
         <Route path="homework"      element={<TeacherHomework />} />
         <Route path="schedule"      element={<TeacherSchedule />} />
@@ -441,6 +453,8 @@ export default function AppRouter() {
         <Route path="home"          element={<ParentHome />} />
         <Route path="children"      element={<ParentChildren />} />
         <Route path="grades"        element={<ParentGrades />} />
+        <Route path="suivi" element={<FeatureGate feature="suivi_familles"><SuiviEleves /></FeatureGate>} />
+        <Route path="suivi/:id" element={<FeatureGate feature="suivi_familles"><FicheSuivi /></FeatureGate>} />
         <Route path="attendance"    element={<ParentAttendance />} />
         <Route path="homework"      element={<ParentHomework />} />
         <Route path="payments"      element={<ParentPayments />} />
@@ -461,6 +475,8 @@ export default function AppRouter() {
         <Route index element={<Navigate to="home" replace />} />
         <Route path="home"          element={<StudentHome />} />
         <Route path="grades"        element={<StudentGrades />} />
+        <Route path="suivi" element={<FeatureGate feature="suivi_familles"><SuiviEleves /></FeatureGate>} />
+        <Route path="suivi/:id" element={<FeatureGate feature="suivi_familles"><FicheSuivi /></FeatureGate>} />
         <Route path="attendance"    element={<StudentAttendance />} />
         <Route path="homework"      element={<StudentHomework />} />
         <Route path="schedule"      element={<StudentSchedule />} />

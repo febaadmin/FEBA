@@ -1,5 +1,5 @@
 import { NavLink, useNavigate } from "react-router-dom";
-import { Home, ClipboardList, Calendar, FileText, BookOpen, MessageSquare, User, LogOut, School, Menu, X, Bell, Megaphone, Video } from "lucide-react";
+import { Home, ClipboardList, Calendar, FileText, BookOpen, MessageSquare, User, LogOut, School, Menu, X, Bell, Megaphone, Video, TrendingUp } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
 import AcademyLogo from "../components/AcademyLogo";
 import AcademyName from "../components/AcademyName";
@@ -18,6 +18,7 @@ import AcademyScopedOutlet from "../components/AcademyScopedOutlet";
 const nav = [
   { label: "Accueil",         icon: Home,          to: "/student/home" },
   { label: "Mes notes",       icon: ClipboardList, to: "/student/grades" },
+  { label: "Mon suivi",       icon: TrendingUp,    to: "/student/suivi", feature: "suivi_familles" },
   { label: "Absences",        icon: Calendar,      to: "/student/attendance" },
   { label: "Devoirs",         icon: FileText,      to: "/student/homework" },
   { label: "Emploi du temps", icon: Calendar,      to: "/student/schedule" },
