@@ -52,6 +52,7 @@ const nav = [
     { label: "Fichiers",           icon: FolderOpen,    to: "/superadmin/user-files" },
     { label: "Admissions en ligne", icon: ClipboardList, to: "/superadmin/fha-admissions", feature: "online_admissions" },
     { label: "Suivi pédagogique", icon: TrendingUp, to: "/superadmin/suivi", feature: "suivi_pedagogique" },
+    { label: "Examens et évaluations", icon: ClipboardCheck, to: "/superadmin/evaluations", feature: "evaluations_en_ligne" },
     { label: "Rapports mensuels", icon: FileBarChart, to: "/superadmin/monthly-reports", feature: "monthly_reports" },
   { label: "Site vitrine",       icon: Globe,         to: "/superadmin/website" },
     { label: "Logo & Branding",    icon: Image,         to: "/superadmin/branding" },

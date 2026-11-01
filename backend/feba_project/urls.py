@@ -34,6 +34,7 @@ urlpatterns = [
     path('api/monthly-reports/', include('apps.monthly_reports.urls')),
     path('api/incidents/', include('apps.incidents.urls')),
     path('api/suivi/', include('apps.suivi.urls')),
+    path('api/evaluations/', include('apps.evaluations.urls')),
     path('api/', include('apps.core.urls')),  # plateforme SaaS (superadmin)
 ]
 

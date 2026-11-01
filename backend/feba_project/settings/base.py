@@ -48,6 +48,7 @@ INSTALLED_APPS = [
     'apps.monthly_reports',
     'apps.incidents',
     'apps.suivi',
+    'apps.evaluations',
 ]
 
 MIDDLEWARE = [
@@ -349,6 +350,11 @@ PAYMENT_REMINDERS_HOUR = config('PAYMENT_REMINDERS_HOUR', default=8, cast=int)
 PAYMENT_REMINDERS_MINUTE = config('PAYMENT_REMINDERS_MINUTE', default=30, cast=int)
 
 CELERY_BEAT_SCHEDULE = {
+    'evaluations-cloturer-echues': {
+        'task': 'evaluations.cloturer_echues',
+        'schedule': crontab(minute='*'),
+        'options': {'expires': 50},
+    },
     'surveillance-plateforme': {
         'task': 'incidents.surveillance_plateforme',
         'schedule': crontab(minute='*/15'),
