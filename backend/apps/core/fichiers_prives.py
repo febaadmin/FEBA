@@ -20,7 +20,7 @@ from django.views.decorators.http import require_GET
 # Même liste que le refus de nginx (nginx/nginx.prod.conf).
 DOSSIERS_PRIVES = (
     "bulletins", "receipts", "students", "homework", "messages",
-    "user_files", "attendance", "announcements",
+    "user_files", "attendance", "announcements", "suivi", "evaluations",
 )
 SEL = "feba.fichiers-prives"
 AFFICHABLES = {"application/pdf", "image/jpeg", "image/png", "image/webp", "image/gif"}

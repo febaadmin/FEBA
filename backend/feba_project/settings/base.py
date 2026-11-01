@@ -47,6 +47,7 @@ INSTALLED_APPS = [
     'apps.website',
     'apps.monthly_reports',
     'apps.incidents',
+    'apps.suivi',
 ]
 
 MIDDLEWARE = [

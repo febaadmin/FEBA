@@ -248,6 +248,11 @@ class School(models.Model):
         # `language_track` posté ou une donnée corrompue suffirait à
         # rendre monolingue une classe de FEBA.
         "monolingual_classes",
+        # Suivi pédagogique et examens en ligne : désactivés tant que
+        # l'académie ne les a pas ouverts. L'accès des familles est distinct.
+        "suivi_pedagogique",
+        "suivi_familles",
+        "evaluations_en_ligne",
     ]
 
     # Valeurs par défaut selon le type d'entité.
@@ -272,6 +277,9 @@ class School(models.Model):
             "schedules": True,
             "support_tickets": False,
             "monolingual_classes": False,
+            "suivi_pedagogique": False,
+            "suivi_familles": False,
+            "evaluations_en_ligne": False,
         },
         "online": {
             "virtual_classrooms": True,
@@ -287,6 +295,9 @@ class School(models.Model):
             "schedules": True,
             "support_tickets": True,
             "monolingual_classes": True,
+            "suivi_pedagogique": False,
+            "suivi_familles": False,
+            "evaluations_en_ligne": False,
         },
     }
 

@@ -1,8 +1,7 @@
 import { NavLink } from "react-router-dom";
 import { useState, useEffect } from "react";
 import {
-  Building2, Star, Stamp, FileBarChart, LayoutDashboard, Users, Shield, GraduationCap, UserCheck, Users2, BookOpen, DollarSign, Megaphone, Settings, LogOut, Menu, X, MessageSquare, Layers, ClipboardList, FileText, Calendar, UserCog, FolderOpen, Image, ClipboardCheck, Video, Globe, AlertTriangle, CreditCard, Award, Mail, BellRing, Inbox,
-} from "lucide-react";
+  Building2, Star, Stamp, FileBarChart, LayoutDashboard, Users, Shield, GraduationCap, UserCheck, Users2, BookOpen, DollarSign, Megaphone, Settings, LogOut, Menu, X, MessageSquare, Layers, ClipboardList, FileText, Calendar, UserCog, FolderOpen, Image, ClipboardCheck, Video, Globe, AlertTriangle, CreditCard, Award, Mail, BellRing, Inbox,, TrendingUp } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
 import AcademyLogo from "../components/AcademyLogo";
 import AcademyName from "../components/AcademyName";
@@ -52,6 +51,7 @@ const nav = [
     { label: "Paramètres",        icon: Settings,      to: "/superadmin/settings" },
     { label: "Fichiers",           icon: FolderOpen,    to: "/superadmin/user-files" },
     { label: "Admissions en ligne", icon: ClipboardList, to: "/superadmin/fha-admissions", feature: "online_admissions" },
+    { label: "Suivi pédagogique", icon: TrendingUp, to: "/superadmin/suivi", feature: "suivi_pedagogique" },
     { label: "Rapports mensuels", icon: FileBarChart, to: "/superadmin/monthly-reports", feature: "monthly_reports" },
   { label: "Site vitrine",       icon: Globe,         to: "/superadmin/website" },
     { label: "Logo & Branding",    icon: Image,         to: "/superadmin/branding" },
