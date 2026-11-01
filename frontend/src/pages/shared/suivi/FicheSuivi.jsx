@@ -10,6 +10,7 @@ import { ArrowDownRight, ArrowRight, ArrowUpRight, Minus, Plus } from "lucide-re
 import toast from "react-hot-toast";
 import { suiviAPI, subjectsAPI } from "../../../api";
 import Modal from "../../../components/ui/Modal";
+import Rapports from "./Rapports";
 import PageHeader from "../../../components/ui/PageHeader";
 import { useAuth } from "../../../hooks/useAuth";
 import { extractApiError } from "../../../utils/errors";
@@ -206,7 +207,7 @@ export default function FicheSuivi() {
     enregistrer.mutate({ fn: FORMULAIRES[saisie].fn, corps });
   };
 
-  const onglets = [["synthese", t("Synthèse")], ["competences", t("Compétences")], ["evaluations", t("Résultats")], ["objectifs", t("Objectifs")], ["plans", t("Accompagnement")]];
+  const onglets = [["synthese", t("Synthèse")], ["competences", t("Compétences")], ["evaluations", t("Résultats")], ["objectifs", t("Objectifs")], ["plans", t("Accompagnement")], ["rapports", t("Rapports")]];
   const boutonAjout = (cle, libelle) => gere && (
     <button type="button" className="btn-secondary flex items-center gap-2 text-sm" onClick={() => ouvrir(cle)}><Plus className="w-4 h-4" />{libelle}</button>
   );
@@ -395,6 +396,8 @@ export default function FicheSuivi() {
           ))}
         </div>
       )}
+
+      {onglet === "rapports" && <Rapports eleve={id} gere={gere} />}
 
       <Modal open={!!saisie} onClose={() => setSaisie(null)} title={saisie ? FORMULAIRES[saisie].titre : ""}>
         {saisie && (

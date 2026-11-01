@@ -3,6 +3,7 @@ from rest_framework import serializers
 
 from .models import (
     ActionPedagogique,
+    AlertePedagogique,
     Competence,
     EvaluationCompetence,
     EvaluationPedagogique,
@@ -12,7 +13,10 @@ from .models import (
     ObservationParticipation,
     ParametresSuivi,
     PlanAccompagnement,
+    RapportPedagogique,
+    RapportVersion,
     Referentiel,
+    RegleAlerte,
 )
 
 
@@ -200,4 +204,38 @@ class ParametresSerializer(serializers.ModelSerializer):
         for poids in value.values():
             if isinstance(poids, bool) or not isinstance(poids, int) or not 0 <= poids <= 100:
                 raise serializers.ValidationError("Un poids est un entier de 0 à 100.")
+        return value
+
+
+class RapportVersionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = RapportVersion
+        fields = ["numero", "statut", "contenu", "created_at"]
+
+
+class RapportSerializer(serializers.ModelSerializer):
+    versions = RapportVersionSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = RapportPedagogique
+        fields = ["id", "student", "type", "du", "au", "statut", "numero_version", "donnees", "contenu", "versions", "created_at", "updated_at"]
+
+
+class AlerteSerializer(serializers.ModelSerializer):
+    eleve = serializers.CharField(source="student.get_full_name", read_only=True)
+
+    class Meta:
+        model = AlertePedagogique
+        fields = ["id", "student", "eleve", "code", "categorie", "message", "donnees", "recommandation", "statut", "note_decision", "decide_le", "created_at"]
+
+
+class RegleSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = RegleAlerte
+        fields = ["code", "seuil", "actif"]
+        read_only_fields = ["code"]
+
+    def validate_seuil(self, value):
+        if value < 1:
+            raise serializers.ValidationError("Valeur minimale : 1.")
         return value
