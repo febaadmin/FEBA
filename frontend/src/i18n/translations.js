@@ -3075,4 +3075,9 @@ export const EN = {
   "Accès des élèves et des parents au suivi": "Student and parent access to learning progress",
   "Enregistré. Rechargez la page pour voir le menu mis à jour.": "Saved. Reload the page to see the updated menu.",
   "Désactivés par défaut. Ouvrir l'accès des familles publie le suivi validé aux élèves et aux parents.": "Off by default. Opening family access publishes validated progress to students and parents.",
+  "Examens en ligne": "Online exams",
+  "Évolution des examens en ligne": "Online exams over time",
+  "Note officielle": "Official grade",
+  "Transférée": "Transferred",
+  "Non transférée": "Not transferred",
 };
