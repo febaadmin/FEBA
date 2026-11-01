@@ -345,6 +345,9 @@ export const teachersAPI = {
   bulkDelete: (ids) => api.post(`/teachers/bulk-delete/`, { ids }),
   schedule: (id)    => api.get(`/teachers/${id}/schedule/`),
   mySubjects: () => api.get("/teachers/my_subjects/"),
+  myAssignments: () => api.get("/teachers/my_assignments/"),
+  getAssignments: (id) => api.get(`/teachers/${id}/assignments/`),
+  setAssignments: (id, assignments) => api.put(`/teachers/${id}/assignments/`, { assignments }),
   myClasses:  () => api.get("/teachers/my_classes/"),
   students:   (id)    => api.get(`/teachers/${id}/students/`),
 };

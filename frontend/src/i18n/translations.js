@@ -2797,4 +2797,11 @@ export const EN = {
   "Rejoindre à nouveau": "Join again",
   "Retour à l'accueil": "Back to home",
   "Chargement": "Loading",
+  "Affectations enregistrées.": "Assignments saved.",
+  "Affectations de l'enseignant": "Teacher assignments",
+  "Cet enseignant ne peut noter que les matières cochées, dans la classe indiquée.": "This teacher can only grade the checked subjects, in the class shown.",
+  "{n} affectation(s) reprise(s) automatiquement, à confirmer.": "{n} assignment(s) carried over automatically, to be confirmed.",
+  "Attribuez d'abord des classes et des matières à cet enseignant.": "First give this teacher classes and subjects.",
+  "À confirmer": "To confirm",
+  "Enregistrer et confirmer": "Save and confirm",
 };

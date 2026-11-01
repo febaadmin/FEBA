@@ -63,3 +63,31 @@ class Teacher(models.Model):
             if suffix.isdigit():
                 top = max(top, int(suffix))
         return f"{prefix}{top + 1:04d}"
+
+
+class TeacherAssignment(models.Model):
+    """Une matière qu'un enseignant enseigne réellement dans une classe."""
+
+    SOURCE_REPRISE = "reprise"
+    SOURCE_ADMIN = "admin"
+    SOURCES = [(SOURCE_REPRISE, "Reprise automatique, à confirmer"), (SOURCE_ADMIN, "Confirmée par l'administration")]
+
+    teacher = models.ForeignKey(Teacher, on_delete=models.CASCADE, related_name="assignments")
+    class_obj = models.ForeignKey("classes.Class", on_delete=models.CASCADE, related_name="teacher_assignments")
+    subject = models.ForeignKey("subjects.Subject", on_delete=models.CASCADE, related_name="teacher_assignments")
+    source = models.CharField(max_length=10, choices=SOURCES, default=SOURCE_ADMIN)
+    confirmed_by = models.ForeignKey(
+        "accounts.CustomUser", on_delete=models.SET_NULL, null=True, blank=True, related_name="+",
+    )
+    confirmed_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Affectation enseignant"
+        constraints = [
+            models.UniqueConstraint(fields=["teacher", "class_obj", "subject"], name="uniq_affectation_enseignant"),
+        ]
+
+    def __str__(self):
+        return f"{self.teacher} - {self.class_obj} - {self.subject}"
+

@@ -51,7 +51,7 @@ const emptyRow = (period = "T1") => ({
 
 export default function BulkGradeModal({
   open, onClose, onSaved,
-  studentOptions = [], subjectOptions = [], classOptions = [],
+  studentOptions = [], subjectOptions = [], classOptions = [], subjectOptionsFor = null,
   schoolYearId, periodDefault = "T1",
 }) {
   const [classFilter, setClassFilter] = useState("");
@@ -198,7 +198,7 @@ export default function BulkGradeModal({
                            grid grid-cols-2 gap-2 p-3 lg:p-0 rounded-xl lg:rounded-none border lg:border-0 border-slate-200 bg-slate-50 lg:bg-transparent">
                 <div className="col-span-2 lg:col-span-1">
                   <span className="lg:hidden label">{t("Matière")}</span>
-                  <SearchableSelect options={subjectOptions} value={r.subject}
+                  <SearchableSelect options={subjectOptionsFor ? subjectOptionsFor(r.student) : subjectOptions} value={r.subject}
                     onChange={(v) => setRow(i, { subject: v })} placeholder={t("Matière…")} />
                   {err.subject && <p className="text-xs text-red-600 mt-1">{err.subject}</p>}
                 </div>

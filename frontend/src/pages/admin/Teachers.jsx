@@ -9,7 +9,7 @@
  */
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Plus, Pencil, Trash2, Eye, BookOpen, Users } from "lucide-react";
+import { Plus, Pencil, Trash2, Eye, BookOpen, Users, ListChecks } from "lucide-react";
 import StatusBadge from "../../components/ui/StatusBadge";
 import { useForm, Controller } from "react-hook-form";
 import toast from "react-hot-toast";
@@ -17,6 +17,7 @@ import { teachersAPI, authAPI, classesAPI, subjectsAPI } from "../../api";
 import PageHeader from "../../components/ui/PageHeader";
 import DataTable from "../../components/ui/DataTable";
 import Modal from "../../components/ui/Modal";
+import AffectationsModal from "../../components/teachers/AffectationsModal";
 import ConfirmDialog from "../../components/ui/ConfirmDialog";
 import SearchableSelect from "../../components/ui/SearchableSelect";
 import { extractApiError } from "../../utils/errors";
@@ -90,6 +91,8 @@ export default function AdminTeachers() {
     onError: (e) => toast.error(extractApiError(e)),
   });
 
+  const [affectations, setAffectations] = useState(null);
+
   const closeModal = () => { setModalOpen(false); setEditItem(null); reset(); };
   const openCreate = () => { reset({ contract_type: "permanent", class_ids: [], subject_ids: [] }); setModalOpen(true); };
   const openEdit = (tch) => {
@@ -139,6 +142,10 @@ export default function AdminTeachers() {
               <button onClick={(e) => { e.stopPropagation(); setViewItem(row); }}
                 className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600" title={t("Voir le détail")}>
                 <Eye className="w-4 h-4" />
+              </button>
+              <button onClick={(e) => { e.stopPropagation(); setAffectations(row); }}
+                className="p-1.5 rounded-lg hover:bg-primary-50 text-slate-400 hover:text-primary" title={t("Affectations de l'enseignant")}>
+                <ListChecks className="w-4 h-4" />
               </button>
               <button onClick={(e) => { e.stopPropagation(); openEdit(row); }}
                 className="p-1.5 rounded-lg hover:bg-primary-50 text-slate-400 hover:text-primary">
@@ -256,6 +263,8 @@ export default function AdminTeachers() {
           </div>
         </form>
       </Modal>
+
+      <AffectationsModal teacher={affectations} onClose={() => setAffectations(null)} />
 
       <ConfirmDialog open={!!deleteItem} onClose={() => setDeleteItem(null)}
         onConfirm={() => deleteMut.mutate(deleteItem?.id)} loading={deleteMut.isPending}
