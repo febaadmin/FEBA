@@ -69,8 +69,8 @@ export default function AcademicsPage() {
               title={t("Un enseignement réellement bilingue", "Genuinely bilingual teaching")} />
             <p className="leading-relaxed">
               {t(
-                "Le français est la langue des apprentissages fondamentaux ; l'anglais est pratiqué chaque jour — en classe, dans les activités et dans la vie de l'école. Les évaluations et les bulletins reflètent les deux parcours, avec une moyenne bilingue officielle.",
-                "French is the language of core learning; English is used every day — in class, in activities and in school life. Assessments and report cards reflect both pathways, with an official bilingual average.",
+                "Le français est la langue des apprentissages fondamentaux ; l'anglais est pratiqué chaque jour, en classe, dans les activités et dans la vie de l'école. Les évaluations et les bulletins reflètent les deux parcours, avec une moyenne bilingue officielle.",
+                "French is the language of core learning; English is used every day, in class, in activities and in school life. Assessments and report cards reflect both pathways, with an official bilingual average.",
               )}
             </p>
             <ul className="mt-5 space-y-3 text-sm">

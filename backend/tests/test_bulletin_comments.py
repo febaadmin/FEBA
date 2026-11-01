@@ -741,7 +741,7 @@ class PreviewTests(BulletinCommentBase):
         preview = self.text(self.preview(s).content)
         official = flat(pdf_text(Bulletin.objects.get(student=s))[0])
         strip = lambda t: " ".join(  # noqa: E731
-            w for w in t.replace("Document non officiel — Preview, not an official report", "")
+            w for w in t.replace("Document non officiel - Preview, not an official report", "")
             .replace("APERÇU", "").split() if not w[:2].isdigit())     # dates/heures de génération
         self.assertEqual(strip(preview), strip(official))
         self.assertIn("Même texte partout.", official)

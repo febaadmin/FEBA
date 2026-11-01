@@ -65,7 +65,7 @@ def _rows_for_section(key, section):
                          f"{seance['salle']} — {seance['duree_minutes']} min"))
         for creneau in section.get("creneaux", []):
             rows.append(("Créneau hebdomadaire",
-                         f"{creneau['jour']} {creneau['heure_utc']} UTC — "
+                         f"{creneau['jour']} {creneau['heure_utc']} UTC - "
                          f"{creneau['matiere']}"))
         return rows
 
@@ -229,7 +229,7 @@ def generate_report_pdf(report):
     story.append(Spacer(1, 0.2 * cm))
     story.append(HRFlowable(width="100%", thickness=1, color=colors.lightgrey))
     footer = (
-        f"Document confidentiel — suivi scolaire d'un mineur. "
+        f"Document confidentiel : suivi scolaire d'un mineur. "
         f"Produit le {timezone.now():%d/%m/%Y à %H:%M} · "
         f"Rapport {report.reference}"
     )

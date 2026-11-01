@@ -172,7 +172,7 @@ ACADEMY_DEFAULTS = {
         "stamp": "cachet_feba.png",
         "secretary_stamp": "cachet_secretariat.png",
         "director_signature": "signature_direction.png",
-        "footer_text": "Faith & Excellence Bilingual Academy — Akpakpa, Cotonou, Bénin",
+        "footer_text": "Faith & Excellence Bilingual Academy, Akpakpa, Cotonou, Bénin",
     },
     "FEBA_FHA": {
         "primary_color": "#071D49",
@@ -234,7 +234,7 @@ ACADEMY_DEFAULTS = {
         # établissement circule et fait autorité.
         "secretary_stamp": None,
         "director_signature": "signature_direction.png",
-        "footer_text": "FEBA French Heritage Academy — programme en ligne pour la diaspora",
+        "footer_text": "FEBA French Heritage Academy, programme en ligne pour la diaspora",
     },
 }
 

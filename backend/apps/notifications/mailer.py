@@ -387,7 +387,7 @@ def _attempt(delivery, *, manual=False, live_bodies=None):
     if error:
         delivery.last_error = error
         _schedule_retry_or_fail(delivery, permanent=permanent)
-        logger.warning("E-mail %s → %s : échec (tentative %d/%d) — %s",
+        logger.warning("E-mail %s → %s : échec (tentative %d/%d) : %s",
                        delivery.purpose, delivery.to_email, delivery.attempts, MAX_ATTEMPTS, error)
     else:
         delivery.status = EmailDelivery.SENT

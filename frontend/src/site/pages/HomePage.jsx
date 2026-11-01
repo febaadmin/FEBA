@@ -89,8 +89,8 @@ export default function HomePage() {
             </p>
             <p className="mt-3 leading-relaxed">
               {t(
-                "Notre vision : former des enfants épanouis, enracinés dans leurs valeurs et ouverts sur le monde — ",
-                "Our vision: to raise fulfilled children, rooted in their values and open to the world — ",
+                "Notre vision : former des enfants épanouis, enracinés dans leurs valeurs et ouverts sur le monde : ",
+                "Our vision: to raise fulfilled children, rooted in their values and open to the world: ",
               )}
               <em className="text-feba-navy">
                 {t("l'école autrement, avec vous", "school done differently, with you")}

@@ -97,7 +97,7 @@ export default function ParentProfile() {
           <div className="card">
             <h3 className="font-semibold text-slate-800 mb-4 flex items-center gap-2">
               <GraduationCap className="w-4 h-4 text-amber-500" />
-              Mes enfants — {currentYear?.name || "année en cours"} ({children.length})
+              Mes enfants : {currentYear?.name || "année en cours"} ({children.length})
             </h3>
             <div className="space-y-3">
               {children.map(link => (
@@ -112,7 +112,7 @@ export default function ParentProfile() {
                       <span className="text-xs text-slate-500">{ageText(link.student_age, link.student_age_status)}</span>
                       {link.class_name && (
                         <span className="text-xs bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded-md font-medium">
-                          📚 {link.class_name}
+                          {link.class_name}
                         </span>
                       )}
                       {currentYear && (

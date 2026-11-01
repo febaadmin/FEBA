@@ -151,7 +151,7 @@ export default function TemplateEditor({ template, catalog, rules, onClose }) {
 
   return (
     <Modal open onClose={onClose} size="xl"
-           title={t("{k} — version n° {v}", { k: t(template.kind_display), v: template.version })}>
+           title={t("{k} : version n° {v}", { k: t(template.kind_display), v: template.version })}>
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
         <div className="space-y-3 min-w-0">
           <p className="text-xs text-slate-500">

@@ -126,6 +126,8 @@ class AttendanceViewSet(BulkDeleteMixin, viewsets.ModelViewSet):
 
         school = get_request_school(request)
         records = request.data.get("records", [])
+        if not isinstance(records, list) or not all(isinstance(r, dict) for r in records):
+            return Response({"error": "records : liste de présences attendue."}, status=400)
         created = []
         errors = []
         for r in records:

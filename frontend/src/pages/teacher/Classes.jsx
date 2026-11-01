@@ -64,7 +64,7 @@ export default function TeacherClasses() {
       )}
 
       <Modal open={!!selectedClass} onClose={() => setSelectedClass(null)}
-        title={`Élèves — ${selectedClass?.name}`} size="lg">
+        title={`Élèves : ${selectedClass?.name}`} size="lg">
         {studData ? (
           students.length > 0 ? (
             <DataTable columns={cols} data={students} />

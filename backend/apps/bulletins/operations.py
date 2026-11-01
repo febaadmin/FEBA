@@ -94,9 +94,9 @@ def resolve_scope(school, *, scope, period, school_year_id, student_id=None, cla
     if school is None:
         raise ScopeError("Sélectionnez d'abord une académie : une opération groupée "
                          "ne porte jamais sur toutes les académies.", status=400)
-    if period not in PERIODS:
+    if not isinstance(period, str) or period not in PERIODS:
         raise ScopeError("Période invalide (T1, T2, T3 ou annual).")
-    if scope not in dict(BulletinOperation.SCOPES):
+    if not isinstance(scope, str) or scope not in dict(BulletinOperation.SCOPES):
         raise ScopeError("Portée invalide (student, class ou academy).")
     year = _get_in_school(SchoolYear, school_year_id, "Année scolaire", school=school)
 

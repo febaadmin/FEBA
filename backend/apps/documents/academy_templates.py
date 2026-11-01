@@ -678,13 +678,13 @@ def normalize_fields(template, items):
         seen.add(name)
         label = spec["label"]
         try:
-            x = _number(raw.get("x_mm"), f"{label} — position horizontale", 0, page_w)
-            y = _number(raw.get("y_mm"), f"{label} — position verticale", 0, page_h)
-            w = _number(raw.get("width_mm"), f"{label} — largeur", 5, page_w)
-            h = _number(raw.get("height_mm"), f"{label} — hauteur", 3, page_h)
-            size = _number(raw.get("font_size_pt", 14), f"{label} — taille du texte", 6, 72)
+            x = _number(raw.get("x_mm"), f"{label} - position horizontale", 0, page_w)
+            y = _number(raw.get("y_mm"), f"{label} - position verticale", 0, page_h)
+            w = _number(raw.get("width_mm"), f"{label} - largeur", 5, page_w)
+            h = _number(raw.get("height_mm"), f"{label} - hauteur", 3, page_h)
+            size = _number(raw.get("font_size_pt", 14), f"{label} - taille du texte", 6, 72)
             min_size = _number(raw.get("min_font_size_pt", min(size, 8)),
-                               f"{label} — taille minimale", 5, 72)
+                               f"{label} - taille minimale", 5, 72)
         except ValidationError as exc:
             errors.extend(exc.messages)
             continue
@@ -921,7 +921,7 @@ def _draw_preview_marks(pdf, width_pt, height_pt, label):
     pdf.rotate(28)
     pdf.drawCentredString(0, 0, label)
     pdf.setFont("Helvetica-Bold", 13)
-    pdf.drawCentredString(0, -22, "APERÇU — NE PAS REMETTRE À UN ÉLÈVE")
+    pdf.drawCentredString(0, -22, "APERÇU - NE PAS REMETTRE À UN ÉLÈVE")
     pdf.restoreState()
 
 

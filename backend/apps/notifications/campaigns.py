@@ -339,7 +339,7 @@ def enqueue_campaign(campaign_id):
                 f"automatiquement dès le retour du service. Détail : {exc}"
             )[:2000],
         )
-        logger.error("Envoi groupé %s : mise en file impossible — %s", campaign_id, exc)
+        logger.error("Envoi groupé %s : mise en file impossible : %s", campaign_id, exc)
         return False
 
 

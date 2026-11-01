@@ -336,7 +336,7 @@ function SmtpPanel() {
   const c = configQ.data?.data;
   const testMut = useMutation({
     mutationFn: () => outboxAPI.testSend(to),
-    onSuccess: (res) => toast(t(res.data.delivery_summary), { icon: res.data.status === "sent" ? "✉️" : "⚠️" }),
+    onSuccess: (res) => toast(t(res.data.delivery_summary), { icon: res.data.status === "sent" ? "" : "" }),
     onError: (e) => toast.error(extractApiError(e)),
     onSettled: () => { sending.current = false; },
   });

@@ -57,7 +57,7 @@ class FHAContactCreateView(APIView):
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         msg = serializer.save()
-        logger.info("FEBA FHA — message de contact reçu (#%d, catégorie %s)",
+        logger.info("FEBA FHA - message de contact reçu (#%d, catégorie %s)",
                     msg.pk, msg.category)
         return Response(
             {
@@ -287,7 +287,7 @@ class FHAApplicationViewSet(viewsets.ModelViewSet):
             comment=request.data.get('comment', ''),
         )
         logger.info(
-            "FEBA FHA — dossier %s : %s → %s (par %s)",
+            "FEBA FHA - dossier %s : %s → %s (par %s)",
             application.reference, previous, new_status, request.user.email,
         )
 
@@ -341,7 +341,7 @@ class FHAApplicationViewSet(viewsets.ModelViewSet):
                             status=status.HTTP_404_NOT_FOUND)
 
         logger.info(
-            "FHA — fiche %s téléchargée par %s",
+            "FHA - fiche %s téléchargée par %s",
             application.reference, request.user.email,
         )
         response = FileResponse(open(path, "rb"), content_type="application/pdf")
@@ -397,7 +397,7 @@ class FHAApplicationViewSet(viewsets.ModelViewSet):
             return Response({"detail": "Photo introuvable."},
                             status=status.HTTP_404_NOT_FOUND)
 
-        logger.info("FHA — photo du dossier %s consultée par %s",
+        logger.info("FHA - photo du dossier %s consultée par %s",
                     application.reference, request.user.email)
         response = FileResponse(open(path, "rb"))
         response["Cache-Control"] = "private, no-store"
@@ -494,7 +494,7 @@ class FHAApplicationViewSet(viewsets.ModelViewSet):
                 'tracking_id': str(delivery.tracking_id) if delivery is not None else None,
                 'used_real_provider': bool(delivery and delivery.used_real_provider),
             })
-        logger.info("FHA — envoi groupé des accusés par %s : %s", request.user.email, summary)
+        logger.info("FHA - envoi groupé des accusés par %s : %s", request.user.email, summary)
         return Response({'results': results, 'summary': summary})
 
     # ── P4 : export CSV complet ──────────────────────────────────────
@@ -531,7 +531,7 @@ class FHAApplicationViewSet(viewsets.ModelViewSet):
             writer.writerow([_export_value(application, key) for _, key in columns])
 
         logger.info(
-            "FHA — export CSV de %d dossier(s) par %s",
+            "FHA - export CSV de %d dossier(s) par %s",
             len(rows), request.user.email,
         )
         return response
@@ -641,7 +641,7 @@ class FHAPlacementTestCreateView(APIView):
         test_request = serializer.save()
 
         logger.info(
-            "FEBA FHA — demande de test de placement reçue (dossier %s)",
+            "FEBA FHA - demande de test de placement reçue (dossier %s)",
             test_request.reference,
         )
 
@@ -736,7 +736,7 @@ class FHAPlacementTestViewSet(viewsets.ModelViewSet):
         notify_placement_test_scheduled(test_request)
 
         logger.info(
-            "FEBA FHA — test %s planifié au %s par %s",
+            "FEBA FHA - test %s planifié au %s par %s",
             test_request.reference, moment.isoformat(), request.user.email,
         )
         return Response(self.get_serializer(test_request).data)
@@ -780,7 +780,7 @@ class FHAPlacementTestViewSet(viewsets.ModelViewSet):
         test_request.save(update_fields=['status', 'updated_at'])
 
         logger.info(
-            "FEBA FHA — résultat du test %s enregistré (groupe %s)",
+            "FEBA FHA - résultat du test %s enregistré (groupe %s)",
             test_request.reference, result.recommended_group or "à définir",
         )
         return Response(self.get_serializer(test_request).data)

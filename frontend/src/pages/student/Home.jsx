@@ -29,7 +29,7 @@ export default function StudentHome() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title={t("Bonjour, {name} 👋", { name: student.first_name || "" })}
+        title={t("Bonjour, {name}", { name: student.first_name || "" })}
         subtitle={`${student.class || "—"} • ${t("Matricule")}: ${student.matricule || "—"}`}
       />
 

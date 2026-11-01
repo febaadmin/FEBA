@@ -129,7 +129,7 @@ export default function AdminParents() {
 
   const deleteMut = useMutation({
     mutationFn: parentsAPI.delete,
-    onSuccess: (r) => { qc.invalidateQueries({ queryKey: ["parents"] }); toast.success(r.data?.detail || "Parent désactivé — historique conservé."); setDeleteItem(null); setSelectedParent(null); },
+    onSuccess: (r) => { qc.invalidateQueries({ queryKey: ["parents"] }); toast.success(r.data?.detail || "Parent désactivé : historique conservé."); setDeleteItem(null); setSelectedParent(null); },
     onError: (e) => toast.error(extractApiError(e)),
   });
 

@@ -173,7 +173,7 @@ class StudentSerializer(TenantRelationsMixin, AcademyMetadataMixin, serializers.
                 f"Ce compte est déjà associé à l'élève {linked.get_full_name()} "
                 f"({linked.matricule or 'sans matricule'}, année {year}). "
                 "Pour l'inscrire dans une autre année, utilisez "
-                "Inscriptions → Inscription individuelle — ne créez pas de doublon."
+                "Inscriptions → Inscription individuelle. Ne créez pas de doublon."
             )
         return value
 

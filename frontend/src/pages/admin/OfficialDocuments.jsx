@@ -254,7 +254,7 @@ export default function AdminOfficialDocuments() {
     <div className="space-y-6">
       <PageHeader
         title={t("Documents officiels")}
-        subtitle={t("Diplômes et certificats — {n} document(s)", { n: documents.length })}
+        subtitle={t("Diplômes et certificats : {n} document(s)", { n: documents.length })}
         action={(
           <div className="flex flex-wrap gap-2">
             {!consolidated && (
@@ -327,7 +327,7 @@ export default function AdminOfficialDocuments() {
                     </p>
                     {active ? (
                       <p className="text-green-700 mt-1">
-                        {t("Gabarit téléversé de l'académie — version {v}", { v: active.version })}
+                        {t("Gabarit téléversé de l'académie, version {v}", { v: active.version })}
                         {" · "}{active.original_filename}
                       </p>
                     ) : builtin?.in_use ? (
@@ -405,7 +405,7 @@ export default function AdminOfficialDocuments() {
           {check && (
             <div className="space-y-3" data-testid="document-check">
               <p className="text-sm text-slate-700">
-                {check.source === "uploaded" && t("Gabarit téléversé de l'académie — version {v}", { v: check.template.version })}
+                {check.source === "uploaded" && t("Gabarit téléversé de l'académie, version {v}", { v: check.template.version })}
                 {check.source === "builtin" && t("Gabarit intégré « {l} »", { l: check.template.label })}
                 {!check.source && t("Aucun gabarit disponible")}
               </p>

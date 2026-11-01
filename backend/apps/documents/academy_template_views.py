@@ -23,6 +23,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.core.request_text import identifiant, liste_identifiants
 from apps.core.tenancy import get_request_school
 from apps.documents import academy_templates as uploads
 from apps.documents import conversion
@@ -216,13 +217,13 @@ class AcademyTemplateListView(APIView):
         if denied is not None:
             return denied
         kind = request.data.get("kind")
-        if kind not in KINDS:
+        if not isinstance(kind, str) or kind not in KINDS:
             return Response({"detail": "Type de document attendu : diploma ou certificate."},
                             status=status.HTTP_400_BAD_REQUEST)
         copy_from = None
         if request.data.get("copy_from"):
             copy_from = AcademyDocumentTemplate.objects.filter(
-                pk=request.data.get("copy_from"), academy=academy, kind=kind,
+                pk=identifiant(request.data.get("copy_from")), academy=academy, kind=kind,
             ).first()
             if copy_from is None:
                 return Response({"detail": "Version de référence introuvable."},
@@ -389,7 +390,7 @@ class AcademyTemplatePreviewView(APIView):
         frames = bool(request.data.get("frames"))
         info = {"missing": [], "warnings": [], "blockers": []}
         try:
-            student_id = request.data.get("student")
+            student_id = identifiant(request.data.get("student"))
             if student_id:
                 student = _visible_students(request.user, request).filter(
                     pk=student_id, school=template.academy).first()
@@ -419,13 +420,13 @@ class AcademyTemplatePreviewView(APIView):
 
 def _student_for(request):
     return _visible_students(request.user, request).filter(
-        pk=request.data.get("student")).select_related("school").first()
+        pk=identifiant(request.data.get("student"))).select_related("school").first()
 
 
 def _school_year(student, raw):
     if not raw:
         return None
-    year = student.school.years.filter(pk=raw).first()
+    year = student.school.years.filter(pk=identifiant(raw)).first()
     if year is None:
         raise ValidationError("Année scolaire introuvable pour l'académie de cet élève.")
     return year
@@ -482,7 +483,7 @@ class DocumentCheckView(APIView):
         if denied is not None:
             return denied
         kind = request.data.get("kind")
-        if kind not in KINDS:
+        if not isinstance(kind, str) or kind not in KINDS:
             return Response({"detail": "Type de document attendu : diploma ou certificate."},
                             status=status.HTTP_400_BAD_REQUEST)
         student = _student_for(request)
@@ -515,7 +516,7 @@ class DocumentPreviewView(APIView):
             return denied
         kind = request.data.get("kind")
         student = _student_for(request)
-        if kind not in KINDS or student is None:
+        if not isinstance(kind, str) or kind not in KINDS or student is None:
             return Response({"detail": "Élève ou type de document introuvable."},
                             status=status.HTTP_404_NOT_FOUND)
         try:
@@ -560,12 +561,12 @@ class DocumentBatchView(APIView):
         if denied is not None:
             return denied
         kind = request.data.get("kind")
-        if kind not in KINDS:
+        if not isinstance(kind, str) or kind not in KINDS:
             return Response({"detail": "Type de document attendu : diploma ou certificate."},
                             status=status.HTTP_400_BAD_REQUEST)
         students = _visible_students(request.user, request)
         klass = Class.objects.filter(
-            pk=request.data.get("class_id"),
+            pk=identifiant(request.data.get("class_id")),
             level__school__in=students.values("school").distinct(),
         ).select_related("school_year").first()
         if klass is None:
@@ -607,8 +608,8 @@ class DocumentBatchIssueView(APIView):
         denied = _issuer_or_403(request)
         if denied is not None:
             return denied
-        ids = request.data.get("ids") or []
-        if not isinstance(ids, list) or not ids or len(ids) > MAX_BATCH:
+        ids = liste_identifiants(request.data.get("ids") or [])
+        if not ids or len(ids) > MAX_BATCH:
             return Response({"detail": f"Liste de 1 à {MAX_BATCH} documents attendue."},
                             status=status.HTTP_400_BAD_REQUEST)
         documents = {d.pk: d for d in _visible_documents(request.user, request).filter(pk__in=ids)}

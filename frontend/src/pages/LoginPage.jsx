@@ -117,7 +117,7 @@ export default function LoginPage() {
         </div>
 
         <p className="text-center text-blue-300 text-xs mt-6 opacity-70">
-          © {new Date().getFullYear()} Faith & Excellence Bilingual Academy — Cotonou, Bénin
+          © {new Date().getFullYear()} Faith & Excellence Bilingual Academy, Cotonou, Bénin
         </p>
       </motion.div>
     </div>

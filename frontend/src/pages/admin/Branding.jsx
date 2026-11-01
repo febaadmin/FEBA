@@ -111,8 +111,8 @@ export default function AdminBranding() {
       <PageHeader
         title={t("Gestion du Branding & Logo")}
         subtitle={isAllAcademies || !activeAcademy?.name
-          ? t("Gestion centralisée du logo officiel de chaque académie — propagé automatiquement dans toute l'application")
-          : t("Gestion centralisée du logo officiel de {nom} — propagé automatiquement dans toute l'application", { nom: activeAcademy.name })}
+          ? t("Gestion centralisée du logo officiel de chaque académie, propagé automatiquement dans toute l'application")
+          : t("Gestion centralisée du logo officiel de {nom}, propagé automatiquement dans toute l'application", { nom: activeAcademy.name })}
         action={
           <button onClick={() => setUploadOpen(true)} disabled={!academyId}
             className="btn-primary flex items-center gap-2">
@@ -157,10 +157,10 @@ export default function AdminBranding() {
       {/* Propagation Info */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
-          { label: t("Page de connexion"), icon: "🔐", status: "✓ Actif" },
-          { label: t("Tableaux de bord"), icon: "📊", status: "✓ Actif" },
-          { label: t("Bulletins PDF"), icon: "📄", status: "✓ Actif" },
-          { label: t("Documents exports"), icon: "📤", status: "✓ Actif" },
+          { label: t("Page de connexion"), icon: "", status: "✓ Actif" },
+          { label: t("Tableaux de bord"), icon: "", status: "✓ Actif" },
+          { label: t("Bulletins PDF"), icon: "", status: "✓ Actif" },
+          { label: t("Documents exports"), icon: "", status: "✓ Actif" },
         ].map((item) => (
           <div key={item.label} className="bg-white rounded-xl border border-gray-200 p-4 text-center">
             <div className="text-2xl mb-2">{item.icon}</div>
@@ -279,7 +279,7 @@ export default function AdminBranding() {
                 <div className="flex flex-col items-center gap-2">
                   <Upload className="w-8 h-8 text-gray-400" />
                   <p className="text-gray-600 text-sm font-medium">{t("Cliquer pour sélectionner")}</p>
-                  <p className="text-gray-400 text-xs">{t("PNG, JPG, SVG — Max 5MB")}</p>
+                  <p className="text-gray-400 text-xs">{t("PNG, JPG, SVG - Max 5MB")}</p>
                 </div>
               )}
             </div>

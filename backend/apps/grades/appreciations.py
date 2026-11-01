@@ -158,7 +158,7 @@ def validate_scale(rows):
         if percent in seen_percent:
             errors.append(
                 f"Lignes {seen_percent[percent]} et {index} : deux appréciations actives ont le même "
-                f"seuil ({percent} %) — une note à ce seuil aurait deux appréciations.")
+                f"seuil ({percent} %) : une note à ce seuil aurait deux appréciations.")
         seen_percent.setdefault(percent, index)
         if label and label in seen_label:
             errors.append(f"Lignes {seen_label[label]} et {index} : libellé « {label} » en double.")

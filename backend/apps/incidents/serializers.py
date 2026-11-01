@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from .models import TechnicalIncident
+from .models import IncidentStatusEvent, TechnicalIncident
 
 
 class TechnicalIncidentListSerializer(serializers.ModelSerializer):
@@ -20,7 +20,16 @@ class TechnicalIncidentListSerializer(serializers.ModelSerializer):
         read_only_fields = fields
 
 
+class IncidentStatusEventSerializer(serializers.ModelSerializer):
+    performed_by_email = serializers.CharField(source="performed_by.email", read_only=True, default=None)
+
+    class Meta:
+        model = IncidentStatusEvent
+        fields = ["from_status", "to_status", "performed_by_email", "note", "created_at"]
+
+
 class TechnicalIncidentDetailSerializer(TechnicalIncidentListSerializer):
+    status_events = IncidentStatusEventSerializer(many=True, read_only=True)
     assigned_to_email = serializers.CharField(source="assigned_to.email",
                                               read_only=True, default=None)
 
@@ -29,7 +38,7 @@ class TechnicalIncidentDetailSerializer(TechnicalIncidentListSerializer):
             "environment", "frontend_route", "message", "location",
             "attempted_action", "context_data", "user_agent", "app_version",
             "release", "fingerprint", "assigned_to", "assigned_to_email",
-            "resolution_notes", "resolved_at",
+            "resolution_notes", "resolved_at", "status_events",
         ]
         # Seuls le traitement (statut, assignation, notes) est modifiable :
         # les données techniques de l'incident restent immuables.

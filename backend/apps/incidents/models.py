@@ -93,7 +93,8 @@ class TechnicalIncident(models.Model):
         ("high", "Élevée"), ("critical", "Critique"),
     ]
     STATUS_CHOICES = [
-        ("new", "Nouveau"), ("in_progress", "En cours"), ("resolved", "Résolu"),
+        ("new", "Nouveau"), ("in_progress", "En cours"),
+        ("corrected", "Corrigé, à valider"), ("resolved", "Résolu"),
         ("ignored", "Ignoré"), ("reopened", "Réouvert"),
     ]
 
@@ -163,3 +164,33 @@ class TechnicalIncident(models.Model):
             if not TechnicalIncident.objects.filter(reference=candidate).exists():
                 return candidate
         return f"ERR-{secrets.token_hex(5).upper()}"
+
+
+class IncidentStatusEvent(models.Model):
+    """Historique des changements de statut d'un incident, jamais réécrit."""
+
+    incident = models.ForeignKey(TechnicalIncident, on_delete=models.CASCADE, related_name="status_events")
+    from_status = models.CharField(max_length=15, blank=True)
+    to_status = models.CharField(max_length=15)
+    performed_by = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, null=True, blank=True,
+                                     related_name="+")
+    note = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["created_at", "id"]
+
+    def __str__(self):
+        return f"{self.incident.reference} : {self.from_status} -> {self.to_status}"
+
+
+def changer_statut(incident, statut, user=None, note=""):
+    """Change le statut et l'inscrit dans l'historique."""
+    ancien = incident.status
+    if statut != "resolved":
+        incident.resolved_at = None
+    incident.status = statut
+    incident.save(update_fields=["status", "resolved_at"])
+    if ancien != statut:
+        IncidentStatusEvent.objects.create(incident=incident, from_status=ancien, to_status=statut,
+                                           performed_by=user, note=note)

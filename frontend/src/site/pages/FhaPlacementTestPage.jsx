@@ -134,7 +134,7 @@ export default function FhaPlacementTestPage() {
   if (done) {
     return (
       <>
-        <Seo title={t("Demande enregistrée — FEBA FHA", "Request received — FEBA FHA")} />
+        <Seo title={t("Demande enregistrée : FEBA FHA", "Request received : FEBA FHA")} />
         <Section tone="white">
           <div className="max-w-2xl mx-auto text-center">
             <div className="w-16 h-16 rounded-2xl bg-feba-green flex items-center justify-center mx-auto mb-6">

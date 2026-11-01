@@ -490,8 +490,8 @@ export default function FhaPage() {
               src={FHA_FLYER_PATH}
               alt={
                 lang === "fr"
-                  ? "Flyer FEBA French Heritage Academy — formules et informations pratiques"
-                  : "FEBA French Heritage Academy flyer — plans and practical information"
+                  ? "Flyer FEBA French Heritage Academy, formules et informations pratiques"
+                  : "FEBA French Heritage Academy flyer, plans and practical information"
               }
               className="w-full h-auto"
               loading="lazy"

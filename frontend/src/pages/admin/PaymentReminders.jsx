@@ -206,7 +206,7 @@ function PreviewTab() {
 
       {data?.anomalies?.length > 0 && (
         <div className="card border border-red-200 bg-red-50 text-sm text-red-800 space-y-1">
-          <p className="font-semibold">{t("Anomalies — aucune relance n'est envoyée pour les éléments concernés :")}</p>
+          <p className="font-semibold">{t("Anomalies : aucune relance n'est envoyée pour les éléments concernés :")}</p>
           {data.anomalies.map((a, i) => <p key={i}>• {a.message}</p>)}
         </div>
       )}

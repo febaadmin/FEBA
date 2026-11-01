@@ -128,3 +128,37 @@ class BalayageTests(TestCase):
             c.force_authenticate(user)
             ouvertes = {r for r in routes() if c.post(r, {}, format="json").status_code not in (401, 403, 404, 405)}
             self.assertEqual(ouvertes - permis, set(), user.email)
+
+    def test_comptes_sans_profil_jamais_d_erreur_serveur(self):
+        for role in ("teacher", "student", "parent"):
+            user = make_user(f"sans-profil-{role}@t.bj", role, self.a)
+            erreurs = [(c, s) for c, s, _ in self.balayer(user) if s >= 500 and s != 503]
+            self.assertEqual(erreurs, [], role)
+
+    def test_champs_malformes_jamais_d_erreur_serveur(self):
+        # Origine des incidents de notes : un objet reçu à la place d'un texte.
+        cles = ("justification", "message", "comment", "body", "subject", "reason", "name", "title",
+                "description", "notes", "email", "recipient", "recipient_id", "student", "student_id",
+                "class_id", "school_year", "school_year_id", "period", "status", "scope", "kind", "template",
+                "values", "copy_from", "ids", "amount", "academy_id", "subject_id", "date", "records")
+        c = APIClient()
+        c.raise_request_exception = False
+        c.force_authenticate(self.admin)
+        erreurs = []
+        for valeur in ({"objet": 1}, ["liste"], "abc", 123456789):
+            charge = {cle: valeur for cle in cles}
+            erreurs += [(r, repr(valeur)) for r in routes() if c.post(r, charge, format="json").status_code == 500]
+        self.assertEqual(erreurs, [])
+
+    def test_lien_parent_eleve_d_une_autre_academie_intouchable(self):
+        lien = ParentStudent.objects.get(student=self.e1)
+        admin_b = make_user("admb@t.bj", "admin", self.b)
+        c = APIClient()
+        c.force_authenticate(admin_b)
+        rep = c.post("/api/parents/remove_child/", {"parent_id": lien.parent_id, "student_id": self.e1.pk}, format="json")
+        self.assertEqual(rep.status_code, 404)
+        self.assertTrue(ParentStudent.objects.filter(pk=lien.pk).exists())
+        c.force_authenticate(self.admin)
+        rep = c.post("/api/parents/remove_child/", {"parent_id": lien.parent_id, "student_id": self.e1.pk}, format="json")
+        self.assertEqual(rep.status_code, 200)
+        self.assertFalse(ParentStudent.objects.filter(pk=lien.pk).exists())

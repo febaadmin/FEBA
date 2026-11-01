@@ -28,6 +28,7 @@ const STATUSES = [
   { value: "", label: "Tous statuts" },
   { value: "new", label: "Nouveau" },
   { value: "in_progress", label: "En cours" },
+  { value: "corrected", label: "Corrigé, à valider" },
   { value: "resolved", label: "Résolu" },
   { value: "ignored", label: "Ignoré" },
   { value: "reopened", label: "Réouvert" },
@@ -42,10 +43,13 @@ const SEVERITY_STYLE = {
 const STATUS_STYLE = {
   new: "bg-blue-100 text-blue-700",
   in_progress: "bg-indigo-100 text-indigo-700",
+  corrected: "bg-amber-100 text-amber-700",
   resolved: "bg-green-100 text-green-700",
   ignored: "bg-slate-100 text-slate-500",
   reopened: "bg-purple-100 text-purple-700",
 };
+
+const libelleStatut = (valeur) => STATUSES.find((s) => s.value === valeur)?.label || valeur;
 
 const fmt = (value) =>
   value ? new Date(value).toLocaleString(dateLocale(), {
@@ -113,10 +117,11 @@ export default function SuperAdminIncidents() {
         subtitle={t("Erreurs serveur enregistrées automatiquement")} />
 
       {/* Compteurs */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
         {[
           { key: "new", label: "Nouveaux", value: stats.new ?? 0, tone: "text-blue-600" },
           { key: "in_progress", label: "En cours", value: stats.by_status?.in_progress ?? 0, tone: "text-indigo-600" },
+          { key: "corrected", label: "Corrigés, à valider", value: stats.by_status?.corrected ?? 0, tone: "text-amber-600" },
           { key: "resolved", label: "Résolus", value: stats.by_status?.resolved ?? 0, tone: "text-green-600" },
           { key: "total", label: "Total", value: stats.total ?? 0, tone: "text-slate-700" },
         ].map((card) => (
@@ -265,6 +270,19 @@ export default function SuperAdminIncidents() {
                 onChange={(e) => setNotes(e.target.value)} />
             </div>
 
+            {incident.status_events?.length > 0 && (
+              <div>
+                <p className="text-sm font-medium text-slate-700 mb-1">{t("Historique des statuts")}</p>
+                <ul className="text-xs text-slate-500 space-y-1">
+                  {incident.status_events.map((ev) => (
+                    <li key={ev.created_at}>
+                      {fmt(ev.created_at)} : {t(libelleStatut(ev.from_status))} → {t(libelleStatut(ev.to_status))}
+                      {ev.performed_by_email ? ` (${ev.performed_by_email})` : ""}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
             <div className="flex flex-wrap gap-2 justify-end pt-2 border-t border-slate-100">
               <select className="input w-auto" value={incident.status}
                 onChange={(e) => statusMut.mutate({ status: e.target.value,

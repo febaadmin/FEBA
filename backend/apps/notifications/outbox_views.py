@@ -294,7 +294,7 @@ def smtp_reachability(timeout=5):
                     "detail": f"{settings.EMAIL_HOST}:{settings.EMAIL_PORT} joignable."}
     except OSError as exc:
         return {"checked": True, "reachable": False,
-                "detail": f"{settings.EMAIL_HOST}:{settings.EMAIL_PORT} injoignable — {type(exc).__name__}: {exc}"}
+                "detail": f"{settings.EMAIL_HOST}:{settings.EMAIL_PORT} injoignable - {type(exc).__name__}: {exc}"}
 
 
 def email_configuration(request=None):
@@ -388,7 +388,7 @@ class EmailConfigTestView(APIView):
         if request.user.is_superadmin():
             academy = outbox_scope(request)
         delivery = send_tracked_email(
-            purpose="smtp_test", to_email=to, subject="FEBA — test de configuration e-mail",
+            purpose="smtp_test", to_email=to, subject="FEBA - test de configuration e-mail",
             text_body=("Message de test envoyé depuis FEBA par "
                        f"{request.user.get_full_name() or request.user.email}.\n"
                        "S'il est dans votre boîte de réception, la configuration fonctionne."),

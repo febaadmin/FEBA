@@ -100,7 +100,7 @@ export default function CardPaymentPanel({ students = [] }) {
         {config.mode === "test" && (
           // Ne jamais laisser croire qu'un paiement de test est réel.
           <span className="text-xs font-medium px-2 py-1 rounded-lg bg-slate-100 text-slate-600">
-            {t("Mode test — aucune carte ne sera débitée")}
+            {t("Mode test : aucune carte ne sera débitée")}
           </span>
         )}
       </div>

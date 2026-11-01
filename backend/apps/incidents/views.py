@@ -5,7 +5,9 @@ from rest_framework.decorators import action
 from rest_framework.permissions import BasePermission, IsAuthenticated
 from rest_framework.response import Response
 
-from .models import TechnicalIncident
+from apps.core.request_text import text_field
+
+from .models import IncidentStatusEvent, TechnicalIncident, changer_statut
 from .serializers import (
     TechnicalIncidentDetailSerializer, TechnicalIncidentListSerializer,
 )
@@ -40,6 +42,17 @@ class TechnicalIncidentViewSet(viewsets.ModelViewSet):
             return TechnicalIncidentListSerializer
         return TechnicalIncidentDetailSerializer
 
+    def perform_update(self, serializer):
+        ancien = serializer.instance.status
+        incident = serializer.save()
+        if incident.status != ancien:
+            if incident.status != "resolved" and incident.resolved_at:
+                incident.resolved_at = None
+                incident.save(update_fields=["resolved_at"])
+            IncidentStatusEvent.objects.create(incident=incident, from_status=ancien, to_status=incident.status,
+                                               performed_by=self.request.user,
+                                               note=text_field(self.request.data, "resolution_notes"))
+
     def create(self, request, *args, **kwargs):
         """Un incident se constate, il ne se saisit pas à la main.
 
@@ -70,18 +83,17 @@ class TechnicalIncidentViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=["post"], url_path="resolve")
     def resolve(self, request, pk=None):
         incident = self.get_object()
-        incident.status = "resolved"
-        incident.resolved_at = timezone.now()
-        notes = request.data.get("resolution_notes")
+        notes = text_field(request.data, "resolution_notes")
         if notes:
             incident.resolution_notes = notes
-        incident.save(update_fields=["status", "resolved_at", "resolution_notes"])
+            incident.save(update_fields=["resolution_notes"])
+        changer_statut(incident, "resolved", request.user, notes)
+        incident.resolved_at = timezone.now()
+        incident.save(update_fields=["resolved_at"])
         return Response(self.get_serializer(incident).data, status=status.HTTP_200_OK)
 
     @action(detail=True, methods=["post"], url_path="reopen")
     def reopen(self, request, pk=None):
         incident = self.get_object()
-        incident.status = "reopened"
-        incident.resolved_at = None
-        incident.save(update_fields=["status", "resolved_at"])
+        changer_statut(incident, "reopened", request.user)
         return Response(self.get_serializer(incident).data, status=status.HTTP_200_OK)

@@ -100,7 +100,7 @@ export default function TeacherHomework() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title={t("Devoirs")} subtitle={`${homework.length} devoir(s) — matières de votre profil uniquement`}
+      <PageHeader title={t("Devoirs")} subtitle={`${homework.length} devoir(s) : matières de votre profil uniquement`}
         action={<button onClick={openCreate} className="btn-primary flex items-center gap-2"><Plus className="w-4 h-4" />{t("Nouveau devoir")}</button>} />
       <div className="card">
         <DataTable columns={cols} data={homework} loading={isLoading} actions={row => (

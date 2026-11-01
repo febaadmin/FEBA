@@ -135,7 +135,7 @@ export default function AdminCardTransactions() {
     <div className="space-y-6">
       <PageHeader
         title={t("Transactions par carte")}
-        subtitle={t("{n} tentative(s) — échecs et expirations compris", { n: rows.length })}
+        subtitle={t("{n} tentative(s) : échecs et expirations compris", { n: rows.length })}
       />
 
       {isAllAcademies && (

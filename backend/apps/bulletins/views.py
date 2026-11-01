@@ -392,7 +392,7 @@ class BulletinViewSet(BulkDeleteMixin, viewsets.ModelViewSet):
                 {"error": "student_id, period et school_year_id sont requis."},
                 status=400,
             )
-        if period not in dict(Bulletin.PERIOD_CHOICES):
+        if not isinstance(period, str) or period not in dict(Bulletin.PERIOD_CHOICES):
             return Response({"error": "Période invalide."}, status=400)
 
         school = get_request_school(request)

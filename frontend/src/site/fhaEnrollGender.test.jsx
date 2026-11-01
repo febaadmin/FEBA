@@ -50,7 +50,7 @@ describe("Fiche FHA — sexe de l'enfant", () => {
     renderPage();
     const select = screen.getByTestId("child-gender");
     const options = [...select.options].map((o) => [o.value, o.textContent]);
-    expect(options).toEqual([["", "— Choisir —"], ["F", "Féminin"], ["M", "Masculin"]]);
+    expect(options).toEqual([["", "Choisir"], ["F", "Féminin"], ["M", "Masculin"]]);
     expect(screen.getByText("Sexe")).toBeTruthy();
   });
 
@@ -58,7 +58,7 @@ describe("Fiche FHA — sexe de l'enfant", () => {
     localStorage.setItem("feba-fha-lang", "en");
     renderPage();
     const select = screen.getByTestId("child-gender");
-    expect([...select.options].map((o) => o.textContent)).toEqual(["— Select —", "Female", "Male"]);
+    expect([...select.options].map((o) => o.textContent)).toEqual(["Select", "Female", "Male"]);
     expect(screen.getByText("Sex")).toBeTruthy();
   });
 

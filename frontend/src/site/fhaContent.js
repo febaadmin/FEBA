@@ -243,8 +243,8 @@ export const FHA_PROGRAMME = [
       en: "The student can converse with their family, understand everyday conversations, read more independently and write an organised text.",
     },
     validation: {
-      fr: "Premier Certificat FEBA de compétence en langue française — délivré uniquement après validation des compétences",
-      en: "First FEBA Certificate of French language competence — awarded only once skills are validated",
+      fr: "Premier Certificat FEBA de compétence en langue française, délivré uniquement après validation des compétences",
+      en: "First FEBA Certificate of French language competence, awarded only once skills are validated",
     },
   },
   {

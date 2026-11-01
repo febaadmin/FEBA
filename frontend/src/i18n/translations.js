@@ -105,6 +105,8 @@ export const EN = {
   "Rechercher (référence, message, endpoint)…": "Search (reference, message, endpoint)…",
   "Toutes gravités": "All severities", "Tous statuts": "All statuses",
   "Critique": "Critical", "Élevée": "High", "Faible": "Low",
+  "Corrigé, à valider": "Fixed, to validate", "Corrigés, à valider": "Fixed, to validate",
+  "Historique des statuts": "Status history",
   "Nouveau": "New", "Résolu": "Resolved",
   "Ignoré": "Ignored", "Réouvert": "Reopened",
   "Nouveaux": "New", "Résolus": "Resolved",
@@ -382,7 +384,7 @@ export const EN = {
   "Barème par défaut rétabli.": "Default scale restored.",
   "Barème des appréciations des bulletins": "Report card remarks scale",
   "Sélectionnez d'abord l'académie dont vous gérez le barème (sélecteur d'académie en haut de page).": "First select the academy whose scale you manage (academy selector at the top of the page).",
-  "Barème des appréciations des bulletins — {name}": "Report card remarks scale — {name}",
+  "Barème des appréciations des bulletins : {name}": "Report card remarks scale: {name}",
   "Barème par défaut": "Default scale",
   "Abandonner les modifications non enregistrées ?": "Discard unsaved changes?",
   "barème propre": "own scale",
@@ -432,8 +434,8 @@ export const EN = {
   "Désactiver cette académie ? Ses utilisateurs ne pourront plus se connecter ; aucune donnée n'est supprimée.": "Deactivate this academy? Its users will no longer be able to sign in; no data is deleted.",
   "Réactiver cette académie ?": "Reactivate this academy?",
   "Supprimer définitivement cette académie ? Seule une académie vide (créée par erreur) peut l'être ; sinon, désactivez-la.": "Permanently delete this academy? Only an empty academy (created by mistake) can be deleted; otherwise, deactivate it.",
-  "Académie physique — primaire": "On-site academy — primary",
-  "Académie physique — secondaire (collège et lycée)": "On-site academy — secondary (middle and high school)",
+  "Académie physique : primaire": "On-site academy: primary",
+  "Académie physique : secondaire (collège et lycée)": "On-site academy: secondary (middle and high school)",
   "Maternelle 1 et 2, CI, CP, CE1, CE2, CM1, CM2 créés. Bulletins sur 10.": "Nursery 1 and 2, CI, CP, CE1, CE2, CM1, CM2 created. Report cards out of 10.",
   "6ème à 3ème (collège) et Seconde à Terminale (lycée) créés. Bulletins sur 20.": "6ème to 3ème (middle school) and Seconde to Terminale (high school) created. Report cards out of 20.",
   "Type d'académie défini": "Academy type set",
@@ -623,7 +625,7 @@ export const EN = {
   "Bibliothèque": "Library",
   "Bilingue": "Bilingual",
   "Bio": "Bio",
-  "Bonjour 👋": "Hello 👋",
+  "Bonjour": "Hello",
   "Bulletin généré avec succès ! PDF disponible.": "Report card generated successfully! PDF available.",
   "Bulletins PDF": "PDF report cards",
   "Bulletins de mes enfants": "My children's report cards",
@@ -796,7 +798,7 @@ export const EN = {
   "Garçon": "Boy",
   "Gestion Admins": "Admin Management",
   "Gestion Utilisateurs": "User Management",
-  "Gestion complète — accès Super Admin": "Full management — Super Admin access",
+  "Gestion complète : accès Super Admin": "Full management: Super Admin access",
   "Gestion des Administrateurs": "Administrator Management",
   "Gestion des frais scolaires": "School fees management",
   "Gestion du Branding & Logo": "Branding & Logo Management",
@@ -819,7 +821,7 @@ export const EN = {
   "Horaire": "Schedule",
   "Horaire (UTC)": "Schedule (UTC)",
   "ID employé": "Employee ID",
-  "Images, PDF, Word, Excel, CSV, ZIP — max 5 MB": "Images, PDF, Word, Excel, CSV, ZIP — max 5 MB",
+  "Images, PDF, Word, Excel, CSV, ZIP, max 5 MB": "Images, PDF, Word, Excel, CSV, ZIP, max 5 MB",
   "Impayé": "Unpaid",
   "Incomplet": "Incomplete",
   "Informations de l'École": "School Information",
@@ -830,7 +832,7 @@ export const EN = {
   "Inscrire": "Enroll",
   "Inscrire cet élève": "Enroll this student",
   "Inscrire tous": "Enroll all",
-  "Inscrire — nouvelle année": "Enroll — new year",
+  "Inscrire : nouvelle année": "Enroll: new year",
   "Inscrit automatiquement TOUS les élèves de l'année source dans l'année cible, dans une classe du même nom lorsqu'elle existe. Chaque élève conserve ses données historiques. Idéal pour ouvrir une nouvelle année d'un coup.": "Automatically enrolls ALL students from the source year into the target year, in a class of the same name when it exists. Each student keeps their historical data. Ideal for opening a new year in one go.",
   "Inscrit le": "Enrolled on",
   "Inscrit tous les élèves d'UNE classe précise dans une nouvelle année, avec affectation optionnelle à une nouvelle classe. Les élèves sans autre décision suivent tous le même parcours.": "Enrolls all students of ONE specific class into a new year, with optional assignment to a new class. Students without another decision all follow the same path.",
@@ -850,7 +852,7 @@ export const EN = {
   "L'année active ne peut pas être supprimée. Clôturez-la d'abord.": "The active year cannot be deleted. Close it first.",
   "L'email ne peut pas être modifié ici.": "The email address cannot be changed here.",
   "L'élève disparaît des listes actives ; tout son historique est conservé et il peut être réactivé.": "The student disappears from active lists; all their history is preserved and they can be reactivated.",
-  "La ressource demandée est introuvable — elle a peut-être été supprimée, ou le lien utilisé n'est plus valide. Vous êtes toujours connecté.": "The requested resource cannot be found — it may have been deleted, or the link used is no longer valid. You are still signed in.",
+  "La ressource demandée est introuvable. Elle a peut-être été supprimée, ou le lien utilisé n'est plus valide. Vous êtes toujours connecté.": "The requested resource cannot be found. It may have been deleted, or the link used is no longer valid. You are still signed in.",
   "Lancer le passage de niveau": "Run the grade-level promotion",
   "Langue": "Language",
   "Le nouveau logo sera immédiatement visible sur la page de connexion, les tableaux de bord, et tous les bulletins PDF générés après cet upload.": "The new logo will be immediately visible on the login page, dashboards, and all PDF report cards generated after this upload.",
@@ -970,7 +972,7 @@ export const EN = {
   "Note restaurée !": "Grade restored!",
   "Note supprimée": "Grade deleted",
   "Note supprimée.": "Grade deleted.",
-  "Note sélectionnée — modification": "Selected grade — editing",
+  "Note sélectionnée : modification": "Selected grade: editing",
   "Notes ce mois": "Grades this month",
   "Notes cette année": "Grades this year",
   "Notes de mes enfants": "My children's grades",
@@ -1016,7 +1018,7 @@ export const EN = {
   "Pas de calcul bilingue pour cette sélection": "No bilingual calculation for this selection",
   "Passage avec mention": "Promotion with honors",
   "Passage de niveau": "Grade-level promotion",
-  "Passage de niveau — Toute une année": "Grade-level promotion — Whole year",
+  "Passage de niveau : Toute une année": "Grade-level promotion: Whole year",
   "Passage en cours...": "Promotion in progress...",
   "Passage normal": "Standard promotion",
   "Passage par classe": "Class promotion",
@@ -1107,7 +1109,7 @@ export const EN = {
   "Statut*": "Status*",
   "Sujet *": "Subject *",
   "Super Admin": "Super Admin",
-  "Super Admin — Vue globale": "Super Admin — Global view",
+  "Super Admin : Vue globale": "Super Admin: Global view",
   "Suppression définitive": "Permanent deletion",
   "Suppression définitive effectuée.": "Permanent deletion completed.",
   "Suppression...": "Deleting...",
@@ -1140,7 +1142,7 @@ export const EN = {
   "Sélectionnez une année cible.": "Select a target year.",
   "Sélectionnez une année scolaire.": "Select an academic year.",
   "Sélectionnez une conversation": "Select a conversation",
-  "Tableau de bord — suivi de vos enfants": "Dashboard — monitoring your children",
+  "Tableau de bord : suivi de vos enfants": "Dashboard: monitoring your children",
   "Tableaux de bord": "Dashboards",
   "Titre*": "Title*",
   "Total confirmé": "Confirmed total",
@@ -1202,7 +1204,7 @@ export const EN = {
   "Veuillez sélectionner un fichier": "Please select a file",
   "Ville": "City",
   "Virement": "Bank transfer",
-  "Visioconférence intégrée (Jitsi Meet) — cours en ligne, réunions parents-professeurs…": "Built-in video conferencing (Jitsi Meet) — online classes, parent-teacher meetings…",
+  "Visioconférence intégrée (Jitsi Meet), cours en ligne, réunions parents-professeurs…": "Built-in video conferencing (Jitsi Meet), online classes, parent-teacher meetings…",
   "Rouvrir": "Reopen",
   "SMS non envoyé": "SMS not sent",
   "segment(s)": "SMS segment(s)",
@@ -1238,7 +1240,7 @@ export const EN = {
   "décision(s) appliquée(s)": "decision(s) applied",
   "ex: CI, CP, CM1, CM2, 6ème…": "e.g.: CI, CP, CM1, CM2, 6th grade…",
   "ex: CM2-A": "e.g.: CM2-A",
-  "ex: Cours de Mathématiques — 6ème A": "e.g.: Mathematics class — 6th grade A",
+  "ex. : Cours de Mathématiques, 6ème A": "e.g.: Mathematics class: 6th grade A",
   "ex: Salle Informatique A": "e.g.: Computer Room A",
   "tous les élèves actifs": "all active students",
   "École": "School",
@@ -1256,17 +1258,18 @@ export const EN = {
   "Établissement*": "School*",
   "Évolution des revenus": "Revenue trend",
   "élève(s) inscrit(s)": "student(s) enrolled",
-  "— Tous les niveaux —": "— All levels —",
+  "Tous les niveaux": "All levels",
+  "Choisir d'abord l'année cible": "Choose the target year first",
 
   // ── Interpolations et compléments ────────────────────────────────────────
   ", {n} déjà inscrit(s)": ", {n} already enrolled",
   "Année scolaire {y}": "Academic year {y}",
   "Auto-rempli": "Auto-filled",
-  "Bonjour, {name} 👋": "Hello, {name} 👋",
+  "Bonjour, {name}": "Hello, {name}",
   "Compte utilisateur élève": "Student user account",
   "Dimanche": "Sunday",
   "Enfants associés": "Linked children",
-  "Gestion des notes — {y}": "Grade management — {y}",
+  "Gestion des notes : {y}": "Grade management: {y}",
   "Jeudi": "Thursday",
   "Lundi": "Monday",
   "Mardi": "Tuesday",
@@ -1296,9 +1299,9 @@ export const EN = {
   "{n} enseignant(s)": "{n} teacher(s)",
   "{n} enseignant(s) supprimé(s).": "{n} teacher(s) deleted.",
   "{n} fichier(s)": "{n} file(s)",
-  "{n} niveau(x) — CI, CP, CM1, CM2, 6ème…": "{n} grade level(s) — CI, CP, CM1, CM2, 6th grade…",
+  "{n} niveau(x) : CI, CP, CM1, CM2, 6ème…": "{n} grade level(s): CI, CP, CM1, CM2, 6th grade…",
   "{n} note(s)": "{n} grade(s)",
-  "{n} note(s) supprimée(s) — visibles dans l'onglet Supprimées.": "{n} grade(s) deleted — visible in the Deleted tab.",
+  "{n} note(s) supprimée(s) : visibles dans l'onglet Supprimées.": "{n} grade(s) deleted: visible in the Deleted tab.",
   "{n} parent(s)": "{n} parent(s)",
   "{n} élève(s)": "{n} student(s)",
   "{n} élève(s) inscrit(s)": "{n} student(s) enrolled",
@@ -1420,8 +1423,8 @@ export const EN = {
   "Nouvel essai": "Retry scheduled",
   "Sans fournisseur": "No provider",
   "Fournisseur": "Provider",
-  "Aucun fournisseur réel configuré — le message n'est pas parti sur Internet.":
-    "No real provider configured — the message did not leave this server.",
+  "Aucun fournisseur réel configuré : le message n'est pas parti sur Internet.":
+    "No real provider configured: the message did not leave this server.",
   "E-mail accepté par le fournisseur.": "E-mail accepted by the provider.",
   "Enregistré, mais aucun fournisseur réel n'est configuré.":
     "Recorded, but no real provider is configured.",
@@ -1453,11 +1456,11 @@ export const EN = {
   "Non accordé": "Not granted",
   "Répondre sur WhatsApp": "Reply on WhatsApp",
   "Copier le texte intégral": "Copy the full text",
-  "Mode « Toutes les Académies » — chaque ligne porte son académie.": "All Academies mode — every row carries its academy.",
+  "Mode « Toutes les Académies » : chaque ligne porte son académie.": "All Academies mode: every row carries its academy.",
   "Diagnostic": "Diagnostics",
   "Relancez l'instance avec": "Restart the instance with",
   "puis vérifiez avec": "then check with",
-  "PNG, JPG, SVG — Max 5MB": "PNG, JPG, SVG — max 5 MB",
+  "PNG, JPG, SVG - Max 5MB": "PNG, JPG, SVG - max 5 MB",
   "Fiches d'inscription et demandes de test de placement.": "Enrolment forms and placement-test requests.",
   "Fiches d'inscription": "Enrolment forms",
   "Tests de placement": "Placement tests",
@@ -1579,7 +1582,7 @@ export const EN = {
   "Besoins particuliers (confidentiel)": "Special needs (confidential)",
   "Consentements": "Consents",
   "Acceptés le": "Accepted on",
-  "Créneau confirmé — le parent a été notifié.": "Slot confirmed — the parent has been notified.",
+  "Créneau confirmé : le parent a été notifié.": "Slot confirmed: the parent has been notified.",
   "Fuseau": "Time zone",
   "Aucune demande de test de placement.": "No placement-test request.",
   "demande(s)": "request(s)",
@@ -1618,7 +1621,7 @@ export const EN = {
   "Groupe en ligne*": "Online group*",
   "Sélectionner un groupe…": "Select a group…",
   "-- Sélectionner --": "-- Select --",
-  "L'heure est enregistrée en UTC. C'est la seule référence commune à des familles réparties entre les États-Unis, le Canada et le Bénin — et la seule qui reste juste au changement d'heure.": "The time is stored in UTC. It is the only reference shared by families across the United States, Canada and Benin — and the only one that stays correct across daylight-saving changes.",
+  "L'heure est enregistrée en UTC. C'est la seule référence commune à des familles réparties entre les États-Unis, le Canada et le Bénin, et la seule qui reste juste au changement d'heure.": "The time is stored in UTC. It is the only reference shared by families across the United States, Canada and Benin, and the only one that stays correct across daylight-saving changes.",
   "Jour (UTC)*": "Day (UTC)*",
   "Début (UTC)*": "Start (UTC)*",
   "Durée (min)*": "Duration (min)*",
@@ -1692,7 +1695,7 @@ export const EN = {
   "la confidentialité": "the privacy policy",
   "le traitement des données": "data processing",
   "l'autorisation parentale": "parental authorisation",
-  "Fiche envoyée — FEBA FHA": "Form submitted — FEBA FHA",
+  "Fiche envoyée : FEBA FHA": "Form submitted: FEBA FHA",
   "Merci !": "Thank you.",
   "Numéro de dossier": "File number",
   "Groupe suggéré (selon l'âge)": "Suggested group (based on age)",
@@ -1738,7 +1741,7 @@ export const EN = {
   "Plages horaires (heure locale)": "Time ranges (local time)",
   "Ajouter un créneau": "Add a time slot",
   "Le consentement à la visioconférence est obligatoire.": "Consent to video conferencing is required.",
-  "Demande enregistrée — FEBA FHA": "Request recorded — FEBA FHA",
+  "Demande enregistrée : FEBA FHA": "Request recorded: FEBA FHA",
   "Demande enregistrée": "Request recorded",
   "Souhaitez-vous aussi compléter la fiche d'inscription ? Ce n'est pas obligatoire avant le test.": "Would you also like to complete the enrolment form? It is not required before the test.",
   "Compléter la fiche d'inscription": "Complete the enrolment form",
@@ -1794,8 +1797,8 @@ export const EN = {
     "This academy has not enabled online payment yet.",
   "Le paiement par carte n'est pas configuré sur cette instance.":
     "Card payment is not configured on this instance.",
-  "Mode test — aucune carte ne sera débitée":
-    "Test mode — no card will be charged",
+  "Mode test : aucune carte ne sera débitée":
+    "Test mode: no card will be charged",
   "Chargement des tarifs…": "Loading fees…",
   "Aucun tarif n'est publié pour cet élève. Contactez le secrétariat.":
     "No fee is published for this student. Please contact the school office.",
@@ -1807,16 +1810,16 @@ export const EN = {
   "Le paiement se déroule sur la page sécurisée du prestataire. Aucune donnée de votre carte n'est transmise à l'école ni conservée par elle.":
     "Payment takes place on the provider's secure page. None of your card details are sent to the school or stored by it.",
   "Paiement en cours de vérification": "Payment being verified",
-  "Votre banque a accepté l'opération. Elle est confirmée par notre prestataire, puis apparaît dans la liste ci-dessous avec son reçu — généralement en quelques secondes.":
-    "Your bank accepted the transaction. It is confirmed by our provider, then appears in the list below with its receipt — usually within seconds.",
+  "Votre banque a accepté l'opération. Elle est confirmée par notre prestataire, puis apparaît dans la liste ci-dessous avec son reçu, généralement en quelques secondes.":
+    "Your bank accepted the transaction. It is confirmed by our provider, then appears in the list below with its receipt, usually within seconds.",
   "Paiement abandonné. Rien n'a été débité ; vous pouvez recommencer quand vous le souhaitez.":
     "Payment abandoned. Nothing was charged; you can start again whenever you wish.",
 
   // Journal des transactions et remboursements (administration).
   "Transactions carte": "Card transactions",
   "Transactions par carte": "Card transactions",
-  "{n} tentative(s) — échecs et expirations compris":
-    "{n} attempt(s) — including failures and expirations",
+  "{n} tentative(s) : échecs et expirations compris":
+    "{n} attempt(s): including failures and expirations",
   "Vue consolidée : chaque ligne porte son académie et sa devise. Aucun total n'est agrégé, deux devises ne s'additionnant pas.":
     "Consolidated view: each row carries its academy and currency. No total is aggregated, since two currencies do not add up.",
   "Référence prestataire": "Provider reference",
@@ -1850,7 +1853,7 @@ export const EN = {
   // Le vocabulaire distingue « produire » (brouillon) et « délivrer »
   // (acte officiel, numéroté). L'anglais garde la même distinction.
   "Documents officiels": "Official documents",
-  "Diplômes et certificats — {n} document(s)": "Diplomas and certificates — {n} document(s)",
+  "Diplômes et certificats : {n} document(s)": "Diplomas and certificates: {n} document(s)",
   "Produire un document": "Create a document",
   "Produire un document officiel": "Create an official document",
   "Produire": "Create",
@@ -1944,12 +1947,12 @@ export const EN = {
     "This class does not teach the following English subjects: {noms}.",
   "Cette classe n'enseigne pas la matière anglaise {noms}.":
     "This class does not teach the English subject {noms}.",
-  "Configuration bilingue complète — {fr} FR / {en} EN":
-    "Bilingual setup complete — {fr} FR / {en} EN",
-  "Configuration complète — {n} matière(s) française(s)":
-    "Setup complete — {n} French subject(s)",
-  "Configuration complète — {n} matière(s) anglaise(s)":
-    "Setup complete — {n} English subject(s)",
+  "Configuration bilingue complète : {fr} FR / {en} EN":
+    "Bilingual setup complete: {fr} FR / {en} EN",
+  "Configuration complète : {n} matière(s) française(s)":
+    "Setup complete: {n} French subject(s)",
+  "Configuration complète : {n} matière(s) anglaise(s)":
+    "Setup complete: {n} English subject(s)",
   "Date invalide":
     "Invalid date",
   "{n} an":
@@ -2088,8 +2091,8 @@ export const EN = {
     "Send due reminders ({n})",
   "Simulation : cet écran ne crée aucune relance et n'envoie rien.":
     "Simulation: this screen creates no reminder and sends nothing.",
-  "Anomalies — aucune relance n'est envoyée pour les éléments concernés :":
-    "Anomalies — no reminder is sent for the items concerned:",
+  "Anomalies : aucune relance n'est envoyée pour les éléments concernés :":
+    "Anomalies: no reminder is sent for the items concerned:",
   "Aucune échéance en retard.":
     "No overdue installment.",
   "{n} j":
@@ -2124,8 +2127,6 @@ export const EN = {
     "Fee type",
   "Libellé":
     "Label",
-  "Tous les niveaux":
-    "All levels",
   "Montant total":
     "Total amount",
   "Tranches (somme = total)":
@@ -2204,14 +2205,14 @@ export const EN = {
     "Handed to mail server",
   "Nouvel essai programmé":
     "Retry scheduled",
-  "Ignoré — aucune adresse":
-    "Skipped — no address",
-  "Ignoré — adresse invalide":
-    "Skipped — invalid address",
-  "Ignoré — compte inactif":
-    "Skipped — inactive account",
-  "Ignoré — adresse en double":
-    "Skipped — duplicate address",
+  "Ignoré : aucune adresse":
+    "Skipped: no address",
+  "Ignoré : adresse invalide":
+    "Skipped: invalid address",
+  "Ignoré : compte inactif":
+    "Skipped: inactive account",
+  "Ignoré : adresse en double":
+    "Skipped: duplicate address",
   "E-mail remis au serveur de messagerie":
     "E-mail handed to mail server",
   "Notification interne uniquement (pas d'e-mail)":
@@ -2228,10 +2229,10 @@ export const EN = {
     "Upcoming",
   "Réglée":
     "Paid",
-  "Échue — impayée":
-    "Overdue — unpaid",
-  "Échue — partiellement payée":
-    "Overdue — partly paid",
+  "Échue : impayée":
+    "Overdue: unpaid",
+  "Échue : partiellement payée":
+    "Overdue: partly paid",
   "Exonérée":
     "Exempted",
   "Planification automatique":
@@ -2272,18 +2273,18 @@ export const EN = {
     "Select all rows of this table",
   "Sélectionner le dossier":
     "Select application",
-  "Échec temporaire — nouvel essai programmé":
-    "Temporary failure — retry scheduled",
+  "Échec temporaire : nouvel essai programmé":
+    "Temporary failure: retry scheduled",
   "Destinataire manquant ou invalide":
     "Missing or invalid recipient",
-  "Déjà envoyé — non renvoyé":
-    "Already sent — not resent",
+  "Déjà envoyé : non renvoyé":
+    "Already sent: not resent",
   "Envoi déjà en cours ou tout juste effectué":
     "Sending already in progress or just done",
   "Dossier introuvable dans votre académie":
     "Application not found in your academy",
-  "Journalisé — aucun fournisseur réel":
-    "Logged — no real provider",
+  "Journalisé : aucun fournisseur réel":
+    "Logged: no real provider",
   "Mode test : les messages sont capturés par Mailpit et n'atteignent aucune boîte réelle.":
     "Test mode: messages are captured by Mailpit and never reach a real inbox.",
   "Ouvrir Mailpit":
@@ -2358,18 +2359,18 @@ export const EN = {
     "Test address",
   "Envoyer un message de test":
     "Send a test message",
-  "Enregistré — en file d'attente":
-    "Recorded — queued",
+  "Enregistré : en file d'attente":
+    "Recorded: queued",
   "Accepté par le serveur de messagerie":
     "Accepted by the mail server",
   "Échec définitif":
     "Permanent failure",
   "Accepté par le serveur":
     "Accepted by the server",
-  "Capturé par le serveur de test (Mailpit) — non distribué sur Internet":
-    "Captured by the test server (Mailpit) — not delivered on the Internet",
-  "Écrit localement — aucun envoi réel":
-    "Written locally — no real sending",
+  "Capturé par le serveur de test (Mailpit), non distribué sur Internet":
+    "Captured by the test server (Mailpit), not delivered on the Internet",
+  "Écrit localement : aucun envoi réel":
+    "Written locally: no real sending",
   "Accepté par le serveur de messagerie (réception non garantie)":
     "Accepted by the mail server (receipt not guaranteed)",
   "Contenu non archivé pour cet envoi historique.":
@@ -2384,8 +2385,8 @@ export const EN = {
     "Diagnostics (command line)",
   "Envoi hors couche centrale (tracé automatiquement)":
     "Sent outside the central layer (traced automatically)",
-  "Serveur de test (Mailpit) — capturé, non distribué":
-    "Test server (Mailpit) — captured, not delivered",
+  "Serveur de test (Mailpit), capturé, non distribué":
+    "Test server (Mailpit): captured, not delivered",
   "Serveur SMTP réel":
     "Real SMTP server",
   "Console du serveur (aucun envoi)":
@@ -2451,8 +2452,8 @@ export const EN = {
     "Issue the {n} draft(s)",
   "Enregistrer et vérifier":
     "Save and check",
-  "Fichier (PDF, PNG ou JPEG — 10 Mo au plus)":
-    "File (PDF, PNG or JPEG — 10 MB max.)",
+  "Fichier (PDF, PNG ou JPEG, 10 Mo au plus)":
+    "File (PDF, PNG or JPEG, 10 MB max.)",
   "Fichier accepté (version {v}). Placez les champs puis vérifiez le gabarit.":
     "File accepted (version {v}). Place the fields, then check the template.",
   "Fond du gabarit":
@@ -2469,8 +2470,8 @@ export const EN = {
     "Template disabled. Documents already issued remain available.",
   "Gabarit intégré « {l} »":
     "Built-in template “{l}”",
-  "Gabarit téléversé de l'académie — version {v}":
-    "Academy's uploaded template — version {v}",
+  "Gabarit téléversé de l'académie, version {v}":
+    "Academy's uploaded template: version {v}",
   "Gabarit vérifié : rendu d'essai conforme. Il peut être activé.":
     "Template checked: test rendering compliant. It can be activated.",
   "Gabarits des documents":
@@ -2581,8 +2582,8 @@ export const EN = {
     "portrait orientation",
   "{c} brouillon(s) produit(s), {r} refusé(s).":
     "{c} draft(s) produced, {r} refused.",
-  "{k} — version n° {v}":
-    "{k} — version no. {v}",
+  "{k} : version n° {v}":
+    "{k}: version no. {v}",
   "{n} champ(s) positionné(s)":
     "{n} field(s) placed",
   "{n} document(s) délivré(s).":
@@ -2595,10 +2596,10 @@ export const EN = {
     "Uploaded, not validated",
   "Valide, prêt à être activé":
     "Valid, ready to be activated",
-  "Actif — utilisé pour les documents":
-    "Active — used for documents",
-  "Actif — remplacement en préparation":
-    "Active — replacement in preparation",
+  "Actif : utilisé pour les documents":
+    "Active: used for documents",
+  "Actif : remplacement en préparation":
+    "Active: replacement in preparation",
   "Invalide ou incompatible":
     "Invalid or incompatible",
   "Remplacé par une version plus récente":
@@ -2682,8 +2683,8 @@ export const EN = {
     "Office conversion unavailable on this server (LibreOffice missing): Word, OpenDocument, RTF and PowerPoint are refused here.",
   "Conversion en cours…":
     "Converting…",
-  "Fichier : {f} — {n} Mo au plus":
-    "File: {f} — {n} MB max.",
+  "Fichier : {f}, {n} Mo au plus":
+    "File: {f}, {n} MB max.",
   "Le document sera converti en PDF par le serveur (jusqu'à {s} s). Si plusieurs pages, vous choisirez celle qui sert de fond.":
     "The document will be converted to PDF by the server (up to {s} s). If it has several pages, you will choose the one used as background.",
   "Marqueurs repérés dans le document : {m}":
@@ -2720,23 +2721,23 @@ export const EN = {
   "Fonctionnalité non activée": "Feature not enabled",
   "Cette fonctionnalité n'est pas activée pour {nom}.": "This feature is not enabled for {nom}.",
   "cette académie": "this academy",
-  "Visioconférence dégradée — instance de la plateforme injoignable": "Video conferencing degraded — the platform's server cannot be reached",
-  "Visioconférence indisponible — instance de la plateforme non configurée": "Video conferencing unavailable — the platform's server is not configured",
+  "Visioconférence dégradée : instance de la plateforme injoignable": "Video conferencing degraded: the platform's server cannot be reached",
+  "Visioconférence indisponible : instance de la plateforme non configurée": "Video conferencing unavailable: the platform's server is not configured",
   "Les cours en direct ne peuvent pas démarrer pour le moment. Aucune session n'est basculée vers un service public : les échanges restent sur l'infrastructure de la plateforme.": "Live classes cannot start for now. No session is moved to a public service: exchanges stay on the platform's infrastructure.",
   "Recevoir aussi par SMS le texte des e-mails et des rappels de paiement que votre académie vous adresse.": "Also receive by SMS the text of the emails and payment reminders your academy sends you.",
-  "Gestion centralisée du logo officiel de chaque académie — propagé automatiquement dans toute l'application": "Central management of each academy's official logo — applied automatically across the application",
-  "Gestion centralisée du logo officiel de {nom} — propagé automatiquement dans toute l'application": "Central management of the official logo of {nom} — applied automatically across the application",
+  "Gestion centralisée du logo officiel de chaque académie, propagé automatiquement dans toute l'application": "Central management of each academy's official logo, applied automatically across the application",
+  "Gestion centralisée du logo officiel de {nom}, propagé automatiquement dans toute l'application": "Central management of the official logo of {nom}, applied automatically across the application",
   "Logo officiel par défaut": "Default official logo",
   "Le logo par défaut de l'académie est utilisé.": "The academy's default logo is used.",
   "Matières communes (bilingues)": "Common (bilingual) subjects",
   "Comptées une seule fois dans la moyenne générale, hors moyennes française et anglaise.": "Counted once in the overall average, outside the French and English averages.",
   "Cette classe n'admet pas de matière commune.": "This class does not accept common subjects.",
   "Aucune matière commune. Créez-en dans l'onglet Matières.": "No common subject. Create some in the Subjects tab.",
-  "Formats acceptés, téléversés tels quels — la plateforme les convertit elle-même :": "Accepted formats, uploaded as they are — the platform converts them itself:",
+  "Formats acceptés, téléversés tels quels : la plateforme les convertit elle-même :": "Accepted formats, uploaded as they are: the platform converts them itself:",
   "Admissions en ligne": "Online admissions",
-  "Admissions en ligne — {nom}": "Online admissions — {nom}",
+  "Admissions en ligne : {nom}": "Online admissions: {nom}",
   "Système bilingue": "Bilingual system",
-  "Rapports mensuels — {nom}": "Monthly reports — {nom}",
+  "Rapports mensuels : {nom}": "Monthly reports: {nom}",
   "Tous les e-mails envoyés depuis la plateforme, avec leur contenu et leurs pièces jointes": "All emails sent from the platform, with their content and attachments",
   "Montants en {devise} :": "Amounts in {devise}:",
   "{noms} et {n} autres": "{noms} and {n} others",
@@ -2750,7 +2751,7 @@ export const EN = {
   "{nom} est une académie présentielle : ses cours se planifient dans l'onglet « cours présentiels », avec une classe et une salle physique.": "{nom} is an in-person academy: its classes are scheduled in the “in-person classes” tab, with a class and a physical room.",
   "Cette académie": "This academy",
   "Sélectionnez une académie en ligne pour planifier une séance.": "Select an online academy to schedule a session.",
-  "Visioconférence (plugNmeet) — cours en ligne, tableau blanc, sous-groupes, sondages, réunions parents-professeurs…": "Video conferencing (plugNmeet) — online classes, whiteboard, breakout rooms, polls, parent-teacher meetings…",
+  "Visioconférence (plugNmeet) : cours en ligne, tableau blanc, sous-groupes, sondages, réunions parents-professeurs…": "Video conferencing (plugNmeet): online classes, whiteboard, breakout rooms, polls, parent-teacher meetings…",
   "Aucune matière ni classe existante n'est en conflit avec ce programme.": "No existing subject or class conflicts with this curriculum.",
   "Données existantes incompatibles avec ce programme (rien ne sera supprimé) :": "Existing data incompatible with this curriculum (nothing will be deleted):",
   "Notes rattachées à ces matières": "Grades attached to these subjects",
@@ -2758,7 +2759,7 @@ export const EN = {
   "Programme linguistique": "Curriculum language",
   "À configurer": "To be configured",
   "Programme linguistique*": "Curriculum language*",
-  "Langues des matières, des parcours et des bulletins — distinct de la langue de l'interface.": "Language of subjects, tracks and report cards — separate from the interface language.",
+  "Langues des matières, des parcours et des bulletins, distinct de la langue de l'interface.": "Language of subjects, tracks and report cards, separate from the interface language.",
   "Langue de l'interface et des documents": "Interface and document language",
   "Analyse des données existantes…": "Checking existing data…",
   "Je confirme le changement : les données listées sont conservées telles quelles.": "I confirm the change: the listed data is kept as it is.",
@@ -2769,9 +2770,9 @@ export const EN = {
   "Matières en français seulement. Bulletin : une section française, sans moyenne 60/40.": "Subjects in French only. Report card: one French section, no 60/40 average.",
   "Matières en anglais seulement. Bulletin : une section anglaise.": "Subjects in English only. Report card: one English section.",
   "Matières françaises, anglaises et communes. Bulletin à deux sections, moyenne bilingue 60/40.": "French, English and common subjects. Two-section report card, 60/40 bilingual average.",
-  "🇫🇷 Française (moyenne FR)": "🇫🇷 French (FR average)",
-  "🇬🇧 Anglaise (moyenne EN)": "🇬🇧 English (EN average)",
-  "🌐 Commune (bilingue) — moyenne générale seulement": "🌐 Common (bilingual) — overall average only",
+  "Française (moyenne FR)": "French (FR average)",
+  "Anglaise (moyenne EN)": "English (EN average)",
+  "Commune (bilingue) : moyenne générale seulement": "Common (bilingual): overall average only",
   // Catégories d'e-mails du parcours d'admission en ligne (libellés servis par le serveur)
   "Notification admissions FHA":
     "FHA admissions notification",
@@ -2783,11 +2784,10 @@ export const EN = {
   // Libellés visibles auparavant codés en dur (audit du 28/10/2026)
   "Visioconférence indisponible": "Video conferencing unavailable",
   "-- Sélectionner un établissement --": "-- Select a school --",
-  "— Moi-même —": "— Myself —",
-  "— Pas encore affecté —": "— Not yet assigned —",
+  "Moi-même": "Myself",
+  "Pas encore affecté": "Not yet assigned",
   "+ Ajouter cette décision": "+ Add this decision",
-  "— Sélectionner —": "— Select —",
-  "— Sélectionner un élève —": "— Select a student —",
+  "Sélectionner un élève": "Select a student",
   "Impossible de rejoindre la salle": "Unable to join the room",
   "Fermer cet onglet": "Close this tab",
   "Vous avez quitté la réunion": "You have left the meeting",

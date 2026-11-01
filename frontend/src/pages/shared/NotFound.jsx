@@ -29,7 +29,7 @@ export default function NotFoundPage() {
           <AlertCircle className="w-7 h-7" />
         </div>
         <h1 className="text-lg font-semibold text-slate-800 mb-2">{t("Cette page n'existe pas ou plus")}</h1>
-        <p className="text-sm text-slate-500 mb-6">{t("La ressource demandée est introuvable — elle a peut-être été supprimée, ou le lien utilisé n'est plus valide. Vous êtes toujours connecté.")}</p>
+        <p className="text-sm text-slate-500 mb-6">{t("La ressource demandée est introuvable. Elle a peut-être été supprimée, ou le lien utilisé n'est plus valide. Vous êtes toujours connecté.")}</p>
         <button
           onClick={() => navigate(home, { replace: true })}
           className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-white text-sm font-medium hover:opacity-90 transition"

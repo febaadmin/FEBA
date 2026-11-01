@@ -12,6 +12,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from .models import (
+    changer_statut,
     TechnicalIncident, build_fingerprint, sanitize_data, sanitize_text,
 )
 
@@ -133,7 +134,7 @@ def report_incident(exc, *, request=None, module="", attempted_action="",
             incident = (TechnicalIncident.objects
                         .select_for_update(nowait=False)
                         .filter(fingerprint=fingerprint)
-                        .exclude(status="resolved")
+                        .order_by("-last_seen_at")
                         .first())
             if incident is None:
                 incident = TechnicalIncident.objects.create(
@@ -142,11 +143,12 @@ def report_incident(exc, *, request=None, module="", attempted_action="",
             else:
                 incident.occurrences += 1
                 incident.last_seen_at = timezone.now()
-                # Une erreur qui revient après résolution est rouverte.
-                if incident.status == "ignored":
-                    pass
-                incident.save(update_fields=["occurrences", "last_seen_at", "status"])
-                should_notify = incident.occurrences in NOTIFY_THRESHOLDS
+                incident.save(update_fields=["occurrences", "last_seen_at"])
+                # Une erreur qui revient après correction ou résolution est rouverte.
+                revient = incident.status in ("resolved", "corrected")
+                if revient:
+                    changer_statut(incident, "reopened", note="Nouvelle occurrence après correction.")
+                should_notify = revient or incident.occurrences in NOTIFY_THRESHOLDS
 
         if should_notify:
             notify_superadmins(incident)

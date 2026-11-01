@@ -166,7 +166,7 @@ export default function AdminAppreciations() {
     <div className="space-y-6">
       <PageHeader
         title={t("Appréciations")}
-        subtitle={t("Barème des appréciations des bulletins — {name}", { name: activeAcademy.name })}
+        subtitle={t("Barème des appréciations des bulletins : {name}", { name: activeAcademy.name })}
         action={
           <div className="flex gap-2">
             <button className="btn-secondary flex items-center gap-2" onClick={() => setResetOpen(true)}

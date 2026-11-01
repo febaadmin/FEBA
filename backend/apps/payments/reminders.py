@@ -64,8 +64,8 @@ STATUS_EXEMPTED = "exempted"
 STATUS_LABELS = {
     STATUS_UPCOMING: "À venir",
     STATUS_PAID: "Réglée",
-    STATUS_OVERDUE: "Échue — impayée",
-    STATUS_PARTIAL: "Échue — partiellement payée",
+    STATUS_OVERDUE: "Échue : impayée",
+    STATUS_PARTIAL: "Échue : partiellement payée",
     STATUS_EXEMPTED: "Exonérée",
 }
 
@@ -478,7 +478,7 @@ def build_message(academy, policy, recipient, rows):
     lines = _lines(rows, lang)
     contact = policy.contact_text or "\n".join(filter(None, [academy.phone, academy.email]))
     if lang == "en":
-        subject = f"{academy.name} — payment reminder"
+        subject = f"{academy.name} - payment reminder"
         text = (
             f"Dear {name},\n\nAccording to our records, the following amounts are past due:\n\n"
             f"{lines}\n\nIf you have already paid, please disregard this message or send us your "
@@ -491,7 +491,7 @@ def build_message(academy, policy, recipient, rows):
         text += f"\n\nKind regards,\n{academy.name}"
         notif_title = "Payment reminder"
     else:
-        subject = f"{academy.name} — rappel de paiement"
+        subject = f"{academy.name} - rappel de paiement"
         text = (
             f"Madame, Monsieur {name},\n\nSauf erreur de notre part, les montants suivants restent "
             f"dus après leur date limite :\n\n{lines}\n\nSi vous avez déjà effectué ce règlement, "

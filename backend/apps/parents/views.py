@@ -22,6 +22,7 @@ from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
+from apps.core.request_text import identifiant
 from apps.accounts.permissions import IsAdminOrAbove, IsAdminOrReadOnly
 from apps.core.tenancy import get_request_school
 from .models import Parent, ParentStudent
@@ -53,7 +54,7 @@ class ParentViewSet(BulkDeleteMixin, viewsets.ModelViewSet):
         if user_ids:
             CustomUser.objects.filter(id__in=user_ids).update(is_active=False)
         return Response({"deleted": count, "soft": True,
-                         "detail": f"{count} parent(s) désactivé(s) — liens familiaux et historique conservés."})
+                         "detail": f"{count} parent(s) désactivé(s) : liens familiaux et historique conservés."})
 
     def destroy(self, request, *args, **kwargs):
         """
@@ -368,9 +369,16 @@ class ParentViewSet(BulkDeleteMixin, viewsets.ModelViewSet):
             request.query_params.get("student_id")
             or request.data.get("student_id")
         )
-        deleted, _ = ParentStudent.objects.filter(
-            parent_id=parent_id, student_id=student_id
-        ).delete()
+        liens = ParentStudent.objects.filter(
+            parent_id=identifiant(parent_id), student_id=identifiant(student_id)
+        )
+        # Un administrateur ne retire un lien que dans son établissement.
+        school = get_request_school(request)
+        if school is not None:
+            liens = liens.filter(student__school=school)
+        elif not request.user.is_superadmin():
+            liens = liens.none()
+        deleted, _ = liens.delete()
         if deleted:
             return Response({"detail": "Association supprimée."})
         return Response({"error": "Association introuvable."}, status=404)

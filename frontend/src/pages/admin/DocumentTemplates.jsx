@@ -30,8 +30,8 @@ export const STATE_STYLES = {
   absent: ["Absent", "bg-slate-100 text-slate-600"],
   uploaded: ["Téléversé, non validé", "bg-amber-50 text-amber-700"],
   ready: ["Valide, prêt à être activé", "bg-blue-50 text-blue-700"],
-  active: ["Actif — utilisé pour les documents", "bg-green-50 text-green-700"],
-  replacing: ["Actif — remplacement en préparation", "bg-green-50 text-green-700"],
+  active: ["Actif : utilisé pour les documents", "bg-green-50 text-green-700"],
+  replacing: ["Actif : remplacement en préparation", "bg-green-50 text-green-700"],
   disabled: ["Désactivé", "bg-slate-200 text-slate-700"],
   invalid: ["Invalide ou incompatible", "bg-red-50 text-red-700"],
 };
@@ -150,7 +150,7 @@ export default function DocumentTemplates() {
 
       <div className="card text-sm text-slate-600 space-y-1">
         <p>
-          {t("Formats acceptés, téléversés tels quels — la plateforme les convertit elle-même :")}{" "}
+          {t("Formats acceptés, téléversés tels quels : la plateforme les convertit elle-même :")}{" "}
           <span data-testid="accepted-formats">
             {(payload?.formats || []).filter((f) => f.available).map((f) => t(f.label)).join(", ")
               || t("Chargement…")}
@@ -440,7 +440,7 @@ function UploadModal({ kind, summary, formats, limits, onClose, onUploaded }) {
       <div className="space-y-4">
         <label className="block">
           <span className="block text-xs text-slate-500 mb-1">
-            {t("Fichier : {f} — {n} Mo au plus", {
+            {t("Fichier : {f}, {n} Mo au plus", {
               f: (formats || []).filter((x) => x.available).map((x) => x.extensions.join(" ")).join(" "),
               n: Math.round((limits?.max_bytes || 20971520) / 1048576) })}
           </span>

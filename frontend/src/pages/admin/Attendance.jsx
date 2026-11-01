@@ -95,7 +95,7 @@ export default function AdminAttendance() {
       <div className="flex items-center gap-3">
         <label className="text-sm font-semibold text-slate-600">{t("Année scolaire :")}</label>
         <select value={filterYear} onChange={e => setFilterYear(e.target.value)} className="input w-auto text-sm">
-          <option value="">— Toutes ({currentYear?.name || "actuelle"}) —</option>
+          <option value="">Toutes ({currentYear?.name || "actuelle"})</option>
           {years.map(y => <option key={y.id} value={y.id}>{yearLabel(y)}{y.is_current ? " ✓" : ""}</option>)}
         </select>
       </div>

@@ -160,7 +160,7 @@ export default function VirtualRooms() {
     <div className="space-y-6">
       <PageHeader
         title={t("Salles virtuelles")}
-        subtitle={t("Visioconférence (plugNmeet) — cours en ligne, tableau blanc, sous-groupes, sondages, réunions parents-professeurs…")}
+        subtitle={t("Visioconférence (plugNmeet) : cours en ligne, tableau blanc, sous-groupes, sondages, réunions parents-professeurs…")}
         action={canManage && (
           <button onClick={openCreate} className="btn-primary flex items-center gap-2">
             <Plus className="w-4 h-4" />{t("Nouvelle salle")}</button>
@@ -282,7 +282,7 @@ export default function VirtualRooms() {
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             <div>
               <label className="label">{t("Nom de la salle*")}</label>
-              <input {...register("name", { required: true })} placeholder={t("ex: Cours de Mathématiques — 6ème A")} className="input" />
+              <input {...register("name", { required: true })} placeholder={t("ex. : Cours de Mathématiques, 6ème A")} className="input" />
               {errors.name && <p className="text-danger text-xs mt-1">{t("Requis")}</p>}
             </div>
             <div>

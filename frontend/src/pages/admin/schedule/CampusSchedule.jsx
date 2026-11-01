@@ -155,8 +155,8 @@ export default function CampusSchedule() {
                                 )}
                                 <p className="font-bold truncate">{item.subject_name}</p>
                                 <p className="opacity-75 truncate">{item.class_name}</p>
-                                {item.room && <p className="opacity-60 truncate">🚪 {item.room}</p>}
-                                {item.teacher_name && <p className="opacity-60 truncate">👤 {item.teacher_name}</p>}
+                                {item.room && <p className="opacity-60 truncate"> {item.room}</p>}
+                                {item.teacher_name && <p className="opacity-60 truncate"> {item.teacher_name}</p>}
                               </div>
                             );
                           })}
@@ -189,7 +189,7 @@ export default function CampusSchedule() {
                         )}
                         <span>{item.subject_name} — {item.class_name}</span>
                       </p>
-                      <p className="text-xs text-slate-400">{item.start_time?.slice(0,5)}–{item.end_time?.slice(0,5)} {item.room ? `• 🚪 ${item.room}` : ""} {item.teacher_name ? `• 👤 ${item.teacher_name}` : ""}</p>
+                      <p className="text-xs text-slate-400">{item.start_time?.slice(0,5)}–{item.end_time?.slice(0,5)} {item.room ? `•  ${item.room}` : ""} {item.teacher_name ? `•  ${item.teacher_name}` : ""}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-1">

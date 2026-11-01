@@ -178,7 +178,7 @@ export default function AdminUserFiles() {
           <div>
             <label className="label">{t("Utilisateur cible")}</label>
             <select {...register("user")} className="input">
-              <option value="">{t("— Moi-même —")}</option>
+              <option value="">{t("Moi-même")}</option>
               {users.map(u => <option key={u.id} value={u.id}>{u.first_name} {u.last_name} ({u.role})</option>)}
             </select>
           </div>
@@ -191,7 +191,7 @@ export default function AdminUserFiles() {
                 className="btn-secondary flex items-center gap-2 text-sm">
                 <Upload className="w-4 h-4" />{t("Choisir un fichier")}</button>
             </div>
-            <p className="text-xs text-slate-400 mt-1">{t("Images, PDF, Word, Excel, CSV, ZIP — max 5 MB")}</p>
+            <p className="text-xs text-slate-400 mt-1">{t("Images, PDF, Word, Excel, CSV, ZIP, max 5 MB")}</p>
           </div>
           <div className="flex gap-3 justify-end pt-2">
             <button type="button" onClick={() => { setUploadOpen(false); reset(); }} className="btn-secondary">{t("Annuler")}</button>

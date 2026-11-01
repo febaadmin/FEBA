@@ -48,8 +48,8 @@ export const UI = {
 export const HOME = {
   heroFallbackTitle: { fr: "Bienvenue à FEBA", en: "Welcome to FEBA" },
   heroFallbackSubtitle: {
-    fr: "Faith & Excellence Bilingual Academy — école bilingue à Akpakpa, Cotonou.",
-    en: "Faith & Excellence Bilingual Academy — a bilingual school in Akpakpa, Cotonou.",
+    fr: "Faith & Excellence Bilingual Academy, école bilingue à Akpakpa, Cotonou.",
+    en: "Faith & Excellence Bilingual Academy, a bilingual school in Akpakpa, Cotonou.",
   },
   heroFallbackCta: { fr: "Découvrir l'école", en: "Discover the school" },
 

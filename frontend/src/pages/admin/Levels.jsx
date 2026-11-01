@@ -81,7 +81,7 @@ export default function AdminLevels() {
     <div className="space-y-6">
       <PageHeader
         title={t("Niveaux scolaires")}
-        subtitle={t("{n} niveau(x) — CI, CP, CM1, CM2, 6ème…", { n: levels.length })}
+        subtitle={t("{n} niveau(x) : CI, CP, CM1, CM2, 6ème…", { n: levels.length })}
         action={
           <button onClick={openCreate} disabled={isAllAcademies}
                   title={isAllAcademies ? t("Sélectionnez une académie pour créer un niveau.") : undefined}

@@ -169,7 +169,7 @@ export default function FhaAdmissions() {
         <h1 className="text-xl sm:text-2xl font-bold text-slate-800" data-testid="admissions-title">
           {allEntitiesMode || !activeEntity?.name
             ? t("Admissions en ligne")
-            : t("Admissions en ligne — {nom}", { nom: activeEntity.name })}
+            : t("Admissions en ligne : {nom}", { nom: activeEntity.name })}
         </h1>
         <p className="text-sm text-slate-500 mt-1">
           {t("Fiches d'inscription et demandes de test de placement.")}
@@ -316,7 +316,7 @@ function ApplicationsTab({ consolidated }) {
       if (response.data.accepted && response.data.used_real_provider) {
         toast.success(t("E-mail accepté par le fournisseur."));
       } else if (response.data.accepted) {
-        toast(t("Enregistré, mais aucun fournisseur réel n'est configuré."), { icon: "⚠️" });
+        toast(t("Enregistré, mais aucun fournisseur réel n'est configuré."), { icon: "" });
       } else {
         toast.error(response.data.error || t("L'envoi a de nouveau échoué."));
       }
@@ -702,7 +702,7 @@ function ApplicationDetail({ id, onClose }) {
             {row.confirmation_email?.status !== "none"
               && !row.confirmation_email?.used_real_provider && (
               <Row label={t("Fournisseur")}
-                   value={t("Aucun fournisseur réel configuré — le message n'est pas parti sur Internet.")} />
+                   value={t("Aucun fournisseur réel configuré : le message n'est pas parti sur Internet.")} />
             )}
             <Row label={t("Notification des administrateurs")}
                  value={row.admin_alert_email?.status_display} />
@@ -899,7 +899,7 @@ function PlacementTab({ consolidated }) {
       websiteAdminAPI.schedulePlacementTest(id, { scheduled_at }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["fha-placement-tests", academyKey] });
-      toast.success(t("Créneau confirmé — le parent a été notifié."));
+      toast.success(t("Créneau confirmé : le parent a été notifié."));
       setScheduling(null);
     },
     onError: (e) => toast.error(extractApiError(e)),

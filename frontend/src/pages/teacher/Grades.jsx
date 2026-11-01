@@ -184,7 +184,7 @@ export default function TeacherGrades() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title={t("Mes Notes")} subtitle={`${grades.length} note(s) — ${period === "all" ? "Toutes périodes" : period} — ${currentYear?.name || "…"}`}
+      <PageHeader title={t("Mes Notes")} subtitle={`${grades.length} note(s) : ${period === "all" ? "Toutes périodes" : period} : ${currentYear?.name || "…"}`}
         action={
           <div className="flex gap-2">
             <button onClick={() => setShowDeleted(!showDeleted)}

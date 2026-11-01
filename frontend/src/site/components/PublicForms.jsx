@@ -315,7 +315,7 @@ export function PreRegistrationForm() {
           </label>
           <select id="pr-level" {...register("desired_level", { required: t("Le niveau souhaité est obligatoire.", "The desired year group is required.") })}
             className={inputCls(errors.desired_level)} defaultValue="">
-            <option value="" disabled>{t("— Choisir un niveau —", "— Choose a year group —")}</option>
+            <option value="" disabled>{t("Choisir un niveau", "Choose a year group")}</option>
             {LEVELS.map(([v, l]) => <option key={v} value={v}>{tr(l, lang)}</option>)}
           </select>
           <FieldError error={errors.desired_level} />

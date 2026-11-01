@@ -63,8 +63,8 @@ export default function JitsiInfrastructureBanner() {
       <div className="min-w-0">
         <p className="font-semibold">
           {degraded
-            ? t("Visioconférence dégradée — instance de la plateforme injoignable")
-            : t("Visioconférence indisponible — instance de la plateforme non configurée")}
+            ? t("Visioconférence dégradée : instance de la plateforme injoignable")
+            : t("Visioconférence indisponible : instance de la plateforme non configurée")}
         </p>
         <p className="mt-0.5">
           {t(

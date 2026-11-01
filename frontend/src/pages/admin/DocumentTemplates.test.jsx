@@ -141,7 +141,7 @@ describe("Gabarits des documents", () => {
   });
 
   it("une version ayant servi n'offre pas la suppression", async () => {
-    const active = version({ status: "active", status_display: "Actif — utilisé pour les documents",
+    const active = version({ status: "active", status_display: "Actif : utilisé pour les documents",
       is_editable: false, documents_count: 3 });
     documentTemplatesAPI.list.mockResolvedValue(payload({
       diploma: kindSummary("diploma", { state: "active", active, versions: [active] }),
