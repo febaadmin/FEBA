@@ -9,7 +9,7 @@ from datetime import date
 from django.core import signing
 from django.core.files.base import ContentFile
 from django.core.files.storage import default_storage
-from django.test import TestCase, override_settings
+from django.test import TestCase, TransactionTestCase, override_settings
 from rest_framework.test import APIClient
 
 from apps.core.fichiers_prives import DOSSIERS_PRIVES, SEL, est_prive
@@ -261,3 +261,71 @@ class ChiffresTests(TestCase):
         self.school.save()
         self.assertEqual(self.c.get("/api/payments/summary/").data["consolidated_total"]["currency"],
                          self.school.currency_code)
+
+
+@override_settings(CHANNEL_LAYERS={"default": {"BACKEND": "channels.layers.InMemoryChannelLayer"}})
+class ConnexionsOuvertesTests(TransactionTestCase):
+    def setUp(self):
+        self.school = make_school()
+        self.moi = make_user("ws1@test.bj", "admin", self.school)
+        self.autre = make_user("ws2@test.bj", "parent", self.school)
+
+    async def relier(self, consommateur, chemin, user, **kwargs):
+        # asgiref : channels.testing exige daphne, absent des dépendances.
+        from asgiref.testing import ApplicationCommunicator
+        comm = ApplicationCommunicator(consommateur.as_asgi(), {
+            "type": "websocket", "path": chemin, "user": user, "url_route": {"kwargs": kwargs},
+            "headers": [], "subprotocols": [],
+        })
+        await comm.send_input({"type": "websocket.connect"})
+        reponse = await comm.receive_output(timeout=3)
+        return comm, reponse["type"] == "websocket.accept"
+
+    def test_un_salon_ne_s_ouvre_qu_a_ses_participants(self):
+        from asgiref.sync import async_to_sync
+        from apps.messaging.consumers import ChatConsumer
+
+        async def scenario():
+            _, ouvert = await self.relier(ChatConsumer, "/ws/chat/x/", self.autre,
+                                          room_id=f"{self.moi.pk}-999999")
+            return ouvert
+        self.assertFalse(async_to_sync(scenario)())
+
+    def test_changement_de_mot_de_passe_ferme_la_connexion(self):
+        from asgiref.sync import async_to_sync, sync_to_async
+        from apps.accounts.views import revoquer_sessions
+        from apps.notifications.consumers import NotificationConsumer
+
+        async def scenario():
+            comm, ouvert = await self.relier(NotificationConsumer, "/ws/notifications/", self.moi)
+            self.assertTrue(ouvert)
+            await sync_to_async(revoquer_sessions, thread_sensitive=False)(self.moi)
+            sortie = await comm.receive_output(timeout=3)
+            await comm.send_input({"type": "websocket.disconnect", "code": 1000})
+            await comm.wait()
+            return sortie
+        sortie = async_to_sync(scenario)()
+        self.assertEqual((sortie["type"], sortie["code"]), ("websocket.close", 4401))
+
+    def test_message_refuse_apres_changement_et_hors_regle(self):
+        from asgiref.sync import async_to_sync, sync_to_async
+        from apps.messaging.consumers import ChatConsumer
+        from apps.messaging.models import Message
+
+        def changer():
+            self.moi_bis = type(self.moi).objects.get(pk=self.moi.pk)
+            self.moi_bis.set_password(NOUVEAU)
+            self.moi_bis.save()
+
+        async def scenario():
+            comm, _ = await self.relier(ChatConsumer, "/ws/chat/x/", self.moi, room_id=f"{self.moi.pk}-1")
+            await sync_to_async(changer, thread_sensitive=False)()
+            await comm.send_input({"type": "websocket.receive",
+                                   "text": '{"message":"x","recipient_id":%d}' % self.autre.pk})
+            sortie = await comm.receive_output(timeout=3)
+            await comm.send_input({"type": "websocket.disconnect", "code": 1000})
+            await comm.wait()
+            return sortie
+        sortie = async_to_sync(scenario)()
+        self.assertEqual(sortie["code"], 4401)
+        self.assertEqual(Message.objects.count(), 0)
