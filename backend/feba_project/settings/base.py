@@ -350,6 +350,11 @@ PAYMENT_REMINDERS_HOUR = config('PAYMENT_REMINDERS_HOUR', default=8, cast=int)
 PAYMENT_REMINDERS_MINUTE = config('PAYMENT_REMINDERS_MINUTE', default=30, cast=int)
 
 CELERY_BEAT_SCHEDULE = {
+    'suivi-detecter-alertes': {
+        'task': 'suivi.detecter_alertes',
+        'schedule': crontab(hour=3, minute=20),
+        'options': {'expires': 3600},
+    },
     'evaluations-cloturer-echues': {
         'task': 'evaluations.cloturer_echues',
         'schedule': crontab(minute='*'),

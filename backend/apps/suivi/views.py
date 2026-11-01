@@ -3,6 +3,7 @@ import logging
 
 from django.db import transaction
 from django.db.models import Q
+from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from django.utils.dateparse import parse_date
@@ -13,14 +14,17 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from apps.accounts.permissions import IsAdminOrAbove, IsSuperAdmin
-from apps.core.features import HasEntityFeature
+from apps.core.features import HasEntityFeature, entity_has_feature
 from apps.core.request_text import checked_upload, identifiant, text_field
 from apps.core.tenancy import get_request_school
 from apps.schools.models import School
 
-from . import services
+from apps.notifications.utils import create_notification
+
+from . import alertes, rapports, services
 from .models import (
     ActionPedagogique,
+    AlertePedagogique,
     Competence,
     EvaluationCompetence,
     EvaluationPedagogique,
@@ -29,11 +33,14 @@ from .models import (
     ObjectifHistorique,
     ObservationParticipation,
     PlanAccompagnement,
+    RapportPedagogique,
     Referentiel,
+    RegleAlerte,
 )
 from .permissions import controler_ecriture, eleves_visibles, est_famille
 from .serializers import (
     ActionSerializer,
+    AlerteSerializer,
     CompetenceSerializer,
     EvaluationCompetenceSerializer,
     EvaluationPedagogiqueSerializer,
@@ -42,7 +49,9 @@ from .serializers import (
     ObservationSerializer,
     ParametresSerializer,
     PlanSerializer,
+    RapportSerializer,
     ReferentielSerializer,
+    RegleSerializer,
 )
 
 logger = logging.getLogger(__name__)
@@ -53,6 +62,11 @@ def _ecole(request):
     if school is None:
         raise ValidationError({"detail": "Sélectionnez une académie."})
     return school
+
+
+def _reserve_personnel(request):
+    if request.user.role_level < 50:
+        raise PermissionDenied("Réservé au personnel de l'académie.")
 
 
 def _periode(params, du="du", au="au"):
@@ -401,6 +415,132 @@ class ParametresViewSet(Base):
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(serializer.data)
+
+
+class RapportViewSet(Base, mixins.ListModelMixin, mixins.RetrieveModelMixin):
+    """Une famille ne lit que la dernière version publiée, jamais un brouillon."""
+
+    serializer_class = RapportSerializer
+    filterset_fields = ["student", "statut", "type"]
+
+    def get_queryset(self):
+        qs = RapportPedagogique.objects.filter(student__in=eleves_visibles(self.request)).select_related("student").prefetch_related("versions")
+        if est_famille(self.request.user):
+            qs = qs.filter(versions__statut=RapportPedagogique.PUBLIE).distinct()
+        return qs
+
+    def retrieve(self, request, *args, **kwargs):
+        return Response(self._vue(self.get_object()))
+
+    def list(self, request, *args, **kwargs):
+        page = self.paginate_queryset(self.filter_queryset(self.get_queryset()))
+        return self.get_paginated_response([self._vue(r) for r in page])
+
+    def _vue(self, rapport):
+        base = {"id": rapport.pk, "student": rapport.student_id, "type": rapport.type, "du": rapport.du, "au": rapport.au}
+        if est_famille(self.request.user):
+            v = rapports.version_publiee(rapport)
+            return {**base, "statut": v.statut, "numero_version": v.numero, "donnees": v.donnees, "contenu": v.contenu, "versions": []}
+        return {**RapportSerializer(rapport).data}
+
+    def create(self, request):
+        student = get_object_or_404(eleves_visibles(request), pk=identifiant(request.data.get("student")))
+        controler_ecriture(request, student)
+        du, au = _periode(request.data)
+        if not du or not au:
+            raise ValidationError({"detail": "Indiquez le début et la fin de la période."})
+        type_rapport = text_field(request.data, "type") or "mensuel"
+        if type_rapport not in dict(RapportPedagogique.TYPES):
+            raise ValidationError({"type": "Type inconnu."})
+        return Response(self._vue(rapports.generer(student, type_rapport, du, au, request.user)), status=201)
+
+    def _action(self, fn, pk):
+        rapport = self.get_object()
+        controler_ecriture(self.request, rapport.student)
+        return Response(self._vue(fn(rapport, self.request.user)))
+
+    def partial_update(self, request, pk=None):
+        rapport = self.get_object()
+        controler_ecriture(request, rapport.student)
+        return Response(self._vue(rapports.modifier(rapport, request.data.get("contenu"), request.user)))
+
+    @action(detail=True, methods=["post"])
+    def valider(self, request, pk=None):
+        return self._action(rapports.valider, pk)
+
+    @action(detail=True, methods=["post"])
+    def publier(self, request, pk=None):
+        rapport = self.get_object()
+        controler_ecriture(request, rapport.student)
+        rapport = rapports.publier(rapport, request.user)
+        # Notification seulement si l'académie a ouvert le suivi aux familles.
+        if entity_has_feature(rapport.student.school, "suivi_familles"):
+            destinataires = [rapport.student.user] + [l.parent.user for l in rapport.student.parents.select_related("parent__user")]
+            for compte in filter(None, destinataires):
+                create_notification(compte, "announcement", "Nouveau rapport pédagogique", f"Période du {rapport.du} au {rapport.au}.")
+        return Response(self._vue(rapport))
+
+    @action(detail=True, methods=["post"])
+    def nouvelle_version(self, request, pk=None):
+        return self._action(rapports.nouvelle_version, pk)
+
+    @action(detail=True, methods=["get"], url_path="pdf")
+    def telecharger(self, request, pk=None):
+        rapport = self.get_object()
+        if est_famille(request.user):
+            v = rapports.version_publiee(rapport)
+            contenu = rapports.pdf(v.donnees, v.contenu, v.numero)
+        else:
+            contenu = rapports.pdf(rapport.donnees, rapport.contenu, rapport.numero_version)
+        reponse = HttpResponse(contenu, content_type="application/pdf")
+        reponse["Content-Disposition"] = f'attachment; filename="rapport-{rapport.pk}.pdf"'
+        return reponse
+
+
+class AlerteViewSet(Base, mixins.ListModelMixin):
+    """File de l'enseignant. Les familles n'y ont pas accès."""
+
+    serializer_class = AlerteSerializer
+    filterset_fields = ["statut", "categorie", "student"]
+
+    def get_queryset(self):
+        _reserve_personnel(self.request)
+        return AlertePedagogique.objects.filter(student__in=eleves_visibles(self.request)).select_related("student")
+
+    @action(detail=True, methods=["post"])
+    def decider(self, request, pk=None):
+        alerte = get_object_or_404(self.get_queryset(), pk=identifiant(pk))
+        controler_ecriture(request, alerte.student)
+        decision = text_field(request.data, "decision")
+        if decision not in ("acceptee", "modifiee", "refusee"):
+            raise ValidationError({"decision": "Valeur attendue : acceptee, modifiee ou refusee."})
+        if alerte.statut != "nouvelle":
+            raise ValidationError({"detail": "Déjà décidée."})
+        if decision == "modifiee":
+            alerte.recommandation = text_field(request.data, "recommandation") or alerte.recommandation
+        alerte.statut, alerte.decide_par, alerte.decide_le = decision, request.user, timezone.now()
+        alerte.note_decision = text_field(request.data, "note")
+        alerte.save()
+        return Response(self.get_serializer(alerte).data)
+
+    @action(detail=False, methods=["post"])
+    def detecter(self, request):
+        _reserve_personnel(request)
+        return Response({"nouvelles": alertes.detecter_academie(_ecole(request))})
+
+    @action(detail=False, methods=["get", "patch"], url_path="regles")
+    def regles(self, request):
+        _reserve_personnel(request)
+        school = _ecole(request)
+        alertes.regles(school)
+        if request.method == "PATCH":
+            if request.user.role_level < 80:
+                raise PermissionDenied("Réservé à l'administration.")
+            regle = get_object_or_404(RegleAlerte, school=school, code=text_field(request.data, "code"))
+            serializer = RegleSerializer(regle, data=request.data, partial=True)
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+        return Response(RegleSerializer(RegleAlerte.objects.filter(school=school), many=True).data)
 
 
 class ActivationViewSet(viewsets.GenericViewSet):
