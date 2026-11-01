@@ -151,7 +151,7 @@ export default function AdminAnnouncements() {
                 {viewItem.is_published ? t("Publiée") : t("Brouillon")}
               </span>
             </div>
-            <p className="text-sm text-slate-400">{viewItem.created_at?.slice(0,10)} — {viewItem.author?.first_name} {viewItem.author?.last_name}</p>
+            <p className="text-sm text-slate-400">{viewItem.created_at?.slice(0,10)} : {viewItem.author?.first_name} {viewItem.author?.last_name}</p>
             <div className="bg-slate-50 rounded-xl p-4 text-slate-700 text-sm text-longform leading-relaxed">
               {viewItem.content}
             </div>

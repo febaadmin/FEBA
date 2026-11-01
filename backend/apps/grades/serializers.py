@@ -49,6 +49,7 @@ class GradeSerializer(TenantRelationsMixin, AcademyMetadataMixin, StudentAgeMixi
         # V8 : note_coefficient est imposé à 1 par le backend — jamais saisi.
         read_only_fields = ['note_coefficient']
         fields = [
+            'peut_modifier',
             'id', 'student', 'student_name', 'subject', 'subject_name',
             'subject_coefficient', 'teacher', 'teacher_name',
             'school_year', 'school_year_name',

@@ -101,7 +101,7 @@ export default function CampusSchedule() {
               {t("Sélectionnez une académie pour créer un créneau.")}
             </span>
           ) : (
-            <button onClick={openCreate} className="btn-primary flex items-center gap-2"><Plus className="w-4 h-4" />{t("Nouveau créneau")} — {academyLabel}</button>
+            <button onClick={openCreate} className="btn-primary flex items-center gap-2"><Plus className="w-4 h-4" />{t("Nouveau créneau")} : {academyLabel}</button>
           )}
         </div>
       </div>
@@ -187,7 +187,7 @@ export default function CampusSchedule() {
                         {isAllAcademies && (
                           <AcademyBadge code={item.academy_code} name={item.academy_name} shortName={item.academy_short_name} />
                         )}
-                        <span>{item.subject_name} — {item.class_name}</span>
+                        <span>{item.subject_name} : {item.class_name}</span>
                       </p>
                       <p className="text-xs text-slate-400">{item.start_time?.slice(0,5)}–{item.end_time?.slice(0,5)} {item.room ? `•  ${item.room}` : ""} {item.teacher_name ? `•  ${item.teacher_name}` : ""}</p>
                     </div>

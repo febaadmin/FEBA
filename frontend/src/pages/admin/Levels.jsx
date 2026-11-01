@@ -169,7 +169,7 @@ export default function AdminLevels() {
             <label className="label">{t("Cycle scolaire*")}</label>
             <select {...register("cycle", { required: true })} className="input" data-testid="level-cycle">
               {allowedCycles.map(([code, label, scale]) => (
-                <option key={code} value={code}>{t(label)} — {t("bulletin sur")} {scale}</option>
+                <option key={code} value={code}>{t(label)} : {t("bulletin sur")} {scale}</option>
               ))}
             </select>
             <p className="text-xs text-slate-500 mt-1">

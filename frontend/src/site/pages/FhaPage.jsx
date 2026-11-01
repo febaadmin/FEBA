@@ -833,7 +833,7 @@ export default function FhaPage() {
               rel="noreferrer"
               className="px-6 py-3 rounded-xl bg-[#25D366] text-white font-bold text-sm hover:brightness-110 transition"
             >
-              {L(T.whatsapp)} — {whatsapp}
+              {L(T.whatsapp)} : {whatsapp}
             </a>
           )}
         </div>

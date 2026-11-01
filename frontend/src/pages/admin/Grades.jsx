@@ -683,7 +683,7 @@ export default function AdminGrades() {
                 <BarChart2 className="w-6 h-6 text-yellow-400" />
                 <div>
                   <h3 className="font-bold">{summary.student_name}</h3>
-                  <p className="text-blue-200 text-sm">{summary.class_name} — {selectedPeriod} — {summary.school_year}</p>
+                  <p className="text-blue-200 text-sm">{summary.class_name} : {selectedPeriod} : {summary.school_year}</p>
                 </div>
                 <div className="ml-auto text-right">
                   <div className="text-2xl font-bold text-yellow-400">{summary.average ? `${parseFloat(summary.average).toFixed(2)}/20` : "—"}</div>

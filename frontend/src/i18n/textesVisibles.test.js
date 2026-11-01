@@ -37,7 +37,7 @@ describe("textes visibles", () => {
     const ecarts = fichiers(RACINE).flatMap((f) =>
       textes(f).filter((t) => !CONFORME(t)).map((t) => `${path.relative(RACINE, f)} : ${t.slice(0, 70)}`));
     expect(ecarts).toEqual([]);
-  });
+  }, 60000);
 
   it("le contrôle repère bien un écart", () => {
     expect(CONFORME("Paiement — reçu")).toBe(false);

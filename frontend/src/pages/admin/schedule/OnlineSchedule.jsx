@@ -216,7 +216,7 @@ export default function OnlineSchedule() {
             </span>
           ) : (
             <button onClick={openCreate} className="btn-primary flex items-center gap-2">
-              <Plus className="w-4 h-4" />{t("Nouvelle séance")} — {activeAcademy?.short_name || activeAcademy?.name || ""}
+              <Plus className="w-4 h-4" />{t("Nouvelle séance")} : {activeAcademy?.short_name || activeAcademy?.name || ""}
             </button>
           )}
         </div>

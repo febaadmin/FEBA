@@ -315,7 +315,7 @@ export default function MassEmail() {
               {preview.skipped.length > 0 && (
                 <ul className="text-xs text-slate-500 list-disc pl-4">
                   {preview.skipped.slice(0, 8).map((s) => (
-                    <li key={s.user_id}>{s.full_name} — {t(SKIP_REASON[s.status] || s.status)}</li>
+                    <li key={s.user_id}>{s.full_name} : {t(SKIP_REASON[s.status] || s.status)}</li>
                   ))}
                 </ul>
               )}

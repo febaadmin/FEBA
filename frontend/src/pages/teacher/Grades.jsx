@@ -264,7 +264,7 @@ export default function TeacherGrades() {
           <div className="absolute inset-0 bg-black/40" onClick={() => setViewItem(null)} />
           <div className="relative bg-white rounded-2xl shadow-2xl max-w-2xl w-full p-6 max-h-[80vh] overflow-y-auto space-y-4">
             <div className="flex items-center justify-between">
-              <h2 className="font-bold text-slate-800">{t("Historique")} — {viewItem.student_name} / {viewItem.subject_name}</h2>
+              <h2 className="font-bold text-slate-800">{t("Historique")} : {viewItem.student_name} / {viewItem.subject_name}</h2>
               <button onClick={() => setViewItem(null)} className="text-slate-400 hover:text-slate-600 text-2xl">×</button>
             </div>
             <DataTable columns={histCols} data={history} />
