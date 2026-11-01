@@ -87,7 +87,7 @@ class Command(BaseCommand):
         from apps.schools.models import School, SchoolYear, Level, Room
         from apps.students.models import Student, StudentEnrollment
         from apps.subjects.models import Subject
-        from apps.teachers.models import Teacher
+        from apps.teachers.models import Teacher, TeacherAssignment
         from apps.virtualclass.models import VirtualRoom
 
         self.stdout.write(self.style.MIGRATE_HEADING("Seed démonstration FEBA v31"))
@@ -248,6 +248,9 @@ class Command(BaseCommand):
         curr_classes = [classes[(year_curr.id, ln)] for ln in level_names]
         for t in teachers:
             t.classes.set(curr_classes)
+            for cls in curr_classes:
+                for matiere in t.subjects.all():
+                    TeacherAssignment.objects.get_or_create(teacher=t, class_obj=cls, subject=matiere)
         self.stdout.write(f"  ✅ {len(teachers)} enseignants")
 
         # ── ÉLÈVES + HISTORIQUE RÉALISTE SUR 3 ANS ───────────────────────

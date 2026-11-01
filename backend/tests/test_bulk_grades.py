@@ -22,7 +22,7 @@ from apps.grades.models import Grade
 from apps.schools.models import School, SchoolYear, Level
 from apps.students.models import Student
 from apps.subjects.models import Subject
-from apps.teachers.models import Teacher
+from apps.teachers.models import Teacher, TeacherAssignment
 
 URL = "/api/grades/bulk-create/"
 
@@ -76,6 +76,8 @@ class BulkGradeFixture(TestCase):
         cls.teacher = Teacher.objects.create(user=tu)
         cls.teacher.subjects.set([cls.math, cls.fr, cls.eng])
         cls.teacher.classes.set([cls.cls1])
+        for matiere in (cls.math, cls.fr, cls.eng):
+            TeacherAssignment.objects.create(teacher=cls.teacher, class_obj=cls.cls1, subject=matiere)
         cls.admin = CustomUser.objects.create_user(
             username="adm", email="adm@test.bj", password="Pass1234!",
             role="admin", first_name="A", last_name="D", school=cls.school,

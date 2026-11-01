@@ -44,7 +44,7 @@ export default function TeacherGrades() {
   const [deleteItem,   setDeleteItem]   = useState(null);
   const suppressionEnCours = useRef(false);
 
-  const { register, handleSubmit, reset, control, formState: { errors } } = useForm({
+  const { register, handleSubmit, reset, control, watch, formState: { errors } } = useForm({
     defaultValues: { period: "T1", note_type: "devoir" },
   });
 
@@ -52,6 +52,7 @@ export default function TeacherGrades() {
   const { data: yearsData } = useQuery({ queryKey: ["years"],        queryFn: schoolsAPI.years });
   const { data: studData  } = useQuery({ queryKey: ["my-students"],  queryFn: () => studentsAPI.list() });
   const { data: subjData  } = useQuery({ queryKey: ["my-subjects"],  queryFn: () => teachersAPI.mySubjects() });
+  const { data: affData   } = useQuery({ queryKey: ["my-assignments"], queryFn: () => teachersAPI.myAssignments() });
   const { data: classData } = useQuery({ queryKey: ["my-classes"],   queryFn: () => classesAPI.list() });
 
   const years       = yearsData?.data?.results || yearsData?.data || [];
@@ -89,6 +90,12 @@ export default function TeacherGrades() {
 
   const studentOpts = filteredStudents.map(s => ({ value: s.id, label: studentOptionLabel(s) }));
   const subjectOpts = subjects.map(s => ({ value: s.id, label: `${s.name} (coeff ${s.coefficient})` }));
+  // Seules les matières affectées dans la classe de l'élève : le serveur refuse les autres.
+  const affectations = affData?.data || [];
+  const classeDe = (id) => { const e = students.find(s => String(s.id) === String(id)); return e?.current_class ?? e?.class_id; };
+  const matieresPourClasse = (classId) => subjectOpts.filter(o =>
+    affectations.some(a => String(a.subject_id) === String(o.value) && (!classId || String(a.class_id) === String(classId))));
+  const matieresPourEleve = (id) => matieresPourClasse(id ? classeDe(id) : filterClass);
   const classOpts   = allClasses.map(c => ({ value: c.id, label: c.name }));
   // Options pour la saisie groupée : TOUS les élèves (filtre de classe interne
   // au modal), avec l'identifiant de classe pour ce filtre.
@@ -205,6 +212,7 @@ export default function TeacherGrades() {
         onSaved={() => qc.invalidateQueries({ queryKey: ["teacher-grades"] })}
         studentOptions={bulkStudentOpts}
         subjectOptions={subjectOpts}
+        subjectOptionsFor={matieresPourEleve}
         classOptions={classOpts}
         schoolYearId={currentYear?.id}
         periodDefault={period !== "all" ? period : "T1"}
@@ -295,7 +303,7 @@ export default function TeacherGrades() {
               <div>
                 <label className="label">{t("Matière *")} <span className="text-xs text-slate-400">(vos matières assignées)</span></label>
                 <Controller name="subject" control={control} rules={{ required: true }}
-                  render={({ field }) => <SearchableSelect options={subjectOpts} value={field.value} onChange={field.onChange} placeholder={t("Sélectionner la matière…")} />} />
+                  render={({ field }) => <SearchableSelect options={matieresPourEleve(watch("student"))} value={field.value} onChange={field.onChange} placeholder={t("Sélectionner la matière…")} />} />
                 {errors.subject && <p className="text-red-500 text-xs mt-1">{t("Requis")}</p>}
               </div>
               <div>

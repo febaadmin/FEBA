@@ -1,3 +1,4 @@
+from apps.teachers.affectations import paires_autorisees
 from apps.core.tenancy import TenantRelationsMixin
 from decimal import Decimal
 from rest_framework import serializers
@@ -120,10 +121,9 @@ class GradeSerializer(TenantRelationsMixin, AcademyMetadataMixin, StudentAgeMixi
         droits = self.context.get("_droits_enseignant")
         if droits is None:
             teacher = getattr(user, "teacher_profile", None)
-            droits = (set(teacher.subjects.values_list("id", flat=True)),
-                      set(teacher.classes.values_list("id", flat=True))) if teacher else (set(), set())
+            droits = paires_autorisees(teacher) if teacher else set()
             self.context["_droits_enseignant"] = droits
-        return obj.subject_id in droits[0] and obj.student.current_class_id in droits[1]
+        return (obj.student.current_class_id, obj.subject_id) in droits
 
     def get_student_name(self, obj):
         return obj.student.get_full_name() if obj.student else None
