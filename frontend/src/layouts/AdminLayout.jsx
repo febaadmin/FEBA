@@ -1,7 +1,7 @@
 import { NavLink, useNavigate } from "react-router-dom";
 import { useState, useEffect, useRef } from "react";
 import {
-  Star, Stamp, FileBarChart, LayoutDashboard, Users, GraduationCap, UserCheck, BookOpen, ClipboardList, DollarSign, Calendar, FileText, Bell, MessageSquare, Megaphone, Settings, LogOut, School, Menu, X, UserCog, Layers, FolderOpen, ClipboardCheck, Video, Globe, CreditCard, Award, Mail, BellRing, Inbox,, TrendingUp } from "lucide-react";
+  Star, Stamp, FileBarChart, LayoutDashboard, Users, GraduationCap, UserCheck, BookOpen, ClipboardList, DollarSign, Calendar, FileText, Bell, MessageSquare, Megaphone, Settings, LogOut, School, Menu, X, UserCog, Layers, FolderOpen, ClipboardCheck, Video, Globe, CreditCard, Award, Mail, BellRing, Inbox, TrendingUp } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
 import AcademyLogo from "../components/AcademyLogo";
 import AcademyName from "../components/AcademyName";

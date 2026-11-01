@@ -207,8 +207,8 @@ export default function FicheSuivi() {
   };
 
   const onglets = [["synthese", t("Synthèse")], ["competences", t("Compétences")], ["evaluations", t("Résultats")], ["objectifs", t("Objectifs")], ["plans", t("Accompagnement")]];
-  const BoutonAjout = ({ cle, extra, children }) => gere && (
-    <button type="button" className="btn-secondary flex items-center gap-2 text-sm" onClick={() => ouvrir(cle, extra)}><Plus className="w-4 h-4" />{children}</button>
+  const boutonAjout = (cle, libelle) => gere && (
+    <button type="button" className="btn-secondary flex items-center gap-2 text-sm" onClick={() => ouvrir(cle)}><Plus className="w-4 h-4" />{libelle}</button>
   );
   const comp = comparaison.data?.data;
   const fmtEcart = (v) => (v === null || v === undefined ? t(VIDE) : `${v > 0 ? "+" : ""}${v}`);
@@ -271,7 +271,7 @@ export default function FicheSuivi() {
         <div className="card space-y-3">
           <div className="flex justify-between items-center gap-2 flex-wrap">
             <h2 className="text-sm font-semibold text-slate-800">{t("Grille de compétences")}</h2>
-            <BoutonAjout cle="competence">{t("Évaluer une compétence")}</BoutonAjout>
+            {boutonAjout("competence", t("Évaluer une compétence"))}
           </div>
           {gere && propositions.length > 0 && (
             <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 space-y-2">
@@ -312,8 +312,8 @@ export default function FicheSuivi() {
             <div className="flex justify-between items-center gap-2 flex-wrap">
               <h2 className="text-sm font-semibold text-slate-800">{t("Évaluations du suivi")}</h2>
               <div className="flex gap-2 flex-wrap">
-                <BoutonAjout cle="evaluation">{t("Ajouter une évaluation")}</BoutonAjout>
-                <BoutonAjout cle="observation">{t("Observer la participation")}</BoutonAjout>
+                {boutonAjout("evaluation", t("Ajouter une évaluation"))}
+                {boutonAjout("observation", t("Observer la participation"))}
               </div>
             </div>
             {!f.evaluations.has_data && <p className="text-sm text-slate-500">{t("Aucune évaluation du suivi pour le moment.")}</p>}
@@ -334,7 +334,7 @@ export default function FicheSuivi() {
         <div className="card space-y-3">
           <div className="flex justify-between items-center gap-2 flex-wrap">
             <h2 className="text-sm font-semibold text-slate-800">{t("Objectifs")}</h2>
-            <BoutonAjout cle="objectif">{t("Créer un objectif")}</BoutonAjout>
+            {boutonAjout("objectif", t("Créer un objectif"))}
           </div>
           {objectifs.length === 0 && <p className="text-sm text-slate-500">{t("Aucun objectif pour le moment.")}</p>}
           {objectifs.map((o) => (
@@ -368,7 +368,7 @@ export default function FicheSuivi() {
         <div className="card space-y-3">
           <div className="flex justify-between items-center gap-2 flex-wrap">
             <h2 className="text-sm font-semibold text-slate-800">{t("Plans d'accompagnement")}</h2>
-            <BoutonAjout cle="plan">{t("Créer un plan d'accompagnement")}</BoutonAjout>
+            {boutonAjout("plan", t("Créer un plan d'accompagnement"))}
           </div>
           {plans.length === 0 && <p className="text-sm text-slate-500">{t("Aucun plan d'accompagnement.")}</p>}
           {plans.map((p) => (
