@@ -92,6 +92,13 @@ const AdminPayments = lazy(() => import("../pages/admin/Payments"));
 const AdminCardTransactions = lazy(() => import("../pages/admin/CardTransactions"));
 const AdminOfficialDocuments = lazy(() => import("../pages/admin/OfficialDocuments"));
 const AdminDocumentTemplates = lazy(() => import("../pages/admin/DocumentTemplates"));
+const ModulesPedagogiques = lazy(() => import("../pages/superadmin/ModulesPedagogiques"));
+const EvalEpreuves = lazy(() => import("../pages/shared/evaluations/Epreuves"));
+const EvalBanque = lazy(() => import("../pages/shared/evaluations/Banque"));
+const EvalDetail = lazy(() => import("../pages/shared/evaluations/EpreuveDetail"));
+const EvalCopie = lazy(() => import("../pages/shared/evaluations/Copie"));
+const EvalMes = lazy(() => import("../pages/shared/evaluations/MesEpreuves"));
+const EvalPassage = lazy(() => import("../pages/shared/evaluations/Passage"));
 const SuiviEleves = lazy(() => import("../pages/shared/suivi/SuiviEleves"));
 const FicheSuivi = lazy(() => import("../pages/shared/suivi/FicheSuivi"));
 const SuiviReferentiels = lazy(() => import("../pages/shared/suivi/Referentiels"));
@@ -341,6 +348,10 @@ export default function AppRouter() {
         <Route path="classes"       element={<AdminClasses />} />
         <Route path="levels"        element={<AdminLevels />} />
         <Route path="grades"        element={<AdminGrades />} />
+        <Route path="evaluations" element={<FeatureGate feature="evaluations_en_ligne"><EvalEpreuves /></FeatureGate>} />
+        <Route path="evaluations/banque" element={<FeatureGate feature="evaluations_en_ligne"><EvalBanque /></FeatureGate>} />
+        <Route path="evaluations/copies/:id" element={<FeatureGate feature="evaluations_en_ligne"><EvalCopie /></FeatureGate>} />
+        <Route path="evaluations/:id" element={<FeatureGate feature="evaluations_en_ligne"><EvalDetail /></FeatureGate>} />
         <Route path="suivi" element={<FeatureGate feature="suivi_pedagogique"><SuiviEleves /></FeatureGate>} />
         <Route path="suivi/referentiels" element={<FeatureGate feature="suivi_pedagogique"><SuiviReferentiels /></FeatureGate>} />
         <Route path="suivi/:id" element={<FeatureGate feature="suivi_pedagogique"><FicheSuivi /></FeatureGate>} />
@@ -370,6 +381,7 @@ export default function AppRouter() {
             backend refuse toute autre académie, l'entrée de menu ne fait
             que suivre. */}
         <Route path="monthly-reports" element={<FeatureGate feature="monthly_reports"><MonthlyReports /></FeatureGate>} />
+        <Route path="modules"       element={<ModulesPedagogiques />} />
         <Route path="incidents"     element={<SuperAdminIncidents />} />
         <Route path="incidents/:id" element={<SuperAdminIncidents />} />
         <Route path="profile"       element={<SuperAdminProfile />} />
@@ -389,6 +401,10 @@ export default function AppRouter() {
         <Route path="classes"       element={<AdminClasses />} />
         <Route path="levels"        element={<AdminLevels />} />
         <Route path="grades"        element={<AdminGrades />} />
+        <Route path="evaluations" element={<FeatureGate feature="evaluations_en_ligne"><EvalEpreuves /></FeatureGate>} />
+        <Route path="evaluations/banque" element={<FeatureGate feature="evaluations_en_ligne"><EvalBanque /></FeatureGate>} />
+        <Route path="evaluations/copies/:id" element={<FeatureGate feature="evaluations_en_ligne"><EvalCopie /></FeatureGate>} />
+        <Route path="evaluations/:id" element={<FeatureGate feature="evaluations_en_ligne"><EvalDetail /></FeatureGate>} />
         <Route path="suivi" element={<FeatureGate feature="suivi_pedagogique"><SuiviEleves /></FeatureGate>} />
         <Route path="suivi/referentiels" element={<FeatureGate feature="suivi_pedagogique"><SuiviReferentiels /></FeatureGate>} />
         <Route path="suivi/:id" element={<FeatureGate feature="suivi_pedagogique"><FicheSuivi /></FeatureGate>} />
@@ -431,6 +447,10 @@ export default function AppRouter() {
         <Route path="dashboard"     element={<TeacherDashboard />} />
         <Route path="classes"       element={<TeacherClasses />} />
         <Route path="grades"        element={<TeacherGrades />} />
+        <Route path="evaluations" element={<FeatureGate feature="evaluations_en_ligne"><EvalEpreuves /></FeatureGate>} />
+        <Route path="evaluations/banque" element={<FeatureGate feature="evaluations_en_ligne"><EvalBanque /></FeatureGate>} />
+        <Route path="evaluations/copies/:id" element={<FeatureGate feature="evaluations_en_ligne"><EvalCopie /></FeatureGate>} />
+        <Route path="evaluations/:id" element={<FeatureGate feature="evaluations_en_ligne"><EvalDetail /></FeatureGate>} />
         <Route path="suivi" element={<FeatureGate feature="suivi_pedagogique"><SuiviEleves /></FeatureGate>} />
         <Route path="suivi/referentiels" element={<FeatureGate feature="suivi_pedagogique"><SuiviReferentiels /></FeatureGate>} />
         <Route path="suivi/:id" element={<FeatureGate feature="suivi_pedagogique"><FicheSuivi /></FeatureGate>} />
@@ -453,6 +473,7 @@ export default function AppRouter() {
         <Route path="home"          element={<ParentHome />} />
         <Route path="children"      element={<ParentChildren />} />
         <Route path="grades"        element={<ParentGrades />} />
+        <Route path="evaluations" element={<FeatureGate feature="evaluations_en_ligne"><EvalMes /></FeatureGate>} />
         <Route path="suivi" element={<FeatureGate feature="suivi_familles"><SuiviEleves /></FeatureGate>} />
         <Route path="suivi/:id" element={<FeatureGate feature="suivi_familles"><FicheSuivi /></FeatureGate>} />
         <Route path="attendance"    element={<ParentAttendance />} />
@@ -475,6 +496,8 @@ export default function AppRouter() {
         <Route index element={<Navigate to="home" replace />} />
         <Route path="home"          element={<StudentHome />} />
         <Route path="grades"        element={<StudentGrades />} />
+        <Route path="evaluations" element={<FeatureGate feature="evaluations_en_ligne"><EvalMes /></FeatureGate>} />
+        <Route path="evaluations/:id/passer" element={<FeatureGate feature="evaluations_en_ligne"><EvalPassage /></FeatureGate>} />
         <Route path="suivi" element={<FeatureGate feature="suivi_familles"><SuiviEleves /></FeatureGate>} />
         <Route path="suivi/:id" element={<FeatureGate feature="suivi_familles"><FicheSuivi /></FeatureGate>} />
         <Route path="attendance"    element={<StudentAttendance />} />

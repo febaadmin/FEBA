@@ -182,6 +182,21 @@ def resultats_historiques(student, du=None, au=None, subject=None):
     return {"has_data": bool(lignes), "origine": ORIGINE_HISTORIQUE, "lignes": lignes}
 
 
+def resultats_examens(student, du=None, au=None, famille=False):
+    """Examens en ligne validés, en lecture seule. Une famille ne voit que les résultats publiés."""
+    from apps.evaluations.models import Tentative
+
+    qs = Tentative.objects.filter(student=student, statut=Tentative.VALIDEE).select_related("epreuve__subject")
+    if famille:
+        qs = qs.filter(epreuve__resultats_publies=True)
+    qs = _dans_periode(qs, "remise_le__date", du, au)
+    lignes = [{"id": t.pk, "date": t.remise_le.date(), "titre": t.epreuve.titre, "type": t.epreuve.type,
+               "subject_name": t.epreuve.subject.name, "score": float(t.pourcentage or 0),
+               "transferee": t.transferts.exists(), "origine": ORIGINE_EXAMEN}
+              for t in qs.prefetch_related("transferts").order_by("remise_le", "id")]
+    return {"has_data": bool(lignes), "origine": ORIGINE_EXAMEN, "lignes": lignes}
+
+
 def fiche(student, du=None, au=None, subject=None, famille=False):
     plans = PlanAccompagnement.objects.filter(student=student)
     if famille:
@@ -194,6 +209,7 @@ def fiche(student, du=None, au=None, subject=None, famille=False):
         "evaluations": evaluations(student, du, au, subject),
         "objectifs": _objectifs(student, du, au, subject),
         "resultats_historiques": resultats_historiques(student, du, au, subject),
+        "resultats_examens": resultats_examens(student, du, au, famille),
         "plans_actifs": plans.filter(statut="actif").count(),
     }
     return donnees

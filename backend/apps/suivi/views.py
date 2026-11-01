@@ -1,4 +1,6 @@
 """API du suivi pédagogique. Lecture et écriture contrôlées côté serveur, par académie et par élève."""
+import logging
+
 from django.db import transaction
 from django.db.models import Q
 from django.shortcuts import get_object_or_404
@@ -10,10 +12,11 @@ from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from apps.accounts.permissions import IsAdminOrAbove
+from apps.accounts.permissions import IsAdminOrAbove, IsSuperAdmin
 from apps.core.features import HasEntityFeature
 from apps.core.request_text import checked_upload, identifiant, text_field
 from apps.core.tenancy import get_request_school
+from apps.schools.models import School
 
 from . import services
 from .models import (
@@ -41,6 +44,8 @@ from .serializers import (
     PlanSerializer,
     ReferentielSerializer,
 )
+
+logger = logging.getLogger(__name__)
 
 
 def _ecole(request):
@@ -396,3 +401,30 @@ class ParametresViewSet(Base):
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(serializer.data)
+
+
+class ActivationViewSet(viewsets.GenericViewSet):
+    """Superadministrateur : ouvre ou ferme les modules pédagogiques, académie par académie."""
+
+    permission_classes = [IsAuthenticated, IsSuperAdmin]
+    DRAPEAUX = ("suivi_pedagogique", "suivi_familles", "evaluations_en_ligne")
+
+    def list(self, request):
+        return Response([
+            {"id": s.pk, "nom": s.name, **{d: s.has_feature(d) for d in self.DRAPEAUX}}
+            for s in School.objects.order_by("name")
+        ])
+
+    def partial_update(self, request, pk=None):
+        ecole = get_object_or_404(School, pk=identifiant(pk))
+        changements = {d: request.data[d] for d in self.DRAPEAUX if d in request.data}
+        if not changements or any(not isinstance(v, bool) for v in changements.values()):
+            raise ValidationError({"detail": "Indiquez un drapeau et une valeur vraie ou fausse."})
+        with transaction.atomic():
+            ecole = School.objects.select_for_update().get(pk=ecole.pk)
+            reglages = dict(ecole.settings or {})
+            reglages["features"] = {**(reglages.get("features") or {}), **changements}
+            ecole.settings = reglages
+            ecole.save(update_fields=["settings"])
+        logger.info("Modules pédagogiques de l'académie %s modifiés par l'utilisateur %s : %s", ecole.pk, request.user.pk, changements)
+        return Response({"id": ecole.pk, "nom": ecole.name, **{d: ecole.has_feature(d) for d in self.DRAPEAUX}})

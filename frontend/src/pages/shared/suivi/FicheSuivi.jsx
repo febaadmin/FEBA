@@ -320,6 +320,14 @@ export default function FicheSuivi() {
             <Courbe titre={t("Évolution des évaluations du suivi")} lignes={f.evaluations.lignes} cle="score" max={100} unite=" %" />
             {f.evaluations.has_data && <Tableau colonnes={[t("Date"), t("Évaluation"), t("Matière"), t("Résultat")]} lignes={f.evaluations.lignes.map((l) => [l.date, l.titre, l.subject_name || "-", `${l.score} %`])} />}
           </div>
+          {f.resultats_examens?.has_data && (
+            <div className="card space-y-3">
+              <h2 className="text-sm font-semibold text-slate-800">{t("Examens en ligne")}</h2>
+              <Courbe titre={t("Évolution des examens en ligne")} lignes={f.resultats_examens.lignes} cle="score" max={100} unite=" %" />
+              <Tableau colonnes={[t("Date"), t("Évaluation"), t("Matière"), t("Résultat"), t("Note officielle")]}
+                lignes={f.resultats_examens.lignes.map((l) => [l.date, l.titre, l.subject_name, `${l.score} %`, l.transferee ? t("Transférée") : t("Non transférée")])} />
+            </div>
+          )}
           <div className="card space-y-3">
             <h2 className="text-sm font-semibold text-slate-800">{t("Notes officielles (lecture seule)")}</h2>
             <p className="text-xs text-slate-500">{t("Issues du module Notes. Elles restent gérées par ce module et ne sont pas converties en évaluations du suivi.")}</p>
