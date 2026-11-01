@@ -7,6 +7,8 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from apps.core.ratelimit import ratelimit_or_503
 import logging
 
+from .sessions_temps_reel import fermer_connexions
+
 from .models import CustomUser, PasswordResetLog
 from .serializers import (
     UserSerializer, UserCreateSerializer,
@@ -80,6 +82,7 @@ def revoquer_sessions(user):
             revoked += 1 if created else 0
     except Exception as exc:
         logger.warning("Révocation des tokens impossible : %s", exc)
+    fermer_connexions(user)
     return revoked
 
 

@@ -63,4 +63,5 @@ def telecharger(request, jeton):
                            filename=os.path.basename(chemin))
     reponse["Cache-Control"] = "private, no-store"
     reponse["X-Content-Type-Options"] = "nosniff"
+    reponse["Referrer-Policy"] = "no-referrer"
     return reponse
