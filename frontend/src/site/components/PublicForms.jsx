@@ -4,7 +4,7 @@
  * honeypot anti-spam (champ « website » caché) ; messages de succès/erreur.
  */
 import { useState } from "react";
-import { useForm } from "react-hook-form";
+import { useForm } from "../../utils/useFormulaire";
 import { CheckCircle2, Loader2, Send } from "lucide-react";
 import { siteAPI } from "../siteApi";
 import { tr } from "../fhaContent";

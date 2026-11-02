@@ -35,7 +35,7 @@ export default {
       keyframes: {
         apparition: { from: { opacity: 0, transform: "translateY(6px)" }, to: { opacity: 1, transform: "none" } },
       },
-      animation: { apparition: "apparition .22s ease-out both" },
+      animation: { apparition: "apparition .22s ease-out backwards" },
     },
   },
   plugins: [],

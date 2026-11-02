@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Plus, Trash2, BarChart2, BookOpen, Globe, User, Clock, History, Layers, MessageSquare, Eye } from "lucide-react";
-import { useForm, Controller } from "react-hook-form";
+import { Controller } from "react-hook-form";
+import { useForm } from "../../utils/useFormulaire";
 import toast from "react-hot-toast";
 import { gradesAPI, studentsAPI, subjectsAPI, schoolsAPI, classesAPI } from "../../api";
 // Native CSV export — no external dependency required

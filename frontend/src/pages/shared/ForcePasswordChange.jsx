@@ -9,7 +9,7 @@
  */
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useForm } from "react-hook-form";
+import { useForm } from "../../utils/useFormulaire";
 import { Eye, EyeOff, KeyRound, Loader2, ShieldAlert } from "lucide-react";
 import toast from "react-hot-toast";
 import { authAPI } from "../../api";

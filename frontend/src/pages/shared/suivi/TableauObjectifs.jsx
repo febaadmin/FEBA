@@ -10,10 +10,11 @@ import { t } from "../../../i18n";
 export const COLONNES = [
   ["a_commencer", "À commencer"], ["en_cours", "En cours"], ["a_verifier", "À vérifier"], ["atteint", "Atteint"], ["non_atteint", "Non atteint"], ["reporte", "Reporté"], ["abandonne", "Abandonné"],
 ];
+const LIBELLES = Object.fromEntries(COLONNES);
 const PRINCIPALES = ["a_commencer", "en_cours", "a_verifier", "atteint"];
 const PRIORITES = { haute: "bg-red-100 text-red-800", normale: "bg-slate-100 text-slate-700", basse: "bg-slate-50 text-slate-500" };
 
-function Carte({ o, gere, deplacer, ajouterAction, majAction, fete }) {
+function Carte({ o, gere, deplacer, ajouterAction, majAction, modifier, archiver, fete }) {
   return (
     <motion.article layout initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.96 }}
       draggable={gere} onDragStart={(e) => e.dataTransfer.setData("text/plain", String(o.id))}
@@ -27,6 +28,7 @@ function Carte({ o, gere, deplacer, ajouterAction, majAction, fete }) {
       {o.criteres_reussite && <p className="text-xs text-slate-600">{t("Critères de réussite")} : {o.criteres_reussite}</p>}
       {o.competence_nom && <p className="text-xs text-slate-500">{t("Compétence")} : {o.competence_nom}</p>}
       {o.date_cible && <p className={`text-xs ${new Date(o.date_cible) < new Date() && !["atteint", "non_atteint", "abandonne"].includes(o.statut) ? "text-red-700 font-medium" : "text-slate-500"}`}>{t("Date cible")} : {o.date_cible}</p>}
+      {o.responsable_nom && <p className="text-xs text-slate-500">{t("Responsable")} : {o.responsable_nom}</p>}
       {o.actions.map((a) => (
         <div key={a.id} className="text-xs text-slate-700 flex flex-wrap justify-between gap-2 border-t border-slate-100 pt-1">
           <span>{a.description}</span>
@@ -34,9 +36,23 @@ function Carte({ o, gere, deplacer, ajouterAction, majAction, fete }) {
             : gere && <button type="button" className="text-primary underline" onClick={() => majAction(a.id)}>{t("Marquer réalisée")}</button>}
         </div>
       ))}
+      {o.historique?.length > 0 && (
+        <details className="text-xs text-slate-500 border-t border-slate-100 pt-1">
+          <summary className="cursor-pointer">{t("Historique")} ({o.historique.length})</summary>
+          <ul className="mt-1 space-y-0.5">
+            {o.historique.map((h, i) => (
+              <li key={i}>{new Date(h.created_at).toLocaleDateString()} : {h.note || t(LIBELLES[h.nouveau_statut] || h.nouveau_statut)}{h.par_nom ? ` (${h.par_nom})` : ""}</li>
+            ))}
+          </ul>
+        </details>
+      )}
       {gere && (
         <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
-          <button type="button" className="text-xs text-primary underline" onClick={() => ajouterAction(o.id)}>{t("Ajouter une action")}</button>
+          <span className="flex flex-wrap gap-2">
+            <button type="button" className="text-xs text-primary underline" onClick={() => ajouterAction(o.id)}>{t("Ajouter une action")}</button>
+            <button type="button" className="text-xs text-primary underline" onClick={() => modifier(o)}>{t("Modifier")}</button>
+            <button type="button" className="text-xs text-slate-600 underline" onClick={() => archiver(o)}>{t("Archiver")}</button>
+          </span>
           <select className="text-xs border border-slate-200 rounded-md px-1 py-0.5" aria-label={t("Statut de {x}", { x: o.titre })} value={o.statut} onChange={(e) => deplacer(o.id, e.target.value)}>
             {COLONNES.map(([v, l]) => <option key={v} value={v}>{t(l)}</option>)}
           </select>
@@ -53,7 +69,7 @@ function Carte({ o, gere, deplacer, ajouterAction, majAction, fete }) {
   );
 }
 
-export default function TableauObjectifs({ objectifs, gere, majStatut, ajouterAction, majAction }) {
+export default function TableauObjectifs({ objectifs, gere, majStatut, ajouterAction, majAction, modifier, archiver }) {
   const [survol, setSurvol] = useState(null);
   const [fete, setFete] = useState(null);
   const deplacer = (id, statut) => {
@@ -72,7 +88,7 @@ export default function TableauObjectifs({ objectifs, gere, majStatut, ajouterAc
             onDrop={(e) => { e.preventDefault(); setSurvol(null); deplacer(Number(e.dataTransfer.getData("text/plain")), cle); }}
             className={`rounded-2xl p-3 space-y-2 min-h-32 border-2 border-dashed transition-colors ${survol === cle ? "border-primary bg-blue-50" : "border-transparent bg-slate-100/70"}`}>
             <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-600 flex items-center justify-between">{t(libelle)}<span className="rounded-full bg-white px-2 py-0.5 text-slate-700">{lignes.length}</span></h3>
-            <AnimatePresence>{lignes.map((o) => <Carte key={o.id} o={o} gere={gere} deplacer={deplacer} ajouterAction={ajouterAction} majAction={majAction} fete={fete} />)}</AnimatePresence>
+            <AnimatePresence>{lignes.map((o) => <Carte key={o.id} o={o} gere={gere} deplacer={deplacer} ajouterAction={ajouterAction} majAction={majAction} modifier={modifier} archiver={archiver} fete={fete} />)}</AnimatePresence>
             {!lignes.length && <p className="text-xs text-slate-500 flex items-center gap-1 py-2"><Target className="w-3 h-3" aria-hidden="true" />{gere ? t("Déposez un objectif ici") : t("Aucun")}</p>}
           </section>
         );

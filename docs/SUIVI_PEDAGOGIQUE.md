@@ -43,7 +43,8 @@ Les notes officielles n'entrent pas dans ce calcul.
 ## Historique
 
 - `EvaluationCompetence` est en ajout seul : ni modification ni suppression par l'API. Seule une proposition reçoit une décision (validée ou refusée), et la ligne reste.
-- `ObjectifHistorique` conserve chaque changement de statut.
+- `ObjectifHistorique` conserve chaque changement de statut, chaque modification et chaque archivage, avec son auteur.
+- Archiver un objectif le retire du tableau et de la vue des familles. Il reste compté dans la progression : l'archivage ne recalcule rien.
 
 ## Permissions
 

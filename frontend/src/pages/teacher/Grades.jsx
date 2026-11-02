@@ -10,7 +10,8 @@
 import { useState, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Plus, Save, Pencil, Trash2, AlertCircle, Layers } from "lucide-react";
-import { useForm, Controller } from "react-hook-form";
+import { Controller } from "react-hook-form";
+import { useForm } from "../../utils/useFormulaire";
 import toast from "react-hot-toast";
 import { gradesAPI, studentsAPI, schoolsAPI, teachersAPI, classesAPI } from "../../api";
 import PageHeader from "../../components/ui/PageHeader";

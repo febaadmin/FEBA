@@ -18,7 +18,8 @@
  */
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useForm, Controller } from "react-hook-form";
+import { Controller } from "react-hook-form";
+import { useForm } from "../../../utils/useFormulaire";
 import toast from "react-hot-toast";
 import { Bell, BellOff, CalendarDays, Globe2, Pencil, Plus, Trash2, Video } from "lucide-react";
 import {

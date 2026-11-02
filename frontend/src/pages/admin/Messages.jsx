@@ -17,7 +17,8 @@ import {
   Send, Inbox, MessageSquare, ArrowLeft, Paperclip, X, FileText,
   Download, Plus, CheckCheck,
 } from "lucide-react";
-import { useForm, Controller } from "react-hook-form";
+import { Controller } from "react-hook-form";
+import { useForm } from "../../utils/useFormulaire";
 import toast from "react-hot-toast";
 import { conversationsAPI, authAPI } from "../../api";
 import PageHeader from "../../components/ui/PageHeader";

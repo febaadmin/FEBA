@@ -11,7 +11,7 @@
  */
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useForm } from "react-hook-form";
+import { useForm } from "../../utils/useFormulaire";
 import {
   Download, Eye, FileText, Inbox, ClipboardList, Newspaper, RefreshCw,
   Settings2, Trash2, Pencil, Plus, MailOpen, Mail, ExternalLink,

@@ -375,8 +375,12 @@ class ObjectifViewSet(Base, viewsets.ModelViewSet):
             teacher = getattr(request.user, "teacher_profile", None)
             if teacher is not None:
                 visibles |= Q(class_obj__in=teacher.classes.all())
-        qs = Objectif.objects.filter(visibles, school=school).select_related("subject", "competence").prefetch_related(
+        qs = Objectif.objects.filter(visibles, school=school).select_related("subject", "competence", "responsable").prefetch_related(
             "actions", "historique__par").distinct()
+        if est_famille(request.user):
+            qs = qs.filter(archive_le__isnull=True)
+        elif self.action == "list":
+            qs = qs.filter(archive_le__isnull=request.query_params.get("archives") != "1")
         eleve = request.query_params.get("student")
         if eleve:
             eleve_id = identifiant(eleve)
@@ -409,11 +413,33 @@ class ObjectifViewSet(Base, viewsets.ModelViewSet):
         instance = serializer.instance
         self._controler(serializer.validated_data, instance)
         ancien = instance.statut
+        modifies = [c for c, v in serializer.validated_data.items() if c != "statut" and getattr(instance, c) != v]
         with transaction.atomic():
             objectif = serializer.save()
             if objectif.statut != ancien:
                 ObjectifHistorique.objects.create(objectif=objectif, ancien_statut=ancien, nouveau_statut=objectif.statut,
                                                   note=text_field(self.request.data, "note"), par=self.request.user)
+            if modifies:
+                ObjectifHistorique.objects.create(objectif=objectif, ancien_statut=objectif.statut, nouveau_statut=objectif.statut,
+                                                  note=f"Modifié : {', '.join(c.replace('_', ' ') for c in modifies)}", par=self.request.user)
+
+    def _archivage(self, date, note):
+        objectif = self.get_object()
+        self._controler({}, objectif)
+        with transaction.atomic():
+            objectif.archive_le = date
+            objectif.save(update_fields=["archive_le", "updated_at"])
+            ObjectifHistorique.objects.create(objectif=objectif, ancien_statut=objectif.statut, nouveau_statut=objectif.statut,
+                                              note=note, par=self.request.user)
+        return Response(self.get_serializer(objectif).data)
+
+    @action(detail=True, methods=["post"])
+    def archiver(self, request, pk=None):
+        return self._archivage(timezone.now(), "Archivé")
+
+    @action(detail=True, methods=["post"])
+    def desarchiver(self, request, pk=None):
+        return self._archivage(None, "Sorti des archives")
 
 
 class PlanViewSet(EcritureEleveMixin, ParEleveMixin, Base, viewsets.ModelViewSet):

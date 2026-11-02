@@ -10,7 +10,7 @@
 import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { FileText, Download, RefreshCw, Users, MessageSquare, Eye } from "lucide-react";
-import { useForm } from "react-hook-form";
+import { useForm } from "../../utils/useFormulaire";
 import toast from "react-hot-toast";
 import { bulletinsAPI, classesAPI, schoolsAPI } from "../../api";
 import PageHeader from "../../components/ui/PageHeader";

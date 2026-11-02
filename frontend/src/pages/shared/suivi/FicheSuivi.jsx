@@ -11,6 +11,7 @@ import toast from "react-hot-toast";
 import { suiviAPI, subjectsAPI, teachersAPI } from "../../../api";
 import AideModule from "../../../components/ui/AideModule";
 import Modal from "../../../components/ui/Modal";
+import ConfirmDialog from "../../../components/ui/ConfirmDialog";
 import { AnimatePresence, motion } from "framer-motion";
 import { AnneauProgression, CompteurAnime, Squelette, apparition, cascade } from "../../../components/ui/anime";
 import Chronologie from "./Chronologie";
@@ -18,12 +19,12 @@ import { AssiduiteMois, ComparaisonPeriodes, Evolution, ParMatiere, RepartitionC
 import TableauObjectifs from "./TableauObjectifs";
 import Rapports from "./Rapports";
 import { AIDE_NIVEAUX } from "./niveaux";
-import PageHeader from "../../../components/ui/PageHeader";
 import { useAuth } from "../../../hooks/useAuth";
 import { extractApiError } from "../../../utils/errors";
 import { t } from "../../../i18n";
 
 const VIDE = "Données insuffisantes";
+const NULLABLES = ["subject", "competence", "date_debut", "date_cible", "responsable"];
 const TENDANCES = {
   progresse: { label: "Progresse", Icone: ArrowUpRight, cls: "text-green-700" },
   regresse: { label: "Régresse", Icone: ArrowDownRight, cls: "text-red-700" },
@@ -115,6 +116,9 @@ export default function FicheSuivi() {
   const [onglet, setOnglet] = useState("synthese");
   const [saisie, setSaisie] = useState(null);
   const [valeurs, setValeurs] = useState({});
+  const [edition, setEdition] = useState(null);
+  const [aArchiver, setAArchiver] = useState(null);
+  const [voirArchives, setVoirArchives] = useState(false);
   const [cmp, setCmp] = useState({ a_du: "", a_au: "", b_du: "", b_au: "" });
 
   const racine = useLocation().pathname.split("/")[1];
@@ -125,6 +129,7 @@ export default function FicheSuivi() {
   const { data: niveauxData } = useQuery({ queryKey: ["suivi-niveaux"], queryFn: () => suiviAPI.niveaux(), enabled: gere });
   const { data: compsData } = useQuery({ queryKey: ["suivi-competences"], queryFn: () => suiviAPI.competences({ actif: true }), enabled: gere });
   const { data: objData } = useQuery({ queryKey: ["suivi-objectifs", id], queryFn: () => suiviAPI.objectifs({ student: id }) });
+  const { data: archivesData } = useQuery({ queryKey: ["suivi-objectifs", id, "archives"], queryFn: () => suiviAPI.objectifs({ student: id, archives: 1 }), enabled: gere && voirArchives });
   const { data: plansData } = useQuery({ queryKey: ["suivi-plans", id], queryFn: () => suiviAPI.plans({ student: id }) });
   const { data: histData } = useQuery({ queryKey: ["suivi-historique", id], queryFn: () => suiviAPI.evaluationsCompetences({ student: id, statut: "validee" }) });
   const { data: obsData } = useQuery({ queryKey: ["suivi-observations", id], queryFn: () => suiviAPI.observations({ student: id }), enabled: gere });
@@ -140,6 +145,7 @@ export default function FicheSuivi() {
   const enregistrer = useMutation({ mutationFn: ({ fn, corps }) => fn(corps), ...opts });
   const decider = useMutation({ mutationFn: ({ pk, decision }) => suiviAPI.deciderCompetence(pk, { decision }), ...opts });
   const majObjectif = useMutation({ mutationFn: ({ pk, corps }) => suiviAPI.modifierObjectif(pk, corps), ...opts });
+  const archivage = useMutation({ mutationFn: ({ fn, pk }) => fn(pk), ...opts, onSuccess: () => { toast.success(t("Enregistré.")); setAArchiver(null); rafraichir(); } });
   const majPlan = useMutation({ mutationFn: ({ pk, corps }) => suiviAPI.modifierPlan(pk, corps), ...opts });
   const majAction = useMutation({ mutationFn: ({ pk, corps }) => suiviAPI.modifierAction(pk, corps), ...opts });
 
@@ -228,9 +234,20 @@ export default function FicheSuivi() {
     },
   };
 
-  const ouvrir = (cle, extra = {}) => { setValeurs({ ...FORMULAIRES[cle].init, ...extra }); setSaisie(cle); };
+  const ouvrir = (cle, extra = {}) => { setEdition(null); setValeurs({ ...FORMULAIRES[cle].init, ...extra }); setSaisie(cle); };
+  const modifierObjectif = (o) => {
+    const noms = FORMULAIRES.objectif.champs.map((c) => c.nom);
+    setValeurs(Object.fromEntries(noms.map((n) => [n, o[n] ?? ""])));
+    setEdition(o.id);
+    setSaisie("objectif");
+  };
   const soumettre = (e) => {
     e.preventDefault();
+    if (edition) {
+      const corps = Object.fromEntries(Object.entries(valeurs).map(([k, v]) => [k, v === "" && NULLABLES.includes(k) ? null : v]));
+      enregistrer.mutate({ fn: (c) => suiviAPI.modifierObjectif(edition, c), corps });
+      return;
+    }
     const corps = Object.fromEntries(Object.entries(valeurs).filter(([, v]) => v !== "" && v !== undefined));
     if (saisie !== "action") corps.student = Number(id);
     enregistrer.mutate({ fn: FORMULAIRES[saisie].fn, corps });
@@ -457,7 +474,23 @@ export default function FicheSuivi() {
           </div>
           {objectifs.length === 0 && <p className="card text-sm text-slate-500">{t("Aucun objectif pour le moment.")}</p>}
           {objectifs.length > 0 && <TableauObjectifs objectifs={objectifs} gere={gere} majStatut={(pk, statut) => majObjectif.mutate({ pk, corps: { statut } })}
-            ajouterAction={(pk) => ouvrir("action", { objectif: pk })} majAction={(pk) => majAction.mutate({ pk, corps: { realisee_le: aujourdhui() } })} />}
+            ajouterAction={(pk) => ouvrir("action", { objectif: pk })} majAction={(pk) => majAction.mutate({ pk, corps: { realisee_le: aujourdhui() } })}
+            modifier={modifierObjectif} archiver={setAArchiver} />}
+          {gere && (
+            <div className="space-y-2">
+              <button type="button" className="btn-secondary" aria-expanded={voirArchives} onClick={() => setVoirArchives((v) => !v)}>{voirArchives ? t("Masquer les archives") : t("Voir les archives")}</button>
+              {voirArchives && (archivesData?.data?.results || []).map((o) => (
+                <div key={o.id} className="card flex flex-wrap items-center justify-between gap-2 text-sm">
+                  <span>{o.titre}</span>
+                  <button type="button" className="btn-secondary" disabled={archivage.isPending} onClick={() => archivage.mutate({ fn: suiviAPI.desarchiverObjectif, pk: o.id })}>{t("Sortir des archives")}</button>
+                </div>
+              ))}
+              {voirArchives && archivesData && !(archivesData.data.results || []).length && <p className="text-sm text-slate-500">{t("Aucun objectif archivé.")}</p>}
+            </div>
+          )}
+          <ConfirmDialog open={!!aArchiver} onClose={() => setAArchiver(null)} loading={archivage.isPending} libelle="Archiver"
+            title="Archiver cet objectif" message="Il quitte le tableau et les familles ne le voient plus. Son historique est conservé et vous pouvez le sortir des archives."
+            onConfirm={() => archivage.mutate({ fn: suiviAPI.archiverObjectif, pk: aArchiver.id })} />
         </div>
       )}
 
@@ -538,7 +571,7 @@ export default function FicheSuivi() {
       </motion.div>
       </AnimatePresence>
 
-      <Modal open={!!saisie} onClose={() => setSaisie(null)} title={saisie ? FORMULAIRES[saisie].titre : ""}>
+      <Modal open={!!saisie} onClose={() => setSaisie(null)} title={edition ? t("Modifier l'objectif") : saisie ? FORMULAIRES[saisie].titre : ""}>
         {saisie && (
           <form onSubmit={soumettre} className="space-y-3">
             <Formulaire champs={FORMULAIRES[saisie].champs} valeurs={valeurs} setValeurs={setValeurs} />

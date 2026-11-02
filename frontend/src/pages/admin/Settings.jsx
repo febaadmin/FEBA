@@ -9,7 +9,7 @@
  *  - Persistance en base via /api/schools/room_types/
  */
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useForm } from "react-hook-form";
+import { useForm } from "../../utils/useFormulaire";
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import { schoolsAPI, subjectsAPI, classesAPI } from "../../api";

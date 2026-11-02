@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useForm } from "react-hook-form";
+import { useForm } from "../../utils/useFormulaire";
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import { authAPI, studentsAPI, gradesAPI, attendanceAPI, homeworkAPI, schoolsAPI } from "../../api";
