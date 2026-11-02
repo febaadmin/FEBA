@@ -15,7 +15,7 @@ import ConfirmDialog from "../../../components/ui/ConfirmDialog";
 import { AnimatePresence, motion } from "framer-motion";
 import { AnneauProgression, CompteurAnime, Squelette, apparition, cascade } from "../../../components/ui/anime";
 import Chronologie from "./Chronologie";
-import { AssiduiteMois, ComparaisonPeriodes, Evolution, ParMatiere, RepartitionCompetences } from "./Graphiques";
+import { AssiduiteMois, ComparaisonPeriodes, Evolution, EvolutionCompetence, ParMatiere, RepartitionCompetences } from "./Graphiques";
 import TableauObjectifs from "./TableauObjectifs";
 import Rapports from "./Rapports";
 import { AIDE_NIVEAUX } from "./niveaux";
@@ -396,6 +396,8 @@ export default function FicheSuivi() {
           </div>
         </div>
       )}
+
+      {onglet === "competences" && <EvolutionCompetence historique={historique} />}
 
       {onglet === "competences" && (
         <div className="card space-y-3">

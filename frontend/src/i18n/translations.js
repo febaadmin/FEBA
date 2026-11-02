@@ -1121,6 +1121,7 @@ export const EN = {
   "Supprimer l'utilisateur": "Delete user",
   "Supprimer la note": "Delete grade",
   "Supprimer la sélection": "Delete selection",
+  "Évolution de la compétence": "Skill progress",
   "Renseignez les champs obligatoires avant d'enregistrer.": "Fill in the required fields before saving.",
   "Modifier l'objectif": "Edit goal",
   "Masquer les archives": "Hide archives",
