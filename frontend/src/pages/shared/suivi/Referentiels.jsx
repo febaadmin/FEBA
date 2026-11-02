@@ -6,7 +6,7 @@ import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
-import { Archive, ChevronRight, Copy, FolderTree, Pencil, Plus, Search, Trash2, Upload, Users } from "lucide-react";
+import { Archive, ChevronRight, Download, Copy, FolderTree, Pencil, Plus, Search, Trash2, Upload, Users } from "lucide-react";
 import toast from "react-hot-toast";
 import { classesAPI, schoolsAPI, subjectsAPI, suiviAPI } from "../../../api";
 import AideModule from "../../../components/ui/AideModule";
@@ -83,7 +83,7 @@ export default function Referentiels() {
   return (
     <div className="space-y-4">
       <PageHeader title={t("Référentiels et compétences")} subtitle={t("Ce que chaque élève doit savoir faire")}
-        action={<div className="flex flex-wrap gap-2"><Link to="../evaluer" relative="path" className="btn-secondary text-sm inline-flex items-center gap-1"><Users className="w-4 h-4" aria-hidden="true" />{t("Évaluer une classe")}</Link>
+        action={<div className="flex flex-wrap gap-2"><button type="button" className="btn-secondary text-sm inline-flex items-center gap-1" onClick={async () => { const r = await suiviAPI.exporterCompetences(); const u = URL.createObjectURL(r.data); const a = document.createElement("a"); a.href = u; a.download = "competences.csv"; a.click(); URL.revokeObjectURL(u); }}><Download className="w-4 h-4" aria-hidden="true" />{t("Exporter")}</button><Link to="../evaluer" relative="path" className="btn-secondary text-sm inline-flex items-center gap-1"><Users className="w-4 h-4" aria-hidden="true" />{t("Évaluer une classe")}</Link>
           <button type="button" className="btn-primary text-sm inline-flex items-center gap-1" onClick={() => setFRef({ nom: "", description: "", subject: "", level: "", class_obj: "", periode: "", programme: "" })}><Plus className="w-4 h-4" aria-hidden="true" />{t("Nouveau référentiel")}</button></div>} />
       <AideModule cle="referentiels" description={t("Une compétence décrit ce qu'un élève sait faire. Un référentiel les regroupe, par matière ou par programme.")}
         etapes={[t("Créez un référentiel, par exemple « Français CM1 »."), t("Ajoutez ses compétences, rangées par domaine."), t("Évaluez-les depuis la fiche d'un élève, ou pour toute une classe.")]}

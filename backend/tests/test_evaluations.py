@@ -600,3 +600,45 @@ class AjustementTests(Base):
         self.assertEqual(list(e.questions.order_by("ordre").values_list("pk", flat=True)), ids[::-1])
         self.assertEqual(self.client.post(f"/api/evaluations/epreuves/{self.epreuve.pk}/reordonner/", {"lignes": []}, format="json").status_code, 400)
 
+
+class AnomaliesVideoTests(Base):
+    def test_la_copie_montre_le_texte_de_la_reponse(self):
+        d = self.demarrer()
+        self.repondre(d, self.q1.version_courante.pk, "a")
+        self.client.post(f"/api/evaluations/passage/{d['id']}/remettre/")
+        self.en(self.prof)
+        lignes = self.client.get(f"/api/evaluations/copies/{d['id']}/").data["lignes"]
+        ligne = next(x for x in lignes if x["type"] == "qcm_unique")
+        self.assertEqual((ligne["valeur"], ligne["corrige_lisible"]), ("4", "4"))
+
+    def test_suppression_seulement_si_jamais_utilisee(self):
+        libre = self.question("ouverte", "Libre", {}, {})
+        self.en(self.prof)
+        self.assertEqual(self.client.delete(f"/api/evaluations/questions/{self.q1.pk}/").status_code, 400)
+        self.assertEqual(self.client.delete(f"/api/evaluations/questions/{libre.pk}/").status_code, 204)
+        autre = self.question("ouverte", "Autre", {}, {})
+        Question.objects.filter(pk=autre.pk).update(auteur=self.admin)
+        self.assertEqual(self.client.delete(f"/api/evaluations/questions/{autre.pk}/").status_code, 403)
+
+    def test_apercu_reserve_au_personnel(self):
+        self.en(self.prof)
+        r = self.client.get(f"/api/evaluations/epreuves/{self.epreuve.pk}/apercu/")
+        self.assertEqual(next(x for x in r.data["lignes"] if x["type"] == "qcm_unique")["corrige"], "4")
+        self.en(self.compte)
+        self.assertEqual(self.client.get(f"/api/evaluations/epreuves/{self.epreuve.pk}/apercu/").status_code, 403)
+
+    def test_pdf_des_resultats(self):
+        import fitz
+        self.passer_et_valider()
+        self.en(self.prof)
+        r = self.client.get(f"/api/evaluations/epreuves/{self.epreuve.pk}/resultats_pdf/")
+        texte = "".join(p.get_text() for p in fitz.open(stream=r.content, filetype="pdf"))
+        self.assertIn("Contrôle", texte)
+        self.assertIn("20.00 / 20", texte)
+        self.en(self.compte)
+        self.assertEqual(self.client.get(f"/api/evaluations/epreuves/{self.epreuve.pk}/resultats_pdf/").status_code, 403)
+
+    def test_fuseau_de_l_academie(self):
+        self.en(self.compte)
+        self.assertEqual(self.client.get("/api/evaluations/passage/").data[0]["fuseau"], self.school.timezone)
+

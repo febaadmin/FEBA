@@ -5,6 +5,7 @@ import { Link } from "react-router-dom";
 import { Plus } from "lucide-react";
 import toast from "react-hot-toast";
 import { evaluationsAPI, subjectsAPI, suiviAPI } from "../../../api";
+import ConfirmDialog from "../../../components/ui/ConfirmDialog";
 import Modal from "../../../components/ui/Modal";
 import AideModule from "../../../components/ui/AideModule";
 import PageHeader from "../../../components/ui/PageHeader";
@@ -70,6 +71,7 @@ export default function Banque() {
   const [ouvert, setOuvert] = useState(false);
   const [f, setF] = useState(FORM_VIDE);
   const [erreurs, setErreurs] = useState({});
+  const [aSupprimer, setASupprimer] = useState(null);
   const fermer = () => { setOuvert(false); setErreurs({}); setF(FORM_VIDE); };
   const params = Object.fromEntries(Object.entries(filtres).filter(([, v]) => v));
   const { data, isLoading } = useQuery({ queryKey: ["eval-questions", params], queryFn: () => evaluationsAPI.questions(params) });
@@ -105,6 +107,7 @@ export default function Banque() {
     onSuccess: (r) => { toast.success(t("{n} question(s) importée(s).", { n: r.data.importees })); rafraichir(); },
     ...erreur,
   });
+  const supprimer = useMutation({ mutationFn: (id) => evaluationsAPI.supprimerQuestion(id), onSuccess: () => { toast.success(t("Question supprimée.")); setASupprimer(null); rafraichir(); }, onError: (e) => { toast.error(extractApiError(e)); setASupprimer(null); } });
   const avecLignes = AIDES[f.type];
 
   return (
@@ -148,12 +151,14 @@ export default function Banque() {
               <div className="flex gap-3 text-xs">
                 <button type="button" className="text-primary underline" onClick={() => { setErreurs({}); setF({ ...FORM_VIDE, ...formulaireDepuis(q) }); setOuvert(true); }}>{t("Modifier")}</button>
                 <button type="button" className="text-primary underline" onClick={() => dupliquer.mutate(q.id)}>{t("Dupliquer")}</button>
+                <button type="button" className="text-red-700 underline" onClick={() => setASupprimer(q)}>{t("Supprimer")}</button>
                 <button type="button" className="text-primary underline" onClick={() => archiver.mutate({ id: q.id, archive: !q.archive })}>{q.archive ? t("Restaurer") : t("Archiver")}</button>
               </div>
             </li>
           ))}
         </ul>
       </div>
+      <ConfirmDialog open={!!aSupprimer} onClose={() => setASupprimer(null)} loading={supprimer.isPending} onConfirm={() => supprimer.mutate(aSupprimer.id)} message={t("Supprimer cette question ? Une question déjà utilisée dans une épreuve s'archive, elle ne se supprime pas.")} />
       <Modal open={ouvert} onClose={fermer} title={f.id ? t("Modifier la question") : t("Nouvelle question")} size="lg">
         <form className="space-y-3" noValidate onSubmit={(e) => {
           e.preventDefault();

@@ -21,7 +21,7 @@ from apps.students.models import Student
 from apps.teachers.affectations import paires_autorisees
 
 from . import services
-from .models import Amenagement, Epreuve, EpreuveQuestion, Question, QuestionVersion, Tentative
+from .models import Amenagement, Epreuve, EpreuveQuestion, Question, QuestionVersion, Reponse, Tentative
 from .serializers import AmenagementSerializer, CopieSerializer, EpreuveSerializer, QuestionSerializer
 
 CHAMPS_VERSION = ("enonce", "contenu", "corrige", "criteres", "explication", "points", "media", "media_type")
@@ -51,7 +51,7 @@ class Base(viewsets.GenericViewSet):
 
 class QuestionViewSet(Base, viewsets.ModelViewSet):
     serializer_class = QuestionSerializer
-    http_method_names = ["get", "post", "patch", "head", "options"]
+    http_method_names = ["get", "post", "patch", "delete", "head", "options"]
     filterset_fields = ["subject", "level", "difficulte", "type", "archive", "competences"]
 
     def get_queryset(self):
@@ -82,6 +82,15 @@ class QuestionViewSet(Base, viewsets.ModelViewSet):
     def perform_update(self, serializer):
         self._controler_auteur(serializer.instance)
         self._ecrire(serializer, False)
+
+    def destroy(self, request, *args, **kwargs):
+        """Seulement une question jamais utilisée ; sinon on l'archive, les copies en dépendent."""
+        question = self.get_object()
+        self._controler_auteur(question)
+        if EpreuveQuestion.objects.filter(version__question=question).exists() or Reponse.objects.filter(version__question=question).exists():
+            raise ValidationError({"detail": "Cette question est utilisée dans une épreuve : archivez-la."})
+        question.delete()
+        return Response(status=204)
 
     def _controler_auteur(self, question):
         if self.request.user.role_level < 80 and question.auteur_id != self.request.user.pk:
@@ -335,6 +344,24 @@ class EpreuveViewSet(Base, viewsets.ModelViewSet):
         reponse["Content-Disposition"] = f'attachment; filename="resultats-{epreuve.pk}.csv"'
         return reponse
 
+    @action(detail=True, methods=["get"])
+    def apercu(self, request, pk=None):
+        """Aperçu pour le personnel : l'épreuve telle que composée, avec les bonnes réponses."""
+        epreuve = self.get_object()
+        lignes = []
+        for q in epreuve.questions.select_related("version__question"):
+            v = q.version
+            lignes.append({"enonce": v.enonce, "type": v.question.type, "points": q.points, "contenu": v.contenu,
+                           "corrige": services.corrige_lisible(v), "media": v.media.url if v.media else None, "media_type": v.media_type})
+        return Response({"titre": epreuve.titre, "consignes": epreuve.consignes, "duree_minutes": epreuve.duree_minutes, "lignes": lignes})
+
+    @action(detail=True, methods=["get"])
+    def resultats_pdf(self, request, pk=None):
+        epreuve = self.get_object()
+        reponse = HttpResponse(services.resultats_pdf(epreuve), content_type="application/pdf")
+        reponse["Content-Disposition"] = f'attachment; filename="resultats-{epreuve.pk}.pdf"'
+        return reponse
+
     @action(detail=True, methods=["post"])
     def amenagement(self, request, pk=None):
         epreuve = self.get_object()
@@ -393,12 +420,12 @@ class CopieViewSet(Base, mixins.RetrieveModelMixin):
             lignes.append({
                 "version": v.pk, "type": v.question.type, "enonce": v.enonce, "contenu": v.contenu, "corrige": v.corrige,
                 "criteres": v.criteres, "maximum": s["points"], "reponse": r.pk if r else None,
-                "valeur": r.valeur if r else None, "fichier": r.fichier.url if r and r.fichier else None,
+                "valeur": services.lire_valeur(v, r.valeur) if r else "", "corrige_lisible": services.corrige_lisible(v), "fichier": r.fichier.url if r and r.fichier else None,
                 "points_auto": r.points_auto if r else None, "points_manuel": r.points_manuel if r else None,
                 "commentaire": r.commentaire if r else "",
                 "historique": [{"avant": h.points_avant, "apres": h.points_apres, "le": h.created_at} for h in r.historique.all()] if r else [],
             })
-        return Response({**CopieSerializer(copie).data, "epreuve": copie.epreuve_id, "lignes": lignes,
+        return Response({**CopieSerializer(copie).data, "epreuve": copie.epreuve_id, "politique": copie.epreuve.politique, "note_max": copie.epreuve.note_max, "lignes": lignes,
                          "evenements": list(copie.evenements.values("type", "donnees", "created_at"))})
 
     def _droit(self, copie):
@@ -485,7 +512,7 @@ class PassageViewSet(Base):
     def list(self, request):
         eleve = self._eleve()
         lignes = []
-        for e in services.epreuves_ouvertes_pour(eleve).select_related("subject", "responsable").prefetch_related("amenagements", "questions"):
+        for e in services.epreuves_ouvertes_pour(eleve).select_related("subject", "responsable", "school").prefetch_related("amenagements", "questions"):
             tentatives = sorted(e.tentatives.filter(student=eleve), key=lambda t: t.numero)
             etat, raison, autorisees = services.etat_pour_eleve(e, eleve, tentatives)
             derniere = tentatives[-1] if tentatives else None
@@ -497,7 +524,7 @@ class PassageViewSet(Base):
                            "note_max": e.note_max, "seuil_reussite": e.seuil_reussite, "etat": etat, "raison": raison,
                            "en_cours": derniere.pk if etat == "en_cours" else None,
                            "tentative_resultat": derniere.pk if etat == "resultat" else None,
-                           "resultats_publies": e.resultats_publies})
+                           "resultats_publies": e.resultats_publies, "fuseau": e.school.timezone})
         return Response(lignes)
 
     @action(detail=True, methods=["post"])

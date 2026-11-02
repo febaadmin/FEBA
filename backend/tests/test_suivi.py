@@ -443,3 +443,15 @@ class EvaluationLotTests(Base):
         self.en(self.parent)
         self.assertEqual(self.client.post("/api/suivi/evaluations-competences/lot/", self.corps(), format="json").status_code, 403)
 
+
+class ExportCompetencesTests(Base):
+    def test_export_et_droits(self):
+        Competence.objects.create(referentiel=self.ref, nom="=SOMME(A1)")
+        self.en(self.prof)
+        contenu = self.client.get("/api/suivi/competences/exporter/").content.decode()
+        self.assertIn("Compréhension", contenu)
+        self.assertIn("'=SOMME(A1)", contenu)
+        activer(self.school, "suivi_pedagogique", "suivi_familles")
+        self.en(self.compte)
+        self.assertEqual(self.client.get("/api/suivi/competences/exporter/").status_code, 403)
+
