@@ -19,3 +19,13 @@ Niveaux : **A** test automatique, **N** navigateur local avec données de démon
 | Autre académie, autre élève | Refusé A | Refusé A | Refusé A | Refusé A | Refusé A |
 | Messagerie, envoi et réception | - | - | N (API) | - | N (API) |
 | Lecture API en production, 147 routes | P serveur | P serveur | P serveur | P serveur | P serveur |
+
+## Ajouts de la refonte
+
+| Parcours | Superadmin | Admin | Enseignant | Élève | Parent |
+|---|---|---|---|---|---|
+| Bibliothèque de compétences | Non testé spécifiquement | A | A N | Refusé en écriture A | Refusé en écriture A |
+| Évaluation d'une classe | Non testé spécifiquement | Non testé spécifiquement | A N | Refusé A | Refusé A |
+| Fiche à onglets, graphiques | Ouverture non exercée sur un élève | N | N | N | N |
+| Ouverture anticipée | Non testé spécifiquement | Non testé spécifiquement | A N | Refusé A | Refusé A |
+| Résultat d'épreuve | - | - | N | N | N |
