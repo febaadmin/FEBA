@@ -173,6 +173,29 @@ jobs:
             exit 1
           fi
 
+          # Bascule sans coupure. Le backend met une quinzaine de secondes à démarrer (contrôles,
+          # migrations, fichiers statiques) : le remplacer directement donnait des 502 tout ce temps.
+          # Un relais démarre donc la nouvelle image à côté de l'ancienne, sous le même nom réseau,
+          # et l'ancienne n'est remplacée qu'une fois le relais sain. S'il échoue, elle reste en service.
+          # Mesure en charge : 260 réponses 502 avant, 0 après (voir RAPPORT_DISPONIBILITE_502.md).
+          relais=feba_backend_relais
+          trap 'docker rm -f "$relais" >/dev/null 2>&1 || true' EXIT
+          docker rm -f "$relais" >/dev/null 2>&1 || true
+          echo "==> Démarrage du relais avec la nouvelle version"
+          compose run -d --no-deps --use-aliases --name "$relais" backend-prod </dev/null >/dev/null
+          for attempt in $(seq 1 36); do
+            status="$(docker inspect --format='{{.State.Health.Status}}' "$relais" 2>/dev/null || echo absent)"
+            echo "Relais, tentative $attempt/36 : $status"
+            [ "$status" = "healthy" ] && break
+            if [ "$attempt" -eq 36 ] || [ "$status" = "unhealthy" ] || [ "$status" = "absent" ]; then
+              echo "ERREUR : la nouvelle version ne démarre pas. L'ancienne reste en service."
+              docker logs "$relais" --tail=200 || true
+              restore_previous
+              exit 1
+            fi
+            sleep 5
+          done
+
           echo "==> Démarrage de la nouvelle version"
           if ! compose up -d --remove-orphans; then
             echo "ERREUR : la nouvelle version n'a pas démarré."
@@ -212,6 +235,10 @@ jobs:
             sleep 10
           done
 
+          echo "==> Fin du relais : les requêtes en cours se terminent"
+          docker stop -t 30 "$relais" >/dev/null 2>&1 || true
+          docker rm "$relais" >/dev/null 2>&1 || true
+
           echo "==> Vérification de la configuration Django"
           docker compose \
             --env-file .env.prod \
@@ -233,14 +260,15 @@ jobs:
             exit 1
           fi
 
-          echo "==> Redémarrage de Nginx après remplacement du backend"
-          docker compose \
-            --env-file .env.prod \
-            -f docker-compose.prod.yml \
-            restart nginx-prod
-
-          echo "==> Attente de Nginx et de la résolution DNS Docker"
-          sleep 8
+          # nginx résout le backend à chaque requête : le redémarrer n'est utile que si sa
+          # configuration a changé, et coupe sinon toutes les connexions pour rien.
+          if git diff --quiet "$previous_sha" HEAD -- nginx/; then
+            echo "==> Configuration Nginx inchangée : pas de redémarrage"
+          else
+            echo "==> Redémarrage de Nginx : configuration modifiée"
+            compose restart nginx-prod
+            sleep 8
+          fi
 
           echo "==> Vérification HTTPS"
           for attempt in $(seq 1 6); do

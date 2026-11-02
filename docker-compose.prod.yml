@@ -57,6 +57,8 @@ services:
     expose:
       - "8000"
     command: python /app/entrypoint.prod.py
+    # Laisse à Gunicorn le temps de terminer les requêtes en cours avant l'arrêt.
+    stop_grace_period: 35s
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request as u; u.urlopen('http://localhost:8000/api/health/', timeout=3)"]
       interval: 10s

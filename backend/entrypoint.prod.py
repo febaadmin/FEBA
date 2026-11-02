@@ -111,5 +111,5 @@ print("    Fichiers statiques OK.")
 banner("[5/5] Démarrage de Gunicorn sur 0.0.0.0:8000")
 os.execvp("gunicorn", [
     "gunicorn", "feba_project.wsgi:application",
-    "--bind", "0.0.0.0:8000", "--workers", "4", "--timeout", "120",
+    "--bind", "0.0.0.0:8000", "--workers", "4", "--timeout", "120", "--graceful-timeout", "30",
 ])
