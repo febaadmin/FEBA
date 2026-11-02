@@ -3439,4 +3439,5 @@ export const EN = {
   "Aucune compétence acquise pour le moment.": "No acquired skill yet.",
   "Aucune compétence aux deux premiers niveaux.": "No skill at the first two levels.",
   "Responsable": "Person responsible",
+  "{n} résultat(s)": "{n} result(s)",
 };

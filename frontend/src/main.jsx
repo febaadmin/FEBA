@@ -43,7 +43,7 @@ ReactDOM.createRoot(document.getElementById("root")).render(
         </AcademyProvider>
         <Toaster position="top-right" toastOptions={{
           duration: 4000,
-          style: { background: "#1E293B", color: "#F8FAFC", borderRadius: "12px" },
+          style: { background: "#071D49", color: "#F8FAFC", borderRadius: "12px", fontSize: "14px", boxShadow: "0 10px 24px -6px rgba(7,29,73,.4)" },
           success: { iconTheme: { primary: "#10B981", secondary: "#fff" } },
           error: { iconTheme: { primary: "#EF4444", secondary: "#fff" } },
         }} />
