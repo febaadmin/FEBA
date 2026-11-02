@@ -25,7 +25,7 @@ const publicApi = axios.create({ baseURL: API_URL });
 // messages du framework selon cet en-tête)
 api.interceptors.request.use((config) => {
   const token = useAuthStore.getState().accessToken;
-  if (token) config.headers.Authorization = `Bearer ${token}`;
+  if (token && !config.headers.Authorization) config.headers.Authorization = `Bearer ${token}`;
   config.headers["Accept-Language"] = getLang();
 
   // P0 — Portée d'académie. La requête annonce la portée sous laquelle elle
@@ -35,7 +35,12 @@ api.interceptors.request.use((config) => {
   const scope = getAcademyScope();
   config.headers[ACADEMY_SCOPE_HEADER] = scope;
   config.__academyScope = scope;
-  if (!config.signal) {
+  // `horsPortee` : la requête ne dépend pas de l'académie affichée (profil à la connexion).
+  // Une bascule de portée ne doit ni l'annuler ni rejeter sa réponse.
+  // Une écriture non plus : annulée en vol, le serveur a pu l'appliquer, et l'écran annoncerait un échec.
+  const ecriture = (config.method || "get").toLowerCase() !== "get";
+  config.__horsControlePortee = config.horsPortee || ecriture;
+  if (!config.signal && !config.__horsControlePortee) {
     const controller = trackRequest();
     config.signal = controller.signal;
     config.__academyController = controller;
@@ -51,7 +56,7 @@ api.interceptors.response.use(
   (response) => {
     releaseRequest(response.config?.__academyController);
     const served = response.headers?.[ACADEMY_SCOPE_HEADER.toLowerCase()];
-    if (isStaleResponse(served, response.config?.url)) {
+    if (!response.config?.__horsControlePortee && isStaleResponse(served, response.config?.url)) {
       return Promise.reject(
         new StaleAcademyResponse(getAcademyScope(), served, response.config?.url),
       );
@@ -164,7 +169,7 @@ const BIG = { page_size: 1000 };
 export const authAPI = {
   login: (d)          => api.post("/auth/login/", d),
   logout: (r)         => api.post("/auth/logout/", { refresh: r }),
-  me: ()              => api.get("/auth/me/"),
+  me: (config) => api.get("/auth/me/", config),
   updateMe: (d)       => api.patch("/auth/me/", d),
   // Le serveur ferme toutes les sessions du compte et rend de nouveaux jetons
   // à ce poste.

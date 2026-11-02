@@ -20,6 +20,21 @@ const schema = z.object({
   password: z.string().min(4, tBoth("Mot de passe requis")),
 });
 
+/**
+ * « Identifiants incorrects » seulement si le serveur a vraiment refusé les identifiants.
+ * Une coupure, une limite ou une panne ne doivent pas faire croire à un mauvais mot de passe.
+ */
+export function messageErreurConnexion(err) {
+  const statut = err?.response?.status;
+  if (statut === 429) return tBoth("Trop de tentatives. Réessayez dans une minute.");
+  if (statut === 400 || statut === 401 || statut === 403) {
+    const donnees = err.response.data;
+    const message = donnees?.detail || donnees?.non_field_errors?.[0] || donnees?.[0];
+    return message ? tBoth(message) : tBoth("Identifiants incorrects.");
+  }
+  return tBoth("Connexion impossible pour le moment. Réessayez dans un instant.");
+}
+
 export default function LoginPage() {
   const [showPwd, setShowPwd] = useState(false);
   const { login } = useAuth();
@@ -32,9 +47,7 @@ export default function LoginPage() {
     try {
       await login(data.email, data.password);
     } catch (err) {
-      const serverMsg = err.response?.data?.detail || err.response?.data?.[0];
-      // Message serveur connu → paire bilingue ; sinon repli bilingue générique.
-      toast.error(serverMsg ? tBoth(serverMsg) : tBoth("Identifiants incorrects."));
+      toast.error(messageErreurConnexion(err));
     }
   };
 

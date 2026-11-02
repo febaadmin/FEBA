@@ -1,7 +1,8 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryCache, QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { signalerErreurLecture } from "./utils/erreursRequetes";
 import { Toaster } from "react-hot-toast";
 import App from "./App";
 import { AcademyProvider } from "./context/AcademyContext";
@@ -22,6 +23,7 @@ const noRetryOn4xx = (failureCount, error) => {
   return failureCount < 1;
 };
 const queryClient = new QueryClient({
+  queryCache: new QueryCache({ onError: signalerErreurLecture }),
   defaultOptions: {
     queries: { retry: noRetryOn4xx, staleTime: 30000 },
     // Jamais de nouvel essai automatique d'une écriture : après une 500 ou une
