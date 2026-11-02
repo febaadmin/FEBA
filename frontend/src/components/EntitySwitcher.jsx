@@ -13,10 +13,11 @@
  * le badge de l'entité est rendu — aucun sélecteur, donc aucun écran de
  * choix inutile.
  */
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { AlertTriangle, Building2, Check, ChevronDown, Layers, Loader2 } from "lucide-react";
 import toast from "react-hot-toast";
 import { useEntityContext, useEntitySwitch } from "../hooks/useEntityContext";
+import { useFermetureExterieure } from "../hooks/useFermetureExterieure";
 import { getLang } from "../i18n";
 
 /** Libellés bilingues du sélecteur (FR/EN selon la langue de l'ERP). */
@@ -29,6 +30,8 @@ export default function EntitySwitcher({ compact = false }) {
     useEntityContext();
   const switcher = useEntitySwitch();
   const [open, setOpen] = useState(false);
+  const conteneur = useRef(null);
+  useFermetureExterieure(conteneur, open, () => setOpen(false));
 
   if (isLoading) return null;
 
@@ -65,7 +68,7 @@ export default function EntitySwitcher({ compact = false }) {
   }
 
   return (
-    <div className="relative">
+    <div className="relative" ref={conteneur}>
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
@@ -110,12 +113,6 @@ export default function EntitySwitcher({ compact = false }) {
 
       {open && (
         <>
-          {/* Zone de fermeture au clic extérieur. */}
-          <div
-            className="fixed inset-0 z-30"
-            aria-hidden="true"
-            onClick={() => setOpen(false)}
-          />
           <ul
             role="listbox"
             className="absolute right-0 z-40 mt-2 w-72 rounded-xl border border-feba-navy/15 bg-white shadow-xl overflow-hidden"
