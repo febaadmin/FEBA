@@ -79,6 +79,7 @@ export default function AdminAppreciations() {
   const { activeAcademy, isAllAcademies } = useAcademy();
   const academyId = activeAcademy?.id || null;
   const [scope, setScope] = useState("");
+  const [scopeEnAttente, setScopeEnAttente] = useState(null);
   // Brouillon RATTACHÉ à la version du serveur dont il part : quand une
   // nouvelle version arrive (enregistrement, changement de portée), le
   // brouillon périmé est simplement ignoré — sans effet de synchronisation.
@@ -185,7 +186,7 @@ export default function AdminAppreciations() {
         <div className="flex flex-wrap items-center gap-3">
           <label className="text-sm font-semibold text-slate-700" htmlFor="appr-scope">{t("Portée")}</label>
           <select id="appr-scope" className="input max-w-xs" value={scope} data-testid="appreciations-scope"
-                  onChange={(e) => { if (!dirty || window.confirm(t("Abandonner les modifications non enregistrées ?"))) setScope(e.target.value); }}>
+                  onChange={(e) => { if (dirty) setScopeEnAttente(e.target.value); else setScope(e.target.value); }}>
             {SCOPES.map(([value, label]) => (
               <option key={value} value={value}>
                 {t(label)}{value && payload?.cycles_with_override?.includes(value) ? ` - ${t("barème propre")}` : ""}
@@ -327,6 +328,10 @@ export default function AdminAppreciations() {
           {t("L'aperçu applique le barème affiché, même non enregistré. Les bulletins déjà émis gardent leur appréciation ; les bulletins générés ensuite utilisent le barème enregistré.")}
         </p>
       </div>
+
+      <ConfirmDialog open={scopeEnAttente !== null} onClose={() => setScopeEnAttente(null)} libelle="Abandonner"
+        title="Modifications non enregistrées" message="Abandonner les modifications non enregistrées ?"
+        onConfirm={() => { setScope(scopeEnAttente); setScopeEnAttente(null); }} />
 
       <ConfirmDialog
         open={resetOpen}

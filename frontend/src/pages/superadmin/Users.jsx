@@ -100,17 +100,7 @@ export default function SuperAdminUsers() {
   };
 
   const cols = [
-    // P3 : en mode « Toutes les Académies », chaque ligne DOIT porter son
-    // académie — sans quoi les deux jeux de données sont indiscernables.
-    ...(allEntitiesMode
-      ? [{
-          key: "academy",
-          label: t("Académie"),
-          accessor: "academy_code",
-          sortable: false,
-          render: r => <AcademyBadge code={r.academy_code} name={r.academy_name} shortName={r.academy_short_name} />,
-        }]
-      : []),
+    // En mode « Toutes les Académies », DataTable ajoute lui-même la colonne Académie.
     { key: "name",  label: t("Nom"),   accessor: "first_name", render: r => `${r.first_name} ${r.last_name}` },
     { key: "email", label: t("Email"), accessor: "email" },
     { key: "role",  label: t("Rôle"),  accessor: "role", render: r => roleBadge(r.role) },

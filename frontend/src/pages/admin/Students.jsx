@@ -7,6 +7,7 @@ import { studentsAPI, classesAPI, schoolsAPI, authAPI, parentsAPI } from "../../
 import PageHeader from "../../components/ui/PageHeader";
 import DataTable from "../../components/ui/DataTable";
 import Modal from "../../components/ui/Modal";
+import ConfirmDialog from "../../components/ui/ConfirmDialog";
 import StatusBadge from "../../components/ui/StatusBadge";
 import SearchableSelect from "../../components/ui/SearchableSelect";
 import { extractApiError } from "../../utils/errors";
@@ -34,6 +35,7 @@ export default function AdminStudents() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editItem, setEditItem] = useState(null);
   const [deleteItem, setDeleteItem] = useState(null);
+  const [hardDeleteOpen, setHardDeleteOpen] = useState(false);
   const [viewItem, setViewItem] = useState(null);
   const [photoFile, setPhotoFile] = useState(null);
   const photoRef = useRef();
@@ -512,11 +514,7 @@ export default function AdminStudents() {
             <p className="text-xs text-slate-500 mt-0.5">{t("L'élève disparaît des listes actives ; tout son historique est conservé et il peut être réactivé.")}</p>
           </button>
           <button
-            onClick={() => {
-              if (window.confirm("SUPPRESSION DÉFINITIVE : cette action est irréversible. Confirmer ?")) {
-                hardDeleteMut.mutate(deleteItem.id);
-              }
-            }}
+            onClick={() => setHardDeleteOpen(true)}
             disabled={hardDeleteMut.isPending}
             className="w-full text-left rounded-xl border border-red-200 bg-red-50 hover:bg-red-100 p-3 transition"
           >
@@ -528,6 +526,9 @@ export default function AdminStudents() {
           </div>
         </div>
       </Modal>
+      <ConfirmDialog open={hardDeleteOpen} onClose={() => setHardDeleteOpen(false)} loading={hardDeleteMut.isPending}
+        title="Suppression définitive" message="Cette action est irréversible. Confirmer la suppression définitive ?"
+        onConfirm={() => { setHardDeleteOpen(false); hardDeleteMut.mutate(deleteItem.id); }} />
 
       {/* Enrollment modal */}
       {enrollModal && (

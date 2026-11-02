@@ -5,6 +5,7 @@ import toast from "react-hot-toast";
 import { schoolsAPI } from "../../api";
 import PageHeader from "../../components/ui/PageHeader";
 import Modal from "../../components/ui/Modal";
+import ConfirmDialog from "../../components/ui/ConfirmDialog";
 import { useAcademy } from "../../context/AcademyContext";
 import AcademyLogo from "../../components/AcademyLogo";
 import { extractApiError } from "../../utils/errors";
@@ -17,6 +18,7 @@ export default function AdminBranding() {
   const [uploadOpen, setUploadOpen] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
   const [label, setLabel] = useState("");
+  const [versionASupprimer, setVersionASupprimer] = useState(null);
   const fileRef = useRef();
 
   // L'académie est celle du CONTEXTE (sélecteur d'académie), jamais « la
@@ -236,9 +238,7 @@ export default function AdminBranding() {
                   )}
                   {!brand.is_active && (
                     <button
-                      onClick={() => {
-                        if (window.confirm("Supprimer cette version ?")) deleteMut.mutate(brand.id);
-                      }}
+                      aria-label={t("Supprimer")} onClick={() => setVersionASupprimer(brand)}
                       className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition">
                       <Trash2 className="w-4 h-4" />
                     </button>
@@ -299,6 +299,9 @@ export default function AdminBranding() {
           </div>
         </div>
       </Modal>
+      <ConfirmDialog open={!!versionASupprimer} onClose={() => setVersionASupprimer(null)} loading={deleteMut.isPending}
+        title="Supprimer cette version ?" message="Cette version du logo ne pourra plus être réactivée."
+        onConfirm={() => { deleteMut.mutate(versionASupprimer.id); setVersionASupprimer(null); }} />
     </div>
   );
 }
