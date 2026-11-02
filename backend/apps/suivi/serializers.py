@@ -29,10 +29,14 @@ class NiveauSerializer(serializers.ModelSerializer):
 
 class ReferentielSerializer(serializers.ModelSerializer):
     nombre_competences = serializers.IntegerField(source="competences.count", read_only=True)
+    subject_name = serializers.CharField(source="subject.name", read_only=True, default=None)
+    level_name = serializers.CharField(source="level.name", read_only=True, default=None)
+    class_name = serializers.CharField(source="class_obj.name", read_only=True, default=None)
 
     class Meta:
         model = Referentiel
-        fields = ["id", "nom", "description", "subject", "level", "programme", "actif", "nombre_competences", "created_at"]
+        fields = ["id", "nom", "description", "subject", "subject_name", "level", "level_name", "class_obj", "class_name", "periode", "programme",
+                  "actif", "nombre_competences", "created_at"]
         read_only_fields = ["id", "created_at"]
 
     def validate(self, attrs):
@@ -40,14 +44,34 @@ class ReferentielSerializer(serializers.ModelSerializer):
         for champ in ("subject", "level"):
             if attrs.get(champ) and attrs[champ].school_id != school.pk:
                 raise serializers.ValidationError({champ: "Hors de votre académie."})
+        if attrs.get("class_obj") and attrs["class_obj"].school_year.school_id != school.pk:
+            raise serializers.ValidationError({"class_obj": "Hors de votre académie."})
+        nom = attrs.get("nom")
+        if nom and Referentiel.objects.filter(school=school, nom__iexact=nom.strip()).exclude(pk=getattr(self.instance, "pk", None)).exists():
+            raise serializers.ValidationError({"nom": "Un référentiel porte déjà ce nom."})
         return attrs
 
 
 class CompetenceSerializer(serializers.ModelSerializer):
+    referentiel_nom = serializers.CharField(source="referentiel.nom", read_only=True)
+    subject_name = serializers.SerializerMethodField()
+    nombre_evaluations = serializers.IntegerField(read_only=True, default=0)
+    nombre_eleves = serializers.IntegerField(read_only=True, default=0)
+    supprimable = serializers.SerializerMethodField()
+
+    def get_subject_name(self, obj):
+        matiere = obj.subject or obj.referentiel.subject
+        return matiere.name if matiere else None
+
+    def get_supprimable(self, obj):
+        return not obj.evaluations.exists() and not obj.questions.exists()
+
     class Meta:
         model = Competence
-        fields = ["id", "referentiel", "domaine", "code", "nom", "nom_en", "description", "criteres", "subject", "ordre", "actif"]
+        fields = ["id", "referentiel", "referentiel_nom", "domaine", "sous_domaine", "code", "nom", "nom_en", "description", "objectif", "criteres",
+                  "subject", "subject_name", "niveau_attendu", "periode", "ordre", "actif", "nombre_evaluations", "nombre_eleves", "supprimable"]
         read_only_fields = ["id"]
+        validators = []
 
     def validate(self, attrs):
         school = self.context["school"]
@@ -56,6 +80,11 @@ class CompetenceSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError({"referentiel": "Hors de votre académie."})
         if attrs.get("subject") and attrs["subject"].school_id != school.pk:
             raise serializers.ValidationError({"subject": "Hors de votre académie."})
+        if attrs.get("niveau_attendu") and attrs["niveau_attendu"].school_id != school.pk:
+            raise serializers.ValidationError({"niveau_attendu": "Hors de votre académie."})
+        nom = attrs.get("nom")
+        if nom and referentiel and Competence.objects.filter(referentiel=referentiel, nom__iexact=nom.strip()).exclude(pk=getattr(self.instance, "pk", None)).exists():
+            raise serializers.ValidationError({"nom": "Cette compétence existe déjà dans ce référentiel."})
         return attrs
 
 

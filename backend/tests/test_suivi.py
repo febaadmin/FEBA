@@ -354,3 +354,92 @@ class ActivationTests2(Base):
         self.school.refresh_from_db()
         self.assertTrue(self.school.has_feature("suivi_familles"))
         self.assertTrue(self.school.has_feature("suivi_pedagogique"), "les autres réglages restent")
+
+
+class BibliothequeTests(Base):
+    def test_creation_modification_et_doublon(self):
+        self.en(self.prof)
+        r = self.client.post("/api/suivi/competences/", {"referentiel": self.ref.pk, "nom": "Lecture", "domaine": "Langue", "sous_domaine": "Texte", "objectif": "Lire", "criteres": "Sans aide", "niveau_attendu": self.niveaux["acquis"].pk, "periode": "T1"}, format="json")
+        self.assertEqual(r.status_code, 201, r.data)
+        self.assertEqual(self.client.post("/api/suivi/competences/", {"referentiel": self.ref.pk, "nom": " lecture"}, format="json").status_code, 400)
+        self.assertEqual(self.client.patch(f"/api/suivi/competences/{r.data['id']}/", {"nom": "Lecture fluide"}, format="json").status_code, 200)
+        self.assertEqual(self.client.patch(f"/api/suivi/competences/{r.data['id']}/", {"nom": "Lecture fluide"}, format="json").status_code, 200)
+
+    def test_suppression_securisee(self):
+        self.en(self.admin)
+        libre = Competence.objects.create(referentiel=self.ref, nom="Libre")
+        self.assertTrue(self.client.get(f"/api/suivi/competences/{libre.pk}/").data["supprimable"])
+        self.assertEqual(self.client.delete(f"/api/suivi/competences/{libre.pk}/").status_code, 204)
+        self.evaluer("acquis", date(2026, 10, 1))
+        vue = self.client.get(f"/api/suivi/competences/{self.comp.pk}/").data
+        self.assertEqual((vue["supprimable"], vue["nombre_evaluations"], vue["nombre_eleves"]), (False, 1, 1))
+        self.assertEqual(self.client.delete(f"/api/suivi/competences/{self.comp.pk}/").status_code, 400)
+        self.assertEqual(self.client.delete(f"/api/suivi/referentiels/{self.ref.pk}/").status_code, 400)
+        self.assertTrue(Competence.objects.filter(pk=self.comp.pk).exists())
+        self.assertEqual(self.client.patch(f"/api/suivi/competences/{self.comp.pk}/", {"actif": False}, format="json").status_code, 200)
+        self.assertEqual(EvaluationCompetence.objects.count(), 1)
+
+    def test_recherche_et_filtres(self):
+        Competence.objects.create(referentiel=self.ref, nom="Géométrie", domaine="Formes")
+        self.en(self.prof)
+        self.assertEqual(self.client.get("/api/suivi/competences/?q=forme").data["count"], 1)
+        self.assertEqual(self.client.get("/api/suivi/competences/?domaine=Formes").data["count"], 1)
+
+    def test_duplication_sans_historique(self):
+        self.evaluer("acquis", date(2026, 10, 1))
+        self.en(self.admin)
+        r = self.client.post(f"/api/suivi/referentiels/{self.ref.pk}/dupliquer/", {}, format="json")
+        self.assertEqual((r.status_code, r.data["nom"], r.data["nombre_competences"]), (201, "Langue (copie)", 1))
+        self.assertEqual(EvaluationCompetence.objects.count(), 1)
+        self.assertEqual(self.client.post("/api/suivi/referentiels/", {"nom": "langue"}, format="json").status_code, 400)
+
+    def test_import(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        self.en(self.prof)
+        f = SimpleUploadedFile("c.csv", "nom,domaine\nCompréhension,X\nÉcrit,Langue\n".encode())
+        r = self.client.post("/api/suivi/competences/importer/", {"referentiel": self.ref.pk, "fichier": f}, format="multipart")
+        self.assertEqual((r.data["creees"], r.data["ignorees"]), (1, 1))
+        f = SimpleUploadedFile("c.csv", b"nom\n\n,\n")
+        self.assertEqual(self.client.post("/api/suivi/competences/importer/", {"referentiel": self.ref.pk, "fichier": f}, format="multipart").status_code, 400)
+
+    def test_eleve_n_ecrit_pas(self):
+        activer(self.school, "suivi_pedagogique", "suivi_familles")
+        self.en(self.compte)
+        self.assertEqual(self.client.post("/api/suivi/competences/", {"referentiel": self.ref.pk, "nom": "x"}, format="json").status_code, 403)
+        self.assertEqual(self.client.delete(f"/api/suivi/competences/{self.comp.pk}/").status_code, 403)
+
+    def test_autre_academie(self):
+        ailleurs = make_school(name="Ailleurs")
+        activer(ailleurs, "suivi_pedagogique")
+        self.en(make_user("a9@s.bj", "admin", ailleurs))
+        self.assertEqual(self.client.get(f"/api/suivi/competences/{self.comp.pk}/").status_code, 404)
+        self.assertEqual(self.client.delete(f"/api/suivi/competences/{self.comp.pk}/").status_code, 404)
+        self.assertEqual(self.client.post("/api/suivi/competences/", {"referentiel": self.ref.pk, "nom": "x"}, format="json").status_code, 400)
+
+
+class EvaluationLotTests(Base):
+    def corps(self, **k):
+        return {"date": "2026-10-01", "lignes": [{"student": self.eleve.pk, "competence": self.comp.pk, "niveau": self.niveaux["acquis"].pk, "commentaire": "Bien", **k}]}
+
+    def test_lot_tout_ou_rien(self):
+        self.en(self.prof)
+        self.assertEqual(self.client.post("/api/suivi/evaluations-competences/lot/", self.corps(), format="json").status_code, 201)
+        self.assertEqual(EvaluationCompetence.objects.count(), 1)
+        c = self.corps()
+        c["lignes"].append({"student": self.autre.pk, "competence": self.comp.pk, "niveau": self.niveaux["acquis"].pk})
+        self.assertEqual(self.client.post("/api/suivi/evaluations-competences/lot/", c, format="json").status_code, 404)
+        self.assertEqual(EvaluationCompetence.objects.count(), 1)
+
+    def test_donnees_invalides(self):
+        self.en(self.prof)
+        for corps in ({}, {"date": "x", "lignes": []}, {"date": "2026-10-01", "lignes": [1]}, {"date": "2026-10-01", "lignes": "a"}):
+            self.assertEqual(self.client.post("/api/suivi/evaluations-competences/lot/", corps, format="json").status_code, 400, corps)
+
+    def test_matiere_non_affectee_et_famille(self):
+        comp = Competence.objects.create(referentiel=self.ref, nom="Écrit", subject=self.fr)
+        self.en(self.prof)
+        self.assertEqual(self.client.post("/api/suivi/evaluations-competences/lot/", self.corps(competence=comp.pk), format="json").status_code, 403)
+        activer(self.school, "suivi_pedagogique", "suivi_familles")
+        self.en(self.parent)
+        self.assertEqual(self.client.post("/api/suivi/evaluations-competences/lot/", self.corps(), format="json").status_code, 403)
+

@@ -12,6 +12,7 @@ import { suiviAPI, subjectsAPI } from "../../../api";
 import AideModule from "../../../components/ui/AideModule";
 import Modal from "../../../components/ui/Modal";
 import Rapports from "./Rapports";
+import { AIDE_NIVEAUX } from "./niveaux";
 import PageHeader from "../../../components/ui/PageHeader";
 import { useAuth } from "../../../hooks/useAuth";
 import { extractApiError } from "../../../utils/errors";
@@ -73,9 +74,11 @@ function Tableau({ colonnes, lignes }) {
 }
 
 function Formulaire({ champs, valeurs, setValeurs }) {
-  return champs.map(({ nom, label, type = "text", options, requis }) => (
+  return champs.map(({ nom, label, type = "text", options, requis, vide, aide }) => (
     <div key={nom}>
       <label className="label" htmlFor={`suivi-${nom}`}>{label}{requis ? " *" : ""}</label>
+      {options && options.length === 0 && vide}
+      {aide && aide(valeurs)}
       {options ? (
         <select id={`suivi-${nom}`} className="input" value={valeurs[nom] ?? ""} required={requis}
           onChange={(e) => setValeurs({ ...valeurs, [nom]: e.target.value })}>
@@ -148,8 +151,10 @@ export default function FicheSuivi() {
       titre: t("Évaluer une compétence"), fn: suiviAPI.evaluerCompetence,
       init: { date_evaluation: aujourdhui() },
       champs: [
-        { nom: "competence", label: t("Compétence"), requis: true, options: competences.map((c) => [c.id, c.nom]) },
-        { nom: "niveau", label: t("Niveau"), requis: true, options: niveaux.map((n) => [n.id, trad(n.libelle, n.libelle_en)]) },
+        { nom: "competence", label: t("Compétence"), requis: true, options: competences.map((c) => [c.id, c.nom]),
+          vide: <p className="text-sm rounded-lg bg-amber-50 border border-amber-200 text-amber-900 p-2 mb-1">{t("Aucune compétence n'existe encore.")} <Link className="underline font-medium" to={`/${racine}/suivi/referentiels`}>{t("Créez vos compétences")}</Link></p> },
+        { nom: "niveau", label: t("Niveau"), requis: true, options: niveaux.map((n) => [n.id, trad(n.libelle, n.libelle_en)]),
+          aide: (v) => { const n = niveaux.find((x) => String(x.id) === String(v.niveau)); return n ? <p className="text-xs text-slate-500 mb-1">{t(AIDE_NIVEAUX[n.code] || "")}</p> : null; } },
         { nom: "date_evaluation", label: t("Date"), type: "date", requis: true },
         { nom: "commentaire", label: t("Commentaire"), type: "textarea" },
       ],
