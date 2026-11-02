@@ -24,6 +24,13 @@ describe("reprise pendant un redémarrage", () => {
     expect(appels).toBe(3);
   });
 
+  it("ne rejoue pas un 503 de l'application", async () => {
+    const p = api.get("/x/", { adapter: adaptateur([503, 200]) }).catch((e) => e.response.status);
+    await vi.runAllTimersAsync();
+    expect(await p).toBe(503);
+    expect(appels).toBe(1);
+  });
+
   it("ne rejoue jamais une écriture", async () => {
     const p = api.post("/x/", {}, { adapter: adaptateur([502, 200]) }).catch((e) => e.response.status);
     await vi.runAllTimersAsync();
