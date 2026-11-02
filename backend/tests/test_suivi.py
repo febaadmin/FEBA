@@ -513,3 +513,11 @@ class ObjectifEditionArchivageTests(Base):
         self.assertEqual(liste.status_code, 200)
         self.assertEqual(liste.data["results"], [])
         self.assertIn(self.client.post(f"{self.url}desarchiver/").status_code, (403, 404))
+
+    def test_plan_modifiable_et_responsable_affiche(self):
+        r = self.client.post("/api/suivi/plans/", {"student": self.eleve.pk, "titre": "Soutien", "debut": "2026-11-01"}, format="json")
+        self.assertEqual(r.status_code, 201, r.data)
+        r = self.client.patch(f"/api/suivi/plans/{r.data['id']}/", {"titre": "Soutien lecture", "responsable": self.prof.pk, "fin": None}, format="json")
+        self.assertEqual(r.status_code, 200, r.data)
+        self.assertEqual(r.data["titre"], "Soutien lecture")
+        self.assertEqual(r.data["responsable_nom"], self.prof.get_full_name())

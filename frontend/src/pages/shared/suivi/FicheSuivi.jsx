@@ -24,7 +24,7 @@ import { extractApiError } from "../../../utils/errors";
 import { t } from "../../../i18n";
 
 const VIDE = "Données insuffisantes";
-const NULLABLES = ["subject", "competence", "date_debut", "date_cible", "responsable"];
+const NULLABLES = ["subject", "competence", "date_debut", "date_cible", "responsable", "fin"];
 const TENDANCES = {
   progresse: { label: "Progresse", Icone: ArrowUpRight, cls: "text-green-700" },
   regresse: { label: "Régresse", Icone: ArrowDownRight, cls: "text-red-700" },
@@ -235,17 +235,18 @@ export default function FicheSuivi() {
   };
 
   const ouvrir = (cle, extra = {}) => { setEdition(null); setValeurs({ ...FORMULAIRES[cle].init, ...extra }); setSaisie(cle); };
-  const modifierObjectif = (o) => {
-    const noms = FORMULAIRES.objectif.champs.map((c) => c.nom);
+  const modifierFiche = (cle, o) => {
+    const noms = FORMULAIRES[cle].champs.map((c) => c.nom);
     setValeurs(Object.fromEntries(noms.map((n) => [n, o[n] ?? ""])));
     setEdition(o.id);
-    setSaisie("objectif");
+    setSaisie(cle);
   };
   const soumettre = (e) => {
     e.preventDefault();
     if (edition) {
       const corps = Object.fromEntries(Object.entries(valeurs).map(([k, v]) => [k, v === "" && NULLABLES.includes(k) ? null : v]));
-      enregistrer.mutate({ fn: (c) => suiviAPI.modifierObjectif(edition, c), corps });
+      const modifier = saisie === "plan" ? suiviAPI.modifierPlan : suiviAPI.modifierObjectif;
+      enregistrer.mutate({ fn: (c) => modifier(edition, c), corps });
       return;
     }
     const corps = Object.fromEntries(Object.entries(valeurs).filter(([, v]) => v !== "" && v !== undefined));
@@ -477,7 +478,7 @@ export default function FicheSuivi() {
           {objectifs.length === 0 && <p className="card text-sm text-slate-500">{t("Aucun objectif pour le moment.")}</p>}
           {objectifs.length > 0 && <TableauObjectifs objectifs={objectifs} gere={gere} majStatut={(pk, statut) => majObjectif.mutate({ pk, corps: { statut } })}
             ajouterAction={(pk) => ouvrir("action", { objectif: pk })} majAction={(pk) => majAction.mutate({ pk, corps: { realisee_le: aujourdhui() } })}
-            modifier={modifierObjectif} archiver={setAArchiver} />}
+            modifier={(o) => modifierFiche("objectif", o)} archiver={setAArchiver} />}
           {gere && (
             <div className="space-y-2">
               <button type="button" className="btn-secondary" aria-expanded={voirArchives} onClick={() => setVoirArchives((v) => !v)}>{voirArchives ? t("Masquer les archives") : t("Voir les archives")}</button>
@@ -549,12 +550,16 @@ export default function FicheSuivi() {
               <div className="flex flex-wrap justify-between gap-2">
                 <p className="text-sm font-medium text-slate-900">{p.titre}</p>
                 {gere ? (
+                  <span className="flex flex-wrap items-center gap-2">
+                  <button type="button" className="text-xs text-primary underline" onClick={() => modifierFiche("plan", p)}>{t("Modifier")}</button>
                   <select className="input w-auto text-sm" aria-label={t("Statut")} value={p.statut} onChange={(e) => majPlan.mutate({ pk: p.id, corps: { statut: e.target.value, ...(e.target.value !== "actif" && !p.fin ? { fin: aujourdhui() } : {}) } })}>
                     <option value="actif">{t("Actif")}</option><option value="termine">{t("Terminé")}</option><option value="abandonne">{t("Abandonné")}</option>
                   </select>
+                  </span>
                 ) : null}
               </div>
               {p.motif && <p className="text-xs text-slate-600">{p.motif}</p>}
+              <p className="text-xs text-slate-500">{t("Début")} : {p.debut}{p.fin ? ` - ${t("Fin")} : ${p.fin}` : ""}{p.responsable_nom ? ` - ${t("Responsable")} : ${p.responsable_nom}` : ""}{gere && p.partage_famille ? ` - ${t("Partagé avec la famille")}` : ""}</p>
               {p.actions.map((a) => (
                 <div key={a.id} className="text-xs text-slate-700 flex flex-wrap justify-between gap-2">
                   <span>{a.description}</span>
@@ -573,7 +578,7 @@ export default function FicheSuivi() {
       </motion.div>
       </AnimatePresence>
 
-      <Modal open={!!saisie} onClose={() => setSaisie(null)} title={edition ? t("Modifier l'objectif") : saisie ? FORMULAIRES[saisie].titre : ""}>
+      <Modal open={!!saisie} onClose={() => setSaisie(null)} title={edition ? (saisie === "plan" ? t("Modifier le plan") : t("Modifier l'objectif")) : saisie ? FORMULAIRES[saisie].titre : ""}>
         {saisie && (
           <form onSubmit={soumettre} className="space-y-3">
             <Formulaire champs={FORMULAIRES[saisie].champs} valeurs={valeurs} setValeurs={setValeurs} />
