@@ -57,7 +57,7 @@ export default function NewsPage() {
         {isLoading && (
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6" aria-hidden="true">
             {[...Array(3)].map((_, i) => (
-              <div key={i} className="rounded-2xl bg-feba-cream animate-pulse h-72" />
+              <div key={i} className="rounded-2xl bg-feba-cream animate-attente h-72" />
             ))}
           </div>
         )}

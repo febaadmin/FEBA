@@ -33,9 +33,11 @@ export default {
         fenetre: "0 24px 48px -12px rgba(7,29,73,.28)",
       },
       keyframes: {
-        apparition: { from: { opacity: 0, transform: "translateY(6px)" }, to: { opacity: 1, transform: "none" } },
+        // Jamais d'opacité de départ nulle : la page ne s'efface pas, elle glisse. Pas de variation brusque de luminosité.
+        apparition: { from: { opacity: 0.55, transform: "translateY(4px)" }, to: { opacity: 1, transform: "none" } },
+        attente: { "0%, 100%": { opacity: 1 }, "50%": { opacity: 0.72 } },
       },
-      animation: { apparition: "apparition .22s ease-out backwards" },
+      animation: { apparition: "apparition .18s ease-out backwards", attente: "attente 1.8s ease-in-out infinite" },
     },
   },
   plugins: [],

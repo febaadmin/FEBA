@@ -59,7 +59,7 @@
   *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
 }
 
-.skeleton { @apply animate-pulse bg-slate-200 rounded-lg; }
+.skeleton { @apply animate-attente bg-slate-200/70 rounded-lg; }
 /* Fix: long messages must not overflow their container */
 .overflow-wrap-anywhere {
   overflow-wrap: anywhere;

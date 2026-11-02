@@ -78,8 +78,10 @@ class Report:
             return
         body = response.content.decode("utf-8", "replace")
         for tag, pattern in foreign_tags:
-            if pattern.search(body):
-                self.leaks.append(f"{who} GET {path} contient l'étiquette de {tag}")
+            trouve = pattern.search(body)
+            if trouve:
+                contexte = body[max(0, trouve.start() - 80):trouve.end() + 40]
+                self.leaks.append(f"{who} GET {path} contient l'étiquette de {tag} : {contexte}")
                 return
 
 
