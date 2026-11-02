@@ -64,6 +64,25 @@ api.interceptors.response.use(
   },
 );
 
+// Redémarrage du backend pendant un déploiement : quelques secondes de 502. Une LECTURE est
+// rejouée sans risque ; une écriture ne l'est jamais, elle pourrait s'appliquer deux fois.
+export const DELAI_REPRISE_MS = 2000;
+const REPRISES_MAX = 4;
+api.interceptors.response.use(
+  (r) => r,
+  async (error) => {
+    const orig = error.config;
+    const statut = error.response?.status;
+    if (!orig || (orig.method || "get").toLowerCase() !== "get" || ![502, 503, 504].includes(statut)) {
+      return Promise.reject(error);
+    }
+    orig.__reprises = (orig.__reprises || 0) + 1;
+    if (orig.__reprises > REPRISES_MAX) return Promise.reject(error);
+    await new Promise((fin) => { setTimeout(fin, DELAI_REPRISE_MS); });
+    return api(orig);
+  },
+);
+
 // Auto-refresh on 401
 // FIX v20: Endpoints "non-critiques" qui ne doivent PAS provoquer une déconnexion
 //          en cas de 401 (ex: branding appelé avant hydratation du token)

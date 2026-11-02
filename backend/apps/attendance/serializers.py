@@ -1,3 +1,4 @@
+from apps.core.request_text import checked_upload
 from apps.core.tenancy import TenantRelationsMixin
 from rest_framework import serializers
 from .models import Attendance
@@ -11,6 +12,9 @@ class AttendanceSerializer(TenantRelationsMixin, AcademyMetadataMixin, StudentAg
     tenant_relations = {"student": "school", "subject": "school", "school_year": "school"}
     #: Chemin ORM vers l'académie propriétaire de l'objet.
     academy_source = "student.school"
+
+    def validate_justification_file(self, fichier):
+        return checked_upload(fichier)
 
     student_name = serializers.CharField(source="student.get_full_name", read_only=True)
     student_class = serializers.CharField(source="student.current_class.name", read_only=True)

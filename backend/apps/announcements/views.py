@@ -1,3 +1,4 @@
+from apps.core.request_text import checked_upload
 from feba_project.bulk_delete import BulkDeleteMixin
 from django.db.models import Q
 from rest_framework import viewsets
@@ -73,7 +74,7 @@ class AnnouncementViewSet(BulkDeleteMixin, viewsets.ModelViewSet):
             school_year = SchoolYear.objects.filter(school=school, is_current=True).first()
 
         # Store original filename
-        attachment = self.request.FILES.get("attachment")
+        attachment = checked_upload(self.request.FILES.get("attachment"))
         kwargs = {"author": self.request.user}
         if school_year:
             kwargs["school_year"] = school_year
@@ -90,7 +91,7 @@ class AnnouncementViewSet(BulkDeleteMixin, viewsets.ModelViewSet):
         serializer.save(**kwargs)
 
     def perform_update(self, serializer):
-        attachment = self.request.FILES.get("attachment")
+        attachment = checked_upload(self.request.FILES.get("attachment"))
         kwargs = {}
         if attachment:
             kwargs["attachment_name"] = attachment.name
