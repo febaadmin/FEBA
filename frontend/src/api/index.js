@@ -66,6 +66,7 @@ api.interceptors.response.use(
 
 // Redémarrage du backend pendant un déploiement : quelques secondes de 502. Une LECTURE est
 // rejouée sans risque ; une écriture ne l'est jamais, elle pourrait s'appliquer deux fois.
+// Pas le 503 : c'est une réponse de l'application (service coupé, limite), pas un redémarrage.
 export const DELAI_REPRISE_MS = 2000;
 const REPRISES_MAX = 4;
 api.interceptors.response.use(
@@ -73,7 +74,7 @@ api.interceptors.response.use(
   async (error) => {
     const orig = error.config;
     const statut = error.response?.status;
-    if (!orig || (orig.method || "get").toLowerCase() !== "get" || ![502, 503, 504].includes(statut)) {
+    if (!orig || (orig.method || "get").toLowerCase() !== "get" || ![502, 504].includes(statut)) {
       return Promise.reject(error);
     }
     orig.__reprises = (orig.__reprises || 0) + 1;
