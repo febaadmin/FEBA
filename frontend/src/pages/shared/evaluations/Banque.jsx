@@ -10,24 +10,46 @@ import PageHeader from "../../../components/ui/PageHeader";
 import { useAcademy } from "../../../context/AcademyContext";
 import { extractApiError } from "../../../utils/errors";
 import { t } from "../../../i18n";
-import { TYPES_QUESTION, construireQuestion, libelle, telecharger } from "./commun";
+import { TYPES_QUESTION, construireQuestion, erreurChoix, libelle, telecharger } from "./commun";
 
 const AIDES = {
-  qcm_unique: "Un choix par ligne. Commencez la bonne réponse par *.",
-  qcm_multiple: "Un choix par ligne. Commencez chaque bonne réponse par *.",
   courte: "Une réponse acceptée par ligne.",
   trous: "Un trou par ligne, dans l'ordre. Séparez les réponses acceptées par |.",
   association: "Une paire par ligne : gauche = droite.",
   classement: "Un élément par ligne, dans le bon ordre. L'ordre sera mélangé pour l'élève.",
 };
 const DIFFICULTES = [[1, "Facile"], [2, "Moyenne"], [3, "Difficile"]];
+const FORM_VIDE = { type: "qcm_unique", difficulte: 2, points: 1, vrai: "vrai", choix: [{ texte: "" }, { texte: "" }, { texte: "" }, { texte: "" }] };
+
+function ChoixQcm({ type, choix, changer }) {
+  const unique = type === "qcm_unique";
+  const maj = (i, d) => changer(choix.map((c, j) => {
+    if (j === i) return { ...c, ...d };
+    return unique && d.bon ? { ...c, bon: false } : c;
+  }));
+  return (
+    <fieldset>
+      <legend className="label">{t("Réponses")} *</legend>
+      <p className="text-xs text-slate-500 mb-2">{unique ? t("Cochez la bonne réponse.") : t("Cochez toutes les bonnes réponses.")}</p>
+      <div className="space-y-2">
+        {choix.map((c, i) => (
+          <div key={i} className="flex items-center gap-2">
+            <input type={unique ? "radio" : "checkbox"} name="bonne-reponse" checked={!!c.bon} aria-label={t("Bonne réponse {n}", { n: i + 1 })} onChange={(e) => maj(i, { bon: e.target.checked })} />
+            <input className="input flex-1" aria-label={t("Réponse {n}", { n: i + 1 })} value={c.texte} onChange={(e) => maj(i, { texte: e.target.value })} />
+          </div>
+        ))}
+      </div>
+      <button type="button" className="text-xs text-primary underline mt-2" onClick={() => changer([...choix, { texte: "" }])}>{t("Ajouter une réponse")}</button>
+    </fieldset>
+  );
+}
 
 export default function Banque() {
   const qc = useQueryClient();
   const { hasFeature } = useAcademy();
   const [filtres, setFiltres] = useState({ subject: "", difficulte: "", type: "", archive: "false" });
   const [ouvert, setOuvert] = useState(false);
-  const [f, setF] = useState({ type: "qcm_unique", difficulte: 2, points: 1, vrai: "vrai" });
+  const [f, setF] = useState(FORM_VIDE);
   const params = Object.fromEntries(Object.entries(filtres).filter(([, v]) => v));
   const { data, isLoading } = useQuery({ queryKey: ["eval-questions", params], queryFn: () => evaluationsAPI.questions(params) });
   const { data: mats } = useQuery({ queryKey: ["subjects"], queryFn: () => subjectsAPI.list() });
@@ -51,7 +73,7 @@ export default function Banque() {
         await evaluationsAPI.modifierQuestion(r.data.id, d);
       }
     },
-    onSuccess: () => { toast.success(t("Enregistré.")); setOuvert(false); setF({ type: "qcm_unique", difficulte: 2, points: 1, vrai: "vrai" }); rafraichir(); },
+    onSuccess: () => { toast.success(t("Enregistré.")); setOuvert(false); setF(FORM_VIDE); rafraichir(); },
     ...erreur,
   });
   const archiver = useMutation({ mutationFn: ({ id, archive }) => evaluationsAPI.archiverQuestion(id, archive), onSuccess: rafraichir, ...erreur });
@@ -102,7 +124,12 @@ export default function Banque() {
         </ul>
       </div>
       <Modal open={ouvert} onClose={() => setOuvert(false)} title={t("Nouvelle question")} size="lg">
-        <form className="space-y-3" onSubmit={(e) => { e.preventDefault(); creer.mutate(); }}>
+        <form className="space-y-3" onSubmit={(e) => {
+          e.preventDefault();
+          const manque = erreurChoix(f.type, f.choix);
+          if (manque) { toast.error(t(manque)); return; }
+          creer.mutate();
+        }}>
           <div className="grid sm:grid-cols-2 gap-3">
             <div><label className="label" htmlFor="q-type">{t("Type")}</label>
               <select id="q-type" className="input" value={f.type} onChange={(e) => setF({ ...f, type: e.target.value })}>{TYPES_QUESTION.map(([k, l]) => <option key={k} value={k}>{t(l)}</option>)}</select></div>
@@ -110,6 +137,7 @@ export default function Banque() {
               <select id="q-matiere" className="input" value={f.subject || ""} onChange={(e) => setF({ ...f, subject: e.target.value })}><option value="">{t("Toutes matières")}</option>{matieres.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}</select></div>
           </div>
           <div><label className="label" htmlFor="q-enonce">{t("Énoncé")} *</label><textarea id="q-enonce" required className="input" rows={3} value={f.enonce || ""} onChange={(e) => setF({ ...f, enonce: e.target.value })} /></div>
+          {(f.type === "qcm_unique" || f.type === "qcm_multiple") && <ChoixQcm type={f.type} choix={f.choix} changer={(choix) => setF({ ...f, choix })} />}
           {avecLignes && <div><label className="label" htmlFor="q-lignes">{t("Réponses")} *</label><textarea id="q-lignes" required className="input" rows={4} value={f.lignes || ""} onChange={(e) => setF({ ...f, lignes: e.target.value })} /><p className="text-xs text-slate-500 mt-1">{t(AIDES[f.type])}</p></div>}
           {f.type === "vrai_faux" && <div><label className="label" htmlFor="q-vrai">{t("Bonne réponse")}</label><select id="q-vrai" className="input" value={f.vrai} onChange={(e) => setF({ ...f, vrai: e.target.value })}><option value="vrai">{t("Vrai")}</option><option value="faux">{t("Faux")}</option></select></div>}
           {f.type === "numerique" && <div className="grid grid-cols-2 gap-3">

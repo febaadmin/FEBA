@@ -19,7 +19,7 @@ Vous pouvez écrire seulement pour les matières qui vous sont affectées dans l
 ## Créer une épreuve
 
 1. **Examens et évaluations > Banque de questions > Nouvelle question**.
-2. Pour un QCM : un choix par ligne, la bonne réponse commence par `*`.
+2. Pour un QCM : saisissez les réponses et cochez la bonne.
 3. **Nouvelle épreuve** : titre, matière, classe, dates, durée, tentatives. Cochez **Peut produire une note officielle** seulement si elle doit compter dans le bulletin.
 4. Ajoutez les questions, puis **Publier l'épreuve**. Elle ne se modifie plus ensuite.
 
