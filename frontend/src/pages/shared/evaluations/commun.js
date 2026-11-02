@@ -29,8 +29,9 @@ export const lignes = (texte) => (texte || "").split("\n").map((l) => l.trim()).
 export function construireQuestion(type, f) {
   const items = lignes(f.lignes);
   if (type === "qcm_unique" || type === "qcm_multiple") {
-    const bonnes = items.map((l, i) => (l.startsWith("*") ? `c${i}` : null)).filter(Boolean);
-    const choix = items.map((l, i) => ({ id: `c${i}`, texte: l.replace(/^\*\s*/, "") }));
+    const remplis = (f.choix || []).filter((c) => c.texte?.trim());
+    const choix = remplis.map((c, i) => ({ id: `c${i}`, texte: c.texte.trim() }));
+    const bonnes = remplis.map((c, i) => (c.bon ? `c${i}` : null)).filter(Boolean);
     return { contenu: { choix }, corrige: type === "qcm_unique" ? { bonne: bonnes[0] } : { bonnes } };
   }
   if (type === "vrai_faux") return { contenu: {}, corrige: { valeur: f.vrai === "vrai" } };
@@ -46,4 +47,13 @@ export function construireQuestion(type, f) {
   }
   if (type === "classement") return { contenu: { elements: items.map((l, i) => ({ id: `e${i}`, texte: l })) }, corrige: { ordre: items.map((_, i) => `e${i}`) } };
   return { contenu: {}, corrige: {} };
+}
+
+/** Message à afficher avant l'envoi, ou null si le QCM est complet. */
+export function erreurChoix(type, choix) {
+  if (type !== "qcm_unique" && type !== "qcm_multiple") return null;
+  const remplis = (choix || []).filter((c) => c.texte?.trim());
+  if (remplis.length < 2) return "Saisissez au moins deux réponses.";
+  if (!remplis.some((c) => c.bon)) return "Cochez la bonne réponse.";
+  return null;
 }

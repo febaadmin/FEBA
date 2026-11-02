@@ -3121,4 +3121,10 @@ export const EN = {
   "Accepter": "Accept",
   "Règles de l'académie": "Academy rules",
   "Seuil": "Threshold",
+  "Cochez la bonne réponse.": "Tick the correct answer.",
+  "Cochez toutes les bonnes réponses.": "Tick all the correct answers.",
+  "Bonne réponse {n}": "Correct answer {n}",
+  "Réponse {n}": "Answer {n}",
+  "Ajouter une réponse": "Add an answer",
+  "Saisissez au moins deux réponses.": "Enter at least two answers.",
 };
