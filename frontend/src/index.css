@@ -9,7 +9,7 @@
 @layer base {
   * { @apply border-gray-200; }
   html { scroll-behavior: smooth; }
-  body { @apply bg-slate-50 text-slate-900 font-sans antialiased; }
+  body { @apply text-slate-900 font-sans antialiased; background-color: #F4F6FB; }
   :root { --sidebar-width: 260px; }
   h1, h2, h3 { @apply tracking-tight; }
   :focus-visible { outline: 2px solid #1D4ED8; outline-offset: 2px; border-radius: 4px; }
@@ -17,18 +17,41 @@
 }
 
 @layer components {
-  .btn { @apply inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all duration-150 select-none active:scale-[.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100 disabled:shadow-none; }
-  .btn-primary { @apply btn bg-primary text-white shadow-carte hover:bg-primary-700 hover:shadow-relief hover:-translate-y-px disabled:hover:translate-y-0 disabled:hover:bg-primary; }
-  .btn-secondary { @apply btn bg-white text-slate-800 border border-slate-300 shadow-carte hover:bg-slate-50 hover:border-slate-400 disabled:hover:bg-white; }
-  .btn-danger { @apply btn bg-red-600 text-white shadow-carte hover:bg-red-700 hover:shadow-relief disabled:hover:bg-red-600; }
+  /* FEBA Academic Premium : fond fixe et discret, jamais animé */
+  .fond-app {
+    background-color: #F4F6FB;
+    background-image:
+      radial-gradient(1100px 520px at 100% -8%, rgba(29,78,216,.07), transparent 70%),
+      radial-gradient(900px 480px at -8% 108%, rgba(139,92,246,.05), transparent 70%);
+  }
+  .barre-haute { @apply bg-white/80 backdrop-blur-md border-b border-white/70 shadow-carte; }
 
-  .card { @apply bg-white rounded-2xl shadow-carte border border-slate-200/80 p-6; }
+  /* Boutons */
+  .btn { @apply relative inline-flex items-center justify-center gap-2 min-h-[40px] px-4 py-2 rounded-xl text-sm font-semibold transition duration-150 ease-out select-none active:scale-[.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100 disabled:shadow-none; }
+  .btn-primary { @apply btn text-white bg-gradient-to-b from-primary-500 to-primary shadow-carte hover:to-primary-700 hover:from-primary hover:shadow-relief hover:-translate-y-px disabled:hover:translate-y-0; }
+  .btn-secondary { @apply btn bg-white/90 text-slate-800 border border-slate-300/90 shadow-carte hover:bg-white hover:border-primary-200 hover:text-primary hover:-translate-y-px disabled:hover:translate-y-0 disabled:hover:text-slate-800; }
+  .btn-tertiaire { @apply btn text-primary hover:bg-primary-50 disabled:hover:bg-transparent; }
+  .btn-danger { @apply btn text-white bg-gradient-to-b from-red-500 to-red-600 shadow-carte hover:to-red-700 hover:shadow-relief hover:-translate-y-px disabled:hover:translate-y-0; }
+  .btn-succes { @apply btn text-white bg-gradient-to-b from-emerald-500 to-emerald-600 shadow-carte hover:to-emerald-700 hover:shadow-relief hover:-translate-y-px disabled:hover:translate-y-0; }
+  .btn-icone { @apply btn min-w-[40px] px-2 text-slate-600 hover:bg-slate-100 hover:text-slate-900; }
+  /* Chargement : aria-busy sur le bouton, le texte reste lisible */
+  [aria-busy="true"].btn, .btn[aria-busy="true"] { @apply cursor-progress; }
+  .btn[aria-busy="true"]::after { content: ""; @apply w-4 h-4 rounded-full border-2 border-current border-t-transparent animate-spin; }
 
-  .input { @apply w-full bg-white border border-slate-300 rounded-xl px-4 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 transition-shadow focus:outline-none focus:ring-2 focus:ring-primary-500/40 focus:border-primary-500 disabled:bg-slate-50 disabled:text-slate-500; }
+  /* Cartes */
+  .card { @apply bg-white/95 rounded-2xl shadow-carte border border-slate-200/70 p-6; }
+  .carte-active { @apply transition duration-200 ease-out hover:shadow-relief hover:-translate-y-0.5; }
+  .bento { @apply grid gap-4 grid-cols-1 sm:grid-cols-2 xl:grid-cols-4; }
+
+  /* Champs */
+  .input { @apply w-full bg-white border border-slate-300/90 rounded-xl px-4 py-2.5 text-sm text-slate-900 shadow-douce placeholder:text-slate-400 transition-shadow focus:outline-none focus:ring-2 focus:ring-primary-500/30 focus:border-primary-500 disabled:bg-slate-50 disabled:text-slate-500; }
 
   .label { @apply block text-sm font-medium text-slate-700 mb-1.5; }
 
   .badge { @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold transition-colors; }
+
+  /* État vide commun */
+  .etat-vide { @apply flex flex-col items-center justify-center gap-2 py-12 px-4 text-center text-sm text-slate-500; }
 
   /* Menu latéral : mêmes états pour les cinq profils */
   .nav-item { @apply relative flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm text-slate-300 transition-all duration-150 hover:text-white hover:bg-white/10; }

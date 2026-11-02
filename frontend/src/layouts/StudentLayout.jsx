@@ -78,7 +78,7 @@ export default function StudentLayout() {
   const closeSidebarOnMobile = () => { if (isMobile) setOpen(false); };
 
   return (
-    <div className="flex h-screen bg-slate-50 overflow-hidden">
+    <div className="flex h-screen fond-app overflow-hidden">
       <AnimatePresence>
         {isMobile && open && (
           <motion.div key="backdrop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
@@ -134,7 +134,7 @@ export default function StudentLayout() {
 
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         <header className="bg-white border-b border-slate-100 px-3 sm:px-6 py-3 flex items-center justify-between shrink-0">
-          <button onClick={() => setOpen(!open)} className="p-2 rounded-xl hover:bg-slate-100 text-slate-600"><Menu className="w-5 h-5" /></button>
+          <button type="button" onClick={() => setOpen(!open)} aria-label={t("Ouvrir ou fermer le menu")} aria-expanded={open} className="btn-icone"><Menu className="w-5 h-5" /></button>
           <div className="flex items-center gap-3">
             <LanguageSwitcher />
             <div className="relative">

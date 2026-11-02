@@ -19,7 +19,7 @@ import { t } from "../../i18n";
 const NOTE_TYPE_BADGE = {
   devoir:        "bg-blue-50 text-blue-600",
   interrogation: "bg-purple-50 text-purple-600",
-  controle:      "bg-indigo-50 text-indigo-600",
+  controle:      "bg-indigo-50 text-primary",
   examen:        "bg-orange-50 text-orange-600",
   tp:            "bg-teal-50 text-teal-600",
   autre:         "bg-slate-50 text-slate-500",

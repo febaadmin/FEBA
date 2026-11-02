@@ -158,7 +158,7 @@ export default function SuperAdminIncidents() {
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
         {[
           { key: "new", label: "Nouveaux", value: stats.new ?? 0, tone: "text-blue-600" },
-          { key: "in_progress", label: "En cours", value: stats.by_status?.in_progress ?? 0, tone: "text-indigo-600" },
+          { key: "in_progress", label: "En cours", value: stats.by_status?.in_progress ?? 0, tone: "text-primary" },
           { key: "corrected", label: "Corrigés, à valider", value: stats.by_status?.corrected ?? 0, tone: "text-amber-600" },
           { key: "resolved", label: "Résolus", value: stats.by_status?.resolved ?? 0, tone: "text-green-600" },
           { key: "total", label: "Total", value: stats.total ?? 0, tone: "text-slate-700" },

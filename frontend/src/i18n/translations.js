@@ -1121,6 +1121,7 @@ export const EN = {
   "Supprimer l'utilisateur": "Delete user",
   "Supprimer la note": "Delete grade",
   "Supprimer la sélection": "Delete selection",
+  "Ouvrir ou fermer le menu": "Toggle menu",
   "Modifier le plan": "Edit plan",
   "Partagé avec la famille": "Shared with family",
   "Évolution de la compétence": "Skill progress",

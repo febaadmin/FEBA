@@ -28,7 +28,8 @@ export default {
       },
       fontFamily: { sans: ["Inter", "sans-serif"] },
       boxShadow: {
-        carte: "0 1px 2px rgba(7,29,73,.05), 0 1px 3px rgba(7,29,73,.04)",
+        carte: "0 1px 2px rgba(7,29,73,.04), 0 8px 24px -14px rgba(7,29,73,.14)",
+        douce: "inset 0 1px 2px rgba(7,29,73,.05)",
         relief: "0 4px 6px -1px rgba(7,29,73,.08), 0 10px 20px -6px rgba(7,29,73,.10)",
         fenetre: "0 24px 48px -12px rgba(7,29,73,.28)",
       },

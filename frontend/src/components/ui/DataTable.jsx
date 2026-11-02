@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { ChevronUp, ChevronDown, Search, ChevronLeft, ChevronRight, Trash2 } from "lucide-react";
+import { ChevronUp, ChevronDown, Search, ChevronLeft, ChevronRight, Trash2, Inbox } from "lucide-react";
 import { clsx } from "clsx";
 import { t } from "../../i18n";
 import AcademyBadge from "../AcademyBadge";
@@ -117,9 +117,9 @@ export default function DataTable({
         )}
       </div>
 
-      <div className="overflow-x-auto rounded-xl border border-slate-200">
+      <div className="overflow-x-auto rounded-xl border border-slate-200/80 bg-white">
         <table className="w-full text-sm table-cartes">
-          <thead className="bg-slate-50 border-b border-slate-200 sticky top-0">
+          <thead className="bg-slate-50/80 border-b border-slate-200 sticky top-0">
             <tr>
               {selectable && (
                 <th className="px-4 py-3 w-10">
@@ -133,24 +133,24 @@ export default function DataTable({
                   tabIndex={col.sortable !== false && sortKeyOf(col) ? 0 : undefined}
                   onKeyDown={e => { const k = sortKeyOf(col); if ((e.key === "Enter" || e.key === " ") && col.sortable !== false && k) { e.preventDefault(); toggleSort(k); } }}
                   onClick={() => { const k = sortKeyOf(col); if (col.sortable !== false && k) toggleSort(k); }}
-                  className={clsx("px-4 py-3 text-left font-semibold text-slate-600", col.sortable !== false && "cursor-pointer hover:text-primary select-none")}>
+                  className={clsx("px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500", col.sortable !== false && "cursor-pointer hover:text-primary select-none")}>
                   <div className="flex items-center gap-1">
                     {col.label}
                     {sortCol && sortCol === sortKeyOf(col) && (sortDir === "asc" ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />)}
                   </div>
                 </th>
               ))}
-              {actions && <th className="px-4 py-3 text-right font-semibold text-slate-600">{t("Actions")}</th>}
+              {actions && <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-500">{t("Actions")}</th>}
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
             {paged.length === 0 ? (
-              <tr><td colSpan={colSpanTotal} className="px-4 py-12 text-center text-slate-400 whitespace-pre-line">{emptyMessage || t("Aucun résultat")}</td></tr>
+              <tr><td colSpan={colSpanTotal} className="px-4 py-0 whitespace-pre-line"><span className="etat-vide"><Inbox className="w-7 h-7 text-slate-300" aria-hidden="true" />{emptyMessage || t("Aucun résultat")}</span></td></tr>
             ) : paged.map((row, i) => {
               const isSel = selectable && row.id && selected.has(row.id);
               return (
                 <tr key={row.id || i} onClick={() => onRowClick && onRowClick(row)}
-                  className={clsx("transition-colors", isSel ? "bg-blue-50" : "hover:bg-slate-50", onRowClick && "cursor-pointer")}>
+                  className={clsx("transition-colors", isSel ? "bg-primary-50" : "hover:bg-primary-50/40", onRowClick && "cursor-pointer")}>
                   {selectable && (
                     <td className="px-4 py-3 w-10" onClick={e => e.stopPropagation()}>
                       <input type="checkbox" checked={isSel} onChange={() => row.id && toggleOne(row.id)} className="w-4 h-4 accent-blue-600 cursor-pointer" />

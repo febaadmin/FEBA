@@ -188,7 +188,7 @@ export default function FhaAdmissions() {
             aria-pressed={tab === key}
             className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-colors ${
               tab === key
-                ? "bg-indigo-600 text-white"
+                ? "bg-primary text-white"
                 : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50"
             }`}
           >
@@ -555,7 +555,7 @@ function ApplicationTable({ rows, onOpen, onStatus, onSheet, onResend, pending, 
                   <button
                     type="button"
                     onClick={() => onOpen(row.id)}
-                    className="font-semibold text-indigo-600 hover:underline"
+                    className="font-semibold text-primary hover:underline"
                   >
                     {row.reference}
                   </button>
@@ -1006,7 +1006,7 @@ function PlacementTable({ rows, onSchedule }) {
                 <button
                   type="button"
                   onClick={() => onSchedule(row)}
-                  className="px-3 py-1.5 rounded-lg bg-indigo-600 text-white text-xs font-semibold"
+                  className="px-3 py-1.5 rounded-lg bg-primary text-white text-xs font-semibold"
                 >
                   {t("Planifier")}
                 </button>
@@ -1053,7 +1053,7 @@ function ScheduleDialog({ request, loading, onCancel, onConfirm }) {
               const iso = new Date(value).toISOString();
               onConfirm(iso);
             }}
-            className="px-4 py-2 rounded-xl bg-indigo-600 text-white text-sm font-semibold disabled:opacity-50"
+            className="px-4 py-2 rounded-xl bg-primary text-white text-sm font-semibold disabled:opacity-50"
           >
             {loading ? t("Envoi…") : t("Confirmer le créneau")}
           </button>

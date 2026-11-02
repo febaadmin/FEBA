@@ -102,7 +102,7 @@ export default function SuperAdminLayout() {
   const closeSidebarOnMobile = () => { if (isMobile) setOpen(false); };
 
   return (
-    <div className="flex h-screen bg-slate-50 overflow-hidden">
+    <div className="flex h-screen fond-app overflow-hidden">
       <AnimatePresence>
         {isMobile && open && (
           <motion.div
@@ -126,12 +126,12 @@ export default function SuperAdminLayout() {
             )}
           >
             <div className="p-5 flex items-center gap-3 border-b border-white/10">
-              <div className="w-9 h-9 rounded-xl overflow-hidden bg-white border-2 border-purple-400 flex items-center justify-center shrink-0">
+              <div className="w-9 h-9 rounded-xl overflow-hidden bg-white border-2 border-white/40 flex items-center justify-center shrink-0">
                 <AcademyLogo />
               </div>
               <div className="flex-1 min-w-0">
                 <AcademyName className="text-white font-bold text-sm leading-tight" />
-                <p className="text-purple-400 text-xs font-semibold tracking-wide">{t("SUPER ADMIN")}</p>
+                <p className="text-feba-gold text-xs font-semibold tracking-wide">{t("SUPER ADMIN")}</p>
               </div>
               {isMobile && (
                 <button onClick={() => setOpen(false)} className="text-slate-400 hover:text-white ml-auto">
@@ -169,12 +169,12 @@ export default function SuperAdminLayout() {
 
             <div className="p-3 border-t border-white/10">
               <div className="flex items-center gap-2 px-4 py-2 mb-1">
-                <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-purple-600 to-pink-600 flex items-center justify-center text-white text-xs font-bold shrink-0">
+                <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-primary to-secondary-600 flex items-center justify-center text-white text-xs font-bold shrink-0">
                   {user?.first_name?.[0]}{user?.last_name?.[0]}
                 </div>
                 <div className="min-w-0">
                   <p className="text-white text-xs font-semibold truncate">{user?.first_name} {user?.last_name}</p>
-                  <p className="text-purple-400 text-[10px]">{t("Super Administrateur")}</p>
+                  <p className="text-feba-gold text-[10px]">{t("Super Administrateur")}</p>
                 </div>
               </div>
               <button onClick={logout} className="flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm text-red-400 hover:text-red-300 hover:bg-red-500/10 transition-all w-full">
@@ -186,8 +186,8 @@ export default function SuperAdminLayout() {
       </AnimatePresence>
 
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        <header className="bg-white border-b border-slate-100 px-3 sm:px-6 py-3 flex items-center justify-between shrink-0 shadow-sm">
-          <button onClick={() => setOpen(!open)} className="p-2 rounded-xl hover:bg-slate-100 text-slate-600">
+        <header className="barre-haute px-3 sm:px-6 py-3 flex items-center justify-between shrink-0 ">
+          <button type="button" onClick={() => setOpen(!open)} aria-label={t("Ouvrir ou fermer le menu")} aria-expanded={open} className="btn-icone">
             <Menu className="w-5 h-5" />
           </button>
           <div className="flex items-center gap-3">
@@ -196,11 +196,11 @@ export default function SuperAdminLayout() {
                 la portée réelle des données consultées. */}
             <EntitySwitcher />
             <LanguageSwitcher />
-            <span className="text-xs font-bold px-3 py-1 rounded-full bg-gradient-to-r from-purple-100 to-pink-100 text-purple-700">
+            <span className="text-xs font-bold px-3 py-1 rounded-full bg-gradient-to-r from-primary-50 to-primary-100 text-primary">
               Super Admin
             </span>
             <div className="hidden sm:flex items-center gap-2 pl-3 border-l border-slate-100">
-              <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-purple-600 to-pink-600 flex items-center justify-center text-white text-xs font-bold shrink-0">
+              <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-primary to-secondary-600 flex items-center justify-center text-white text-xs font-bold shrink-0">
                 {user?.first_name?.[0]}{user?.last_name?.[0]}
               </div>
               <div>

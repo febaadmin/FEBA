@@ -39,7 +39,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-950 via-blue-900 to-blue-800 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-sidebar via-sidebar-2 to-primary flex items-center justify-center p-4">
       {/* Background pattern */}
       <div className="absolute inset-0 opacity-10" style={{
         backgroundImage: "repeating-linear-gradient(45deg, rgba(201,162,39,0.3) 0, rgba(201,162,39,0.3) 1px, transparent 0, transparent 50%)",
@@ -65,7 +65,7 @@ export default function LoginPage() {
         </div>
 
         {/* Login Card */}
-        <div className="bg-white rounded-2xl shadow-2xl p-8">
+        <div className="bg-white/95 backdrop-blur rounded-2xl shadow-fenetre border border-white/40 p-8">
           <h2 className="text-xl font-bold text-gray-800 mb-1 text-center">{tBoth("Connexion")}</h2>
           <p className="text-gray-500 text-sm text-center mb-6">{tBoth("Système de Gestion Scolaire")}</p>
 
@@ -109,7 +109,7 @@ export default function LoginPage() {
             </div>
 
             <button type="submit" disabled={isSubmitting}
-              className="w-full bg-blue-800 hover:bg-blue-900 text-white font-semibold py-2.5 rounded-lg transition flex items-center justify-center gap-2 disabled:opacity-60">
+              className="btn-primary w-full">
               {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
               {isSubmitting ? tBoth("Connexion…") : tBoth("Se connecter")}
             </button>
