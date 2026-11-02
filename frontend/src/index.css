@@ -24,7 +24,10 @@
       radial-gradient(1100px 520px at 100% -8%, rgba(29,78,216,.07), transparent 70%),
       radial-gradient(900px 480px at -8% 108%, rgba(139,92,246,.05), transparent 70%);
   }
-  .barre-haute { @apply bg-white/80 backdrop-blur-md border-b border-white/70 shadow-carte; }
+  /* backdrop-blur crée un contexte d'empilement : z-index explicite pour que ses menus passent
+     au-dessus de la page, sous le voile (z-[16]) et le menu mobile (z-20). Il capture aussi les
+     `fixed` descendants : aucun voile `fixed` à l'intérieur de cette barre. */
+  .barre-haute { @apply relative z-[15] bg-white/80 backdrop-blur-md border-b border-white/70 shadow-carte; }
 
   /* Boutons */
   .btn { @apply relative inline-flex items-center justify-center gap-2 min-h-[40px] px-4 py-2 rounded-xl text-sm font-semibold transition duration-150 ease-out select-none active:scale-[.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100 disabled:shadow-none; }
