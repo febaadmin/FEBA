@@ -12,16 +12,16 @@ import { STATUTS_COPIE } from "./commun";
 function Ligne({ l, onSave, verrou }) {
   const [points, setPoints] = useState(l.points_manuel ?? l.points_auto ?? "");
   const [commentaire, setCommentaire] = useState(l.commentaire || "");
-  const valeur = typeof l.valeur === "string" ? l.valeur : l.valeur === null ? null : JSON.stringify(l.valeur);
   return (
     <div className="border border-slate-200 rounded-lg p-3 space-y-2">
       <p className="text-sm font-medium text-slate-900">{l.enonce}</p>
-      <p className="text-sm text-slate-700 whitespace-pre-wrap bg-slate-50 rounded p-2">{valeur ?? t("Sans réponse")}</p>
+      <p className="text-sm text-slate-700 whitespace-pre-wrap bg-slate-50 rounded p-2">{l.valeur || (l.fichier ? t("Fichier déposé") : t("Sans réponse"))}</p>
+      {l.corrige_lisible && <p className="text-xs text-green-800">{t("Bonne réponse")} : {l.corrige_lisible}</p>}
       {l.fichier && <a href={l.fichier} className="text-sm text-primary underline" target="_blank" rel="noreferrer">{t("Ouvrir le fichier déposé")}</a>}
       {l.criteres && <p className="text-xs text-slate-500">{t("Critères")} : {l.criteres}</p>}
-      <p className="text-xs text-slate-500">{l.points_auto === null ? t("Correction manuelle") : t("Correction automatique : {p} pt", { p: l.points_auto })}</p>
+      <p className="text-xs text-slate-500">{l.points_auto === null ? t("Correction manuelle") : t("Correction automatique : {p} pt", { p: Number(l.points_auto) })}</p>
       <div className="flex flex-wrap gap-2 items-end">
-        <div><label className="label" htmlFor={`p-${l.version}`}>{t("Points sur {m}", { m: l.maximum })}</label><input id={`p-${l.version}`} className="input w-24" type="number" min="0" max={l.maximum} step="0.25" disabled={verrou} value={points} onChange={(e) => setPoints(e.target.value)} /></div>
+        <div><label className="label" htmlFor={`p-${l.version}`}>{t("Points sur {m}", { m: Number(l.maximum) })}</label><input id={`p-${l.version}`} className="input w-24" type="number" min="0" max={l.maximum} step="0.25" disabled={verrou} value={points} onChange={(e) => setPoints(e.target.value)} /></div>
         <div className="flex-1 min-w-40"><label className="label" htmlFor={`c-${l.version}`}>{t("Commentaire")}</label><input id={`c-${l.version}`} className="input" disabled={verrou} value={commentaire} onChange={(e) => setCommentaire(e.target.value)} /></div>
         <button type="button" className="btn-secondary" disabled={verrou || points === ""} onClick={() => onSave({ reponse: l.reponse, points, commentaire })}>{t("Enregistrer")}</button>
       </div>
@@ -48,13 +48,18 @@ export default function Copie() {
         action={<Link to={`../../${c.epreuve}`} relative="path" className="btn-secondary text-sm">{t("Retour")}</Link>} />
       <div className="card grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
         {[[t("Résultat brut"), c.score_brut], [t("Après correction"), c.score_corrige], [t("Résultat validé"), c.score_valide], [t("Total des points"), c.total_points]].map(([k, v]) => (
-          <div key={k}><p className="text-xs text-slate-500">{k}</p><p className="font-semibold text-slate-900">{v ?? "-"}</p></div>
+          <div key={k}><p className="text-xs text-slate-500">{k}</p><p className="font-semibold text-slate-900">{v === null || v === undefined ? "-" : Number(v)}</p></div>
         ))}
       </div>
       {c.lignes.map((l) => <Ligne key={l.version} l={l} verrou={c.a_transfert || c.statut === "en_cours"} onSave={(d) => corriger.mutate(d)} />)}
       <div className="card flex flex-wrap gap-2">
-        <button type="button" className="btn-primary" disabled={c.statut !== "corrigee" && c.statut !== "validee"} onClick={() => valider.mutate()}>{t("Valider la copie")}</button>
-        <button type="button" className="btn-secondary" disabled={c.choisie} onClick={() => choisir.mutate()}>{c.choisie ? t("Tentative retenue") : t("Retenir cette tentative")}</button>
+        {c.statut === "validee" ? <p className="text-sm font-medium text-green-800" role="status">{t("Copie validée. Elle compte dans les résultats à publier.")}</p> : (
+          <>
+            <button type="button" className="btn-primary" disabled={c.statut !== "corrigee" || valider.isPending} onClick={() => valider.mutate()}>{t("Valider la copie")}</button>
+            {c.statut === "remise" && <p className="text-sm text-slate-600 self-center">{t("Notez d'abord les questions à corriger.")}</p>}
+          </>
+        )}
+        {c.politique === "validee" && <button type="button" className="btn-secondary" disabled={c.choisie} onClick={() => choisir.mutate()}>{c.choisie ? t("Tentative retenue") : t("Retenir cette tentative")}</button>}
       </div>
       {signaux.length > 0 && (
         <div className="card">

@@ -7,12 +7,11 @@ import { GripVertical } from "lucide-react";
 import toast from "react-hot-toast";
 import { evaluationsAPI } from "../../../api";
 import ConfirmDialog from "../../../components/ui/ConfirmDialog";
+import Modal from "../../../components/ui/Modal";
 import PageHeader from "../../../components/ui/PageHeader";
 import { extractApiError } from "../../../utils/errors";
 import { t } from "../../../i18n";
 import { STATUTS_COPIE, STATUTS_EPREUVE, TYPES_QUESTION, libelle, telecharger } from "./commun";
-
-const vide = (v) => (v === null || v === undefined ? "-" : v);
 
 function OrdreQuestions({ questions, id, retirer }) {
   const [ordre, setOrdre] = useState(questions);
@@ -48,10 +47,12 @@ export default function EpreuveDetail() {
   const qc = useQueryClient();
   const nav = useNavigate();
   const [confirmer, setConfirmer] = useState(null);
+  const [apercu, setApercu] = useState(false);
   const { data, isLoading, isError } = useQuery({ queryKey: ["eval-epreuve", id], queryFn: () => evaluationsAPI.epreuve(id) });
   const e = data?.data;
   const brouillon = e?.statut === "brouillon";
   const { data: banque } = useQuery({ queryKey: ["eval-questions", { archive: "false" }], queryFn: () => evaluationsAPI.questions({ archive: "false" }), enabled: brouillon });
+  const { data: apercuData } = useQuery({ queryKey: ["eval-apercu", id], queryFn: () => evaluationsAPI.apercu(id), enabled: apercu });
   const { data: copies } = useQuery({ queryKey: ["eval-copies", id], queryFn: () => evaluationsAPI.copies(id), enabled: !!e && !brouillon });
   const { data: stats } = useQuery({ queryKey: ["eval-stats", id], queryFn: () => evaluationsAPI.statistiques(id), enabled: !!e && !brouillon });
   const rafraichir = () => ["eval-epreuve", "eval-copies", "eval-stats"].forEach((k) => qc.invalidateQueries({ queryKey: [k, id] }));
@@ -99,7 +100,9 @@ export default function EpreuveDetail() {
         {e.statut === "publiee" && <button type="button" className="btn-secondary" onClick={() => setConfirmer("fermer")}>{t("Clore l'épreuve")}</button>}
         {!brouillon && <button type="button" className="btn-secondary" onClick={() => (e.resultats_publies ? action.mutate(() => evaluationsAPI.publierResultats(id, false)) : setConfirmer("resultats"))}>{e.resultats_publies ? t("Retirer les résultats") : t("Publier les résultats")}</button>}
         {!brouillon && e.produit_note && <button type="button" className="btn-secondary" onClick={() => setConfirmer("transfert")}>{t("Transférer vers les notes")}</button>}
-        {!brouillon && <button type="button" className="btn-secondary" onClick={async () => telecharger((await evaluationsAPI.exporterResultats(id)).data, `resultats-${id}.csv`)}>{t("Exporter les résultats")}</button>}
+        <button type="button" className="btn-secondary" onClick={() => setApercu(true)}>{t("Aperçu de l'épreuve")}</button>
+        {!brouillon && <button type="button" className="btn-secondary" onClick={async () => telecharger((await evaluationsAPI.exporterResultats(id)).data, `resultats-${id}.csv`)}>{t("Exporter en CSV")}</button>}
+        {!brouillon && <button type="button" className="btn-secondary" onClick={async () => telecharger((await evaluationsAPI.resultatsPdf(id)).data, `resultats-${id}.pdf`)}>{t("Exporter en PDF")}</button>}
         {brouillon && <Link to={`${base}/banque`} className="btn-secondary">{t("Banque de questions")}</Link>}
         {brouillon && <button type="button" className="btn-secondary" onClick={() => setConfirmer("supprimer")}>{t("Supprimer le brouillon")}</button>}
       </div>
@@ -159,12 +162,25 @@ export default function EpreuveDetail() {
             {lignesCopies.map((c) => (
               <li key={c.id}><Link to={`${base}/copies/${c.id}`} className="py-2 px-2 flex flex-wrap justify-between gap-2 text-sm hover:bg-slate-50 rounded-lg">
                 <span>{c.eleve} <span className="text-xs text-slate-500">({t("tentative {n}", { n: c.numero })})</span></span>
-                <span className="text-slate-700">{t(STATUTS_COPIE[c.statut])} - {vide(c.note_echelle)} / {e.note_max}{c.a_transfert ? ` - ${t("Note transférée")}` : ""}</span>
+                <span className="text-slate-700">{t(STATUTS_COPIE[c.statut])} - {c.note_echelle === null ? "-" : Number(c.note_echelle)} / {Number(e.note_max)}{c.a_transfert ? ` - ${t("Note transférée")}` : ""}</span>
               </Link></li>
             ))}
           </ul>
         </div>
       )}
+      <Modal open={apercu} onClose={() => setApercu(false)} title={t("Aperçu de l'épreuve")} size="lg">
+        <div className="space-y-3">
+          {apercuData?.data?.consignes && <p className="text-sm text-slate-700 whitespace-pre-wrap">{apercuData.data.consignes}</p>}
+          {(apercuData?.data?.lignes || []).map((q, i) => (
+            <div key={i} className="rounded-xl border border-slate-200 p-3 space-y-1">
+              <p className="text-sm font-medium text-slate-900 whitespace-pre-wrap">{i + 1}. {q.enonce} <span className="text-xs font-normal text-slate-500">({Number(q.points)} pt)</span></p>
+              {q.media && q.media_type === "image" && <img src={q.media} alt={t("Illustration de la question")} className="max-w-full rounded" />}
+              {(q.contenu?.choix || q.contenu?.elements || []).map((c) => <p key={c.id} className="text-xs text-slate-600">- {c.texte}</p>)}
+              {q.corrige && <p className="text-xs text-green-800">{t("Bonne réponse")} : {q.corrige}</p>}
+            </div>
+          ))}
+        </div>
+      </Modal>
       <ConfirmDialog open={!!confirmer} onClose={() => setConfirmer(null)} loading={action.isPending || transfert.isPending}
         title={confirmer === "supprimer" ? undefined : "Confirmer"} libelle={{ fermer: "Clore l'épreuve", resultats: "Publier les résultats", transfert: "Créer les notes" }[confirmer]}
         onConfirm={() => (confirmer === "supprimer" ? evaluationsAPI.supprimerEpreuve(id).then(() => nav(base)).catch((x) => toast.error(extractApiError(x))) : confirmer === "fermer" ? action.mutate(() => evaluationsAPI.fermer(id)) : confirmer === "resultats" ? action.mutate(() => evaluationsAPI.publierResultats(id, true)) : transfert.mutate())}

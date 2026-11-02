@@ -454,6 +454,38 @@ def corrige_lisible(version):
     return lire_valeur(version, c.get(cle)) if cle else ""
 
 
+def resultats_pdf(epreuve):
+    """Résultats de l'épreuve en PDF, avec les statistiques réelles."""
+    import io
+    from xml.sax.saxutils import escape
+
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.styles import getSampleStyleSheet
+    from reportlab.lib.units import cm
+    from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
+
+    styles = getSampleStyleSheet()
+    tampon = io.BytesIO()
+    doc = SimpleDocTemplate(tampon, pagesize=A4, topMargin=2 * cm, bottomMargin=2 * cm, leftMargin=2 * cm, rightMargin=2 * cm,
+                            title=f"Résultats - {epreuve.titre}", author="FEBA")
+    s = statistiques(epreuve)
+    corps = [Paragraph(escape(f"Résultats - {epreuve.titre}"), styles["Title"]),
+             Paragraph(escape(f"{epreuve.subject.name} - {epreuve.class_obj.name}"), styles["BodyText"]),
+             Paragraph(f"Participants : {s['participants']} / {s['inscrits']}. Moyenne : {s['moyenne'] if s['moyenne'] is not None else '-'} %. Taux de réussite : {s['taux_reussite'] if s['taux_reussite'] is not None else '-'} %.", styles["BodyText"]),
+             Spacer(1, 10)]
+    lignes = [["Élève", "Tentative", "État", "Points", "Note"]]
+    for t in epreuve.tentatives.select_related("student").order_by("student__last_name", "numero"):
+        points = t.score_valide if t.score_valide is not None else t.score_corrige
+        lignes.append([Paragraph(escape(t.student.get_full_name()), styles["BodyText"]), t.numero, t.get_statut_display(),
+                       f"{points if points is not None else '-'} / {t.total_points}",
+                       f"{t.note_echelle} / {epreuve.note_max}" if t.note_echelle is not None else "-"])
+    table = Table(lignes, colWidths=[6.5 * cm, 1.8 * cm, 3.4 * cm, 2.6 * cm, 2.7 * cm], repeatRows=1)
+    table.setStyle(TableStyle([("GRID", (0, 0), (-1, -1), 0.5, "#cbd5e1"), ("BACKGROUND", (0, 0), (-1, 0), "#f1f5f9"), ("FONTSIZE", (0, 0), (-1, -1), 9)]))
+    corps.append(table)
+    doc.build(corps)
+    return tampon.getvalue()
+
+
 def epreuves_ouvertes_pour(student):
     return Epreuve.objects.filter(
         Q(eleves_cibles=student) | Q(class_obj_id=student.current_class_id, eleves_cibles__isnull=True),

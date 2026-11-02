@@ -170,6 +170,24 @@ class CompetenceViewSet(ReferentielConfigMixin, Base, viewsets.ModelViewSet):
             raise ValidationError({"detail": "Cette compétence a un historique ou des questions liées : désactivez-la pour la conserver."})
         instance.delete()
 
+    @action(detail=False, methods=["get"])
+    def exporter(self, request):
+        """CSV réimportable, avec les cellules neutralisées pour les tableurs."""
+        self._controler_personnel()
+        sortie = io.StringIO()
+        ecrivain = csv.writer(sortie)
+        ecrivain.writerow(["referentiel", "nom", "domaine", "sous_domaine", "description", "criteres"])
+        qs = self.get_queryset().order_by("referentiel__nom", "domaine", "nom")
+        referentiel = identifiant(request.query_params.get("referentiel"))
+        if referentiel:
+            qs = qs.filter(referentiel_id=referentiel)
+        for c in qs:
+            ligne = [c.referentiel.nom, c.nom, c.domaine, c.sous_domaine, c.description, c.criteres]
+            ecrivain.writerow([f"'{x}" if str(x)[:1] in "=+-@" else x for x in ligne])
+        reponse = HttpResponse(sortie.getvalue(), content_type="text/csv; charset=utf-8")
+        reponse["Content-Disposition"] = 'attachment; filename="competences.csv"'
+        return reponse
+
     @action(detail=False, methods=["post"])
     def importer(self, request):
         """CSV : nom, domaine, sous_domaine, description, criteres. Tout ou rien, doublons ignorés."""

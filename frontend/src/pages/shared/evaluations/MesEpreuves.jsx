@@ -22,7 +22,7 @@ const ETATS = {
   expiree: { label: "Expirée", Icone: Lock, cls: "bg-red-100 text-red-800", groupe: "fini" },
 };
 const ONGLETS = [["tout", "Toutes"], ["faire", "À faire"], ["venir", "À venir"], ["fini", "Terminées"]];
-const date = (d) => new Date(d).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
+const date = (d, timeZone) => new Date(d).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short", timeZone: timeZone || undefined });
 
 function CarteEpreuve({ e, base }) {
   const etat = ETATS[e.etat];
@@ -43,8 +43,8 @@ function CarteEpreuve({ e, base }) {
         <div className="col-span-2 flex flex-wrap gap-x-3"><dt className="sr-only">{t("Note maximale")}</dt><dd>{t("Sur {n}", { n: Number(e.note_max) })}</dd><dd>{t("Réussite à partir de {n} %", { n: Number(e.seuil_reussite) })}</dd></div>
       </dl>
       <div className="mt-auto rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-700">
-        {e.etat === "a_venir" ? t("S'ouvre le {d}, ferme le {f}.", { d: date(e.ouverture), f: date(e.fermeture) })
-          : e.etat === "disponible" || e.etat === "en_cours" ? `${t(e.raison)} ${t("Jusqu'au {d}", { d: date(e.fermeture) })}.` : t(e.raison)}
+        {e.etat === "a_venir" ? t("S'ouvre le {d}, ferme le {f} (heure de {z}).", { d: date(e.ouverture, e.fuseau), f: date(e.fermeture, e.fuseau), z: e.fuseau })
+          : e.etat === "disponible" || e.etat === "en_cours" ? `${t(e.raison)} ${t("Jusqu'au {d}", { d: date(e.fermeture, e.fuseau) })}.` : t(e.raison)}
       </div>
       {(e.etat === "disponible" || e.etat === "en_cours") && <Link to={`${base}/${e.id}/passer`} className="btn-primary text-center">{e.etat === "en_cours" ? t("Reprendre") : t("Commencer")}</Link>}
       {e.etat === "resultat" && <Link to={`${base}/resultat/${e.tentative_resultat}`} className="btn-primary text-center">{t("Consulter le résultat")}</Link>}

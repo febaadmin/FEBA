@@ -8,7 +8,7 @@ import { Link, useLocation, useParams } from "react-router-dom";
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { ArrowDownRight, ArrowRight, ArrowUpRight, Minus, Plus } from "lucide-react";
 import toast from "react-hot-toast";
-import { suiviAPI, subjectsAPI } from "../../../api";
+import { suiviAPI, subjectsAPI, teachersAPI } from "../../../api";
 import AideModule from "../../../components/ui/AideModule";
 import Modal from "../../../components/ui/Modal";
 import { AnimatePresence, motion } from "framer-motion";
@@ -120,6 +120,7 @@ export default function FicheSuivi() {
   const racine = useLocation().pathname.split("/")[1];
   const params = Object.fromEntries(Object.entries(filtres).filter(([, v]) => v));
   const { data, isLoading, isError } = useQuery({ queryKey: ["suivi-fiche", id, params], queryFn: () => suiviAPI.fiche(id, params) });
+  const { data: profsData } = useQuery({ queryKey: ["teachers"], queryFn: () => teachersAPI.list(), enabled: gere });
   const { data: matieresData } = useQuery({ queryKey: ["subjects"], queryFn: () => subjectsAPI.list() });
   const { data: niveauxData } = useQuery({ queryKey: ["suivi-niveaux"], queryFn: () => suiviAPI.niveaux(), enabled: gere });
   const { data: compsData } = useQuery({ queryKey: ["suivi-competences"], queryFn: () => suiviAPI.competences({ actif: true }), enabled: gere });
@@ -147,6 +148,7 @@ export default function FicheSuivi() {
   const f = data.data;
   const matieres = (matieresData?.data?.results || matieresData?.data || []).map((m) => [m.id, m.name]);
   const niveaux = niveauxData?.data || [];
+  const responsables = (profsData?.data?.results || profsData?.data || []).filter((p) => p.user_id).map((p) => [p.user_id, p.full_name]);
   const competences = compsData?.data?.results || [];
   const objectifs = objData?.data?.results || [];
   const plans = plansData?.data?.results || [];
@@ -202,6 +204,7 @@ export default function FicheSuivi() {
         { nom: "date_debut", label: t("Date de début"), type: "date" },
         { nom: "date_cible", label: t("Date cible"), type: "date" },
         { nom: "priorite", label: t("Priorité"), options: [["basse", t("Basse")], ["normale", t("Normale")], ["haute", t("Haute")]] },
+        ...(responsables.length ? [{ nom: "responsable", label: t("Responsable"), options: responsables }] : []),
       ],
     },
     plan: {
@@ -211,6 +214,7 @@ export default function FicheSuivi() {
         { nom: "motif", label: t("Motif"), type: "textarea" },
         { nom: "debut", label: t("Début"), type: "date", requis: true },
         { nom: "fin", label: t("Fin"), type: "date" },
+        ...(responsables.length ? [{ nom: "responsable", label: t("Responsable"), options: responsables }] : []),
         { nom: "partage_famille", label: t("Partager avec la famille"), type: "checkbox" },
       ],
     },
@@ -332,6 +336,14 @@ export default function FicheSuivi() {
               action={gere && <button type="button" className="text-xs text-primary underline text-left self-start" onClick={() => setOnglet("objectifs")}>{t("Créer un objectif")}</button>}
               detail={f.objectifs.has_data ? t("atteints") : null} />
           </motion.div>
+          {f.competences.has_data && (
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="card"><h2 className="text-sm font-semibold text-green-800 mb-2">{t("Points forts")}</h2>
+                {f.competences.lignes.filter((l) => l.acquis).length ? <ul className="text-sm text-slate-700 space-y-1">{f.competences.lignes.filter((l) => l.acquis).map((l) => <li key={l.competence}>{trad(l.nom, l.nom_en)}</li>)}</ul> : <p className="text-sm text-slate-500">{t("Aucune compétence acquise pour le moment.")}</p>}</div>
+              <div className="card"><h2 className="text-sm font-semibold text-amber-800 mb-2">{t("Difficultés")}</h2>
+                {f.competences.lignes.filter((l) => l.rang <= 2).length ? <ul className="text-sm text-slate-700 space-y-1">{f.competences.lignes.filter((l) => l.rang <= 2).map((l) => <li key={l.competence}>{trad(l.nom, l.nom_en)} - {trad(l.niveau, l.niveau_en)}</li>)}</ul> : <p className="text-sm text-slate-500">{t("Aucune compétence aux deux premiers niveaux.")}</p>}</div>
+            </div>
+          )}
           <div className="grid gap-4 lg:grid-cols-2">
             <Evolution lignes={f.series?.evolution || []} />
             <RepartitionCompetences lignes={f.series?.competences || []} />
