@@ -113,6 +113,8 @@ export default function FicheSuivi() {
   const { data: compsData } = useQuery({ queryKey: ["suivi-competences"], queryFn: () => suiviAPI.competences({ actif: true }), enabled: gere });
   const { data: objData } = useQuery({ queryKey: ["suivi-objectifs", id], queryFn: () => suiviAPI.objectifs({ student: id }) });
   const { data: plansData } = useQuery({ queryKey: ["suivi-plans", id], queryFn: () => suiviAPI.plans({ student: id }) });
+  const { data: histData } = useQuery({ queryKey: ["suivi-historique", id], queryFn: () => suiviAPI.evaluationsCompetences({ student: id, statut: "validee" }) });
+  const { data: obsData } = useQuery({ queryKey: ["suivi-observations", id], queryFn: () => suiviAPI.observations({ student: id }), enabled: gere });
   const { data: propData } = useQuery({ queryKey: ["suivi-propositions", id], queryFn: () => suiviAPI.evaluationsCompetences({ student: id, statut: "proposee" }), enabled: gere });
   const comparaison = useQuery({
     queryKey: ["suivi-comparer", id, cmp],
@@ -120,11 +122,12 @@ export default function FicheSuivi() {
     enabled: Object.values(cmp).every(Boolean),
   });
 
-  const rafraichir = () => ["suivi-fiche", "suivi-objectifs", "suivi-plans", "suivi-propositions"].forEach((k) => qc.invalidateQueries({ queryKey: [k] }));
+  const rafraichir = () => ["suivi-fiche", "suivi-objectifs", "suivi-plans", "suivi-propositions", "suivi-historique", "suivi-observations"].forEach((k) => qc.invalidateQueries({ queryKey: [k] }));
   const opts = { onSuccess: () => { toast.success(t("Enregistré.")); setSaisie(null); setValeurs({}); rafraichir(); }, onError: (e) => toast.error(extractApiError(e)) };
   const enregistrer = useMutation({ mutationFn: ({ fn, corps }) => fn(corps), ...opts });
   const decider = useMutation({ mutationFn: ({ pk, decision }) => suiviAPI.deciderCompetence(pk, { decision }), ...opts });
   const majObjectif = useMutation({ mutationFn: ({ pk, corps }) => suiviAPI.modifierObjectif(pk, corps), ...opts });
+  const majPlan = useMutation({ mutationFn: ({ pk, corps }) => suiviAPI.modifierPlan(pk, corps), ...opts });
   const majAction = useMutation({ mutationFn: ({ pk, corps }) => suiviAPI.modifierAction(pk, corps), ...opts });
 
   if (isLoading) return <p className="text-sm text-slate-500">{t("Chargement")}</p>;
@@ -136,6 +139,8 @@ export default function FicheSuivi() {
   const objectifs = objData?.data?.results || [];
   const plans = plansData?.data?.results || [];
   const propositions = propData?.data?.results || [];
+  const historique = histData?.data?.results || [];
+  const observations = obsData?.data?.results || [];
   const trad = (fr, en) => (localStorage.getItem("feba-lang") === "en" && en ? en : fr);
 
   const FORMULAIRES = {
@@ -351,6 +356,11 @@ export default function FicheSuivi() {
                     <div className="h-2 rounded" style={{ width: `${(l.rang / f.competences.rang_max) * 100}%`, background: l.couleur }} />
                   </div>
                   <p className={`text-xs mt-1 flex items-center gap-1 ${tend.cls}`}><tend.Icone className="w-3 h-3" />{t(tend.label)} - {l.date}</p>
+                  {l.nombre_evaluations > 1 && (
+                    <details className="text-xs text-slate-600 mt-1"><summary className="cursor-pointer">{t("Historique ({n})", { n: l.nombre_evaluations })}</summary>
+                      <ul className="mt-1 space-y-0.5">{historique.filter((h) => h.competence === l.competence).map((h) => <li key={h.id}>{h.date_evaluation} : {h.niveau_libelle}{h.commentaire ? ` - ${h.commentaire}` : ""}</li>)}</ul>
+                    </details>
+                  )}
                 </li>
               );
             })}
@@ -372,6 +382,12 @@ export default function FicheSuivi() {
             <Courbe titre={t("Évolution des évaluations du suivi")} lignes={f.evaluations.lignes} cle="score" max={100} unite=" %" />
             {f.evaluations.has_data && <Tableau colonnes={[t("Date"), t("Évaluation"), t("Matière"), t("Résultat")]} lignes={f.evaluations.lignes.map((l) => [l.date, l.titre, l.subject_name || "-", `${l.score} %`])} />}
           </div>
+          {gere && observations.length > 0 && (
+            <div className="card space-y-2">
+              <h2 className="text-sm font-semibold text-slate-800">{t("Observations de participation")}</h2>
+              <Tableau colonnes={[t("Date"), t("Participation"), t("Note")]} lignes={observations.map((o) => [o.date_observation, t({ 1: "Insuffisante", 2: "Occasionnelle", 3: "Active", 4: "Très active" }[o.niveau]), o.note || "-"])} />
+            </div>
+          )}
           {f.resultats_examens?.has_data && (
             <div className="card space-y-3">
               <h2 className="text-sm font-semibold text-slate-800">{t("Examens en ligne")}</h2>
@@ -403,6 +419,8 @@ export default function FicheSuivi() {
                 <div>
                   <p className="text-sm font-medium text-slate-900">{o.titre}{o.class_obj ? ` (${t("collectif")})` : ""}</p>
                   {o.description && <p className="text-xs text-slate-600">{o.description}</p>}
+                  {o.criteres_reussite && <p className="text-xs text-slate-600">{t("Critères de réussite")} : {o.criteres_reussite}</p>}
+                  {o.competence_nom && <p className="text-xs text-slate-500">{t("Compétence")} : {o.competence_nom}</p>}
                   {o.date_cible && <p className="text-xs text-slate-500">{t("Date cible")} : {o.date_cible}</p>}
                 </div>
                 {gere ? (
@@ -433,7 +451,14 @@ export default function FicheSuivi() {
           {plans.length === 0 && <p className="text-sm text-slate-500">{t("Aucun plan d'accompagnement.")}</p>}
           {plans.map((p) => (
             <div key={p.id} className="border border-slate-200 rounded-lg p-3 space-y-2">
-              <p className="text-sm font-medium text-slate-900">{p.titre}</p>
+              <div className="flex flex-wrap justify-between gap-2">
+                <p className="text-sm font-medium text-slate-900">{p.titre}</p>
+                {gere ? (
+                  <select className="input w-auto text-sm" aria-label={t("Statut")} value={p.statut} onChange={(e) => majPlan.mutate({ pk: p.id, corps: { statut: e.target.value, ...(e.target.value !== "actif" && !p.fin ? { fin: aujourdhui() } : {}) } })}>
+                    <option value="actif">{t("Actif")}</option><option value="termine">{t("Terminé")}</option><option value="abandonne">{t("Abandonné")}</option>
+                  </select>
+                ) : null}
+              </div>
               {p.motif && <p className="text-xs text-slate-600">{p.motif}</p>}
               {p.actions.map((a) => (
                 <div key={a.id} className="text-xs text-slate-700 flex flex-wrap justify-between gap-2">

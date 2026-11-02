@@ -3308,4 +3308,8 @@ export const EN = {
   "Évaluez ses compétences, ajoutez des évaluations et des objectifs.": "Assess skills, add assessments and goals.",
   "Évaluez une compétence": "Assess a skill",
   "Évaluez-les ensuite depuis la fiche d'un élève.": "Then assess them from a student's record.",
+  "Historique ({n})": "History ({n})",
+  "Observations de participation": "Participation observations",
+  "Utilisez Monter et Descendre. L'ordre n'est enregistré qu'après un déplacement.": "Use Move up and Move down. The order is only saved after a move.",
+  "Abandonné": "Abandoned",
 };

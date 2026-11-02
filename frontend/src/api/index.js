@@ -770,6 +770,7 @@ export const suiviAPI = {
   deciderCompetence: (id, d) => api.post(`/suivi/evaluations-competences/${id}/decider/`, d),
   creerEvaluation: (d) => api.post("/suivi/evaluations/", d),
   creerObservation: (d) => api.post("/suivi/observations/", d),
+  observations: (p) => api.get("/suivi/observations/", { params: { ...BIG, ...p } }),
   objectifs: (p) => api.get("/suivi/objectifs/", { params: { ...BIG, ...p } }),
   creerObjectif: (d) => api.post("/suivi/objectifs/", d),
   modifierObjectif: (id, d) => api.patch(`/suivi/objectifs/${id}/`, d),

@@ -47,11 +47,11 @@ function Champ({ q, valeur, changer }) {
     const ids = valeur?.length ? valeur : c.elements.map((e) => e.id);
     const texte = Object.fromEntries(c.elements.map((e) => [e.id, e.texte]));
     const bouger = (i, d) => { const n = [...ids]; [n[i], n[i + d]] = [n[i + d], n[i]]; changer(n); };
-    return <ol className="space-y-1">{ids.map((id, i) => (
+    return <><p className="text-xs text-slate-500 mb-1">{t("Utilisez Monter et Descendre. L'ordre n'est enregistré qu'après un déplacement.")}</p><ol className="space-y-1">{ids.map((id, i) => (
       <li key={id} className="flex items-center gap-2 text-sm border border-slate-200 rounded p-2"><span className="flex-1">{i + 1}. {texte[id]}</span>
         <button type="button" className="btn-secondary text-xs" disabled={i === 0} aria-label={t("Monter {x}", { x: texte[id] })} onClick={() => bouger(i, -1)}>{t("Monter")}</button>
         <button type="button" className="btn-secondary text-xs" disabled={i === ids.length - 1} aria-label={t("Descendre {x}", { x: texte[id] })} onClick={() => bouger(i, 1)}>{t("Descendre")}</button></li>
-    ))}</ol>;
+    ))}</ol></>;
   }
   return null;
 }
