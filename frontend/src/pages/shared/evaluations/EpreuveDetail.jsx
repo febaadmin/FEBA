@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
-import { Reorder } from "framer-motion";
+import { Reorder, motion } from "framer-motion";
 import { GripVertical } from "lucide-react";
 import toast from "react-hot-toast";
 import { evaluationsAPI } from "../../../api";
@@ -141,8 +141,11 @@ export default function EpreuveDetail() {
           {s.questions.length > 0 && (
             <div>
               <h3 className="text-xs font-medium text-slate-600 mb-1">{t("Réussite par question, de la plus difficile à la plus réussie")}</h3>
-              <ul className="space-y-1">{s.questions.map((q) => (
-                <li key={q.version} className="text-xs flex justify-between gap-3"><span className="truncate">{q.enonce}</span><span className="whitespace-nowrap font-medium">{q.reussite === null ? t("À corriger") : `${q.reussite} %`}</span></li>
+              <ul className="space-y-2">{s.questions.map((q) => (
+                <li key={q.version} className="text-xs">
+                  <span className="flex justify-between gap-3"><span className="truncate">{q.enonce}</span><span className="whitespace-nowrap font-medium">{q.reussite === null ? t("À corriger") : `${q.reussite} %`}</span></span>
+                  <span className="block h-2 rounded-full bg-slate-100 overflow-hidden mt-0.5" aria-hidden="true"><motion.span className="block h-full rounded-full bg-primary" initial={{ width: 0 }} animate={{ width: `${q.reussite ?? 0}%` }} transition={{ duration: 0.7 }} /></span>
+                </li>
               ))}</ul>
             </div>
           )}

@@ -1,8 +1,10 @@
 """API du suivi pédagogique. Lecture et écriture contrôlées côté serveur, par académie et par élève."""
+import csv
+import io
 import logging
 
 from django.db import transaction
-from django.db.models import Q
+from django.db.models import Count, Q
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
@@ -104,7 +106,35 @@ class ReferentielConfigMixin:
 
 class ReferentielViewSet(ReferentielConfigMixin, Base, viewsets.ModelViewSet):
     serializer_class = ReferentielSerializer
-    http_method_names = ["get", "post", "patch", "head", "options"]
+    http_method_names = ["get", "post", "patch", "delete", "head", "options"]
+
+    def perform_destroy(self, instance):
+        self._controler_personnel()
+        if EvaluationCompetence.objects.filter(competence__referentiel=instance).exists():
+            raise ValidationError({"detail": "Ce référentiel a des évaluations : archivez-le, son historique reste consultable."})
+        instance.delete()
+
+    @action(detail=True, methods=["post"])
+    def dupliquer(self, request, pk=None):
+        """Réutilise un référentiel, sans son historique."""
+        self._controler_personnel()
+        source = self.get_object()
+        school = _ecole(request)
+        nom = f"{source.nom} (copie)"
+        rang = 2
+        while Referentiel.objects.filter(school=school, nom=nom).exists():
+            nom = f"{source.nom} (copie {rang})"
+            rang += 1
+        with transaction.atomic():
+            copie = Referentiel.objects.create(school=school, nom=nom, description=source.description, subject=source.subject,
+                                               level=source.level, class_obj=source.class_obj, periode=source.periode,
+                                               programme=source.programme, created_by=request.user)
+            Competence.objects.bulk_create([
+                Competence(referentiel=copie, domaine=c.domaine, sous_domaine=c.sous_domaine, code=c.code, nom=c.nom, nom_en=c.nom_en,
+                           description=c.description, objectif=c.objectif, criteres=c.criteres, subject=c.subject,
+                           niveau_attendu=c.niveau_attendu, periode=c.periode, ordre=c.ordre)
+                for c in source.competences.filter(actif=True)])
+        return Response(self.get_serializer(copie).data, status=201)
 
     def get_queryset(self):
         return Referentiel.objects.filter(school=get_request_school(self.request)).prefetch_related("competences")
@@ -120,11 +150,54 @@ class ReferentielViewSet(ReferentielConfigMixin, Base, viewsets.ModelViewSet):
 
 class CompetenceViewSet(ReferentielConfigMixin, Base, viewsets.ModelViewSet):
     serializer_class = CompetenceSerializer
-    filterset_fields = ["referentiel", "subject", "actif"]
-    http_method_names = ["get", "post", "patch", "head", "options"]
+    filterset_fields = ["referentiel", "subject", "actif", "domaine"]
+    http_method_names = ["get", "post", "patch", "delete", "head", "options"]
 
     def get_queryset(self):
-        return Competence.objects.filter(referentiel__school=get_request_school(self.request)).select_related("referentiel")
+        valide = Q(evaluations__statut=EvaluationCompetence.VALIDEE)
+        qs = Competence.objects.filter(referentiel__school=get_request_school(self.request)).select_related(
+            "referentiel__subject", "subject").annotate(
+            nombre_evaluations=Count("evaluations", filter=valide),
+            nombre_eleves=Count("evaluations__student", filter=valide, distinct=True))
+        recherche = self.request.query_params.get("q")
+        if recherche:
+            qs = qs.filter(Q(nom__icontains=recherche) | Q(domaine__icontains=recherche) | Q(description__icontains=recherche))
+        return qs
+
+    def perform_destroy(self, instance):
+        self._controler_personnel()
+        if instance.evaluations.exists() or instance.questions.exists():
+            raise ValidationError({"detail": "Cette compétence a un historique ou des questions liées : désactivez-la pour la conserver."})
+        instance.delete()
+
+    @action(detail=False, methods=["post"])
+    def importer(self, request):
+        """CSV : nom, domaine, sous_domaine, description, criteres. Tout ou rien, doublons ignorés."""
+        self._controler_personnel()
+        referentiel = get_object_or_404(Referentiel, pk=identifiant(request.data.get("referentiel")), school=_ecole(request))
+        fichier = request.FILES.get("fichier")
+        if fichier is None or fichier.size > 2_000_000:
+            raise ValidationError({"fichier": "Fichier CSV de 2 Mo au plus attendu."})
+        try:
+            lignes = list(csv.DictReader(io.StringIO(fichier.read().decode("utf-8-sig"))))
+        except (UnicodeDecodeError, csv.Error):
+            raise ValidationError({"fichier": "CSV illisible : enregistrez-le en UTF-8."})
+        vides = [i for i, l in enumerate(lignes, 2) if not (l.get("nom") or "").strip()]
+        if vides or not lignes:
+            raise ValidationError({"fichier": f"Colonne « nom » vide, ligne(s) : {vides[:10]}." if vides else "Fichier vide."})
+        existants = {n.casefold() for n in referentiel.competences.values_list("nom", flat=True)}
+        creees = 0
+        with transaction.atomic():
+            for l in lignes:
+                nom = l["nom"].strip()[:200]
+                if nom.casefold() in existants:
+                    continue
+                existants.add(nom.casefold())
+                Competence.objects.create(referentiel=referentiel, nom=nom, domaine=(l.get("domaine") or "").strip()[:120],
+                                          sous_domaine=(l.get("sous_domaine") or "").strip()[:120],
+                                          description=(l.get("description") or "").strip(), criteres=(l.get("criteres") or "").strip())
+                creees += 1
+        return Response({"creees": creees, "ignorees": len(lignes) - creees}, status=201)
 
     def perform_create(self, serializer):
         self._controler_personnel()
@@ -187,6 +260,30 @@ class EvaluationCompetenceViewSet(ParEleveMixin, Base, mixins.ListModelMixin, mi
         controler_ecriture(request, data["student"], data["competence"].subject or data["competence"].referentiel.subject)
         serializer.save(evalue_par=request.user, decide_par=request.user, decide_le=timezone.now())
         return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    @action(detail=False, methods=["post"])
+    def lot(self, request):
+        """Évaluation collective ou de plusieurs compétences. Tout ou rien, chaque ligne contrôlée."""
+        lignes = request.data.get("lignes")
+        date_evaluation = _periode({"date": request.data.get("date")}, "date", "date")[0]
+        if not isinstance(lignes, list) or not lignes or date_evaluation is None:
+            raise ValidationError({"detail": "Indiquez la date et au moins une évaluation."})
+        school = _ecole(request)
+        a_creer = []
+        for ligne in lignes:
+            if not isinstance(ligne, dict):
+                raise ValidationError({"lignes": "Ligne invalide."})
+            student = get_object_or_404(eleves_visibles(request), pk=identifiant(ligne.get("student")))
+            competence = get_object_or_404(Competence, pk=identifiant(ligne.get("competence")), referentiel__school=school, actif=True)
+            niveau = get_object_or_404(NiveauMaitrise, pk=identifiant(ligne.get("niveau")), school=school)
+            controler_ecriture(request, student, competence.subject or competence.referentiel.subject)
+            a_creer.append(EvaluationCompetence(
+                student=student, competence=competence, niveau=niveau, date_evaluation=date_evaluation,
+                commentaire=text_field(ligne, "commentaire"), evalue_par=request.user, decide_par=request.user, decide_le=timezone.now()))
+        with transaction.atomic():
+            for e in a_creer:
+                e.save()
+        return Response({"creees": len(a_creer)}, status=201)
 
     @action(detail=True, methods=["post"])
     def decider(self, request, pk=None):

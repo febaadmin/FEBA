@@ -9,6 +9,8 @@ const fiche = {
   eleve: { id: 1, nom: "Élève Test", matricule: "M1", classe: null, sans_classe: true },
   progression: { ...vide, valeur: null, composantes: {} },
   par_matiere: { ...vide, lignes: [] },
+  series: { evolution: [], assiduite: [], competences: [] },
+  chronologie: [],
   assiduite: { ...vide, taux: null },
   participation: { ...vide, moyenne: null, nombre: 0 },
   competences: { ...vide, lignes: [], rang_max: 4 },

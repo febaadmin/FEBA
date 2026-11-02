@@ -6,6 +6,8 @@ import { Plus } from "lucide-react";
 import toast from "react-hot-toast";
 import { classesAPI, evaluationsAPI, subjectsAPI } from "../../../api";
 import Modal from "../../../components/ui/Modal";
+import { motion } from "framer-motion";
+import { apparition, cascade } from "../../../components/ui/anime";
 import AideModule from "../../../components/ui/AideModule";
 import PageHeader from "../../../components/ui/PageHeader";
 import { extractApiError } from "../../../utils/errors";
@@ -42,7 +44,7 @@ export default function Epreuves() {
       <AideModule cle="epreuves" description={t("Un quiz sert à s'entraîner. Un examen officiel peut produire une note, seulement après votre validation.")}
         etapes={[t("Créez vos questions dans la banque."), t("Créez une épreuve : classe, dates, durée."), t("Ajoutez les questions, puis publiez."), t("Corrigez les copies et validez-les."), t("Publiez les résultats, puis transférez vers les notes si besoin.")]}
         conditions={t("Vous ne pouvez créer une épreuve que pour une matière qui vous est affectée dans la classe choisie.")} />
-      <div className="card">
+      <div>
         {isLoading && <p className="text-sm text-slate-500">{t("Chargement")}</p>}
         {!isLoading && liste.length === 0 && (
           <div className="text-center py-6 space-y-2">
@@ -50,15 +52,20 @@ export default function Epreuves() {
             <button type="button" className="btn-primary" onClick={() => { setF(VIDE()); setOuvert(true); }}>{t("Nouvelle épreuve")}</button>
           </div>
         )}
-        <ul className="divide-y divide-slate-100">
+        <motion.ul variants={cascade} initial="hidden" animate="show" className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
           {liste.map((e) => (
-            <li key={e.id}><Link to={`${base}/${e.id}`} className="py-3 px-2 flex flex-wrap justify-between gap-2 hover:bg-slate-50 rounded-lg">
-              <span><span className="block text-sm font-medium text-slate-900">{e.titre}</span>
-                <span className="block text-xs text-slate-500">{libelle(TYPES_EPREUVE, e.type)} - {e.subject_name} - {e.class_name}</span></span>
-              <span className="text-sm text-slate-700">{t(STATUTS_EPREUVE[e.statut])}</span>
-            </Link></li>
+            <motion.li key={e.id} variants={apparition} whileHover={{ y: -2 }}>
+              <Link to={`${base}/${e.id}`} className="block rounded-2xl border border-slate-200 bg-white p-4 shadow-sm hover:shadow-md transition-shadow h-full">
+                <span className="flex items-start justify-between gap-2">
+                  <span className="font-semibold text-slate-900 truncate">{e.titre}</span>
+                  <span className={`rounded-full px-2.5 py-0.5 text-xs whitespace-nowrap ${{ brouillon: "bg-slate-100 text-slate-700", publiee: "bg-green-100 text-green-800", close: "bg-violet-100 text-violet-800", archivee: "bg-slate-100 text-slate-500" }[e.statut]}`}>{t(STATUTS_EPREUVE[e.statut])}</span>
+                </span>
+                <span className="block text-xs text-slate-500 mt-1">{libelle(TYPES_EPREUVE, e.type)} - {e.subject_name} - {e.class_name}</span>
+                <span className="block text-xs text-slate-600 mt-2">{t("{n} question(s)", { n: e.questions.length })} - {new Date(e.ouverture).toLocaleString(undefined, { dateStyle: "short", timeStyle: "short" })}</span>
+              </Link>
+            </motion.li>
           ))}
-        </ul>
+        </motion.ul>
       </div>
       <Modal open={ouvert} onClose={() => setOuvert(false)} title={t("Nouvelle épreuve")} size="lg">
         <form className="space-y-3" onSubmit={(e) => { e.preventDefault(); creer.mutate(); }}>

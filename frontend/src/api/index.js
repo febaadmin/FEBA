@@ -753,6 +753,9 @@ export const outboxAPI = {
   smsRetry:   (id, p)    => api.post(`/notifications/sms/${id}/retry/`, {}, { params: p }),
 };
 
+// Le client envoie du JSON par défaut : un fichier doit le préciser, sinon le serveur le refuse.
+const envoi = (d) => (d instanceof FormData ? { headers: { "Content-Type": "multipart/form-data" } } : undefined);
+
 export const suiviAPI = {
   eleves: (p) => api.get("/suivi/eleves/", { params: { page_size: 100, ...p } }),
   fiche: (id, p) => api.get(`/suivi/eleves/${id}/fiche/`, { params: p }),
@@ -767,6 +770,11 @@ export const suiviAPI = {
   modifierCompetence: (id, d) => api.patch(`/suivi/competences/${id}/`, d),
   evaluationsCompetences: (p) => api.get("/suivi/evaluations-competences/", { params: { ...BIG, ...p } }),
   evaluerCompetence: (d) => api.post("/suivi/evaluations-competences/", d),
+  evaluerLot: (d) => api.post("/suivi/evaluations-competences/lot/", d),
+  supprimerCompetence: (id) => api.delete(`/suivi/competences/${id}/`),
+  importerCompetences: (d) => api.post("/suivi/competences/importer/", d, envoi(d)),
+  dupliquerReferentiel: (id) => api.post(`/suivi/referentiels/${id}/dupliquer/`),
+  supprimerReferentiel: (id) => api.delete(`/suivi/referentiels/${id}/`),
   deciderCompetence: (id, d) => api.post(`/suivi/evaluations-competences/${id}/decider/`, d),
   creerEvaluation: (d) => api.post("/suivi/evaluations/", d),
   creerObservation: (d) => api.post("/suivi/observations/", d),
@@ -800,10 +808,10 @@ export const suiviAPI = {
 export const evaluationsAPI = {
   questions: (p) => api.get("/evaluations/questions/", { params: { ...BIG, ...p } }),
   creerQuestion: (d) => api.post("/evaluations/questions/", d),
-  modifierQuestion: (id, d) => api.patch(`/evaluations/questions/${id}/`, d),
+  modifierQuestion: (id, d) => api.patch(`/evaluations/questions/${id}/`, d, envoi(d)),
   archiverQuestion: (id, archive) => api.post(`/evaluations/questions/${id}/archiver/`, { archive }),
   dupliquerQuestion: (id) => api.post(`/evaluations/questions/${id}/dupliquer/`),
-  importerQuestions: (d) => api.post("/evaluations/questions/importer/", d),
+  importerQuestions: (d) => api.post("/evaluations/questions/importer/", d, envoi(d)),
   exporterQuestions: () => api.get("/evaluations/questions/exporter/", { responseType: "blob" }),
   epreuves: (p) => api.get("/evaluations/epreuves/", { params: { ...BIG, ...p } }),
   epreuve: (id) => api.get(`/evaluations/epreuves/${id}/`),
@@ -828,7 +836,7 @@ export const evaluationsAPI = {
   mesEpreuves: () => api.get("/evaluations/passage/"),
   demarrer: (id) => api.post(`/evaluations/passage/${id}/demarrer/`),
   tentative: (id) => api.get(`/evaluations/passage/${id}/tentative/`),
-  repondre: (id, d) => api.post(`/evaluations/passage/${id}/repondre/`, d),
+  repondre: (id, d) => api.post(`/evaluations/passage/${id}/repondre/`, d, envoi(d)),
   remettre: (id) => api.post(`/evaluations/passage/${id}/remettre/`),
   evenement: (id, type) => api.post(`/evaluations/passage/${id}/evenement/`, { type }),
   resultats: () => api.get("/evaluations/passage/resultats/"),
