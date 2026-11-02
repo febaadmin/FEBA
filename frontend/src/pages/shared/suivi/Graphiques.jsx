@@ -2,6 +2,7 @@
  * Graphiques de la fiche. Un seul axe par graphique, légende dès deux séries, valeurs
  * exactes au survol. Une série sans donnée n'est pas tracée, jamais comptée comme zéro.
  */
+import { useState } from "react";
 import { Bar, BarChart, CartesianGrid, Cell, Legend, Line, LineChart, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { useReducedMotion } from "framer-motion";
 import { t } from "../../../i18n";
@@ -37,6 +38,39 @@ export function Evolution({ lignes }) {
         {series.map(([k, nom]) => <Line key={k} type="monotone" dataKey={k} name={nom} stroke={COULEURS[k]} strokeWidth={2} connectNulls dot={{ r: 4, stroke: "#fff", strokeWidth: 2, fill: COULEURS[k] }} activeDot={{ r: 6 }} isAnimationActive={!reduit} animationDuration={900} />)}
       </LineChart>
     </Cadre>
+  );
+}
+
+export function EvolutionCompetence({ historique }) {
+  const reduit = useReducedMotion();
+  const competences = [...new Map(historique.map((h) => [h.competence, h.competence_nom])).entries()];
+  const [choix, setChoix] = useState("");
+  if (!competences.length) return null;
+  const id = String(choix || competences[0][0]);
+  const points = historique.filter((h) => String(h.competence) === id)
+    .sort((a, b) => a.date_evaluation.localeCompare(b.date_evaluation) || a.id - b.id);
+  const libelles = Object.fromEntries(historique.map((h) => [h.niveau_rang, h.niveau_libelle]));
+  const rangs = Object.keys(libelles).map(Number).sort((a, b) => a - b);
+  return (
+    <div className="space-y-2">
+      <label className="flex flex-wrap items-center gap-2 text-sm text-slate-700">
+        {t("Compétence")}
+        <select className="input max-w-sm" value={id} onChange={(e) => setChoix(e.target.value)}>
+          {competences.map(([k, nom]) => <option key={k} value={k}>{nom}</option>)}
+        </select>
+      </label>
+      <Cadre titre={t("Évolution de la compétence")}>
+        <LineChart data={points} margin={{ top: 8, right: 16, bottom: 0, left: 24 }}>
+          <CartesianGrid stroke="#e2e8f0" vertical={false} />
+          <XAxis dataKey="date_evaluation" {...AXE} axisLine={{ stroke: "#cbd5e1" }} />
+          <YAxis dataKey="niveau_rang" ticks={rangs} domain={[rangs[0], rangs[rangs.length - 1]]} allowDecimals={false} width={96}
+            tickFormatter={(r) => libelles[r] || r} {...AXE} axisLine={false} />
+          <Tooltip {...INFOBULLE} formatter={(r) => [libelles[r] || r, t("Niveau")]} />
+          <Line type="stepAfter" dataKey="niveau_rang" stroke={COULEURS.suivi} strokeWidth={2}
+            dot={{ r: 4, stroke: "#fff", strokeWidth: 2, fill: COULEURS.suivi }} isAnimationActive={!reduit} />
+        </LineChart>
+      </Cadre>
+    </div>
   );
 }
 

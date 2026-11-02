@@ -224,10 +224,14 @@ class ObjectifSerializer(_AvecEleve):
 
 class PlanSerializer(_AvecEleve):
     actions = ActionSerializer(many=True, read_only=True)
+    responsable_nom = serializers.SerializerMethodField()
+
+    def get_responsable_nom(self, obj):
+        return obj.responsable.get_full_name() if obj.responsable else None
 
     class Meta:
         model = PlanAccompagnement
-        fields = ["id", "student", "titre", "motif", "statut", "debut", "fin", "partage_famille", "responsable", "actions", "created_at"]
+        fields = ["id", "student", "titre", "motif", "statut", "debut", "fin", "partage_famille", "responsable", "responsable_nom", "actions", "created_at"]
         read_only_fields = ["id", "created_at"]
 
     def validate(self, attrs):

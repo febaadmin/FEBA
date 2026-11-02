@@ -1,0 +1,136 @@
+# Inventaire des pages
+
+Généré depuis le balayage navigateur local du 02/11/2026 (pile isolée, données de démonstration, 2 largeurs : 1366 et 390 px). Cela prouve que la page s'ouvre sans erreur JS ni débordement. **Cela ne prouve pas la production ni chaque action de la page.**
+
+Colonne Formulaires : nombre de formulaires principaux ouverts et soumis à vide (admin, enseignant, superadmin seulement).
+
+| Profil | Page | Largeurs | Erreurs JS | 5xx | Débordement mobile | Formulaires |
+|---|---|---|---|---|---|---|
+| superadmin | `/superadmin` | 390/1366 | 0 | 0 | 0 | - |
+| superadmin | `/superadmin/academies` | 390/1366 | 0 | 0 | 0 | - |
+| superadmin | `/superadmin/admins` | 390/1366 | 0 | 0 | 0 | - |
+| superadmin | `/superadmin/announcements` | 390/1366 | 0 | 0 | 0 | - |
+| superadmin | `/superadmin/appreciations` | 390/1366 | 0 | 0 | 0 | - |
+| superadmin | `/superadmin/attendance` | 390/1366 | 0 | 0 | 0 | - |
+| superadmin | `/superadmin/branding` | 390/1366 | 0 | 0 | 0 | - |
+| superadmin | `/superadmin/bulletins` | 390/1366 | 0 | 0 | 0 | - |
+| superadmin | `/superadmin/card-transactions` | 390/1366 | 0 | 0 | 0 | - |
+| superadmin | `/superadmin/classes` | 390/1366 | 0 | 0 | 0 | - |
+| superadmin | `/superadmin/dashboard` | 390/1366 | 0 | 0 | 0 | - |
+| superadmin | `/superadmin/document-templates` | 390/1366 | 0 | 0 | 0 | - |
+| superadmin | `/superadmin/emails` | 390/1366 | 0 | 0 | 0 | - |
+| superadmin | `/superadmin/enrollments` | 390/1366 | 0 | 0 | 0 | - |
+| superadmin | `/superadmin/evaluations` | 390/1366 | 0 | 0 | 0 | - |
+| superadmin | `/superadmin/fha-admissions` | 390/1366 | 0 | 0 | 0 | - |
+| superadmin | `/superadmin/grades` | 390/1366 | 0 | 0 | 0 | - |
+| superadmin | `/superadmin/homework` | 390/1366 | 0 | 0 | 0 | - |
+| superadmin | `/superadmin/incidents` | 390/1366 | 0 | 0 | 0 | - |
+| superadmin | `/superadmin/levels` | 390/1366 | 0 | 0 | 0 | - |
+| superadmin | `/superadmin/messages` | 390/1366 | 0 | 0 | 0 | - |
+| superadmin | `/superadmin/modules` | 390/1366 | 0 | 0 | 0 | - |
+| superadmin | `/superadmin/monthly-reports` | 390/1366 | 0 | 0 | 0 | - |
+| superadmin | `/superadmin/official-documents` | 390/1366 | 0 | 0 | 0 | - |
+| superadmin | `/superadmin/outbox` | 390/1366 | 0 | 0 | 0 | - |
+| superadmin | `/superadmin/parents` | 390/1366 | 0 | 0 | 0 | - |
+| superadmin | `/superadmin/payment-reminders` | 390/1366 | 0 | 0 | 0 | - |
+| superadmin | `/superadmin/payments` | 390/1366 | 0 | 0 | 0 | - |
+| superadmin | `/superadmin/profile` | 390/1366 | 0 | 0 | 0 | - |
+| superadmin | `/superadmin/schedule` | 390/1366 | 0 | 0 | 0 | - |
+| superadmin | `/superadmin/settings` | 390/1366 | 0 | 0 | 0 | - |
+| superadmin | `/superadmin/students` | 390/1366 | 0 | 0 | 0 | - |
+| superadmin | `/superadmin/suivi` | 390/1366 | 0 | 0 | 0 | - |
+| superadmin | `/superadmin/teachers` | 390/1366 | 0 | 0 | 0 | - |
+| superadmin | `/superadmin/user-files` | 390/1366 | 0 | 0 | 0 | - |
+| superadmin | `/superadmin/users` | 390/1366 | 0 | 0 | 0 | - |
+| superadmin | `/superadmin/virtual` | 390/1366 | 0 | 2 | 0 | - |
+| superadmin | `/superadmin/website` | 390/1366 | 0 | 0 | 0 | - |
+| admin | `/admin` | 390/1366 | 0 | 0 | 0 | - |
+| admin | `/admin/aide` | 390/1366 | 0 | 0 | 0 | - |
+| admin | `/admin/announcements` | 390/1366 | 0 | 0 | 0 | 1 |
+| admin | `/admin/appreciations` | 390/1366 | 0 | 0 | 0 | - |
+| admin | `/admin/attendance` | 390/1366 | 0 | 0 | 0 | 1 |
+| admin | `/admin/branding` | 390/1366 | 0 | 0 | 0 | 1 |
+| admin | `/admin/bulletins` | 390/1366 | 0 | 0 | 0 | - |
+| admin | `/admin/card-transactions` | 390/1366 | 0 | 0 | 0 | - |
+| admin | `/admin/classes` | 390/1366 | 0 | 0 | 0 | 1 |
+| admin | `/admin/dashboard` | 390/1366 | 0 | 0 | 0 | - |
+| admin | `/admin/document-templates` | 390/1366 | 0 | 0 | 0 | 2 |
+| admin | `/admin/emails` | 390/1366 | 0 | 0 | 0 | - |
+| admin | `/admin/enrollments` | 390/1366 | 0 | 0 | 0 | - |
+| admin | `/admin/evaluations` | 390/1366 | 0 | 0 | 0 | 1 |
+| admin | `/admin/evaluations/banque` | 390/1366 | 0 | 0 | 0 | 1 |
+| admin | `/admin/fha-admissions` | 390/1366 | 0 | 0 | 0 | - |
+| admin | `/admin/grades` | 390/1366 | 0 | 0 | 0 | 1 |
+| admin | `/admin/homework` | 390/1366 | 0 | 0 | 0 | 1 |
+| admin | `/admin/levels` | 390/1366 | 0 | 0 | 0 | 1 |
+| admin | `/admin/messages` | 390/1366 | 0 | 0 | 0 | 1 |
+| admin | `/admin/monthly-reports` | 390/1366 | 0 | 0 | 0 | - |
+| admin | `/admin/official-documents` | 390/1366 | 0 | 0 | 0 | - |
+| admin | `/admin/outbox` | 390/1366 | 0 | 0 | 0 | - |
+| admin | `/admin/parents` | 390/1366 | 0 | 0 | 0 | 1 |
+| admin | `/admin/payment-reminders` | 390/1366 | 0 | 0 | 0 | - |
+| admin | `/admin/payments` | 390/1366 | 0 | 0 | 0 | 1 |
+| admin | `/admin/profile` | 390/1366 | 0 | 0 | 0 | - |
+| admin | `/admin/schedule` | 390/1366 | 0 | 0 | 0 | 1 |
+| admin | `/admin/settings` | 390/1366 | 0 | 0 | 0 | 2 |
+| admin | `/admin/students` | 390/1366 | 0 | 0 | 0 | 1 |
+| admin | `/admin/suivi` | 390/1366 | 0 | 0 | 0 | - |
+| admin | `/admin/suivi/5` | 390/1366 | 0 | 0 | 0 | - |
+| admin | `/admin/suivi/alertes` | 390/1366 | 0 | 0 | 0 | - |
+| admin | `/admin/suivi/referentiels` | 390/1366 | 0 | 0 | 0 | 1 |
+| admin | `/admin/teachers` | 390/1366 | 0 | 0 | 0 | 1 |
+| admin | `/admin/user-files` | 390/1366 | 0 | 0 | 0 | 1 |
+| admin | `/admin/users` | 390/1366 | 0 | 0 | 0 | 1 |
+| admin | `/admin/virtual` | 390/1366 | 0 | 2 | 0 | 1 |
+| admin | `/admin/website` | 390/1366 | 0 | 0 | 0 | - |
+| teacher | `/teacher` | 390/1366 | 0 | 0 | 0 | - |
+| teacher | `/teacher/aide` | 390/1366 | 0 | 0 | 0 | - |
+| teacher | `/teacher/announcements` | 390/1366 | 0 | 0 | 0 | - |
+| teacher | `/teacher/attendance` | 390/1366 | 0 | 0 | 0 | 1 |
+| teacher | `/teacher/classes` | 390/1366 | 0 | 0 | 0 | - |
+| teacher | `/teacher/dashboard` | 390/1366 | 0 | 0 | 0 | - |
+| teacher | `/teacher/evaluations` | 390/1366 | 0 | 0 | 0 | 1 |
+| teacher | `/teacher/evaluations/banque` | 390/1366 | 0 | 0 | 0 | 1 |
+| teacher | `/teacher/grades` | 390/1366 | 0 | 0 | 0 | 1 |
+| teacher | `/teacher/homework` | 390/1366 | 0 | 0 | 0 | 1 |
+| teacher | `/teacher/messages` | 390/1366 | 0 | 0 | 0 | 1 |
+| teacher | `/teacher/profile` | 390/1366 | 0 | 0 | 0 | - |
+| teacher | `/teacher/schedule` | 390/1366 | 0 | 0 | 0 | - |
+| teacher | `/teacher/suivi` | 390/1366 | 0 | 0 | 0 | - |
+| teacher | `/teacher/virtual` | 390/1366 | 0 | 2 | 0 | 1 |
+| teacher | `LOGIN` | 390 | 0 | 0 | 0 | - |
+| parent | `LOGIN` | 1366 | 0 | 0 | 0 | - |
+| parent | `/parent` | 390/1366 | 0 | 0 | 0 | - |
+| parent | `/parent/aide` | 390/1366 | 0 | 0 | 0 | - |
+| parent | `/parent/announcements` | 390/1366 | 0 | 0 | 0 | - |
+| parent | `/parent/attendance` | 390/1366 | 0 | 0 | 0 | - |
+| parent | `/parent/bulletins` | 390/1366 | 0 | 0 | 0 | - |
+| parent | `/parent/children` | 390/1366 | 0 | 0 | 0 | - |
+| parent | `/parent/evaluations` | 390/1366 | 0 | 0 | 0 | - |
+| parent | `/parent/grades` | 390/1366 | 0 | 0 | 0 | - |
+| parent | `/parent/home` | 390/1366 | 0 | 0 | 0 | - |
+| parent | `/parent/homework` | 390/1366 | 0 | 0 | 0 | - |
+| parent | `/parent/messages` | 390/1366 | 0 | 0 | 0 | - |
+| parent | `/parent/payments` | 390/1366 | 0 | 0 | 0 | - |
+| parent | `/parent/profile` | 390/1366 | 0 | 0 | 0 | - |
+| parent | `/parent/schedule` | 390/1366 | 0 | 0 | 0 | - |
+| parent | `/parent/suivi` | 390/1366 | 0 | 0 | 0 | - |
+| parent | `/parent/virtual` | 390/1366 | 0 | 0 | 0 | - |
+| student | `/student` | 390/1366 | 0 | 0 | 0 | - |
+| student | `/student/aide` | 390/1366 | 0 | 0 | 0 | - |
+| student | `/student/announcements` | 390/1366 | 0 | 0 | 0 | - |
+| student | `/student/attendance` | 390/1366 | 0 | 0 | 0 | - |
+| student | `/student/bulletins` | 390/1366 | 0 | 0 | 0 | - |
+| student | `/student/evaluations` | 390/1366 | 0 | 0 | 0 | - |
+| student | `/student/grades` | 390/1366 | 0 | 0 | 0 | - |
+| student | `/student/home` | 390/1366 | 0 | 0 | 0 | - |
+| student | `/student/homework` | 390/1366 | 0 | 0 | 0 | - |
+| student | `/student/messages` | 390/1366 | 0 | 0 | 0 | - |
+| student | `/student/profile` | 390/1366 | 0 | 0 | 0 | - |
+| student | `/student/schedule` | 390/1366 | 0 | 0 | 0 | - |
+| student | `/student/suivi` | 390/1366 | 0 | 0 | 0 | - |
+| student | `/student/virtual` | 390/1366 | 0 | 0 | 0 | - |
+
+Total : 124 pages distinctes, 246 ouvertures.
+
+Les 5xx sur `/virtual` viennent de `/virtual-rooms/health/` : aucun serveur plugNmeet n'existe dans la pile locale.
