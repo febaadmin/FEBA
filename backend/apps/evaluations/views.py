@@ -7,6 +7,7 @@ from django.db import transaction
 from django.db.models import Q
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
+from django.utils.dateparse import parse_datetime
 from rest_framework import mixins, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied, ValidationError
@@ -14,7 +15,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from apps.core.features import HasEntityFeature, entity_has_feature
-from apps.core.request_text import checked_upload, identifiant, text_field
+from apps.core.request_text import checked_upload, identifiant, liste_identifiants, text_field
 from apps.core.tenancy import get_request_school
 from apps.students.models import Student
 from apps.teachers.affectations import paires_autorisees
@@ -258,6 +259,37 @@ class EpreuveViewSet(Base, viewsets.ModelViewSet):
         return Response(self.get_serializer(services.publier(epreuve)).data)
 
     @action(detail=True, methods=["post"])
+    def reordonner(self, request, pk=None):
+        """Ordre des questions d'un brouillon. Tout ou rien."""
+        epreuve = self.get_object()
+        self._droit_sur(epreuve)
+        self._brouillon(epreuve)
+        ids = liste_identifiants(request.data.get("lignes"))
+        if ids is None or sorted(ids) != sorted(epreuve.questions.values_list("pk", flat=True)):
+            raise ValidationError({"lignes": "La liste doit reprendre toutes les questions de l'épreuve."})
+        with transaction.atomic():
+            for ordre, pk_ligne in enumerate(ids):
+                epreuve.questions.filter(pk=pk_ligne).update(ordre=ordre)
+        return Response(status=204)
+
+    @action(detail=True, methods=["post"])
+    def ajuster_dates(self, request, pk=None):
+        """Dates d'une épreuve publiée : l'ouverture ne bouge plus dès qu'une tentative existe."""
+        epreuve = self.get_object()
+        self._droit_sur(epreuve)
+        if epreuve.statut != Epreuve.PUBLIEE:
+            raise ValidationError({"detail": "Seule une épreuve publiée a des dates à ajuster."})
+        ouverture = parse_datetime(text_field(request.data, "ouverture")) if request.data.get("ouverture") else epreuve.ouverture
+        fermeture = parse_datetime(text_field(request.data, "fermeture")) if request.data.get("fermeture") else epreuve.fermeture
+        if ouverture is None or fermeture is None or fermeture <= ouverture:
+            raise ValidationError({"detail": "Dates invalides : la fermeture doit suivre l'ouverture."})
+        if ouverture != epreuve.ouverture and epreuve.tentatives.exists():
+            raise ValidationError({"detail": "Des élèves ont commencé : l'ouverture ne peut plus changer."})
+        epreuve.ouverture, epreuve.fermeture = ouverture, fermeture
+        epreuve.save(update_fields=["ouverture", "fermeture", "updated_at"])
+        return Response(self.get_serializer(epreuve).data)
+
+    @action(detail=True, methods=["post"])
     def fermer(self, request, pk=None):
         epreuve = self.get_object()
         self._droit_sur(epreuve)
@@ -453,12 +485,18 @@ class PassageViewSet(Base):
     def list(self, request):
         eleve = self._eleve()
         lignes = []
-        for e in services.epreuves_ouvertes_pour(eleve).select_related("subject"):
-            tentatives = e.tentatives.filter(student=eleve)
+        for e in services.epreuves_ouvertes_pour(eleve).select_related("subject", "responsable").prefetch_related("amenagements", "questions"):
+            tentatives = sorted(e.tentatives.filter(student=eleve), key=lambda t: t.numero)
+            etat, raison, autorisees = services.etat_pour_eleve(e, eleve, tentatives)
+            derniere = tentatives[-1] if tentatives else None
             lignes.append({"id": e.pk, "titre": e.titre, "type": e.type, "subject": e.subject.name, "ouverture": e.ouverture,
-                           "fermeture": e.fermeture, "duree_minutes": e.duree_minutes, "tentatives_max": e.tentatives_max,
-                           "consignes": e.consignes, "tentatives": tentatives.count(), "statut": e.statut,
-                           "en_cours": tentatives.filter(statut=Tentative.EN_COURS).values_list("pk", flat=True).first(),
+                           "fermeture": e.fermeture, "duree_minutes": e.duree_minutes, "tentatives_max": autorisees,
+                           "consignes": e.consignes, "description": e.description, "tentatives": len(tentatives), "statut": e.statut,
+                           "enseignant": e.responsable.get_full_name() if e.responsable else None,
+                           "nombre_questions": e.questions.count() + sum(int(r.get("nombre", 0)) for r in e.regles_tirage or []),
+                           "note_max": e.note_max, "seuil_reussite": e.seuil_reussite, "etat": etat, "raison": raison,
+                           "en_cours": derniere.pk if etat == "en_cours" else None,
+                           "tentative_resultat": derniere.pk if etat == "resultat" else None,
                            "resultats_publies": e.resultats_publies})
         return Response(lignes)
 
@@ -529,11 +567,17 @@ class PassageViewSet(Base):
             raise PermissionDenied("Le résultat n'est pas encore publié.")
         versions = QuestionVersion.objects.select_related("question").in_bulk([s["version"] for s in t.sujet])
         reponses = {r.version_id: r for r in t.reponses.all()}
-        lignes = [{"enonce": versions[s["version"]].enonce, "maximum": s["points"],
-                   "points": reponses[s["version"]].points if s["version"] in reponses else None,
-                   "commentaire": reponses[s["version"]].commentaire if s["version"] in reponses else "",
-                   "explication": versions[s["version"]].explication} for s in t.sujet]
-        return Response({"note": t.note_echelle, "note_max": t.epreuve.note_max, "pourcentage": t.pourcentage, "reussie": t.reussie, "lignes": lignes})
+        corrige = services.correction_visible(t)
+        lignes = []
+        for s in t.sujet:
+            v, r = versions[s["version"]], reponses.get(s["version"])
+            lignes.append({"enonce": v.enonce, "maximum": s["points"], "points": r.points if r else None,
+                           "commentaire": r.commentaire if r else "",
+                           "reponse": services.lire_valeur(v, r.valeur) if r else "",
+                           "corrige": services.corrige_lisible(v) if corrige else None,
+                           "explication": v.explication if corrige else None})
+        return Response({"epreuve": t.epreuve.titre, "note": t.note_echelle, "note_max": t.epreuve.note_max,
+                         "pourcentage": t.pourcentage, "reussie": t.reussie, "correction_visible": corrige, "lignes": lignes})
 
 
 def _maintenant():

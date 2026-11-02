@@ -98,6 +98,7 @@ const EvalBanque = lazy(() => import("../pages/shared/evaluations/Banque"));
 const EvalDetail = lazy(() => import("../pages/shared/evaluations/EpreuveDetail"));
 const EvalCopie = lazy(() => import("../pages/shared/evaluations/Copie"));
 const EvalMes = lazy(() => import("../pages/shared/evaluations/MesEpreuves"));
+const EvalResultat = lazy(() => import("../pages/shared/evaluations/Resultat"));
 const EvalPassage = lazy(() => import("../pages/shared/evaluations/Passage"));
 const SuiviAlertes = lazy(() => import("../pages/shared/suivi/Alertes"));
 const AideGuides = lazy(() => import("../pages/shared/Aide"));
@@ -508,6 +509,7 @@ export default function AppRouter() {
         <Route path="aide" element={<AideGuides />} />
         <Route path="evaluations" element={<FeatureGate feature="evaluations_en_ligne"><EvalMes /></FeatureGate>} />
         <Route path="evaluations/:id/passer" element={<FeatureGate feature="evaluations_en_ligne"><EvalPassage /></FeatureGate>} />
+        <Route path="evaluations/resultat/:id" element={<FeatureGate feature="evaluations_en_ligne"><EvalResultat /></FeatureGate>} />
         <Route path="suivi" element={<FeatureGate feature="suivi_familles"><SuiviEleves /></FeatureGate>} />
         <Route path="suivi/:id" element={<FeatureGate feature="suivi_familles"><FicheSuivi /></FeatureGate>} />
         <Route path="attendance"    element={<StudentAttendance />} />

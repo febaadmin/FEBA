@@ -2,6 +2,8 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
+import { Reorder } from "framer-motion";
+import { GripVertical } from "lucide-react";
 import toast from "react-hot-toast";
 import { evaluationsAPI } from "../../../api";
 import ConfirmDialog from "../../../components/ui/ConfirmDialog";
@@ -11,6 +13,34 @@ import { t } from "../../../i18n";
 import { STATUTS_COPIE, STATUTS_EPREUVE, TYPES_QUESTION, libelle, telecharger } from "./commun";
 
 const vide = (v) => (v === null || v === undefined ? "-" : v);
+
+function OrdreQuestions({ questions, id, retirer }) {
+  const [ordre, setOrdre] = useState(questions);
+  const cle = questions.map((q) => q.id).join();
+  const [cleVue, setCleVue] = useState(cle);
+  if (cle !== cleVue) { setCleVue(cle); setOrdre(questions); }
+  const enregistrer = () => evaluationsAPI.reordonner(id, ordre.map((q) => q.id)).catch((x) => toast.error(extractApiError(x)));
+  const decaler = (i, d) => {
+    const n = [...ordre];
+    [n[i], n[i + d]] = [n[i + d], n[i]];
+    setOrdre(n);
+    evaluationsAPI.reordonner(id, n.map((q) => q.id)).catch((x) => toast.error(extractApiError(x)));
+  };
+  return (
+    <Reorder.Group axis="y" values={ordre} onReorder={setOrdre} className="space-y-1">
+      {ordre.map((q, i) => (
+        <Reorder.Item key={q.id} value={q} onDragEnd={enregistrer} whileDrag={{ scale: 1.01, boxShadow: "0 8px 24px rgba(15,23,42,.15)" }}
+          className="flex flex-wrap items-center gap-2 rounded-lg border border-slate-200 bg-white p-2 text-sm cursor-grab active:cursor-grabbing">
+          <GripVertical className="w-4 h-4 text-slate-400" aria-hidden="true" />
+          <span className="flex-1 min-w-0">{i + 1}. {q.enonce} <span className="text-xs text-slate-500">({libelle(TYPES_QUESTION, q.type)}, {q.points} pt)</span></span>
+          <button type="button" className="text-xs text-primary underline" disabled={i === 0} aria-label={t("Monter {x}", { x: q.enonce })} onClick={() => decaler(i, -1)}>{t("Monter")}</button>
+          <button type="button" className="text-xs text-primary underline" disabled={i === ordre.length - 1} aria-label={t("Descendre {x}", { x: q.enonce })} onClick={() => decaler(i, 1)}>{t("Descendre")}</button>
+          <button type="button" className="text-xs text-primary underline" onClick={() => retirer(q.id)}>{t("Retirer")}</button>
+        </Reorder.Item>
+      ))}
+    </Reorder.Group>
+  );
+}
 
 export default function EpreuveDetail() {
   const { id } = useParams();
@@ -42,6 +72,7 @@ export default function EpreuveDetail() {
   });
   if (isLoading) return <p className="text-sm text-slate-500">{t("Chargement")}</p>;
   if (isError) return <p className="card text-sm text-red-700">{t("Cette épreuve n'a pas pu être chargée.")}</p>;
+  const ouvertureFuture = new Date(e.ouverture) > new Date();
   const lignesCopies = copies?.data || [];
   const s = stats?.data;
   const dejaLa = new Set(e.questions.map((q) => q.version));
@@ -54,6 +85,15 @@ export default function EpreuveDetail() {
       <p className="rounded-xl border border-blue-100 bg-blue-50 p-3 text-sm text-slate-700" role="status">
         {t("Prochaine étape")} : {brouillon ? (e.questions.length ? t("publiez l'épreuve pour l'ouvrir aux élèves. Elle ne se modifiera plus.") : t("ajoutez des questions depuis la banque.")) : s?.a_corriger ? t("corrigez les copies en attente.") : lignesCopies.some((c) => c.statut === "corrigee") ? t("validez les copies corrigées.") : lignesCopies.length === 0 ? t("attendez les premières copies, à partir de l'ouverture.") : !e.resultats_publies ? t("publiez les résultats pour les rendre visibles aux élèves.") : e.produit_note ? t("transférez les copies validées vers les notes si ce n'est pas déjà fait.") : t("rien à faire, l'épreuve est terminée.")}
       </p>
+      {!brouillon && ouvertureFuture && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 flex flex-wrap items-center justify-between gap-2" role="status">
+          <span>{t("Les élèves voient cette épreuve, mais ne pourront la commencer qu'à partir du {d}.", { d: new Date(e.ouverture).toLocaleString() })}</span>
+          <button type="button" className="btn-secondary text-sm" disabled={action.isPending} onClick={() => action.mutate(() => evaluationsAPI.ajusterDates(id, { ouverture: new Date().toISOString() }))}>{t("Ouvrir maintenant")}</button>
+        </div>
+      )}
+      {e.statut === "publiee" && !ouvertureFuture && new Date(e.fermeture) < new Date() && (
+        <p className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">{t("La date de fermeture est passée : plus aucun élève ne peut commencer.")}</p>
+      )}
       <div className="card flex flex-wrap gap-2">
         {brouillon && <button type="button" className="btn-primary" onClick={() => action.mutate(() => evaluationsAPI.publier(id))}>{t("Publier l'épreuve")}</button>}
         {e.statut === "publiee" && <button type="button" className="btn-secondary" onClick={() => setConfirmer("fermer")}>{t("Clore l'épreuve")}</button>}
@@ -66,14 +106,14 @@ export default function EpreuveDetail() {
       <div className="card space-y-2">
         <h2 className="text-sm font-semibold text-slate-800">{t("Questions")} ({e.questions.length})</h2>
         {e.questions.length === 0 && <p className="text-sm text-slate-500">{t("Ajoutez des questions depuis la banque.")}</p>}
-        <ul className="divide-y divide-slate-100">
-          {e.questions.map((q) => (
-            <li key={q.id} className="py-2 flex flex-wrap justify-between gap-2 text-sm">
-              <span className="flex-1 min-w-0">{q.enonce} <span className="text-xs text-slate-500">({libelle(TYPES_QUESTION, q.type)}, {q.points} pt)</span></span>
-              {brouillon && <button type="button" className="text-xs text-primary underline" onClick={() => action.mutate(() => evaluationsAPI.retirerQuestion(id, q.id))}>{t("Retirer")}</button>}
-            </li>
-          ))}
-        </ul>
+        {brouillon && e.questions.length > 1 && <p className="text-xs text-slate-500">{t("Faites glisser une question pour changer l'ordre.")}</p>}
+        {brouillon ? <OrdreQuestions questions={e.questions} id={id} retirer={(l) => action.mutate(() => evaluationsAPI.retirerQuestion(id, l))} /> : (
+          <ol className="divide-y divide-slate-100">
+            {e.questions.map((q) => (
+              <li key={q.id} className="py-2 text-sm">{q.enonce} <span className="text-xs text-slate-500">({libelle(TYPES_QUESTION, q.type)}, {q.points} pt)</span></li>
+            ))}
+          </ol>
+        )}
         {brouillon && proposees.length > 0 && (
           <div className="pt-3 border-t border-slate-100">
             <h3 className="text-xs font-medium text-slate-600 mb-1">{t("Depuis la banque")}</h3>

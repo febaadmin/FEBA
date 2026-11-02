@@ -4,7 +4,8 @@
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { CheckCircle2, CloudOff } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
+import { CheckCircle2, ChevronLeft, ChevronRight, Clock, CloudOff, Save, Send } from "lucide-react";
 import { evaluationsAPI } from "../../../api";
 import ConfirmDialog from "../../../components/ui/ConfirmDialog";
 import { extractApiError } from "../../../utils/errors";
@@ -101,7 +102,8 @@ export default function Passage() {
       const e = r.data.find((x) => String(x.id) === String(id));
       if (!e) { setErreur(t("Cette épreuve n'est pas disponible.")); return; }
       setInfos(e);
-      if (e.en_cours) demarrer();
+      if (e.etat === "en_cours") demarrer();
+      else if (e.etat !== "disponible") setErreur(t(e.raison));
     }).catch((x) => setErreur(extractApiError(x)));
   }, [id, demarrer]);
 
@@ -146,17 +148,21 @@ export default function Passage() {
     clearTimeout(minuteur.current);
     minuteur.current = setTimeout(vider, 800);
   };
+  const [remiseEnCours, setRemiseEnCours] = useState(false);
   const remettre = async () => {
+    if (remiseEnCours) return;
+    setRemiseEnCours(true);
     await vider();
     try {
       const r = await evaluationsAPI.remettre(tentativeId);
       setEtat((e) => ({ ...e, ...r.data }));
     } catch (x) { setErreur(extractApiError(x)); }
     setConfirmer(false);
+    setRemiseEnCours(false);
   };
 
   if (erreur) return <div className="card text-sm text-red-700">{erreur}</div>;
-  if (!etat && infos && !infos.en_cours) {
+  if (!etat && infos && infos.etat !== "en_cours") {
     return (
       <div className="card max-w-xl mx-auto space-y-3">
         <h1 className="text-lg font-semibold text-slate-900">{infos.titre}</h1>
@@ -177,35 +183,41 @@ export default function Passage() {
   if (!etat) return <p className="text-sm text-slate-500">{t("Chargement")}</p>;
   if (remis) {
     return (
-      <div className="card max-w-xl mx-auto text-center space-y-3">
-        <CheckCircle2 className="w-10 h-10 text-green-700 mx-auto" />
+      <motion.div initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }} className="card max-w-xl mx-auto text-center space-y-3">
+        <motion.span initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring", stiffness: 260, damping: 18, delay: 0.1 }} className="inline-block"><CheckCircle2 className="w-12 h-12 text-green-700 mx-auto" aria-hidden="true" /></motion.span>
         <h1 className="text-lg font-semibold text-slate-900">{t("Épreuve remise")}</h1>
         <p className="text-sm text-slate-600">{t("Votre copie est enregistrée. Le résultat sera visible après sa publication.")}</p>
         {etat.recu && <p className="text-xs text-slate-500 break-all">{t("Reçu de remise")} : {etat.recu}</p>}
         <button type="button" className="btn-secondary" onClick={() => nav("../..", { relative: "path" })}>{t("Retour")}</button>
-      </div>
+      </motion.div>
     );
   }
   const q = etat.questions[indice];
   const repondues = etat.questions.filter((x) => remplie(valeurs[x.version])).length;
   return (
     <div className="max-w-3xl mx-auto space-y-3">
-      <div className="card sticky top-2 z-10 flex flex-wrap items-center justify-between gap-2">
-        <span className="text-sm text-slate-700">{t("{a} réponse(s) sur {b}", { a: repondues, b: etat.questions.length })}</span>
-        <span className="text-xs flex items-center gap-1 text-slate-600" role="status">
-          {hors > 0 ? <><CloudOff className="w-3 h-3" />{t("Sauvegarde en attente")}</> : t("Réponses sauvegardées")}
-        </span>
-        <span className={`font-mono text-lg font-semibold ${restant < 300 ? "text-red-700" : "text-slate-900"}`} role="timer" aria-label={t("Temps restant")}>{format(restant)}</span>
+      <div className="card sticky top-2 z-10 space-y-2">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <span className="text-sm font-medium text-slate-800">{t("{a} réponse(s) sur {b}", { a: repondues, b: etat.questions.length })}</span>
+          <span className={`text-xs flex items-center gap-1 ${hors > 0 ? "text-amber-800" : "text-green-800"}`} role="status">
+            {hors > 0 ? <><CloudOff className="w-3 h-3" aria-hidden="true" />{t("Sauvegarde en attente")}</> : <><Save className="w-3 h-3" aria-hidden="true" />{t("Réponses sauvegardées")}</>}
+          </span>
+          <span className={`inline-flex items-center gap-1 font-mono text-lg font-semibold ${restant < 300 ? "text-red-700" : "text-slate-900"}`} role="timer" aria-label={t("Temps restant")}><Clock className="w-4 h-4" aria-hidden="true" />{format(restant)}</span>
+        </div>
+        <div className="h-1.5 rounded-full bg-slate-100 overflow-hidden" aria-hidden="true">
+          <motion.div className="h-full rounded-full bg-primary" animate={{ width: `${(repondues / etat.questions.length) * 100}%` }} transition={{ duration: 0.3 }} />
+        </div>
       </div>
       <div className="card flex flex-wrap gap-1" aria-label={t("Questions")}>
         {etat.questions.map((x, i) => (
           <button key={x.version} type="button" disabled={!etat.retour_autorise && i < indice} onClick={() => setIndice(i)} aria-current={i === indice}
             aria-label={t("Question {n}{r}", { n: i + 1, r: remplie(valeurs[x.version]) ? `, ${t("répondue")}` : "" })}
-            className={`w-8 h-8 rounded text-xs border ${i === indice ? "border-primary font-bold" : "border-slate-200"} ${remplie(valeurs[x.version]) ? "bg-slate-800 text-white" : "bg-white text-slate-700"}`}>{i + 1}</button>
+            className={`w-9 h-9 rounded-lg text-xs border transition-colors ${i === indice ? "ring-2 ring-primary ring-offset-1 font-bold" : ""} ${remplie(valeurs[x.version]) ? "bg-primary border-primary text-white" : "bg-white border-slate-300 text-slate-700 hover:bg-slate-50"}`}>{i + 1}</button>
         ))}
       </div>
-      <div className="card space-y-3">
-        <p className="text-xs text-slate-500">{t("Question {n} sur {m}", { n: indice + 1, m: etat.questions.length })} - {q.points} pt</p>
+      <AnimatePresence mode="wait">
+      <motion.div key={q.version} initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }} transition={{ duration: 0.15 }} className="card space-y-3">
+        <p className="text-xs text-slate-500">{t("Question {n} sur {m}", { n: indice + 1, m: etat.questions.length })} - {Number(q.points)} pt</p>
         <p className="text-base text-slate-900 whitespace-pre-wrap">{q.enonce}</p>
         {q.media && q.media_type === "image" && <img src={q.media} alt={t("Illustration de la question")} className="max-w-full rounded" />}
         {q.media && q.media_type === "audio" && <audio controls src={q.media} className="w-full" />}
@@ -223,15 +235,16 @@ export default function Passage() {
             {valeurs[q.version] && <p className="text-xs text-green-700 mt-1">{t("Fichier reçu")}</p>}
           </div>
         ) : <Champ key={q.version} q={q} valeur={valeurs[q.version]} changer={(v) => changer(q.version, v)} />}
-      </div>
+      </motion.div>
+      </AnimatePresence>
       <div className="flex flex-wrap justify-between gap-2">
-        <button type="button" className="btn-secondary" disabled={indice === 0 || !etat.retour_autorise} onClick={() => setIndice(indice - 1)}>{t("Précédente")}</button>
+        <button type="button" className="btn-secondary" disabled={indice === 0 || !etat.retour_autorise} onClick={() => setIndice(indice - 1)}><span className="inline-flex items-center gap-1"><ChevronLeft className="w-4 h-4" aria-hidden="true" />{t("Précédente")}</span></button>
         {indice < etat.questions.length - 1
-          ? <button type="button" className="btn-primary" onClick={() => setIndice(indice + 1)}>{t("Suivante")}</button>
-          : <button type="button" className="btn-primary" onClick={() => setConfirmer(true)}>{t("Remettre ma copie")}</button>}
+          ? <button type="button" className="btn-primary" onClick={() => setIndice(indice + 1)}><span className="inline-flex items-center gap-1">{t("Suivante")}<ChevronRight className="w-4 h-4" aria-hidden="true" /></span></button>
+          : <button type="button" className="btn-primary" onClick={() => setConfirmer(true)}><span className="inline-flex items-center gap-1"><Send className="w-4 h-4" aria-hidden="true" />{t("Remettre ma copie")}</span></button>}
       </div>
       <ConfirmDialog open={confirmer} title="Confirmer" libelle="Remettre ma copie" onClose={() => setConfirmer(false)} onConfirm={remettre}
-        message={t("Remettre votre copie ? {a} réponse(s) sur {b}. Vous ne pourrez plus la modifier.", { a: repondues, b: etat.questions.length })} />
+        loading={remiseEnCours} message={t("Remettre votre copie ? {a} réponse(s) sur {b}. Vous ne pourrez plus la modifier.", { a: repondues, b: etat.questions.length })} />
     </div>
   );
 }
