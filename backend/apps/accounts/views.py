@@ -18,6 +18,8 @@ from .serializers import (
 from .permissions import IsAdminOrAbove, CanManageUser
 from apps.core.tenancy import get_request_school
 
+from rest_framework_simplejwt.exceptions import TokenError
+
 from apps.core.images import image_sure
 
 logger = logging.getLogger("apps")
@@ -45,8 +47,8 @@ class LogoutView(APIView):
                 RefreshToken(rt).blacklist()
             logger.info(f"Logout: {request.user.email}")
             return Response({"detail": "Déconnexion réussie."})
-        except Exception as e:
-            return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        except TokenError:
+            return Response({"detail": "Session déjà fermée ou jeton invalide."}, status=status.HTTP_400_BAD_REQUEST)
 
 
 class MeView(generics.RetrieveUpdateAPIView):

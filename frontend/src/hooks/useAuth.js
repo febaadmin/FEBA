@@ -19,8 +19,10 @@ export function useAuth() {
        serveur réétablira avant toute requête métier. */
     setAcademyScope(SCOPE_UNKNOWN);
     const { data } = await authAPI.login({ email, password });
-    setAuth(null, data.access, data.refresh);
-    const me = await authAPI.me();
+    // Le profil est lu AVANT d'enregistrer la session. Enregistrer les jetons réveille le contexte
+    // d'académie, dont la portée annule les requêtes en vol : la lecture du profil tombait, et une
+    // connexion acceptée par le serveur finissait en « identifiants incorrects ».
+    const me = await authAPI.me({ horsPortee: true, headers: { Authorization: `Bearer ${data.access}` } });
     setAuth(me.data, data.access, data.refresh);
     // La préférence enregistrée dans le profil est PRIORITAIRE à la
     // reconnexion (exigence bilinguisme) : elle écrase le choix local.

@@ -307,7 +307,7 @@ class PaymentViewSet(BulkDeleteMixin, viewsets.ModelViewSet):
             return Response({**PaymentSerializer(payment, context={"request": request}).data, "receipt_url": url})
         except Exception as e:
             logger.error(f"Receipt generation error: {e}", exc_info=True)
-            return Response({"error": str(e)}, status=500)
+            return Response({"error": "Le reçu n'a pas pu être généré."}, status=500)
 
     @action(detail=False, methods=["get"])
     def summary(self, request):
