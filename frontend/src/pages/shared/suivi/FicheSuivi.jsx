@@ -148,7 +148,7 @@ export default function FicheSuivi() {
   const f = data.data;
   const matieres = (matieresData?.data?.results || matieresData?.data || []).map((m) => [m.id, m.name]);
   const niveaux = niveauxData?.data || [];
-  const responsables = (profsData?.data?.results || profsData?.data || []).filter((p) => p.user).map((p) => [p.user, p.full_name || p.user_name || p.user_detail?.full_name || `${p.user_detail?.first_name || ""} ${p.user_detail?.last_name || ""}`.trim() || String(p.user)]);
+  const responsables = (profsData?.data?.results || profsData?.data || []).filter((p) => p.user_id).map((p) => [p.user_id, p.full_name]);
   const competences = compsData?.data?.results || [];
   const objectifs = objData?.data?.results || [];
   const plans = plansData?.data?.results || [];
