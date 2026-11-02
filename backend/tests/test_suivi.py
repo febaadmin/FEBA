@@ -455,3 +455,61 @@ class ExportCompetencesTests(Base):
         self.en(self.compte)
         self.assertEqual(self.client.get("/api/suivi/competences/exporter/").status_code, 403)
 
+
+
+class ObjectifEditionArchivageTests(Base):
+    def setUp(self):
+        super().setUp()
+        self.client.force_authenticate(self.prof)
+        r = self.client.post("/api/suivi/objectifs/", {"student": self.eleve.pk, "titre": "Lire", "subject": self.maths.pk}, format="json")
+        self.assertEqual(r.status_code, 201)
+        self.pk = r.data["id"]
+        self.url = f"/api/suivi/objectifs/{self.pk}/"
+
+    def test_modification_tracee_et_champ_videable(self):
+        r = self.client.patch(self.url, {"titre": "Lire vite", "responsable": self.prof.pk, "subject": None}, format="json")
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(r.data["responsable_nom"], self.prof.get_full_name())
+        self.assertIsNone(r.data["subject"])
+        self.assertIn("titre", r.data["historique"][0]["note"])
+
+    def test_modifier_sans_changement_ne_trace_rien(self):
+        avant = ObjectifHistorique.objects.filter(objectif_id=self.pk).count()
+        self.assertEqual(self.client.patch(self.url, {"titre": "Lire"}, format="json").status_code, 200)
+        self.assertEqual(ObjectifHistorique.objects.filter(objectif_id=self.pk).count(), avant)
+
+    def test_archiver_retire_du_tableau_sans_supprimer_puis_restaure(self):
+        self.assertEqual(self.client.post(f"{self.url}archiver/").status_code, 200)
+        liste = f"/api/suivi/objectifs/?student={self.eleve.pk}"
+        self.assertEqual(self.client.get(liste).data["results"], [])
+        self.assertEqual(len(self.client.get(liste + "&archives=1").data["results"]), 1)
+        r = self.client.post(f"{self.url}desarchiver/")
+        self.assertEqual(r.status_code, 200)
+        self.assertIsNone(r.data["archive_le"])
+        self.assertEqual(len(self.client.get(liste).data["results"]), 1)
+        notes = list(ObjectifHistorique.objects.filter(objectif_id=self.pk).values_list("note", flat=True))
+        self.assertIn("Archivé", notes)
+        self.assertIn("Sorti des archives", notes)
+
+    def test_date_d_archivage_non_modifiable_par_le_client(self):
+        r = self.client.patch(self.url, {"archive_le": "2020-01-01T00:00:00Z"}, format="json")
+        self.assertEqual(r.status_code, 200)
+        self.assertIsNone(r.data["archive_le"])
+
+    def test_enseignant_d_une_autre_classe_ne_peut_pas_archiver(self):
+        autre = make_user("autre@s.bj", "teacher", self.school)
+        Teacher.objects.create(user=autre).classes.set([self.b])
+        self.client.force_authenticate(autre)
+        self.assertIn(self.client.post(f"{self.url}archiver/").status_code, (403, 404))
+        self.assertIsNone(Objectif.objects.get(pk=self.pk).archive_le)
+
+    def test_famille_ne_voit_ni_les_archives_ni_ne_peut_archiver(self):
+        activer(self.school, "suivi_pedagogique", "suivi_familles")
+        self.client.post(f"{self.url}archiver/")
+        compte = make_user("fam@s.bj", "parent", self.school)
+        ParentStudent.objects.create(parent=Parent.objects.create(user=compte), student=self.eleve)
+        self.client.force_authenticate(compte)
+        liste = self.client.get(f"/api/suivi/objectifs/?student={self.eleve.pk}&archives=1")
+        self.assertEqual(liste.status_code, 200)
+        self.assertEqual(liste.data["results"], [])
+        self.assertIn(self.client.post(f"{self.url}desarchiver/").status_code, (403, 404))

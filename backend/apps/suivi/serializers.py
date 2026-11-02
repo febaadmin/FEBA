@@ -192,13 +192,17 @@ class ObjectifSerializer(_AvecEleve):
     historique = HistoriqueObjectifSerializer(many=True, read_only=True)
     subject_name = serializers.CharField(source="subject.name", read_only=True, default=None)
     competence_nom = serializers.CharField(source="competence.nom", read_only=True, default=None)
+    responsable_nom = serializers.SerializerMethodField()
+
+    def get_responsable_nom(self, obj):
+        return obj.responsable.get_full_name() if obj.responsable else None
 
     class Meta:
         model = Objectif
         fields = ["id", "student", "class_obj", "subject", "subject_name", "competence", "competence_nom", "titre",
-                  "description", "criteres_reussite", "resultat_attendu", "commentaire", "date_debut", "date_cible", "priorite", "statut", "responsable",
-                  "actions", "historique", "created_at"]
-        read_only_fields = ["id", "created_at"]
+                  "description", "criteres_reussite", "resultat_attendu", "commentaire", "date_debut", "date_cible", "priorite", "statut", "responsable", "responsable_nom",
+                  "actions", "historique", "created_at", "archive_le"]
+        read_only_fields = ["id", "created_at", "archive_le"]
 
     def validate(self, attrs):
         attrs = self._controler(attrs)
