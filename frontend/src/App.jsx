@@ -1,3 +1,4 @@
+import { MotionConfig } from "framer-motion";
 import AppRouter from "./router";
 import { useI18n } from "./i18n";
 import ErrorBoundary from "./components/ErrorBoundary";
@@ -15,7 +16,9 @@ export default function App() {
   useSessionKeepAlive();
   return (
     <ErrorBoundary>
-      <AppRouter key={lang} />
+      <MotionConfig reducedMotion="user">
+        <AppRouter key={lang} />
+      </MotionConfig>
     </ErrorBoundary>
   );
 }

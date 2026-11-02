@@ -71,7 +71,8 @@ class Epreuve(models.Model):
         ("quiz", "Quiz d'entraînement"), ("interrogation", "Interrogation"), ("evaluation", "Évaluation"),
         ("examen", "Examen officiel"), ("blanc", "Examen blanc"), ("positionnement", "Évaluation de positionnement"),
         ("diagnostique", "Évaluation diagnostique"), ("competences", "Évaluation de compétences"),
-        ("fin_formation", "Évaluation de fin de formation"),
+        ("fin_formation", "Évaluation de fin de formation"), ("surveille", "Devoir surveillé"),
+        ("formative", "Évaluation formative"), ("certificative", "Évaluation certificative"),
     ]
     BROUILLON, PUBLIEE, CLOSE, ARCHIVEE = "brouillon", "publiee", "close", "archivee"
     STATUTS = [(BROUILLON, "Brouillon"), (PUBLIEE, "Publiée"), (CLOSE, "Close"), (ARCHIVEE, "Archivée")]
@@ -108,6 +109,7 @@ class Epreuve(models.Model):
     regles_tirage = models.JSONField(default=list, blank=True)
     statut = models.CharField(max_length=9, choices=STATUTS, default=BROUILLON)
     resultats_publies = models.BooleanField(default=False)
+    afficher_correction = models.BooleanField(default=False, help_text="Montre le corrigé avec les résultats, une fois l'épreuve terminée.")
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="+")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

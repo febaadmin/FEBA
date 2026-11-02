@@ -509,3 +509,94 @@ class EpreuveDroitsTests(Base):
         self.en(self.prof)
         self.client.post(f"/api/evaluations/epreuves/{self.epreuve.pk}/fermer/")
         self.assertEqual(Tentative.objects.get(pk=d["id"]).mode_remise, "auto")
+
+
+class EtatEleveTests(Base):
+    def etat(self, e=None):
+        self.en(self.compte)
+        lignes = self.client.get("/api/evaluations/passage/").data
+        return next(x for x in lignes if x["id"] == (e or self.epreuve).pk)
+
+    def test_cas_de_la_capture_ouverture_demain(self):
+        m = timezone.now()
+        e = self.nouvelle(ouverture=m + timedelta(days=1), fermeture=m + timedelta(days=1, hours=1))
+        ligne = self.etat(e)
+        self.assertEqual(ligne["etat"], "a_venir")
+        self.assertEqual(ligne["ouverture"], e.ouverture)
+        self.assertEqual(self.client.post(f"/api/evaluations/passage/{e.pk}/demarrer/").status_code, 403)
+
+    def test_tous_les_etats(self):
+        self.assertEqual(self.etat()["etat"], "disponible")
+        self.assertEqual(self.etat()["nombre_questions"], 2)
+        d = self.demarrer()
+        self.assertEqual(self.etat()["etat"], "en_cours")
+        self.client.post(f"/api/evaluations/passage/{d['id']}/remettre/")
+        Epreuve.objects.filter(pk=self.epreuve.pk).update(tentatives_max=1)
+        self.assertEqual(self.etat()["etat"], "correction")
+        t = Tentative.objects.get(pk=d["id"])
+        for r in t.reponses.all():
+            services.corriger(r.pk, Decimal(0), "", self.prof)
+        services.valider(t, self.prof)
+        self.assertEqual(self.etat()["etat"], "terminee")
+        Epreuve.objects.filter(pk=self.epreuve.pk).update(resultats_publies=True)
+        ligne = self.etat()
+        self.assertEqual((ligne["etat"], ligne["tentative_resultat"]), ("resultat", t.pk))
+
+    def test_expiree_sans_tentative(self):
+        m = timezone.now()
+        e = self.nouvelle(ouverture=m - timedelta(days=2), fermeture=m - timedelta(days=1))
+        self.assertEqual(self.etat(e)["etat"], "expiree")
+
+    def test_correction_seulement_apres_la_fin(self):
+        Epreuve.objects.filter(pk=self.epreuve.pk).update(afficher_correction=True, resultats_publies=True)
+        self.epreuve.refresh_from_db()
+        t = self.passer_et_valider()
+        self.en(self.compte)
+        r = self.client.get(f"/api/evaluations/passage/{t.pk}/resultat/").data
+        self.assertFalse(r["correction_visible"])
+        self.assertIsNone(r["lignes"][0]["corrige"])
+        Epreuve.objects.filter(pk=self.epreuve.pk).update(statut=Epreuve.CLOSE)
+        r = self.client.get(f"/api/evaluations/passage/{t.pk}/resultat/").data
+        ligne = next(x for x in r["lignes"] if x["enonce"] == "2+2 ?")
+        self.assertEqual((ligne["corrige"], ligne["reponse"]), ("4", "4"))
+        self.assertEqual(ligne["explication"], "SECRET-EXPLICATION")
+
+    def test_pas_de_correction_sans_reglage(self):
+        Epreuve.objects.filter(pk=self.epreuve.pk).update(statut=Epreuve.PUBLIEE, resultats_publies=True)
+        t = self.passer_et_valider()
+        Epreuve.objects.filter(pk=self.epreuve.pk).update(statut=Epreuve.CLOSE)
+        self.en(self.compte)
+        self.assertIsNone(self.client.get(f"/api/evaluations/passage/{t.pk}/resultat/").data["lignes"][0]["corrige"])
+
+
+class AjustementTests(Base):
+    def test_avancer_l_ouverture_puis_verrouillage(self):
+        m = timezone.now()
+        e = self.nouvelle(ouverture=m + timedelta(days=1), fermeture=m + timedelta(days=2))
+        self.en(self.prof)
+        url = f"/api/evaluations/epreuves/{e.pk}/ajuster_dates/"
+        self.assertEqual(self.client.post(url, {"ouverture": m.isoformat()}, format="json").status_code, 200)
+        self.assertEqual(self.client.post(url, {"ouverture": (m + timedelta(days=3)).isoformat()}, format="json").status_code, 400)
+        self.en(self.compte)
+        self.assertEqual(self.client.post(f"/api/evaluations/passage/{e.pk}/demarrer/").status_code, 200)
+        self.en(self.prof)
+        self.assertEqual(self.client.post(url, {"ouverture": (m - timedelta(hours=1)).isoformat()}, format="json").status_code, 400)
+        self.assertEqual(self.client.post(url, {"fermeture": (m + timedelta(days=5)).isoformat()}, format="json").status_code, 200)
+
+    def test_droits(self):
+        self.en(self.compte)
+        self.assertEqual(self.client.post(f"/api/evaluations/epreuves/{self.epreuve.pk}/ajuster_dates/", {}, format="json").status_code, 403)
+        TeacherAssignment.objects.all().delete()
+        self.en(self.prof)
+        self.assertEqual(self.client.post(f"/api/evaluations/epreuves/{self.epreuve.pk}/ajuster_dates/", {}, format="json").status_code, 403)
+
+    def test_reordonner_tout_ou_rien(self):
+        e = self.nouvelle(statut=Epreuve.BROUILLON)
+        ids = list(e.questions.order_by("ordre").values_list("pk", flat=True))
+        self.en(self.prof)
+        url = f"/api/evaluations/epreuves/{e.pk}/reordonner/"
+        self.assertEqual(self.client.post(url, {"lignes": ids[:1]}, format="json").status_code, 400)
+        self.assertEqual(self.client.post(url, {"lignes": ids[::-1]}, format="json").status_code, 204)
+        self.assertEqual(list(e.questions.order_by("ordre").values_list("pk", flat=True)), ids[::-1])
+        self.assertEqual(self.client.post(f"/api/evaluations/epreuves/{self.epreuve.pk}/reordonner/", {"lignes": []}, format="json").status_code, 400)
+

@@ -9,6 +9,7 @@ export const TYPES_EPREUVE = [
   ["quiz", "Quiz d'entraînement"], ["interrogation", "Interrogation"], ["evaluation", "Évaluation"], ["examen", "Examen officiel"],
   ["blanc", "Examen blanc"], ["positionnement", "Évaluation de positionnement"], ["diagnostique", "Évaluation diagnostique"],
   ["competences", "Évaluation de compétences"], ["fin_formation", "Évaluation de fin de formation"],
+  ["surveille", "Devoir surveillé"], ["formative", "Évaluation formative"], ["certificative", "Évaluation certificative"],
 ];
 export const STATUTS_EPREUVE = { brouillon: "Brouillon", publiee: "Publiée", close: "Close", archivee: "Archivée" };
 export const STATUTS_COPIE = { en_cours: "En cours", remise: "Remise, à corriger", corrigee: "Corrigée", validee: "Validée" };

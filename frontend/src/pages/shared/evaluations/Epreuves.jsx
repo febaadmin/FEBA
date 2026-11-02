@@ -12,7 +12,9 @@ import { extractApiError } from "../../../utils/errors";
 import { t } from "../../../i18n";
 import { STATUTS_EPREUVE, TYPES_EPREUVE, libelle } from "./commun";
 
-const VIDE = { type: "quiz", duree_minutes: 30, tentatives_max: 1, seuil_reussite: 50, note_max: 20, melanger_questions: true, melanger_reponses: true, retour_autorise: true, reprise_autorisee: true, produit_note: false, note_type: "examen" };
+const local = (d) => new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+const VIDE = () => ({ ouverture: local(new Date()), fermeture: local(new Date(Date.now() + 7 * 864e5)), ...BASE });
+const BASE = { type: "quiz", duree_minutes: 30, tentatives_max: 1, seuil_reussite: 50, note_max: 20, melanger_questions: true, melanger_reponses: true, retour_autorise: true, reprise_autorisee: true, produit_note: false, note_type: "examen" };
 
 export default function Epreuves() {
   const qc = useQueryClient();
@@ -36,7 +38,7 @@ export default function Epreuves() {
     <div className="space-y-4">
       <PageHeader title={t("Examens et évaluations")} subtitle={t("Créez, publiez, corrigez et analysez vos épreuves")}
         action={<div className="flex gap-2"><Link to={`${base}/banque`} className="btn-secondary text-sm">{t("Banque de questions")}</Link>
-          <button type="button" className="btn-primary flex items-center gap-2" onClick={() => setOuvert(true)}><Plus className="w-4 h-4" />{t("Nouvelle épreuve")}</button></div>} />
+          <button type="button" className="btn-primary flex items-center gap-2" onClick={() => { setF(VIDE()); setOuvert(true); }}><Plus className="w-4 h-4" />{t("Nouvelle épreuve")}</button></div>} />
       <AideModule cle="epreuves" description={t("Un quiz sert à s'entraîner. Un examen officiel peut produire une note, seulement après votre validation.")}
         etapes={[t("Créez vos questions dans la banque."), t("Créez une épreuve : classe, dates, durée."), t("Ajoutez les questions, puis publiez."), t("Corrigez les copies et validez-les."), t("Publiez les résultats, puis transférez vers les notes si besoin.")]}
         conditions={t("Vous ne pouvez créer une épreuve que pour une matière qui vous est affectée dans la classe choisie.")} />
@@ -45,7 +47,7 @@ export default function Epreuves() {
         {!isLoading && liste.length === 0 && (
           <div className="text-center py-6 space-y-2">
             <p className="text-sm text-slate-600">{t("Aucune épreuve pour le moment. Créez d'abord vos questions, puis votre première épreuve.")}</p>
-            <button type="button" className="btn-primary" onClick={() => setOuvert(true)}>{t("Nouvelle épreuve")}</button>
+            <button type="button" className="btn-primary" onClick={() => { setF(VIDE()); setOuvert(true); }}>{t("Nouvelle épreuve")}</button>
           </div>
         )}
         <ul className="divide-y divide-slate-100">
@@ -85,6 +87,7 @@ export default function Epreuves() {
             <label className="flex items-center gap-2"><input type="checkbox" {...coche("retour_autorise")} />{t("Retour aux questions autorisé")}</label>
             <label className="flex items-center gap-2"><input type="checkbox" {...coche("reprise_autorisee")} />{t("Reprise après coupure autorisée")}</label>
             <label className="flex items-center gap-2"><input type="checkbox" {...coche("produit_note")} />{t("Peut produire une note officielle")}</label>
+            <label className="flex items-center gap-2"><input type="checkbox" {...coche("afficher_correction")} />{t("Montrer le corrigé avec les résultats")}</label>
           </div>
           {f.tentatives_max > 1 && <div><label className="label" htmlFor="e-pol">{t("Tentative retenue pour la note")}</label><select id="e-pol" className="input" {...champ("politique")}><option value="">{t("Par défaut : dernière pour un examen, meilleure sinon")}</option><option value="meilleure">{t("Meilleure tentative")}</option><option value="derniere">{t("Dernière tentative")}</option><option value="premiere">{t("Première tentative")}</option><option value="validee">{t("Choisie par l'enseignant")}</option></select></div>}
           {f.produit_note && <div><label className="label" htmlFor="e-per">{t("Trimestre")} *</label><select id="e-per" required className="input" {...champ("periode")}><option value="">{t("Choisir")}</option><option value="T1">T1</option><option value="T2">T2</option><option value="T3">T3</option></select></div>}

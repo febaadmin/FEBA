@@ -71,7 +71,7 @@ class EpreuveSerializer(serializers.ModelSerializer):
         fields = ["id", "titre", "description", "consignes", "type", "subject", "subject_name", "class_obj", "class_name",
                   "eleves_cibles", "school_year", "periode", "ouverture", "fermeture", "duree_minutes", "tentatives_max",
                   "note_max", "seuil_reussite", "politique", "melanger_questions", "melanger_reponses", "retour_autorise",
-                  "reprise_autorisee", "produit_note", "note_type", "regles_tirage", "statut", "resultats_publies",
+                  "reprise_autorisee", "produit_note", "note_type", "regles_tirage", "statut", "resultats_publies", "afficher_correction",
                   "questions", "created_at"]
         read_only_fields = ["id", "statut", "resultats_publies", "created_at"]
         extra_kwargs = {"school_year": {"required": False}, "politique": {"required": False}}

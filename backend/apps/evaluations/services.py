@@ -396,6 +396,64 @@ def _cache_tentative(tentatives, pk):
     return next(t for t in tentatives if t.pk == pk)
 
 
+def etat_pour_eleve(epreuve, student, tentatives, maintenant=None):
+    """
+    État d'une épreuve pour un élève, et la raison en clair. Le serveur tranche :
+    l'écran ne fait qu'afficher, et /demarrer/ refuse de toute façon.
+    """
+    maintenant = maintenant or timezone.now()
+    amenagement = next((a for a in epreuve.amenagements.all() if a.student_id == student.pk), None)
+    autorisees = epreuve.tentatives_max + (amenagement.tentatives_sup if amenagement else 0)
+    en_cours = next((t for t in tentatives if t.statut == Tentative.EN_COURS and t.echeance > maintenant), None)
+    if en_cours:
+        return "en_cours", "Vous pouvez reprendre votre épreuve.", autorisees
+    terminee = epreuve.statut == Epreuve.CLOSE or maintenant > epreuve.fermeture
+    faites = [t for t in tentatives if t.statut != Tentative.EN_COURS or t.echeance <= maintenant]
+    if not terminee and maintenant < epreuve.ouverture:
+        return "a_venir", "Cette épreuve n'est pas encore ouverte.", autorisees
+    if not terminee and len(tentatives) < autorisees:
+        return "disponible", "Vous pouvez commencer.", autorisees
+    if not faites:
+        return "expiree", "La date limite est passée, sans tentative de votre part.", autorisees
+    if epreuve.resultats_publies and any(t.statut == Tentative.VALIDEE for t in faites):
+        return "resultat", "Votre résultat est disponible.", autorisees
+    if any(t.statut != Tentative.VALIDEE for t in faites):
+        return "correction", "Votre copie est remise et en attente de correction.", autorisees
+    return "terminee", "Votre copie est corrigée. Le résultat n'est pas encore publié.", autorisees
+
+
+def correction_visible(tentative):
+    """Le corrigé attend la fin de l'épreuve : d'autres élèves peuvent encore la passer."""
+    e = tentative.epreuve
+    return (e.afficher_correction and e.resultats_publies and tentative.statut == Tentative.VALIDEE
+            and (e.statut == Epreuve.CLOSE or timezone.now() > e.fermeture))
+
+
+def lire_valeur(version, valeur):
+    """Réponse ou corrigé en texte lisible, jamais d'identifiants techniques."""
+    contenu = version.contenu or {}
+    libelles = {c["id"]: c["texte"] for cle in ("choix", "gauche", "droite", "elements") for c in contenu.get(cle, [])}
+    if valeur is None or valeur == "":
+        return ""
+    if isinstance(valeur, bool):
+        return "Vrai" if valeur else "Faux"
+    if isinstance(valeur, list):
+        return ", ".join(str(libelles.get(v, v)) for v in valeur)
+    if isinstance(valeur, dict):
+        return ", ".join(f"{libelles.get(k, k)} = {libelles.get(v, v)}" for k, v in valeur.items())
+    return str(libelles.get(valeur, valeur))
+
+
+def corrige_lisible(version):
+    c = version.corrige or {}
+    type_q = version.question.type
+    cle = {"qcm_unique": "bonne", "qcm_multiple": "bonnes", "vrai_faux": "valeur", "courte": "acceptees",
+           "numerique": "valeur", "association": "paires", "classement": "ordre"}.get(type_q)
+    if type_q == "trous":
+        return " ; ".join(" ou ".join(r) for r in c.get("reponses", []))
+    return lire_valeur(version, c.get(cle)) if cle else ""
+
+
 def epreuves_ouvertes_pour(student):
     return Epreuve.objects.filter(
         Q(eleves_cibles=student) | Q(class_obj_id=student.current_class_id, eleves_cibles__isnull=True),
