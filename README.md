@@ -70,13 +70,13 @@ Pour la procédure détaillée et la résolution de problèmes, voir `guide_inst
 
 | Rôle        | Email                  | Mot de passe  | Portée |
 |-------------|------------------------|---------------|--------|
-| Superadmin  | superadmin@feba.bj     | SuperAdmin@2024 | Plateforme (tous établissements) |
-| Admin       | admin@feba.bj          | Admin@2024    | École FEBA |
-| Admin       | directeur@feba.bj      | Admin@2024    | École FEBA |
-| Enseignant  | prof.math@feba.bj      | Teacher@2024  | École FEBA |
-| Enseignant  | prof.francais@feba.bj  | Teacher@2024  | École FEBA |
-| Parent      | parent1@feba.bj        | Parent@2024   | École FEBA |
-| Élève       | eleve1@feba.bj         | Student@2024  | École FEBA |
+| Superadmin  | superadmin@feba.bj     | *(voir la sortie de `seed_demo_data`)* | Plateforme (tous établissements) |
+| Admin       | admin@feba.bj          | *(voir la sortie de `seed_demo_data`)*    | École FEBA |
+| Admin       | directeur@feba.bj      | *(voir la sortie de `seed_demo_data`)*    | École FEBA |
+| Enseignant  | prof.math@feba.bj      | *(voir la sortie de `seed_demo_data`)*  | École FEBA |
+| Enseignant  | prof.francais@feba.bj  | *(voir la sortie de `seed_demo_data`)*  | École FEBA |
+| Parent      | parent1@feba.bj        | *(voir la sortie de `seed_demo_data`)*   | École FEBA |
+| Élève       | eleve1@feba.bj         | *(voir la sortie de `seed_demo_data`)*  | École FEBA |
 
 ## Commandes utiles
 

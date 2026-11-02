@@ -99,14 +99,14 @@ Créés par `seed_demo_data`. **À supprimer avant toute mise en production.**
 
 | Académie | Rôle | Identifiant | Mot de passe |
 |---|---|---|---|
-| FEBA | Administration | `admin@feba.bj` | `Admin@2024` |
-| FEBA | Enseignant | `prof1@feba.bj` | `Teacher@2024` |
-| FEBA | Parent | `parent1@feba.bj` | `Parent@2024` |
-| FEBA | Élève | `eleve1@feba.bj` | `Student@2024` |
-| FEBA FHA | Administration | `admin@febafha.org` | `Admin@2024` |
-| FEBA FHA | Enseignant | `prof@febafha.org` | `Teacher@2024` |
-| FEBA FHA | Parent | `parent@febafha.org` | `Parent@2024` |
-| FEBA FHA | Élève | `eleve1@febafha.org` | `Student@2024` |
+| FEBA | Administration | `admin@feba.bj` | `*(voir la sortie de `seed_demo_data`)*` |
+| FEBA | Enseignant | `prof1@feba.bj` | `*(voir la sortie de `seed_demo_data`)*` |
+| FEBA | Parent | `parent1@feba.bj` | `*(voir la sortie de `seed_demo_data`)*` |
+| FEBA | Élève | `eleve1@feba.bj` | `*(voir la sortie de `seed_demo_data`)*` |
+| FEBA FHA | Administration | `admin@febafha.org` | `*(voir la sortie de `seed_demo_data`)*` |
+| FEBA FHA | Enseignant | `prof@febafha.org` | `*(voir la sortie de `seed_demo_data`)*` |
+| FEBA FHA | Parent | `parent@febafha.org` | `*(voir la sortie de `seed_demo_data`)*` |
+| FEBA FHA | Élève | `eleve1@febafha.org` | `*(voir la sortie de `seed_demo_data`)*` |
 
 La connexion se fait par **adresse e-mail** (`USERNAME_FIELD = "email"`).
 

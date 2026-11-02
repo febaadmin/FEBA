@@ -7,7 +7,9 @@ from types import SimpleNamespace
 from django.contrib.auth import get_user_model
 from django.core import signing
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.db import connection
 from django.test import TestCase, override_settings
+from django.test.utils import CaptureQueriesContext
 from django.utils import timezone
 from PIL import Image
 from rest_framework.exceptions import ValidationError
@@ -17,6 +19,7 @@ from apps.attendance.serializers import AttendanceSerializer
 from apps.core.csv_sur import cellule
 from apps.core.fichiers_prives import SEL
 from apps.grades.models import Grade
+from apps.students.models import Student, StudentEnrollment
 from apps.suivi import services
 from apps.suivi.models import Objectif
 
@@ -279,3 +282,29 @@ class CsvTests(TestCase):
         self.assertEqual(cellule("+229 97 00 00 00"), "+229 97 00 00 00")
         self.assertEqual(cellule("-5"), "-5")
         self.assertEqual(cellule(12), 12)
+
+
+class VolumeTests(TestCase):
+    """Le nombre de requêtes d'une liste ne doit pas croître avec son nombre de lignes."""
+
+    def _compte(self, compte, chemin):
+        c = client(compte)
+        with CaptureQueriesContext(connection) as requetes:
+            self.assertEqual(c.get(chemin, {"page_size": 1000}).status_code, 200)
+        return len(requetes)
+
+    def test_notes_et_comptes_sans_n_plus_un(self):
+        a = build_academy("VOLA", TYPES[0])
+        avant_notes = self._compte(a.admin, "/api/grades/")
+        avant_comptes = self._compte(a.admin, "/api/auth/users/")
+        for i in range(10):
+            u = User.objects.create_user(username=f"v{i}", email=f"v{i}@iso.test", password="x", role="student",
+                                         first_name="E", last_name="X", school=a.school)
+            s = Student.objects.create(user=u, school=a.school, first_name="E", last_name="X",
+                                       current_class=a.klass, school_year=a.year, gender="F")
+            e = StudentEnrollment.objects.create(student=s, school_year=a.year, class_obj=a.klass)
+            for matiere in a.subjects:
+                Grade.objects.create(student=s, subject=matiere, school_year=a.year, teacher=a.teacher,
+                                     period="T1", value=10, enrollment=e)
+        self.assertLessEqual(self._compte(a.admin, "/api/grades/"), avant_notes + 2)
+        self.assertLessEqual(self._compte(a.admin, "/api/auth/users/"), avant_comptes + 2)

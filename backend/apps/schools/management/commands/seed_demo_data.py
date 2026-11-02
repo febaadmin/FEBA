@@ -19,6 +19,8 @@ Idempotent : ré-exécuter la commande ne duplique pas les données.
 Usage :
     python manage.py seed_demo_data
 """
+import os
+import secrets
 import datetime
 import random
 from decimal import Decimal
@@ -29,6 +31,18 @@ from django.utils import timezone
 
 from apps.grades.grading import ASSESSMENT_WEIGHT
 from apps.schools.institution import official_phone
+
+
+def _mot_de_passe(nom):
+    """Mot de passe de démonstration : celui de l'environnement, sinon un mot de passe aléatoire."""
+    return os.environ.get(nom) or secrets.token_urlsafe(12)
+
+
+MDP_SUPERADMIN = _mot_de_passe("DEMO_PASSWORD_SUPERADMIN")
+MDP_ADMIN = _mot_de_passe("DEMO_PASSWORD_ADMIN")
+MDP_ENSEIGNANT = _mot_de_passe("DEMO_PASSWORD_TEACHER")
+MDP_PARENT = _mot_de_passe("DEMO_PASSWORD_PARENT")
+MDP_ELEVE = _mot_de_passe("DEMO_PASSWORD_STUDENT")
 
 FM = ["Koffi", "Emeka", "Jean", "Pierre", "Marc", "David", "Samuel", "Éric", "Paul", "Hervé",
       "Ayo", "Sègun", "Kwame", "Malik", "Idriss"]
@@ -223,9 +237,9 @@ class Command(BaseCommand):
             u.save()
             return u
 
-        create_user("superadmin@feba.bj", "SuperAdmin@2024", "superadmin", "Super", "Admin")
-        admin_user = create_user("admin@feba.bj", "Admin@2024", "admin", "Admin", "FEBA")
-        create_user("directeur@feba.bj", "Admin@2024", "admin", "Directeur", "FEBA")
+        create_user("superadmin@feba.bj", MDP_SUPERADMIN, "superadmin", "Super", "Admin")
+        admin_user = create_user("admin@feba.bj", MDP_ADMIN, "admin", "Admin", "FEBA")
+        create_user("directeur@feba.bj", MDP_ADMIN, "admin", "Directeur", "FEBA")
         self.stdout.write("  ✅ SuperAdmin & Admins")
 
         # ── ENSEIGNANTS ──────────────────────────────────────────────────
@@ -238,7 +252,7 @@ class Command(BaseCommand):
         ]
         teachers = []
         for email, spec, first, last, subj_codes in teacher_defs:
-            u = create_user(email, "Teacher@2024", "teacher", first, last)
+            u = create_user(email, MDP_ENSEIGNANT, "teacher", first, last)
             t, _ = Teacher.objects.get_or_create(
                 user=u, defaults={"specialization": spec, "hire_date": datetime.date(2020, 10, 1)},
             )
@@ -268,7 +282,7 @@ class Command(BaseCommand):
                     gender = random.choice(["M", "F"])
                     first = random.choice(FM if gender == "M" else FF)
                     last = random.choice(LN)
-                    u = create_user(f"eleve{idx}@feba.bj", "Student@2024", "student", first, last)
+                    u = create_user(f"eleve{idx}@feba.bj", MDP_ELEVE, "student", first, last)
                     dob = datetime.date(random.randint(2008, 2016), random.randint(1, 12), random.randint(1, 28))
 
                     cls_now = classes[(year_curr.id, lname)]
@@ -321,7 +335,7 @@ class Command(BaseCommand):
             for i in range(0, min(len(student_list), 20), 2):
                 first = random.choice(FF if i % 4 else FM)
                 last = student_list[i].last_name  # même nom que l'enfant
-                u = create_user(f"parent{i // 2 + 1}@feba.bj", "Parent@2024", "parent", first, last)
+                u = create_user(f"parent{i // 2 + 1}@feba.bj", MDP_PARENT, "parent", first, last)
                 p, _ = Parent.objects.get_or_create(user=u, defaults={"profession": random.choice(
                     ["Commerçant(e)", "Enseignant(e)", "Infirmier(ère)", "Chauffeur", "Couturière"])})
                 children = student_list[i:i + 2]
@@ -502,11 +516,11 @@ class Command(BaseCommand):
         self.stdout.write(f"   Élèves   : {len(student_list)} (historique 3 ans, redoublants inclus)")
         self.stdout.write("")
         self.stdout.write("   Comptes de démonstration :")
-        self.stdout.write("   superadmin@feba.bj  / SuperAdmin@2024")
-        self.stdout.write("   admin@feba.bj       / Admin@2024")
-        self.stdout.write("   prof.math@feba.bj   / Teacher@2024")
-        self.stdout.write("   parent1@feba.bj     / Parent@2024")
-        self.stdout.write("   eleve1@feba.bj      / Student@2024")
+        self.stdout.write("   superadmin@feba.bj  / {MDP_SUPERADMIN}")
+        self.stdout.write("   admin@feba.bj       / {MDP_ADMIN}")
+        self.stdout.write("   prof.math@feba.bj   / {MDP_ENSEIGNANT}")
+        self.stdout.write("   parent1@feba.bj     / {MDP_PARENT}")
+        self.stdout.write("   eleve1@feba.bj      / {MDP_ELEVE}")
 
         # ══════════════════════════════════════════════════════════════
         # ACADÉMIE 2 — FEBA FRENCH HERITAGE ACADEMY
@@ -700,10 +714,10 @@ class Command(BaseCommand):
                 user.save()
             return user
 
-        admin_fha = make_user("admin@febafha.org", "admin", "Awa", "Koffi", "Admin@2024")
-        teacher_fha = make_user("prof@febafha.org", "teacher", "Céline", "Doe", "Teacher@2024")
+        admin_fha = make_user("admin@febafha.org", "admin", "Awa", "Koffi", MDP_ADMIN)
+        teacher_fha = make_user("prof@febafha.org", "teacher", "Céline", "Doe", MDP_ENSEIGNANT)
         Teacher.objects.get_or_create(user=teacher_fha)
-        parent_fha = make_user("parent@febafha.org", "parent", "Sylvie", "Adjovi", "Parent@2024")
+        parent_fha = make_user("parent@febafha.org", "parent", "Sylvie", "Adjovi", MDP_PARENT)
 
         students = []
         for index, (first, last, group) in enumerate([
@@ -711,7 +725,7 @@ class Command(BaseCommand):
             ("Kofi", "Mensah", "junior_roots"),
             ("Ama", "Diallo", "french_ambassadors"),
         ], start=1):
-            user = make_user(f"eleve{index}@febafha.org", "student", first, last, "Student@2024")
+            user = make_user(f"eleve{index}@febafha.org", "student", first, last, MDP_ELEVE)
             student, _ = Student.objects.get_or_create(
                 user=user,
                 defaults={
@@ -928,7 +942,7 @@ class Command(BaseCommand):
 
         self.stdout.write(self.style.SUCCESS("\n✅ Seed FEBA FHA terminé."))
         self.stdout.write("   Comptes FEBA FHA :")
-        self.stdout.write("   admin@febafha.org   / Admin@2024")
-        self.stdout.write("   prof@febafha.org    / Teacher@2024")
-        self.stdout.write("   parent@febafha.org  / Parent@2024")
-        self.stdout.write("   eleve1@febafha.org  / Student@2024")
+        self.stdout.write("   admin@febafha.org   / {MDP_ADMIN}")
+        self.stdout.write("   prof@febafha.org    / {MDP_ENSEIGNANT}")
+        self.stdout.write("   parent@febafha.org  / {MDP_PARENT}")
+        self.stdout.write("   eleve1@febafha.org  / {MDP_ELEVE}")

@@ -1,5 +1,6 @@
 import axios from "axios";
 import { useAuthStore } from "../store/authStore";
+import { sansDoublon } from "./sansDoublon";
 import { getLang } from "../i18n";
 import { SessionExpiredError, readStoredTokens, refreshAccessToken } from "./tokenRefresh";
 import {
@@ -14,6 +15,7 @@ import {
 const API_URL = import.meta.env.VITE_API_URL || "/api";
 
 const api = axios.create({ baseURL: API_URL, headers: { "Content-Type": "application/json" } });
+api.defaults.adapter = sansDoublon(axios.getAdapter(api.defaults.adapter));
 
 // Client des ressources PUBLIQUES (identité visuelle) : ni jeton, ni portée
 // d'académie. Passée par `api`, la réponse du branding était rejetée comme

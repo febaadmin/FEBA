@@ -81,7 +81,8 @@ class GradeViewSet(BulkDeleteMixin, viewsets.ModelViewSet):
         )
 
         qs = Grade.objects.select_related(
-            "student__school", "subject", "teacher__user", "school_year"
+            "student__school", "student__current_class__level", "subject", "teacher__user",
+            "school_year", "enrollment__class_obj__level", "deleted_by",
         ).prefetch_related("history__changed_by")
 
         # --- Isolation multi-tenant (FIX v29) -------------------------------

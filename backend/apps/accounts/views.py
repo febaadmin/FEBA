@@ -119,7 +119,7 @@ class UserListCreateView(generics.ListCreateAPIView):
 
     def get_queryset(self):
         user = self.request.user
-        qs = CustomUser.objects.all()
+        qs = CustomUser.objects.select_related("school")
         if user.is_superadmin():
             school = get_request_school(self.request)
             if school is not None:
