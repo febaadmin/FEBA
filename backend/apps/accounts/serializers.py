@@ -20,6 +20,7 @@ from rest_framework import serializers
 from django.contrib.auth.password_validation import validate_password
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer, TokenRefreshSerializer
 from django.contrib.auth import authenticate
+from django.contrib.auth.models import update_last_login
 from .models import CustomUser
 from apps.core.academy_serializers import ACADEMY_FIELDS, AcademyMetadataMixin
 
@@ -377,6 +378,8 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
         if user.role in ("student", "parent"):
             self._check_role_specific(user)
 
+        # Cette validation remplace celle de simplejwt, qui tient normalement cette date.
+        update_last_login(None, user)
         refresh = self.get_token(user)
         return {
             "refresh": str(refresh),
