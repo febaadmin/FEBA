@@ -113,7 +113,7 @@ def evaluations(student, du=None, au=None, subject=None):
 
 
 def _objectifs(student, du=None, au=None, subject=None):
-    qs = Objectif.objects.filter(Q(student=student) | Q(class_obj_id=student.current_class_id))
+    qs = Objectif.objects.filter(Q(student=student) | Q(class_obj_id=student.current_class_id), archive_le__isnull=True)
     qs = _dans_periode(qs, "created_at__date", du, au)
     if subject:
         qs = qs.filter(subject_id=subject)

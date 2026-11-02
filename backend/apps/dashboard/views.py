@@ -210,7 +210,7 @@ class TeacherDashboardView(APIView):
         my_classes = teacher.classes.all()
         my_students = Student.objects.filter(current_class__in=my_classes, is_active=True)
 
-        recent_grades_qs = Grade.objects.filter(teacher=teacher).select_related("student", "subject").order_by("-created_at")
+        recent_grades_qs = Grade.objects.filter(teacher=teacher, is_deleted=False).select_related("student", "subject").order_by("-created_at")
         if active_year:
             recent_grades_qs = recent_grades_qs.filter(school_year=active_year)
         recent_grades = recent_grades_qs[:5]
@@ -230,6 +230,7 @@ class TeacherDashboardView(APIView):
                 "pending_homework": hw_qs.count(),
                 "absences_this_week": absent_qs.count(),
                 "grades_this_month": Grade.objects.filter(
+                is_deleted=False,
                     teacher=teacher,
                     created_at__month=today.month,
                     created_at__year=today.year,
@@ -434,7 +435,7 @@ class StudentDashboardView(APIView):
         late_count = att_base.filter(status="late").count()
 
         # Recent grades filtered by active year
-        recent_grades_qs = Grade.objects.filter(student=student).select_related("subject").order_by("-created_at")
+        recent_grades_qs = Grade.objects.filter(student=student, is_deleted=False).select_related("subject").order_by("-created_at")
         if school_year:
             recent_grades_qs = recent_grades_qs.filter(school_year=school_year)
         recent_grades = recent_grades_qs[:5]

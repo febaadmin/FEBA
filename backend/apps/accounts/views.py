@@ -18,6 +18,8 @@ from .serializers import (
 from .permissions import IsAdminOrAbove, CanManageUser
 from apps.core.tenancy import get_request_school
 
+from apps.core.images import image_sure
+
 logger = logging.getLogger("apps")
 
 
@@ -370,6 +372,7 @@ class AvatarUploadView(APIView):
         avatar = request.FILES.get("avatar")
         if not avatar:
             return Response({"error": "Aucun fichier fourni."}, status=400)
+        avatar = image_sure(avatar)
         # Delete old avatar file from storage
         user = request.user
         if user.avatar:

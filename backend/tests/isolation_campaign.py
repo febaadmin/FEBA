@@ -20,9 +20,14 @@ comptées comme des échecs.
 """
 import re
 
+from django.core import signing
 from django.urls import get_resolver
 from django.urls.resolvers import URLPattern, URLResolver
 from rest_framework.test import APIClient
+
+from apps.core.fichiers_prives import SEL
+
+LIEN_PRIVE = re.compile(r"/api/files/([^/\"\\]+)/")
 
 SKIP = re.compile(
     r"(health|webhook|logout|export|download|pdf|csv|xlsx|print|stripe|kkiapay|fedapay|"
@@ -63,6 +68,20 @@ def client_for(user):
     return c
 
 
+def jetons_en_clair(texte):
+    """
+    Un lien de fichier privé contient un jeton signé : du base64 qui peut former une étiquette par
+    hasard (environ 1 jeton sur 5 600 pour 18 étiquettes). On contrôle le fichier qu'il désigne,
+    ce qui révèle aussi une vraie fuite cachée dans un jeton.
+    """
+    def remplacer(trouve):
+        try:
+            return "/api/files/" + signing.loads(trouve.group(1), salt=SEL) + "/"
+        except signing.BadSignature:
+            return trouve.group(0)
+    return LIEN_PRIVE.sub(remplacer, texte)
+
+
 class Report:
     def __init__(self):
         self.requests = 0
@@ -76,7 +95,7 @@ class Report:
             return
         if response.status_code != 200 or "json" not in response.get("Content-Type", ""):
             return
-        body = response.content.decode("utf-8", "replace")
+        body = jetons_en_clair(response.content.decode("utf-8", "replace"))
         for tag, pattern in foreign_tags:
             trouve = pattern.search(body)
             if trouve:
