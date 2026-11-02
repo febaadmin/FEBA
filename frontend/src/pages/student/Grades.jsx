@@ -17,9 +17,9 @@ import { RadarChart, PolarGrid, PolarAngleAxis, Radar, ResponsiveContainer, Tool
 import { t } from "../../i18n";
 
 const NOTE_TYPE_BADGE = {
-  devoir:        "bg-blue-50 text-blue-600",
-  interrogation: "bg-purple-50 text-purple-600",
-  controle:      "bg-indigo-50 text-primary",
+  devoir:        "bg-primary-50 text-primary",
+  interrogation: "bg-purple-50 text-secondary-600",
+  controle:      "bg-primary-50 text-primary",
   examen:        "bg-orange-50 text-orange-600",
   tp:            "bg-teal-50 text-teal-600",
   autre:         "bg-slate-50 text-slate-500",
@@ -146,7 +146,7 @@ export default function StudentGrades() {
             <RadarChart data={radarData}>
               <PolarGrid stroke="#e2e8f0" />
               <PolarAngleAxis dataKey="subject" tick={{ fontSize: 10 }} />
-              <Radar name="Moy. Matière" dataKey="note" stroke="#6366F1" fill="#6366F1" fillOpacity={0.2} />
+              <Radar name="Moy. Matière" dataKey="note" stroke="#1D4ED8" fill="#1D4ED8" fillOpacity={0.2} />
               <Tooltip formatter={v => [`${parseFloat(v).toFixed(2)}/20`, "Moy. Matière"]} />
             </RadarChart>
           </ResponsiveContainer>

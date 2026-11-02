@@ -56,7 +56,7 @@ const STATUTS = [
 const TON = {
   draft: "bg-slate-100 text-slate-600",
   generated: "bg-sky-50 text-sky-700",
-  ready: "bg-indigo-50 text-indigo-700",
+  ready: "bg-primary-50 text-primary-700",
   sending: "bg-amber-50 text-amber-700",
   sent: "bg-emerald-50 text-emerald-700",
   failed: "bg-red-50 text-red-700",

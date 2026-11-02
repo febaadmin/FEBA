@@ -27,7 +27,7 @@ const STATUS_TONE = {
   sent: "bg-emerald-50 text-emerald-700",
   accepted: "bg-emerald-50 text-emerald-700",
   queued: "bg-slate-100 text-slate-600",
-  pending: "bg-blue-50 text-blue-700",
+  pending: "bg-primary-50 text-primary-700",
   retry: "bg-amber-50 text-amber-700",
   failed: "bg-red-50 text-red-700",
 };
@@ -63,7 +63,7 @@ const SMS_TONE = {
   sent: "bg-emerald-50 text-emerald-700", delivered: "bg-emerald-50 text-emerald-700",
   failed: "bg-red-50 text-red-700", retry: "bg-amber-50 text-amber-700",
   skipped: "bg-slate-100 text-slate-600", captured: "bg-amber-50 text-amber-700",
-  pending: "bg-blue-50 text-blue-700", sending: "bg-blue-50 text-blue-700",
+  pending: "bg-primary-50 text-primary-700", sending: "bg-primary-50 text-primary-700",
 };
 
 /** Statut du SMS miroir : DISTINCT de celui de l'e-mail. */

@@ -43,14 +43,14 @@ const PAYMENT_TYPES = [
 ];
 
 const REMINDER_TONE = {
-  sent: "bg-emerald-50 text-emerald-700", notified: "bg-blue-50 text-blue-700",
+  sent: "bg-emerald-50 text-emerald-700", notified: "bg-primary-50 text-primary-700",
   retry: "bg-amber-50 text-amber-700", failed: "bg-red-50 text-red-700",
   no_channel: "bg-red-50 text-red-700", pending: "bg-slate-100 text-slate-600",
 };
 const DUE_TONE = {
   overdue: "bg-red-50 text-red-700", partial: "bg-amber-50 text-amber-700",
   paid: "bg-emerald-50 text-emerald-700", upcoming: "bg-slate-100 text-slate-600",
-  exempted: "bg-blue-50 text-blue-700",
+  exempted: "bg-primary-50 text-primary-700",
 };
 
 function Badge({ tone, children }) {
@@ -331,7 +331,7 @@ function SchedulesTab() {
             <Badge>{t(fee.payment_type_label)}</Badge>
             {fee.level_name && <Badge>{fee.level_name}</Badge>}
             {fee.school_year_name && <Badge>{fee.school_year_name}</Badge>}
-            <Badge tone={fee.is_mandatory ? "bg-indigo-50 text-indigo-700" : "bg-slate-100 text-slate-600"}>
+            <Badge tone={fee.is_mandatory ? "bg-primary-50 text-primary-700" : "bg-slate-100 text-slate-600"}>
               {fee.is_mandatory ? t("Obligatoire") : t("Abonnés uniquement")}
             </Badge>
             {!fee.is_consistent && <Badge tone="bg-red-50 text-red-700">{t("Somme des tranches ≠ total")}</Badge>}

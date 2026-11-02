@@ -37,7 +37,7 @@ const ROLE_LABELS = {
 const STATUS_TONE = {
   sent: "bg-emerald-50 text-emerald-700",
   pending: "bg-slate-100 text-slate-600",
-  sending: "bg-blue-50 text-blue-700",
+  sending: "bg-primary-50 text-primary-700",
   retry: "bg-amber-50 text-amber-700",
   failed: "bg-red-50 text-red-700",
   done: "bg-emerald-50 text-emerald-700",

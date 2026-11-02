@@ -41,12 +41,12 @@ const SEVERITY_STYLE = {
   low: "bg-slate-100 text-slate-600 border-slate-200",
 };
 const STATUS_STYLE = {
-  new: "bg-blue-100 text-blue-700",
-  in_progress: "bg-indigo-100 text-indigo-700",
+  new: "bg-primary-100 text-primary-700",
+  in_progress: "bg-primary-100 text-primary-700",
   corrected: "bg-amber-100 text-amber-700",
   resolved: "bg-green-100 text-green-700",
   ignored: "bg-slate-100 text-slate-500",
-  reopened: "bg-purple-100 text-purple-700",
+  reopened: "bg-purple-100 text-secondary-600",
 };
 
 const libelleStatut = (valeur) => STATUSES.find((s) => s.value === valeur)?.label || valeur;
@@ -157,7 +157,7 @@ export default function SuperAdminIncidents() {
       {/* Compteurs */}
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
         {[
-          { key: "new", label: "Nouveaux", value: stats.new ?? 0, tone: "text-blue-600" },
+          { key: "new", label: "Nouveaux", value: stats.new ?? 0, tone: "text-primary" },
           { key: "in_progress", label: "En cours", value: stats.by_status?.in_progress ?? 0, tone: "text-primary" },
           { key: "corrected", label: "Corrigés, à valider", value: stats.by_status?.corrected ?? 0, tone: "text-amber-600" },
           { key: "resolved", label: "Résolus", value: stats.by_status?.resolved ?? 0, tone: "text-green-600" },

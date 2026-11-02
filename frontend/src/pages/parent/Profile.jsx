@@ -111,7 +111,7 @@ export default function ParentProfile() {
                       <span className="text-xs text-slate-400">{t(link.relationship_label || "-")}</span>
                       <span className="text-xs text-slate-500">{ageText(link.student_age, link.student_age_status)}</span>
                       {link.class_name && (
-                        <span className="text-xs bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded-md font-medium">
+                        <span className="text-xs bg-primary-50 text-primary-700 px-1.5 py-0.5 rounded-md font-medium">
                           {link.class_name}
                         </span>
                       )}

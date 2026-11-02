@@ -30,6 +30,8 @@ import { useAcademy } from "../../context/AcademyContext";
  * (historique d'une note, participants d'une salle) n'hérite pas d'une
  * colonne vide.
  */
+const DATE = /^\d{4}-\d{2}-\d{2}/;
+
 export default function DataTable({
   columns, data = [], loading, actions, onRowClick, pageSize = 15,
   selectable = false, onBulkDelete, bulkDeleteLabel = "Supprimer la sélection", bulkDeletePending = false, bulkConfirmMessage, emptyMessage,
@@ -125,7 +127,7 @@ export default function DataTable({
                 <th className="px-4 py-3 w-10">
                   <input type="checkbox" checked={allPageChecked}
                     ref={el => { if (el) el.indeterminate = someChecked && !allPageChecked; }}
-                    onChange={toggleAll} className="w-4 h-4 accent-blue-600 cursor-pointer" title={t("Tout sélectionner cette page")} />
+                    onChange={toggleAll} className="w-4 h-4 accent-primary cursor-pointer" title={t("Tout sélectionner cette page")} />
                 </th>
               )}
               {tableColumns.map(col => (
@@ -153,11 +155,11 @@ export default function DataTable({
                   className={clsx("transition-colors", isSel ? "bg-primary-50" : "hover:bg-primary-50/40", onRowClick && "cursor-pointer")}>
                   {selectable && (
                     <td className="px-4 py-3 w-10" onClick={e => e.stopPropagation()}>
-                      <input type="checkbox" checked={isSel} onChange={() => row.id && toggleOne(row.id)} className="w-4 h-4 accent-blue-600 cursor-pointer" />
+                      <input type="checkbox" checked={isSel} onChange={() => row.id && toggleOne(row.id)} className="w-4 h-4 accent-primary cursor-pointer" />
                     </td>
                   )}
                   {tableColumns.map(col => (
-                    <td key={col.key} data-label={typeof col.label === "string" ? col.label : ""} className="px-4 py-3 text-slate-700">{col.render ? col.render(row) : row[col.accessor]}</td>
+                    <td key={col.key} data-label={typeof col.label === "string" ? col.label : ""} className={clsx("px-4 py-3 text-slate-700", DATE.test(String(row[col.accessor] ?? "")) && "whitespace-nowrap tabular-nums")}>{col.render ? col.render(row) : row[col.accessor]}</td>
                   ))}
                   {actions && <td className="px-4 py-3 text-right" onClick={e => e.stopPropagation()}>{actions(row)}</td>}
                 </tr>
@@ -169,7 +171,7 @@ export default function DataTable({
 
       {(totalPages > 1 || selected.size > 0) && (
         <div className="flex items-center justify-between mt-4 text-sm text-slate-500">
-          <span>{t("{n} résultat(s)", { n: filtered.length })}{selected.size > 0 && <span className="ml-2 text-blue-600 font-medium">· {selected.size} {t("sélectionné(s)")}</span>}</span>
+          <span>{t("{n} résultat(s)", { n: filtered.length })}{selected.size > 0 && <span className="ml-2 text-primary font-medium">· {selected.size} {t("sélectionné(s)")}</span>}</span>
           {totalPages > 1 && (
             <div className="flex items-center gap-2">
               <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} aria-label={t("Page précédente")} className="p-2 rounded-lg hover:bg-slate-100 disabled:opacity-40"><ChevronLeft className="w-4 h-4" /></button>

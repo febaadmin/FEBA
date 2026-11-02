@@ -36,9 +36,9 @@ import { ageText } from "../../utils/age";
 /* ── Promotion status labels ──────────────────────────────────────────────── */
 const PROMOTION_STATUSES = [
   { value: "normal",     label: "Passage normal",             icon: UserCheck, color: "text-emerald-600" },
-  { value: "honor",      label: "Passage avec mention",       icon: GraduationCap, color: "text-blue-600" },
+  { value: "honor",      label: "Passage avec mention",       icon: GraduationCap, color: "text-primary" },
   { value: "repeat",     label: "Redoublement",               icon: Repeat, color: "text-amber-600" },
-  { value: "transfer",   label: "Transfert de filière",       icon: ArrowRight, color: "text-purple-600" },
+  { value: "transfer",   label: "Transfert de filière",       icon: ArrowRight, color: "text-secondary-600" },
   { value: "graduated",  label: "Diplômé / fin de cycle",     icon: GraduationCap, color: "text-teal-600" },
   { value: "excluded",   label: "Exclu",                      icon: UserX, color: "text-red-600" },
   { value: "withdrawn",  label: "Retiré / Départ",            icon: LogOut, color: "text-slate-600" },
@@ -48,7 +48,7 @@ const PROMOTION_STATUSES = [
 function Section({ title, subtitle, icon: Icon, children, accentColor = "blue" }) {
   const [open, setOpen] = useState(true);
   const borderCls = {
-    blue:   "border-blue-200",
+    blue:   "border-primary-200",
     green:  "border-emerald-200",
     amber:  "border-amber-200",
     purple: "border-purple-200",

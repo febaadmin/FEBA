@@ -7,8 +7,8 @@ import { COLONNES } from "./TableauObjectifs";
 
 const TYPES = {
   competence: { label: "Compétences", Icone: Award, cls: "bg-violet-100 text-violet-800" },
-  evaluation: { label: "Évaluations du suivi", Icone: BookCheck, cls: "bg-blue-100 text-blue-800" },
-  examen: { label: "Examens en ligne", Icone: ClipboardCheck, cls: "bg-indigo-100 text-indigo-800" },
+  evaluation: { label: "Évaluations du suivi", Icone: BookCheck, cls: "bg-primary-100 text-primary-800" },
+  examen: { label: "Examens en ligne", Icone: ClipboardCheck, cls: "bg-primary-100 text-primary-800" },
   objectif: { label: "Objectifs", Icone: Target, cls: "bg-emerald-100 text-emerald-800" },
   plan: { label: "Accompagnement", Icone: HeartHandshake, cls: "bg-amber-100 text-amber-800" },
   rapport: { label: "Rapports", Icone: FileText, cls: "bg-slate-200 text-slate-800" },

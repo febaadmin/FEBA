@@ -415,7 +415,7 @@ export default function AdminClasses() {
               const admise = acceptsLanguage(subjectModal, "fr");
               return (
             <div data-testid="colonne-fr" data-admise={admise ? "oui" : "non"}>
-              <h4 className={`flex items-center gap-2 font-semibold text-sm mb-2 ${admise ? "text-blue-700" : "text-slate-400"}`}>
+              <h4 className={`flex items-center gap-2 font-semibold text-sm mb-2 ${admise ? "text-primary-700" : "text-slate-400"}`}>
                 {t("Matières Françaises")}
               </h4>
               {!admise && (
@@ -429,7 +429,7 @@ export default function AdminClasses() {
                     !admise
                       ? "border-slate-200 text-slate-400 cursor-not-allowed"
                       : selectedSubjects.includes(s.id)
-                        ? "bg-blue-50 border-blue-300 text-blue-800 cursor-pointer"
+                        ? "bg-primary-50 border-blue-300 text-primary-800 cursor-pointer"
                         : "border-slate-200 hover:bg-slate-50 text-slate-600 cursor-pointer"
                   }`}>
                     <input

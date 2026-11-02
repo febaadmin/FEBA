@@ -47,8 +47,8 @@ const APPLICATION_STATUSES = [
 ];
 
 const STATUS_TONE = {
-  form_received: "bg-blue-50 text-blue-700",
-  test_booked: "bg-indigo-50 text-indigo-700",
+  form_received: "bg-primary-50 text-primary-700",
+  test_booked: "bg-primary-50 text-primary-700",
   test_done: "bg-violet-50 text-violet-700",
   admission_offered: "bg-amber-50 text-amber-700",
   enrollment_confirmed: "bg-emerald-50 text-emerald-700",
@@ -993,7 +993,7 @@ function PlacementTable({ rows, onSchedule }) {
                 )}
               </td>
               <td className="py-2.5 pr-3">
-                <Badge tone="bg-indigo-50 text-indigo-700">
+                <Badge tone="bg-primary-50 text-primary-700">
                   {row.status_display || row.status}
                 </Badge>
                 {row.scheduled_at && (

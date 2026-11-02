@@ -36,9 +36,9 @@ export default function AdminDashboard() {
 
       {/* Active year badge */}
       {d?.active_year && (
-        <div className="flex items-center gap-2 px-4 py-2 bg-blue-50 border border-blue-200 rounded-xl w-fit">
+        <div className="flex items-center gap-2 px-4 py-2 bg-primary-50 border border-primary-200 rounded-xl w-fit">
           <span className="w-2 h-2 rounded-full bg-green-500 inline-block" />
-          <span className="text-sm font-medium text-blue-800">{t("Année scolaire active :")} <strong>{d.active_year.name}</strong>
+          <span className="text-sm font-medium text-primary-800">{t("Année scolaire active :")} <strong>{d.active_year.name}</strong>
           </span>
           <span className="text-xs text-blue-500 ml-1">- {t("statistiques filtrées sur cette année")}</span>
         </div>
@@ -64,7 +64,7 @@ export default function AdminDashboard() {
               <XAxis dataKey="month" tick={{ fontSize: 11 }} />
               <YAxis tick={{ fontSize: 11 }} tickFormatter={v => `${(v/1000).toFixed(0)}k`} />
               <Tooltip formatter={v => [money.format(v), t("Montant")]} />
-              <Bar dataKey="montant" fill="#6366F1" radius={[6,6,0,0]} />
+              <Bar dataKey="montant" fill="#1D4ED8" radius={[6,6,0,0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -76,7 +76,7 @@ export default function AdminDashboard() {
               <XAxis dataKey="month" tick={{ fontSize: 11 }} />
               <YAxis tick={{ fontSize: 11 }} />
               <Tooltip formatter={v => [money.format(v)]} />
-              <Line type="monotone" dataKey="montant" stroke="#6366F1" strokeWidth={2} dot={{ fill: "#6366F1", r: 4 }} />
+              <Line type="monotone" dataKey="montant" stroke="#1D4ED8" strokeWidth={2} dot={{ fill: "#1D4ED8", r: 4 }} />
             </LineChart>
           </ResponsiveContainer>
         </div>

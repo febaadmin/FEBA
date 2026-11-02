@@ -543,7 +543,7 @@ export default function AdminStudents() {
             <div className="grid grid-cols-3 gap-2">
               {[{ key: "single", label: t("Un élève") }, { key: "class", label: t("Une classe") }, { key: "all", label: t("Toute l'année") }].map(m => (
                 <button key={m.key} onClick={() => setEnrollModal(p => ({ ...p, _mode: m.key }))}
-                  className={`py-2 px-3 rounded-xl border text-sm font-medium transition ${(enrollModal._mode || "single") === m.key ? "bg-blue-600 text-white border-blue-600" : "border-gray-200 text-gray-600 hover:bg-gray-50"}`}>
+                  className={`py-2 px-3 rounded-xl border text-sm font-medium transition ${(enrollModal._mode || "single") === m.key ? "bg-primary text-white border-blue-600" : "border-gray-200 text-gray-600 hover:bg-gray-50"}`}>
                   {m.label}
                 </button>
               ))}
@@ -555,7 +555,7 @@ export default function AdminStudents() {
               else addEnrollMut.mutate({ _bulk: "all", source_year_id: d.source_year, target_year_id: d.school_year });
             })} className="space-y-4">
               {(enrollModal._mode || "single") === "single" && (
-                <div className="bg-blue-50 rounded-xl px-4 py-3 text-sm text-blue-800">{t("Élève :")} <span className="font-semibold">{enrollModal.full_name}</span>
+                <div className="bg-primary-50 rounded-xl px-4 py-3 text-sm text-primary-800">{t("Élève :")} <span className="font-semibold">{enrollModal.full_name}</span>
                 </div>
               )}
               {enrollModal._mode === "class" && (
