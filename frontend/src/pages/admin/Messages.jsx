@@ -375,6 +375,7 @@ export default function MessagesPage() {
                     <button
                       type="submit"
                       disabled={replyMut.isPending}
+                      aria-label={t("Envoyer")}
                       className="btn-primary p-2"
                     >
                       <Send className="w-4 h-4" />

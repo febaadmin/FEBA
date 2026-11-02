@@ -104,6 +104,20 @@ class SessionsTests(Base):
         self.assertEqual(r.status_code, 200, r.content)
         self.assertEqual(client().post("/api/auth/refresh/", {"refresh": volee["refresh"]}, format="json").status_code, 401)
 
+    def test_connexion_met_a_jour_la_derniere_connexion(self):
+        u = self.a.teacher_user
+        User.objects.filter(pk=u.pk).update(last_login=None)
+        connexion(u.email)
+        u.refresh_from_db()
+        self.assertIsNotNone(u.last_login)
+
+    def test_echec_ne_met_pas_a_jour_la_derniere_connexion(self):
+        u = self.a.teacher_user
+        User.objects.filter(pk=u.pk).update(last_login=None)
+        client().post("/api/auth/login/", {"email": u.email, "password": "faux"}, format="json")
+        u.refresh_from_db()
+        self.assertIsNone(u.last_login)
+
     def test_refresh_deconnecte_refuse(self):
         u = self.a.teacher_user
         j = connexion(u.email)
