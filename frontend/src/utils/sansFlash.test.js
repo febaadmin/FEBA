@@ -1,9 +1,9 @@
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const racine = fileURLToPath(new URL("../../", import.meta.url));
+const racine = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 
 describe("navigation sans flash", () => {
   it("garde une version de framer-motion qui fige l'opacité finale avant d'annuler l'animation", () => {
