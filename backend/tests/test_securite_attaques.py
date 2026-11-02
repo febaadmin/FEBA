@@ -121,6 +121,15 @@ class SessionsTests(Base):
         u.refresh_from_db()
         self.assertIsNone(u.last_login)
 
+    def test_compte_desactive_annonce_seulement_avec_le_bon_mot_de_passe(self):
+        u = self.a.teacher_user
+        User.objects.filter(pk=u.pk).update(is_active=False)
+        bon = client().post("/api/auth/login/", {"email": u.email, "password": "Pass1234!"}, format="json")
+        self.assertEqual(bon.status_code, 400)
+        self.assertIn("désactivé", str(bon.data))
+        mauvais = client().post("/api/auth/login/", {"email": u.email, "password": "faux"}, format="json")
+        self.assertNotIn("désactivé", str(mauvais.data))
+
     def test_refresh_deconnecte_refuse(self):
         u = self.a.teacher_user
         j = connexion(u.email)
