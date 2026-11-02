@@ -3,6 +3,9 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useLocation } from "react-router-dom";
 import { suiviAPI } from "../../../api";
+import { motion } from "framer-motion";
+import { AnneauProgression, apparition, cascade } from "../../../components/ui/anime";
+import { useAcademy } from "../../../context/AcademyContext";
 import AideModule from "../../../components/ui/AideModule";
 import PageHeader from "../../../components/ui/PageHeader";
 import { useAuth } from "../../../hooks/useAuth";
@@ -11,6 +14,7 @@ import { t } from "../../../i18n";
 export default function SuiviEleves() {
   const { pathname } = useLocation();
   const { user } = useAuth();
+  const { isAllAcademies } = useAcademy();
   const [recherche, setRecherche] = useState("");
   const { data, isLoading, isError } = useQuery({ queryKey: ["suivi-eleves"], queryFn: () => suiviAPI.eleves() });
   const eleves = (data?.data?.results || []).filter((e) => e.nom.toLowerCase().includes(recherche.toLowerCase()));
@@ -30,23 +34,22 @@ export default function SuiviEleves() {
         {isLoading && <p className="text-sm text-slate-500">{t("Chargement")}</p>}
         {isError && <p className="text-sm text-red-700">{t("Le suivi n'a pas pu être chargé.")}</p>}
         {!isLoading && !isError && eleves.length === 0 && (
-          <p className="text-sm text-slate-500">{t("Aucun élève ici. Un enseignant voit les élèves de ses classes : vérifiez les classes qui lui sont attribuées.")}</p>
+          <p className="text-sm text-slate-500">{isAllAcademies ? t("Choisissez une académie en haut de la page pour voir ses élèves.") : t("Aucun élève ici. Un enseignant voit les élèves de ses classes : vérifiez les classes qui lui sont attribuées.")}</p>
         )}
-        <ul className="divide-y divide-slate-100">
+        <motion.ul variants={cascade} initial="hidden" animate="show" className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {eleves.map((e) => (
-            <li key={e.id}>
-              <Link to={`${base}/${e.id}`} className="flex items-center justify-between gap-3 py-3 hover:bg-slate-50 px-2 rounded-lg">
-                <span>
-                  <span className="block text-sm font-medium text-slate-900">{e.nom}</span>
+            <motion.li key={e.id} variants={apparition} whileHover={{ y: -2 }}>
+              <Link to={`${base}/${e.id}`} className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm hover:shadow-md transition-shadow">
+                <AnneauProgression valeur={e.progression ?? 0} taille={52} epaisseur={5}><span className="text-[11px] font-semibold text-slate-800">{e.progression === null ? "-" : `${Math.round(e.progression)}%`}</span></AnneauProgression>
+                <span className="min-w-0">
+                  <span className="block text-sm font-medium text-slate-900 truncate">{e.nom}</span>
                   <span className="block text-xs text-slate-500">{e.classe_nom || t("Sans classe")}</span>
-                </span>
-                <span className="text-sm text-slate-700 whitespace-nowrap">
-                  {e.progression === null ? t("Données insuffisantes") : `${e.progression} %`}
+                  {e.progression === null && <span className="block text-xs text-slate-400">{t("Suivi à commencer")}</span>}
                 </span>
               </Link>
-            </li>
+            </motion.li>
           ))}
-        </ul>
+        </motion.ul>
       </div>
     </div>
   );

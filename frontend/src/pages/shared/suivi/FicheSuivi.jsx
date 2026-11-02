@@ -261,21 +261,20 @@ export default function FicheSuivi() {
       </motion.header>
       <AideModule cle={gere ? "fiche-personnel" : "fiche-famille"} description={gere ? t("La fiche réunit le suivi de l'élève, ses examens en ligne et ses notes officielles, chacun avec son origine.") : t("Cette fiche montre ce que l'enseignant a validé.")} />
 
-      <div className="card flex flex-wrap gap-3 items-end">
+      <div className="card !p-3 grid grid-cols-2 lg:flex lg:flex-wrap gap-2 items-end">
         <div><label className="label" htmlFor="suivi-du">{t("Du")}</label><input id="suivi-du" type="date" className="input" value={filtres.du} onChange={(e) => setFiltres({ ...filtres, du: e.target.value })} /></div>
         <div><label className="label" htmlFor="suivi-au">{t("Au")}</label><input id="suivi-au" type="date" className="input" value={filtres.au} onChange={(e) => setFiltres({ ...filtres, au: e.target.value })} /></div>
-        <div><label className="label" htmlFor="suivi-matiere">{t("Matière")}</label>
+        <div className="col-span-2 lg:col-span-1"><label className="label" htmlFor="suivi-matiere">{t("Matière")}</label>
           <select id="suivi-matiere" className="input" value={filtres.subject} onChange={(e) => setFiltres({ ...filtres, subject: e.target.value })}>
             <option value="">{t("Toutes")}</option>
             {matieres.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
           </select>
         </div>
-      </div>
-
-      <div className="flex flex-wrap gap-2 text-xs" aria-label={t("Périodes rapides")}>
-        {[[t("Toutes les données"), null], [t("30 derniers jours"), 30], [t("90 derniers jours"), 90]].map(([l, j]) => (
-          <button key={l} type="button" className="btn-secondary text-xs" onClick={() => setFiltres({ ...filtres, du: j ? new Date(Date.now() - j * 864e5).toISOString().slice(0, 10) : "", au: "" })}>{l}</button>
-        ))}
+        <div className="col-span-2 lg:col-span-1 flex flex-wrap gap-1" aria-label={t("Périodes rapides")}>
+          {[[t("Toutes les données"), null], [t("30 derniers jours"), 30], [t("90 derniers jours"), 90]].map(([l, jours]) => (
+            <button key={l} type="button" className="btn-secondary !py-1.5 text-xs" onClick={() => setFiltres({ ...filtres, du: jours ? new Date(Date.now() - jours * 864e5).toISOString().slice(0, 10) : "", au: "" })}>{l}</button>
+          ))}
+        </div>
       </div>
 
       <div className="flex gap-1 overflow-x-auto border-b border-slate-200" role="tablist">
@@ -318,19 +317,19 @@ export default function FicheSuivi() {
               methode={t("Présences et retards divisés par les séances relevées. Une séance sans relevé n'est pas comptée.")} />
             {f.participation && <Indicateur titre={t("Participation")} voir={() => setOnglet("participation")} valeur={f.participation.moyenne !== null ? `${f.participation.moyenne} / 4` : null}
               raison={t("{n} observation(s) sur 2 nécessaires.", { n: f.participation.nombre })}
-              action={gere && <button type="button" className="text-xs text-primary underline" onClick={() => { setOnglet("evaluations"); ouvrir("observation"); }}>{t("Observer la participation")}</button>}
+              action={gere && <button type="button" className="text-xs text-primary underline text-left self-start" onClick={() => { setOnglet("evaluations"); ouvrir("observation"); }}>{t("Observer la participation")}</button>}
               detail={t("{n} observation(s)", { n: f.participation.nombre })} methode={t("Moyenne des observations saisies par l'enseignant : 1 insuffisante, 2 occasionnelle, 3 active, 4 très active.")} />}
             <Indicateur titre={t("Compétences")} voir={() => setOnglet("competences")} valeur={f.competences.has_data ? `${f.competences.lignes.filter((l) => l.acquis).length} / ${f.competences.lignes.length}` : null}
               raison={t("Aucune compétence évaluée sur cette période.")}
-              action={gere && <button type="button" className="text-xs text-primary underline" onClick={() => setOnglet("competences")}>{t("Évaluer une compétence")}</button>}
+              action={gere && <button type="button" className="text-xs text-primary underline text-left self-start" onClick={() => setOnglet("competences")}>{t("Évaluer une compétence")}</button>}
               detail={f.competences.has_data ? t("acquises") : null} methode={t("Dernier niveau validé de chaque compétence évaluée.")} />
             <Indicateur titre={t("Évaluations du suivi")} nombre={f.evaluations.moyenne ?? undefined} suffixe=" %" voir={() => setOnglet("evaluations")} valeur={f.evaluations.has_data ? `${f.evaluations.moyenne} %` : null}
               raison={t("Aucune évaluation du suivi sur cette période. Les notes officielles sont dans l'onglet Résultats.")}
-              action={gere && <button type="button" className="text-xs text-primary underline" onClick={() => { setOnglet("evaluations"); ouvrir("evaluation"); }}>{t("Ajouter une évaluation")}</button>}
+              action={gere && <button type="button" className="text-xs text-primary underline text-left self-start" onClick={() => { setOnglet("evaluations"); ouvrir("evaluation"); }}>{t("Ajouter une évaluation")}</button>}
               detail={f.evaluations.has_data ? t("{n} évaluation(s)", { n: f.evaluations.lignes.length }) : null} methode={t("Moyenne des résultats en pourcentage.")} />
             <Indicateur titre={t("Objectifs")} voir={() => setOnglet("objectifs")} valeur={f.objectifs.has_data ? `${f.objectifs.par_statut.atteint || 0} / ${f.objectifs.total}` : null}
               raison={t("Aucun objectif sur cette période.")}
-              action={gere && <button type="button" className="text-xs text-primary underline" onClick={() => setOnglet("objectifs")}>{t("Créer un objectif")}</button>}
+              action={gere && <button type="button" className="text-xs text-primary underline text-left self-start" onClick={() => setOnglet("objectifs")}>{t("Créer un objectif")}</button>}
               detail={f.objectifs.has_data ? t("atteints") : null} />
           </motion.div>
           <div className="grid gap-4 lg:grid-cols-2">

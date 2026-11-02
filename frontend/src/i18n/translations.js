@@ -3426,4 +3426,6 @@ export const EN = {
   "Objectif atteint, bravo !": "Goal achieved, well done!",
   "Déposez un objectif ici": "Drop a goal here",
   "Rien n'est encore enregistré pour cet élève. Chaque évaluation, objectif ou rapport apparaîtra ici.": "Nothing recorded for this student yet. Each assessment, goal or report will appear here.",
+  "Suivi à commencer": "Tracking not started",
+  "Choisissez une académie en haut de la page pour voir ses élèves.": "Choose an academy at the top of the page to see its students.",
 };
