@@ -516,11 +516,11 @@ class Command(BaseCommand):
         self.stdout.write(f"   Élèves   : {len(student_list)} (historique 3 ans, redoublants inclus)")
         self.stdout.write("")
         self.stdout.write("   Comptes de démonstration :")
-        self.stdout.write("   superadmin@feba.bj  / {MDP_SUPERADMIN}")
-        self.stdout.write("   admin@feba.bj       / {MDP_ADMIN}")
-        self.stdout.write("   prof.math@feba.bj   / {MDP_ENSEIGNANT}")
-        self.stdout.write("   parent1@feba.bj     / {MDP_PARENT}")
-        self.stdout.write("   eleve1@feba.bj      / {MDP_ELEVE}")
+        self.stdout.write(f"   superadmin@feba.bj  / {MDP_SUPERADMIN}")
+        self.stdout.write(f"   admin@feba.bj       / {MDP_ADMIN}")
+        self.stdout.write(f"   prof.math@feba.bj   / {MDP_ENSEIGNANT}")
+        self.stdout.write(f"   parent1@feba.bj     / {MDP_PARENT}")
+        self.stdout.write(f"   eleve1@feba.bj      / {MDP_ELEVE}")
 
         # ══════════════════════════════════════════════════════════════
         # ACADÉMIE 2 — FEBA FRENCH HERITAGE ACADEMY
@@ -942,7 +942,7 @@ class Command(BaseCommand):
 
         self.stdout.write(self.style.SUCCESS("\n✅ Seed FEBA FHA terminé."))
         self.stdout.write("   Comptes FEBA FHA :")
-        self.stdout.write("   admin@febafha.org   / {MDP_ADMIN}")
-        self.stdout.write("   prof@febafha.org    / {MDP_ENSEIGNANT}")
-        self.stdout.write("   parent@febafha.org  / {MDP_PARENT}")
-        self.stdout.write("   eleve1@febafha.org  / {MDP_ELEVE}")
+        self.stdout.write(f"   admin@febafha.org   / {MDP_ADMIN}")
+        self.stdout.write(f"   prof@febafha.org    / {MDP_ENSEIGNANT}")
+        self.stdout.write(f"   parent@febafha.org  / {MDP_PARENT}")
+        self.stdout.write(f"   eleve1@febafha.org  / {MDP_ELEVE}")
