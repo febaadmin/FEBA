@@ -7,6 +7,7 @@ import StatCard from "../../components/ui/StatCard";
 import PageHeader from "../../components/ui/PageHeader";
 import AnnouncementModal from "../../components/ui/AnnouncementModal";
 import { t } from "../../i18n";
+import { libelleCible } from "../../utils/destinataires";
 import { useMoney } from "../../hooks/useMoney";
 
 const MONTHS = ["Jan","Fév","Mar","Avr","Mai","Jun","Jul","Aoû","Sep","Oct","Nov","Déc"];
@@ -109,7 +110,7 @@ export default function AdminDashboard() {
                 <div className="w-2 h-2 rounded-full bg-primary mt-1.5 shrink-0" />
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-slate-800 hover:text-primary transition-colors">{a.title}</p>
-                  <p className="text-xs text-slate-400">{(a.target_roles || []).join(", ")} • {a.created_at?.slice(0,10)}</p>
+                  <p className="text-xs text-slate-400">{(a.target_roles || []).map(libelleCible).join(", ")} • {a.created_at?.slice(0,10)}</p>
                 </div>
               </div>
             ))}
