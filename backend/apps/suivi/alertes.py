@@ -13,7 +13,9 @@ from . import services
 from .models import AlertePedagogique, EvaluationPedagogique, Objectif, RegleAlerte
 
 CATEGORIES = {"baisse_resultats": "surveiller", "progression_positive": "positif", "stagnation": "attention",
-              "absences": "surveiller", "difficultes": "surveiller", "objectif_atteint": "objectif"}
+              "absences": "surveiller", "difficultes": "surveiller", "objectif_atteint": "objectif",
+              "objectif_retard": "attention", "resultats_insuffisants": "surveiller", "competence_maitrisee": "positif",
+              "evaluation_non_realisee": "attention"}
 RECOMMANDATIONS = {
     "baisse_resultats": "Prévoir une révision ciblée puis une évaluation de contrôle.",
     "progression_positive": "Proposer des activités complémentaires et un nouvel objectif.",
@@ -21,6 +23,10 @@ RECOMMANDATIONS = {
     "absences": "Faire le point avec l'élève et, si nécessaire, proposer un rendez-vous aux parents.",
     "difficultes": "Envisager un plan d'accompagnement.",
     "objectif_atteint": "Définir l'objectif suivant.",
+    "objectif_retard": "Faire le point sur cet objectif : ajuster la date ou les actions.",
+    "resultats_insuffisants": "Prévoir des exercices ciblés puis une évaluation de contrôle.",
+    "competence_maitrisee": "Féliciter l'élève et proposer une compétence suivante.",
+    "evaluation_non_realisee": "Vérifier la raison avec l'élève et, si besoin, proposer une nouvelle tentative.",
 }
 
 
@@ -65,6 +71,21 @@ def detecter_eleve(student, actives):
     if "objectif_atteint" in actives:
         for o in Objectif.objects.filter(student=student, statut="atteint"):
             total += _creer(student, "objectif_atteint", o.pk, f"Objectif atteint : {o.titre}.", {"objectif": o.pk})
+    aujourd_hui = timezone.now().date()
+    if "objectif_retard" in actives:
+        for o in Objectif.objects.filter(student=student, statut__in=["a_commencer", "en_cours"], date_cible__lt=aujourd_hui):
+            total += _creer(student, "objectif_retard", o.pk, f"Objectif en retard : {o.titre} (date cible {o.date_cible}).", {"objectif": o.pk, "date_cible": str(o.date_cible)})
+    if "resultats_insuffisants" in actives and deux and float(deux[0].score_pourcent) < actives["resultats_insuffisants"].seuil:
+        total += _creer(student, "resultats_insuffisants", f"e{deux[0].pk}", f"Dernier résultat du suivi : {float(deux[0].score_pourcent):.1f} %, sous le seuil de {actives['resultats_insuffisants'].seuil} %.", {"evaluation": deux[0].pk, "date": str(deux[0].date_evaluation)})
+    if "competence_maitrisee" in actives:
+        for l in etat["lignes"]:
+            if l["nouvellement_acquis"]:
+                total += _creer(student, "competence_maitrisee", f"{l['competence']}-{l['date']}", f"Compétence acquise : {l['nom']}.", {"competence": l["competence"], "date": str(l["date"])})
+    if "evaluation_non_realisee" in actives:
+        from apps.evaluations.models import Epreuve
+        for e in Epreuve.objects.filter(class_obj_id=student.current_class_id, statut__in=[Epreuve.PUBLIEE, Epreuve.CLOSE], fermeture__lt=timezone.now()).exclude(tentatives__student=student).exclude(type="quiz"):
+            if not e.eleves_cibles.exists() or e.eleves_cibles.filter(pk=student.pk).exists():
+                total += _creer(student, "evaluation_non_realisee", e.pk, f"Épreuve non réalisée : {e.titre}, fermée le {e.fermeture:%d/%m/%Y}.", {"epreuve": e.pk})
     return total
 
 

@@ -104,6 +104,15 @@ class EvaluationCompetenceSerializer(serializers.ModelSerializer):
     def get_evalue_par_nom(self, obj):
         return obj.evalue_par.get_full_name() if obj.evalue_par else None
 
+    def to_representation(self, instance):
+        donnees = super().to_representation(instance)
+        request = self.context.get("request")
+        # Le commentaire de l'enseignant reste interne : la famille voit le niveau validé.
+        if request is not None and (request.user.is_student() or request.user.is_parent()):
+            donnees["commentaire"] = ""
+            donnees["preuve"] = None
+        return donnees
+
     def validate(self, attrs):
         school = self.context["school"]
         if attrs["student"].school_id != school.pk:
@@ -170,6 +179,15 @@ class HistoriqueObjectifSerializer(serializers.ModelSerializer):
 
 
 class ObjectifSerializer(_AvecEleve):
+    def to_representation(self, instance):
+        donnees = super().to_representation(instance)
+        request = self.context.get("request")
+        if request is not None and (request.user.is_student() or request.user.is_parent()):
+            donnees["commentaire"] = ""
+            donnees["historique"] = [{**h, "note": ""} for h in donnees["historique"]]
+            donnees["actions"] = [{**a, "resultat": ""} for a in donnees["actions"]]
+        return donnees
+
     actions = ActionSerializer(many=True, read_only=True)
     historique = HistoriqueObjectifSerializer(many=True, read_only=True)
     subject_name = serializers.CharField(source="subject.name", read_only=True, default=None)
@@ -178,7 +196,7 @@ class ObjectifSerializer(_AvecEleve):
     class Meta:
         model = Objectif
         fields = ["id", "student", "class_obj", "subject", "subject_name", "competence", "competence_nom", "titre",
-                  "description", "criteres_reussite", "date_cible", "priorite", "statut", "responsable",
+                  "description", "criteres_reussite", "resultat_attendu", "commentaire", "date_debut", "date_cible", "priorite", "statut", "responsable",
                   "actions", "historique", "created_at"]
         read_only_fields = ["id", "created_at"]
 

@@ -224,6 +224,80 @@ def resultats_examens(student, du=None, au=None, famille=False):
     return {"has_data": bool(lignes), "origine": ORIGINE_EXAMEN, "lignes": lignes}
 
 
+def series(student, du=None, au=None, subject=None, famille=False):
+    """Séries mensuelles pour les graphiques. Chaque origine reste une série distincte."""
+    from apps.evaluations.models import Tentative
+
+    def mois(d):
+        return d.strftime("%Y-%m")
+
+    def moyennes(lignes):
+        groupes = defaultdict(list)
+        for d, v in lignes:
+            groupes[mois(d)].append(float(v))
+        return {m: round(sum(vs) / len(vs), 1) for m, vs in groupes.items()}
+
+    evals = _dans_periode(EvaluationPedagogique.objects.filter(student=student), "date_evaluation", du, au)
+    notes = _dans_periode(Grade.objects.filter(student=student, is_deleted=False), "created_at__date", du, au)
+    examens = _dans_periode(Tentative.objects.filter(student=student, statut=Tentative.VALIDEE), "remise_le__date", du, au)
+    if famille:
+        examens = examens.filter(epreuve__resultats_publies=True)
+    if subject:
+        evals, notes, examens = evals.filter(subject_id=subject), notes.filter(subject_id=subject), examens.filter(epreuve__subject_id=subject)
+    s_evals = moyennes(evals.values_list("date_evaluation", "score_pourcent"))
+    # Notes sur 20 ramenées en pourcentage, seulement pour les placer sur le même axe.
+    s_notes = moyennes((g.created_at, float(g.value) * 5) for g in notes)
+    s_examens = moyennes((t.remise_le, t.pourcentage or 0) for t in examens)
+    evolution = [{"mois": m, "suivi": s_evals.get(m), "examens": s_examens.get(m), "notes": s_notes.get(m)}
+                 for m in sorted(set(s_evals) | set(s_notes) | set(s_examens))]
+    presences = {}
+    releves = _dans_periode(Attendance.objects.filter(student=student), "date", du, au).order_by("id")
+    for a in {(x.date, x.subject_id): x for x in releves}.values():
+        ligne = presences.setdefault(mois(a.date), {"mois": mois(a.date), "presents": 0, "retards": 0, "absences": 0})
+        cle = {"present": "presents", "late": "retards"}.get(a.status, "absences")
+        ligne[cle] += 1
+    etat = etat_competences(student, du, au, subject)
+    repartition = [{"niveau": n.libelle, "niveau_en": n.libelle_en, "couleur": n.couleur, "code": n.code,
+                    "nombre": sum(1 for l in etat["lignes"] if l["rang"] == n.rang)}
+                   for n in NiveauMaitrise.objects.filter(school=student.school)]
+    return {"evolution": evolution, "assiduite": [presences[m] for m in sorted(presences)], "competences": repartition}
+
+
+def chronologie(student, famille=False):
+    """Frise : tout ce qui s'est passé pour l'élève, du plus récent au plus ancien."""
+    from apps.evaluations.models import Tentative
+
+    from .models import ObjectifHistorique, RapportPedagogique
+
+    ev = []
+    for e in EvaluationCompetence.objects.filter(student=student, statut=EvaluationCompetence.VALIDEE).select_related("competence", "niveau")[:200]:
+        ev.append({"date": e.date_evaluation, "type": "competence", "titre": e.competence.nom, "detail": e.niveau.libelle})
+    for e in EvaluationPedagogique.objects.filter(student=student)[:200]:
+        ev.append({"date": e.date_evaluation, "type": "evaluation", "titre": e.titre, "detail": f"{float(e.score_pourcent):g} %"})
+    examens = Tentative.objects.filter(student=student, statut=Tentative.VALIDEE).select_related("epreuve")
+    if famille:
+        examens = examens.filter(epreuve__resultats_publies=True)
+    for t in examens[:200]:
+        ev.append({"date": t.remise_le.date(), "type": "examen", "titre": t.epreuve.titre, "detail": f"{float(t.pourcentage or 0):g} %"})
+    for h in ObjectifHistorique.objects.filter(objectif__student=student).select_related("objectif")[:200]:
+        ev.append({"date": h.created_at.date(), "type": "objectif", "titre": h.objectif.titre, "statut": h.nouveau_statut, "detail": ""})
+    plans = PlanAccompagnement.objects.filter(student=student)
+    if famille:
+        plans = plans.filter(partage_famille=True)
+    for p in plans[:100]:
+        ev.append({"date": p.debut, "type": "plan", "titre": p.titre, "detail": ""})
+    rapports = RapportPedagogique.objects.filter(student=student)
+    if famille:
+        rapports = rapports.filter(versions__statut=RapportPedagogique.PUBLIE).distinct()
+    for r in rapports[:100]:
+        ev.append({"date": r.au, "type": "rapport", "titre": f"{r.du} - {r.au}", "detail": r.type})
+    if not famille:
+        for o in ObservationParticipation.objects.filter(student=student)[:200]:
+            ev.append({"date": o.date_observation, "type": "observation", "titre": o.get_niveau_display(), "detail": o.note})
+    ev.sort(key=lambda x: str(x["date"]), reverse=True)
+    return ev[:300]
+
+
 def fiche(student, du=None, au=None, subject=None, famille=False):
     plans = PlanAccompagnement.objects.filter(student=student)
     if famille:
@@ -238,6 +312,8 @@ def fiche(student, du=None, au=None, subject=None, famille=False):
         "objectifs": _objectifs(student, du, au, subject),
         "resultats_historiques": resultats_historiques(student, du, au, subject),
         "resultats_examens": resultats_examens(student, du, au, famille),
+        "series": series(student, du, au, subject, famille),
+        "chronologie": chronologie(student, famille),
         "plans_actifs": plans.filter(statut="actif").count(),
     }
     return donnees

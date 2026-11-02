@@ -11,6 +11,11 @@ import toast from "react-hot-toast";
 import { suiviAPI, subjectsAPI } from "../../../api";
 import AideModule from "../../../components/ui/AideModule";
 import Modal from "../../../components/ui/Modal";
+import { AnimatePresence, motion } from "framer-motion";
+import { AnneauProgression, CompteurAnime, Squelette, apparition, cascade } from "../../../components/ui/anime";
+import Chronologie from "./Chronologie";
+import { AssiduiteMois, ComparaisonPeriodes, Evolution, ParMatiere, RepartitionCompetences } from "./Graphiques";
+import TableauObjectifs from "./TableauObjectifs";
 import Rapports from "./Rapports";
 import { AIDE_NIVEAUX } from "./niveaux";
 import PageHeader from "../../../components/ui/PageHeader";
@@ -19,7 +24,6 @@ import { extractApiError } from "../../../utils/errors";
 import { t } from "../../../i18n";
 
 const VIDE = "Données insuffisantes";
-const STATUTS = [["a_commencer", "À commencer"], ["en_cours", "En cours"], ["atteint", "Atteint"], ["non_atteint", "Non atteint"], ["reporte", "Reporté"]];
 const TENDANCES = {
   progresse: { label: "Progresse", Icone: ArrowUpRight, cls: "text-green-700" },
   regresse: { label: "Régresse", Icone: ArrowDownRight, cls: "text-red-700" },
@@ -28,17 +32,22 @@ const TENDANCES = {
 };
 const aujourdhui = () => new Date().toISOString().slice(0, 10);
 
-function Indicateur({ titre, valeur, detail, raison, action, methode }) {
+function Indicateur({ titre, valeur, nombre, suffixe = "", detail, raison, action, methode, voir }) {
   const vide = valeur === null;
   return (
-    <div className="card">
+    <motion.div variants={apparition} whileHover={{ y: -3 }} transition={{ type: "spring", stiffness: 300, damping: 24 }}
+      className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm hover:shadow-md transition-shadow flex flex-col">
       <p className="text-sm text-slate-500">{titre}</p>
-      {vide ? <p className="text-sm font-medium mt-1 text-slate-700">{t(VIDE)}</p> : <p className="text-2xl font-bold mt-1 text-slate-900">{valeur}</p>}
+      {vide ? <p className="text-sm font-medium mt-1 text-slate-700">{t(VIDE)}</p>
+        : <p className="text-3xl font-bold mt-1 text-slate-900">{nombre !== undefined ? <CompteurAnime valeur={nombre} suffixe={suffixe} decimales={Number.isInteger(nombre) ? 0 : 1} /> : valeur}</p>}
       {vide && raison && <p className="text-xs text-slate-600 mt-1">{raison}</p>}
       {vide && action}
       {!vide && detail && <p className="text-xs text-slate-500 mt-1">{detail}</p>}
-      {methode && <details className="mt-2 text-xs text-slate-500"><summary className="cursor-pointer">{t("Comment est-ce calculé ?")}</summary><p className="mt-1">{methode}</p></details>}
-    </div>
+      <div className="mt-auto pt-2 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500">
+        {methode ? <details><summary className="cursor-pointer">{t("Comment est-ce calculé ?")}</summary><p className="mt-1">{methode}</p></details> : <span />}
+        {voir && !vide && <button type="button" className="text-primary underline" onClick={voir}>{t("Voir le détail")}</button>}
+      </div>
+    </motion.div>
   );
 }
 
@@ -133,7 +142,7 @@ export default function FicheSuivi() {
   const majPlan = useMutation({ mutationFn: ({ pk, corps }) => suiviAPI.modifierPlan(pk, corps), ...opts });
   const majAction = useMutation({ mutationFn: ({ pk, corps }) => suiviAPI.modifierAction(pk, corps), ...opts });
 
-  if (isLoading) return <p className="text-sm text-slate-500">{t("Chargement")}</p>;
+  if (isLoading) return <Squelette lignes={5} />;
   if (isError) return <p className="card text-sm text-red-700">{t("Le suivi n'a pas pu être chargé.")}</p>;
   const f = data.data;
   const matieres = (matieresData?.data?.results || matieresData?.data || []).map((m) => [m.id, m.name]);
@@ -189,6 +198,8 @@ export default function FicheSuivi() {
         { nom: "subject", label: t("Matière"), options: matieres },
         { nom: "competence", label: t("Compétence"), options: competences.map((c) => [c.id, c.nom]) },
         { nom: "criteres_reussite", label: t("Critères de réussite"), type: "textarea" },
+        { nom: "resultat_attendu", label: t("Résultat attendu"), type: "textarea" },
+        { nom: "date_debut", label: t("Date de début"), type: "date" },
         { nom: "date_cible", label: t("Date cible"), type: "date" },
         { nom: "priorite", label: t("Priorité"), options: [["basse", t("Basse")], ["normale", t("Normale")], ["haute", t("Haute")]] },
       ],
@@ -221,7 +232,14 @@ export default function FicheSuivi() {
     enregistrer.mutate({ fn: FORMULAIRES[saisie].fn, corps });
   };
 
-  const onglets = [["synthese", t("Synthèse")], ["competences", t("Compétences")], ["evaluations", t("Résultats")], ["objectifs", t("Objectifs")], ["plans", t("Accompagnement")], ["rapports", t("Rapports")]];
+  const onglets = [["synthese", t("Vue générale")], ["competences", t("Compétences")], ["evaluations", t("Évaluations")], ["notes", t("Notes officielles")], ["objectifs", t("Objectifs")],
+    ...(f.participation ? [["participation", t("Participation")]] : []), ["assiduite", t("Assiduité")], ["plans", t("Accompagnement")], ["rapports", t("Rapports")], ["historique", t("Historique")]];
+  const preselection = (mois) => {
+    const j = new Date();
+    const debut = (n) => new Date(j.getFullYear(), j.getMonth() - n, 1);
+    const iso = (d) => new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+    setCmp({ a_du: iso(debut(2 * mois - 1)), a_au: iso(new Date(debut(mois - 1).getTime() - 864e5)), b_du: iso(debut(mois - 1)), b_au: iso(j) });
+  };
   const boutonAjout = (cle, libelle) => gere && (
     <button type="button" className="btn-secondary flex items-center gap-2 text-sm" onClick={() => ouvrir(cle)}><Plus className="w-4 h-4" />{libelle}</button>
   );
@@ -230,9 +248,18 @@ export default function FicheSuivi() {
 
   return (
     <div className="space-y-4">
+      <motion.header initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} className="rounded-2xl p-6 text-white shadow-md bg-gradient-to-br from-slate-900 via-slate-800 to-blue-900 flex flex-wrap items-center gap-5">
+        <AnneauProgression valeur={f.progression.valeur ?? 0} couleur="#60a5fa">
+          <span className="text-sm font-bold">{f.progression.has_data ? <CompteurAnime valeur={f.progression.valeur} suffixe=" %" /> : "-"}</span>
+        </AnneauProgression>
+        <div className="flex-1 min-w-48">
+          <h1 className="text-2xl font-bold">{f.eleve.nom}</h1>
+          <p className="text-sm text-slate-300">{[f.eleve.classe, f.eleve.matricule].filter(Boolean).join(" - ")}</p>
+          <p className="text-xs text-slate-400 mt-1">{f.progression.has_data ? t("Progression générale sur la période choisie.") : t("Aucune donnée de suivi pour le moment.")}</p>
+        </div>
+        <Link to=".." relative="path" className="rounded-lg bg-white/10 hover:bg-white/20 px-3 py-2 text-sm transition-colors">{t("Retour")}</Link>
+      </motion.header>
       <AideModule cle={gere ? "fiche-personnel" : "fiche-famille"} description={gere ? t("La fiche réunit le suivi de l'élève, ses examens en ligne et ses notes officielles, chacun avec son origine.") : t("Cette fiche montre ce que l'enseignant a validé.")} />
-      <PageHeader title={f.eleve.nom} subtitle={[f.eleve.classe, f.eleve.matricule].filter(Boolean).join(" - ")}
-        action={<Link to=".." relative="path" className="btn-secondary text-sm">{t("Retour")}</Link>} />
 
       <div className="card flex flex-wrap gap-3 items-end">
         <div><label className="label" htmlFor="suivi-du">{t("Du")}</label><input id="suivi-du" type="date" className="input" value={filtres.du} onChange={(e) => setFiltres({ ...filtres, du: e.target.value })} /></div>
@@ -254,9 +281,15 @@ export default function FicheSuivi() {
       <div className="flex gap-1 overflow-x-auto border-b border-slate-200" role="tablist">
         {onglets.map(([k, l]) => (
           <button key={k} type="button" role="tab" aria-selected={onglet === k} onClick={() => setOnglet(k)}
-            className={`px-3 py-2 text-sm whitespace-nowrap border-b-2 ${onglet === k ? "border-primary text-primary font-medium" : "border-transparent text-slate-600"}`}>{l}</button>
+            className={`relative px-3 py-2 text-sm whitespace-nowrap transition-colors ${onglet === k ? "text-primary font-medium" : "text-slate-600 hover:text-slate-900"}`}>
+            {l}
+            {onglet === k && <motion.span layoutId="onglet-fiche" className="absolute left-0 right-0 -bottom-px h-0.5 bg-primary" transition={{ type: "spring", stiffness: 400, damping: 32 }} />}
+          </button>
         ))}
       </div>
+
+      <AnimatePresence mode="wait">
+      <motion.div key={onglet} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} transition={{ duration: 0.18 }}>
 
       {onglet === "synthese" && (
         <div className="space-y-4">
@@ -273,32 +306,37 @@ export default function FicheSuivi() {
             </div>
           )}
           <p className="text-xs text-slate-500">{filtres.du || filtres.au ? t("Période : du {a} au {b}.", { a: filtres.du || "...", b: filtres.au || "..." }) : t("Période : toutes les données enregistrées.")}</p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            <Indicateur titre={t("Progression générale")} valeur={f.progression.has_data ? `${f.progression.valeur} %` : null}
+          <motion.div variants={cascade} initial="hidden" animate="show" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            <Indicateur titre={t("Progression générale")} nombre={f.progression.valeur ?? undefined} suffixe=" %" voir={() => setOnglet("historique")} valeur={f.progression.has_data ? `${f.progression.valeur} %` : null}
               raison={t("Il faut au moins une compétence évaluée, une évaluation du suivi ou un objectif clos.")}
               detail={t("Compétences : {c}. Évaluations : {e}. Objectifs : {o}.", { c: f.progression.composantes.competences ?? "-", e: f.progression.composantes.evaluations ?? "-", o: f.progression.composantes.objectifs ?? "-" })}
               methode={t("Moyenne pondérée des compétences, des évaluations du suivi et des objectifs, sur les seules données disponibles. Les notes officielles n'y entrent pas.")} />
-            <Indicateur titre={t("Assiduité")} valeur={f.assiduite.has_data ? `${f.assiduite.taux} %` : null}
+            <Indicateur titre={t("Assiduité")} nombre={f.assiduite.taux ?? undefined} suffixe=" %" voir={() => setOnglet("assiduite")} valeur={f.assiduite.has_data ? `${f.assiduite.taux} %` : null}
               raison={t("Aucune présence n'est enregistrée pour cette période.")}
               action={gere && <Link className="text-xs text-primary underline" to={`/${racine}/attendance`}>{t("Saisir les présences dans Absences")}</Link>}
               detail={f.assiduite.has_data ? t("{p} présence(s), {r} retard(s), {j} absence(s) justifiée(s), {n} non justifiée(s), sur {t} séance(s).", { p: f.assiduite.presents, r: f.assiduite.retards, j: f.assiduite.absences_justifiees, n: f.assiduite.absences_non_justifiees, t: f.assiduite.total }) : null}
               methode={t("Présences et retards divisés par les séances relevées. Une séance sans relevé n'est pas comptée.")} />
-            {f.participation && <Indicateur titre={t("Participation")} valeur={f.participation.moyenne !== null ? `${f.participation.moyenne} / 4` : null}
+            {f.participation && <Indicateur titre={t("Participation")} voir={() => setOnglet("participation")} valeur={f.participation.moyenne !== null ? `${f.participation.moyenne} / 4` : null}
               raison={t("{n} observation(s) sur 2 nécessaires.", { n: f.participation.nombre })}
               action={gere && <button type="button" className="text-xs text-primary underline" onClick={() => { setOnglet("evaluations"); ouvrir("observation"); }}>{t("Observer la participation")}</button>}
               detail={t("{n} observation(s)", { n: f.participation.nombre })} methode={t("Moyenne des observations saisies par l'enseignant : 1 insuffisante, 2 occasionnelle, 3 active, 4 très active.")} />}
-            <Indicateur titre={t("Compétences")} valeur={f.competences.has_data ? `${f.competences.lignes.filter((l) => l.acquis).length} / ${f.competences.lignes.length}` : null}
+            <Indicateur titre={t("Compétences")} voir={() => setOnglet("competences")} valeur={f.competences.has_data ? `${f.competences.lignes.filter((l) => l.acquis).length} / ${f.competences.lignes.length}` : null}
               raison={t("Aucune compétence évaluée sur cette période.")}
               action={gere && <button type="button" className="text-xs text-primary underline" onClick={() => setOnglet("competences")}>{t("Évaluer une compétence")}</button>}
               detail={f.competences.has_data ? t("acquises") : null} methode={t("Dernier niveau validé de chaque compétence évaluée.")} />
-            <Indicateur titre={t("Évaluations du suivi")} valeur={f.evaluations.has_data ? `${f.evaluations.moyenne} %` : null}
+            <Indicateur titre={t("Évaluations du suivi")} nombre={f.evaluations.moyenne ?? undefined} suffixe=" %" voir={() => setOnglet("evaluations")} valeur={f.evaluations.has_data ? `${f.evaluations.moyenne} %` : null}
               raison={t("Aucune évaluation du suivi sur cette période. Les notes officielles sont dans l'onglet Résultats.")}
               action={gere && <button type="button" className="text-xs text-primary underline" onClick={() => { setOnglet("evaluations"); ouvrir("evaluation"); }}>{t("Ajouter une évaluation")}</button>}
               detail={f.evaluations.has_data ? t("{n} évaluation(s)", { n: f.evaluations.lignes.length }) : null} methode={t("Moyenne des résultats en pourcentage.")} />
-            <Indicateur titre={t("Objectifs")} valeur={f.objectifs.has_data ? `${f.objectifs.par_statut.atteint || 0} / ${f.objectifs.total}` : null}
+            <Indicateur titre={t("Objectifs")} voir={() => setOnglet("objectifs")} valeur={f.objectifs.has_data ? `${f.objectifs.par_statut.atteint || 0} / ${f.objectifs.total}` : null}
               raison={t("Aucun objectif sur cette période.")}
               action={gere && <button type="button" className="text-xs text-primary underline" onClick={() => setOnglet("objectifs")}>{t("Créer un objectif")}</button>}
               detail={f.objectifs.has_data ? t("atteints") : null} />
+          </motion.div>
+          <div className="grid gap-4 lg:grid-cols-2">
+            <Evolution lignes={f.series?.evolution || []} />
+            <RepartitionCompetences lignes={f.series?.competences || []} />
+            <ParMatiere lignes={f.par_matiere?.lignes || []} />
           </div>
           {f.par_matiere?.has_data && (
             <div className="card space-y-2">
@@ -314,7 +352,9 @@ export default function FicheSuivi() {
                 <div key={k}><label className="label" htmlFor={`cmp-${k}`}>{l}</label><input id={`cmp-${k}`} type="date" className="input" value={cmp[k]} onChange={(e) => setCmp({ ...cmp, [k]: e.target.value })} /></div>
               ))}
             </div>
+            <div className="flex flex-wrap gap-2 text-xs"><button type="button" className="btn-secondary text-xs" onClick={() => preselection(1)}>{t("Mois précédent et mois actuel")}</button><button type="button" className="btn-secondary text-xs" onClick={() => preselection(3)}>{t("Trois mois précédents et actuels")}</button><button type="button" className="btn-secondary text-xs" onClick={() => preselection(12)}>{t("Année précédente et actuelle")}</button></div>
             <p className="text-xs text-slate-500">{t("Choisissez deux périodes pour voir ce qui a changé. Exemple : septembre puis octobre.")}</p>
+            {comp && <ComparaisonPeriodes comp={comp} />}
             {comp && comp.ecart_progression === null && comp.ecart_maitrise === null && comp.ecart_evaluations === null && <p className="text-sm text-slate-600">{t("Pas de comparaison possible : il faut des données du suivi dans les deux périodes.")}</p>}
             {comp && (
               <Tableau colonnes={[t("Mesure"), t("Écart")]} lignes={[
@@ -387,12 +427,6 @@ export default function FicheSuivi() {
             <Courbe titre={t("Évolution des évaluations du suivi")} lignes={f.evaluations.lignes} cle="score" max={100} unite=" %" />
             {f.evaluations.has_data && <Tableau colonnes={[t("Date"), t("Évaluation"), t("Matière"), t("Résultat")]} lignes={f.evaluations.lignes.map((l) => [l.date, l.titre, l.subject_name || "-", `${l.score} %`])} />}
           </div>
-          {gere && observations.length > 0 && (
-            <div className="card space-y-2">
-              <h2 className="text-sm font-semibold text-slate-800">{t("Observations de participation")}</h2>
-              <Tableau colonnes={[t("Date"), t("Participation"), t("Note")]} lignes={observations.map((o) => [o.date_observation, t({ 1: "Insuffisante", 2: "Occasionnelle", 3: "Active", 4: "Très active" }[o.niveau]), o.note || "-"])} />
-            </div>
-          )}
           {f.resultats_examens?.has_data && (
             <div className="card space-y-3">
               <h2 className="text-sm font-semibold text-slate-800">{t("Examens en ligne")}</h2>
@@ -401,6 +435,23 @@ export default function FicheSuivi() {
                 lignes={f.resultats_examens.lignes.map((l) => [l.date, l.titre, l.subject_name, `${l.score} %`, l.transferee ? t("Transférée") : t("Non transférée")])} />
             </div>
           )}
+        </div>
+      )}
+
+      {onglet === "objectifs" && (
+        <div className="space-y-3">
+          <div className="flex justify-between items-center gap-2 flex-wrap">
+            <p className="text-sm text-slate-600">{gere ? t("Faites glisser une carte pour changer son statut, ou utilisez la liste de la carte.") : t("Les objectifs fixés par l'enseignant.")}</p>
+            {boutonAjout("objectif", t("Créer un objectif"))}
+          </div>
+          {objectifs.length === 0 && <p className="card text-sm text-slate-500">{t("Aucun objectif pour le moment.")}</p>}
+          {objectifs.length > 0 && <TableauObjectifs objectifs={objectifs} gere={gere} majStatut={(pk, statut) => majObjectif.mutate({ pk, corps: { statut } })}
+            ajouterAction={(pk) => ouvrir("action", { objectif: pk })} majAction={(pk) => majAction.mutate({ pk, corps: { realisee_le: aujourdhui() } })} />}
+        </div>
+      )}
+
+      {onglet === "notes" && (
+        <div className="space-y-4">
           <div className="card space-y-3">
             <h2 className="text-sm font-semibold text-slate-800">{t("Notes officielles (lecture seule)")}</h2>
             <p className="text-xs text-slate-500">{t("Issues du module Notes. Elles restent gérées par ce module et ne sont pas converties en évaluations du suivi.")}</p>
@@ -411,39 +462,32 @@ export default function FicheSuivi() {
         </div>
       )}
 
-      {onglet === "objectifs" && (
-        <div className="card space-y-3">
-          <div className="flex justify-between items-center gap-2 flex-wrap">
-            <h2 className="text-sm font-semibold text-slate-800">{t("Objectifs")}</h2>
-            {boutonAjout("objectif", t("Créer un objectif"))}
+      {onglet === "participation" && f.participation && (
+        <div className="space-y-4">
+          <div className="card flex flex-wrap items-center justify-between gap-2">
+            <p className="text-sm text-slate-700">{f.participation.moyenne !== null ? t("Moyenne : {m} sur 4, sur {n} observation(s).", { m: f.participation.moyenne, n: f.participation.nombre }) : t("{n} observation(s) sur 2 nécessaires.", { n: f.participation.nombre })}</p>
+            {boutonAjout("observation", t("Observer la participation"))}
           </div>
-          {objectifs.length === 0 && <p className="text-sm text-slate-500">{t("Aucun objectif pour le moment.")}</p>}
-          {objectifs.map((o) => (
-            <div key={o.id} className="border border-slate-200 rounded-lg p-3 space-y-2">
-              <div className="flex flex-wrap justify-between gap-2">
-                <div>
-                  <p className="text-sm font-medium text-slate-900">{o.titre}{o.class_obj ? ` (${t("collectif")})` : ""}</p>
-                  {o.description && <p className="text-xs text-slate-600">{o.description}</p>}
-                  {o.criteres_reussite && <p className="text-xs text-slate-600">{t("Critères de réussite")} : {o.criteres_reussite}</p>}
-                  {o.competence_nom && <p className="text-xs text-slate-500">{t("Compétence")} : {o.competence_nom}</p>}
-                  {o.date_cible && <p className="text-xs text-slate-500">{t("Date cible")} : {o.date_cible}</p>}
-                </div>
-                {gere ? (
-                  <select className="input w-auto text-sm" aria-label={t("Statut")} value={o.statut} onChange={(e) => majObjectif.mutate({ pk: o.id, corps: { statut: e.target.value } })}>
-                    {STATUTS.map(([v, l]) => <option key={v} value={v}>{t(l)}</option>)}
-                  </select>
-                ) : <span className="text-sm text-slate-700">{t(STATUTS.find(([v]) => v === o.statut)?.[1] || "")}</span>}
-              </div>
-              {o.actions.map((a) => (
-                <div key={a.id} className="text-xs text-slate-700 flex flex-wrap justify-between gap-2">
-                  <span>{a.description}</span>
-                  {a.realisee_le ? <span className="text-green-700">{t("Réalisée le")} {a.realisee_le}</span>
-                    : gere && <button type="button" className="text-primary underline" onClick={() => majAction.mutate({ pk: a.id, corps: { realisee_le: aujourdhui() } })}>{t("Marquer réalisée")}</button>}
-                </div>
-              ))}
-              {gere && <button type="button" className="text-xs text-primary underline" onClick={() => ouvrir("action", { objectif: o.id })}>{t("Ajouter une action")}</button>}
+          {gere && observations.length > 0 && (
+            <div className="card space-y-2">
+              <h2 className="text-sm font-semibold text-slate-800">{t("Observations de participation")}</h2>
+              <Tableau colonnes={[t("Date"), t("Participation"), t("Note")]} lignes={observations.map((o) => [o.date_observation, t({ 1: "Insuffisante", 2: "Occasionnelle", 3: "Active", 4: "Très active" }[o.niveau]), o.note || "-"])} />
             </div>
-          ))}
+          )}
+        </div>
+      )}
+
+      {onglet === "assiduite" && (
+        <div className="space-y-4">
+          {!f.assiduite.has_data && <div className="card text-sm text-slate-600 space-y-1"><p>{t("Aucune présence n'est enregistrée pour cette période.")}</p>{gere && <Link className="text-primary underline" to={`/${racine}/attendance`}>{t("Saisir les présences dans Absences")}</Link>}</div>}
+          {f.assiduite.has_data && (
+            <motion.div variants={cascade} initial="hidden" animate="show" className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+              {[[t("Taux d'assiduité"), f.assiduite.taux, " %"], [t("Présences"), f.assiduite.presents, ""], [t("Retards"), f.assiduite.retards, ""], [t("Absences justifiées"), f.assiduite.absences_justifiees, ""], [t("Absences non justifiées"), f.assiduite.absences_non_justifiees, ""]].map(([l, v, u]) => (
+                <motion.div key={l} variants={apparition} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"><p className="text-xs text-slate-500">{l}</p><p className="text-2xl font-bold text-slate-900"><CompteurAnime valeur={v} suffixe={u} decimales={Number.isInteger(v) ? 0 : 1} /></p></motion.div>
+              ))}
+            </motion.div>
+          )}
+          <AssiduiteMois lignes={f.series?.assiduite || []} />
         </div>
       )}
 
@@ -479,6 +523,9 @@ export default function FicheSuivi() {
       )}
 
       {onglet === "rapports" && <Rapports eleve={id} gere={gere} />}
+      {onglet === "historique" && <Chronologie evenements={f.chronologie || []} />}
+      </motion.div>
+      </AnimatePresence>
 
       <Modal open={!!saisie} onClose={() => setSaisie(null)} title={saisie ? FORMULAIRES[saisie].titre : ""}>
         {saisie && (

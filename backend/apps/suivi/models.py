@@ -165,8 +165,8 @@ class ObservationParticipation(models.Model):
 class Objectif(models.Model):
     """Objectif individuel (student) ou collectif (class_obj)."""
 
-    STATUTS = [("a_commencer", "À commencer"), ("en_cours", "En cours"), ("atteint", "Atteint"),
-               ("non_atteint", "Non atteint"), ("reporte", "Reporté")]
+    STATUTS = [("a_commencer", "À commencer"), ("en_cours", "En cours"), ("a_verifier", "À vérifier"), ("atteint", "Atteint"),
+               ("non_atteint", "Non atteint"), ("reporte", "Reporté"), ("abandonne", "Abandonné")]
     PRIORITES = [("basse", "Basse"), ("normale", "Normale"), ("haute", "Haute")]
 
     school = models.ForeignKey("schools.School", on_delete=models.CASCADE, related_name="objectifs")
@@ -177,6 +177,9 @@ class Objectif(models.Model):
     titre = models.CharField(max_length=200)
     description = models.TextField(blank=True)
     criteres_reussite = models.TextField(blank=True)
+    resultat_attendu = models.TextField(blank=True)
+    commentaire = models.TextField(blank=True)
+    date_debut = models.DateField(null=True, blank=True)
     date_cible = models.DateField(null=True, blank=True)
     priorite = models.CharField(max_length=7, choices=PRIORITES, default="normale")
     statut = models.CharField(max_length=11, choices=STATUTS, default="a_commencer")
@@ -323,8 +326,11 @@ class RegleAlerte(models.Model):
         ("baisse_resultats", "Résultats en baisse"), ("progression_positive", "Résultats en hausse"),
         ("stagnation", "Compétence qui stagne"), ("absences", "Absences répétées"),
         ("difficultes", "Plusieurs compétences en difficulté"), ("objectif_atteint", "Objectif atteint"),
+        ("objectif_retard", "Objectif en retard"), ("resultats_insuffisants", "Résultat insuffisant"),
+        ("competence_maitrisee", "Compétence maîtrisée"), ("evaluation_non_realisee", "Épreuve non réalisée"),
     ]
-    DEFAUTS = {"baisse_resultats": 10, "progression_positive": 10, "stagnation": 3, "absences": 3, "difficultes": 3, "objectif_atteint": 1}
+    DEFAUTS = {"baisse_resultats": 10, "progression_positive": 10, "stagnation": 3, "absences": 3, "difficultes": 3, "objectif_atteint": 1,
+               "objectif_retard": 1, "resultats_insuffisants": 40, "competence_maitrisee": 1, "evaluation_non_realisee": 1}
 
     school = models.ForeignKey("schools.School", on_delete=models.CASCADE, related_name="regles_alerte")
     code = models.CharField(max_length=24, choices=CODES)
