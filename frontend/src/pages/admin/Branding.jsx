@@ -176,9 +176,9 @@ export default function AdminBranding() {
       <div className="bg-white rounded-xl border border-gray-200">
         <div className="p-4 border-b border-gray-200 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Image className="w-5 h-5 text-blue-600" />
+            <Image className="w-5 h-5 text-primary" />
             <h3 className="font-semibold text-gray-800">{t("Historique des versions")}</h3>
-            <span className="bg-blue-100 text-blue-700 text-xs font-medium px-2 py-0.5 rounded-full">
+            <span className="bg-primary-100 text-primary-700 text-xs font-medium px-2 py-0.5 rounded-full">
               {brands.length} version(s)
             </span>
           </div>
@@ -225,7 +225,7 @@ export default function AdminBranding() {
                 <div className="flex items-center gap-2">
                   {brand.logo_url && (
                     <a href={brand.logo_url} target="_blank" rel="noopener noreferrer"
-                      className="p-2 text-blue-500 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition">
+                      className="p-2 text-blue-500 hover:text-primary-700 hover:bg-blue-50 rounded-lg transition">
                       <Eye className="w-4 h-4" />
                     </a>
                   )}
@@ -286,7 +286,7 @@ export default function AdminBranding() {
             <input ref={fileRef} type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={handleFileChange} />
           </div>
 
-          <div className="bg-blue-50 rounded-lg p-3 text-xs text-blue-700">
+          <div className="bg-primary-50 rounded-lg p-3 text-xs text-primary-700">
             <strong>{t("Propagation automatique :")}</strong> {t("Le nouveau logo sera immédiatement visible sur la page de connexion, les tableaux de bord, et tous les bulletins PDF générés après cet upload.")}</div>
 
           <div className="flex gap-3 pt-2">

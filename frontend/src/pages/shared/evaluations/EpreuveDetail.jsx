@@ -83,7 +83,7 @@ export default function EpreuveDetail() {
     <div className="space-y-4">
       <PageHeader title={e.titre} subtitle={`${e.subject_name} - ${e.class_name} - ${t(STATUTS_EPREUVE[e.statut])}`}
         action={<Link to={base} className="btn-secondary text-sm">{t("Retour")}</Link>} />
-      <p className="rounded-xl border border-blue-100 bg-blue-50 p-3 text-sm text-slate-700" role="status">
+      <p className="rounded-xl border border-blue-100 bg-primary-50 p-3 text-sm text-slate-700" role="status">
         {t("Prochaine étape")} : {brouillon ? (e.questions.length ? t("publiez l'épreuve pour l'ouvrir aux élèves. Elle ne se modifiera plus.") : t("ajoutez des questions depuis la banque.")) : s?.a_corriger ? t("corrigez les copies en attente.") : lignesCopies.some((c) => c.statut === "corrigee") ? t("validez les copies corrigées.") : lignesCopies.length === 0 ? t("attendez les premières copies, à partir de l'ouverture.") : !e.resultats_publies ? t("publiez les résultats pour les rendre visibles aux élèves.") : e.produit_note ? t("transférez les copies validées vers les notes si ce n'est pas déjà fait.") : t("rien à faire, l'épreuve est terminée.")}
       </p>
       {!brouillon && ouvertureFuture && (

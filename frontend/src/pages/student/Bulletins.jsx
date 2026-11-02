@@ -10,7 +10,7 @@ const PERIOD_LABELS = { T1: "Trimestre 1", T2: "Trimestre 2", T3: "Trimestre 3",
 
 const LETTER_COLORS = {
   "A+": "text-emerald-600", A: "text-emerald-600", "A-": "text-green-600",
-  "B+": "text-blue-600", B: "text-blue-500", "B-": "text-sky-600",
+  "B+": "text-primary", B: "text-blue-500", "B-": "text-sky-600",
   "C+": "text-yellow-600", C: "text-amber-500", "C-": "text-orange-500",
   "D+": "text-red-400", D: "text-red-500", "D-": "text-red-600", F: "text-red-700",
 };

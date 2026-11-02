@@ -86,7 +86,7 @@ export default function TableauObjectifs({ objectifs, gere, majStatut, ajouterAc
         return (
           <section key={cle} aria-label={t(libelle)} onDragOver={(e) => { if (gere) { e.preventDefault(); setSurvol(cle); } }} onDragLeave={() => setSurvol(null)}
             onDrop={(e) => { e.preventDefault(); setSurvol(null); deplacer(Number(e.dataTransfer.getData("text/plain")), cle); }}
-            className={`rounded-2xl p-3 space-y-2 min-h-32 border-2 border-dashed transition-colors ${survol === cle ? "border-primary bg-blue-50" : "border-transparent bg-slate-100/70"}`}>
+            className={`rounded-2xl p-3 space-y-2 min-h-32 border-2 border-dashed transition-colors ${survol === cle ? "border-primary bg-primary-50" : "border-transparent bg-slate-100/70"}`}>
             <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-600 flex items-center justify-between">{t(libelle)}<span className="rounded-full bg-white px-2 py-0.5 text-slate-700">{lignes.length}</span></h3>
             <AnimatePresence>{lignes.map((o) => <Carte key={o.id} o={o} gere={gere} deplacer={deplacer} ajouterAction={ajouterAction} majAction={majAction} modifier={modifier} archiver={archiver} fete={fete} />)}</AnimatePresence>
             {!lignes.length && <p className="text-xs text-slate-500 flex items-center gap-1 py-2"><Target className="w-3 h-3" aria-hidden="true" />{gere ? t("Déposez un objectif ici") : t("Aucun")}</p>}

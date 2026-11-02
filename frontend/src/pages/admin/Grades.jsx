@@ -51,8 +51,8 @@ const NOTE_TYPES = [
 
 const LETTER_COLORS = {
   "A+": "bg-emerald-100 text-emerald-800", A: "bg-emerald-100 text-emerald-700",
-  "A-": "bg-green-100 text-green-700", "B+": "bg-blue-100 text-blue-700",
-  B: "bg-blue-100 text-blue-600", "B-": "bg-sky-100 text-sky-700",
+  "A-": "bg-green-100 text-green-700", "B+": "bg-primary-100 text-primary-700",
+  B: "bg-primary-100 text-primary", "B-": "bg-sky-100 text-sky-700",
   "C+": "bg-yellow-100 text-yellow-700", C: "bg-yellow-100 text-yellow-600",
   "C-": "bg-orange-100 text-orange-600", "D+": "bg-orange-100 text-orange-700",
   D: "bg-red-100 text-red-500", "D-": "bg-red-100 text-red-600",
@@ -382,7 +382,7 @@ export default function AdminGrades() {
           { key: "allhistory", label: t("Historique"), icon: History },
         ].filter(Boolean).map(({ key, label, icon: Icon }) => (
           <button key={key} onClick={() => setView(key)}
-            className={`flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition ${view === key ? "bg-white shadow text-blue-700" : "text-gray-600 hover:text-gray-800"}`}>
+            className={`flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition ${view === key ? "bg-white shadow text-primary-700" : "text-gray-600 hover:text-gray-800"}`}>
             <Icon className="w-4 h-4 shrink-0" />{label}
           </button>
         ))}
@@ -474,8 +474,8 @@ export default function AdminGrades() {
                 de <table> (DOM invalide → erreur console React
                 validateDOMNesting). Déplacé au-dessus du tableau. */}
             {bulkSelected.size > 0 && (
-              <div className="flex items-center gap-3 mb-3 px-2 py-2 bg-blue-50 rounded-xl border border-blue-200 flex-wrap">
-                <span className="text-sm text-blue-700 font-medium">{bulkSelected.size} {t("note(s) sélectionnée(s)")}</span>
+              <div className="flex items-center gap-3 mb-3 px-2 py-2 bg-primary-50 rounded-xl border border-primary-200 flex-wrap">
+                <span className="text-sm text-primary-700 font-medium">{bulkSelected.size} {t("note(s) sélectionnée(s)")}</span>
                 <button onClick={() => bulkDelMut.mutate([...bulkSelected])} disabled={bulkDelMut.isPending}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-600 text-white text-xs font-medium hover:bg-red-700 disabled:opacity-50">
                   <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
@@ -491,7 +491,7 @@ export default function AdminGrades() {
                   <tr>
                     <th className="px-3 py-3 w-10">
                       <input type="checkbox"
-                        className="w-4 h-4 accent-blue-600 cursor-pointer"
+                        className="w-4 h-4 accent-primary cursor-pointer"
                         checked={grades.length > 0 && grades.every(r => bulkSelected.has(r.id))}
                         onChange={e => { const n = new Set(bulkSelected); grades.forEach(r => e.target.checked ? n.add(r.id) : n.delete(r.id)); setBulkSelected(n); }}
                       />
@@ -521,10 +521,10 @@ export default function AdminGrades() {
                     <tr
                       key={r.id}
                       onClick={() => setSelectedRow(selectedRow?.id === r.id ? null : r)}
-                      className={`cursor-pointer transition-colors ${selectedRow?.id === r.id ? "bg-blue-50 border-l-4 border-l-blue-500" : bulkSelected.has(r.id) ? "bg-blue-50" : "hover:bg-gray-50"}`}
+                      className={`cursor-pointer transition-colors ${selectedRow?.id === r.id ? "bg-primary-50 border-l-4 border-l-blue-500" : bulkSelected.has(r.id) ? "bg-primary-50" : "hover:bg-gray-50"}`}
                     >
                       <td className="px-3 py-3 w-10" onClick={e => e.stopPropagation()}>
-                        <input type="checkbox" className="w-4 h-4 accent-blue-600 cursor-pointer"
+                        <input type="checkbox" className="w-4 h-4 accent-primary cursor-pointer"
                           checked={bulkSelected.has(r.id)}
                           onChange={() => { const n = new Set(bulkSelected); n.has(r.id) ? n.delete(r.id) : n.add(r.id); setBulkSelected(n); }} />
                       </td>
@@ -537,7 +537,7 @@ export default function AdminGrades() {
                       <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{ageText(r.student_age, r.student_age_status)}</td>
                       <td className="px-4 py-3 text-gray-600">{r.subject_name || r.subject}</td>
                       <td className="px-4 py-3 text-center">
-                        <span className="text-xs font-medium px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full">{r.period}</span>
+                        <span className="text-xs font-medium px-2 py-0.5 bg-primary-100 text-primary-700 rounded-full">{r.period}</span>
                       </td>
                       <td className="px-4 py-3 text-center text-xs text-gray-500">{t(r.note_type_display || r.note_type)}</td>
                       <td className="px-4 py-3 text-center">
@@ -569,7 +569,7 @@ export default function AdminGrades() {
                         <span key={`e${i}`} className="px-1">…</span>
                       ) : (
                         <button key={p} onClick={() => setGradePage(p)}
-                          className={`px-2.5 py-1 rounded-lg border transition ${p===gradePage ? "bg-blue-600 text-white border-blue-600" : "border-gray-200 hover:bg-white"}`}>{p}</button>
+                          className={`px-2.5 py-1 rounded-lg border transition ${p===gradePage ? "bg-primary text-white border-blue-600" : "border-gray-200 hover:bg-white"}`}>{p}</button>
                       ))
                     }
                     <button onClick={() => setGradePage(p => Math.min(Math.ceil(grades.length/GRADES_PER_PAGE),p+1))} disabled={gradePage===Math.ceil(grades.length/GRADES_PER_PAGE)}
@@ -594,8 +594,8 @@ export default function AdminGrades() {
                 fixed bottom-0 left-0 right-0 z-50
                 lg:inset-0 lg:flex lg:items-center lg:justify-center lg:p-6 lg:pointer-events-none
               `}>
-                <div className="bg-white rounded-t-2xl lg:rounded-2xl border border-blue-200 shadow-2xl overflow-hidden w-full lg:max-w-md lg:pointer-events-auto">
-                  <div className="bg-blue-600 px-4 py-3 flex items-center justify-between">
+                <div className="bg-white rounded-t-2xl lg:rounded-2xl border border-primary-200 shadow-2xl overflow-hidden w-full lg:max-w-md lg:pointer-events-auto">
+                  <div className="bg-primary px-4 py-3 flex items-center justify-between">
                     <span className="text-white font-semibold text-sm">{t("Détail de la note")}</span>
                     <button onClick={() => setSelectedRow(null)} className="text-blue-200 hover:text-white transition">
                       <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
@@ -636,7 +636,7 @@ export default function AdminGrades() {
                           reset({ student: selectedRow.student_id || selectedRow.student, subject: selectedRow.subject_id || selectedRow.subject, period: selectedRow.period, value: selectedRow.value, note_type: selectedRow.note_type, comment: selectedRow.comment, school_year: selectedRow.school_year_id || selectedRow.school_year || currentYear?.id, justification: "" });
                           setAddOpen(true);
                         }}
-                        className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition"
+                        className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg bg-primary text-white text-sm font-medium hover:bg-primary-700 transition"
                       >
                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536M9 13l6.768-6.768a2 2 0 012.828 2.828L11.828 15.828a2 2 0 01-.707.414l-3.535.707.707-3.536A2 2 0 019 13z" /></svg>{t("Modifier")}</button>
                       <button
@@ -709,7 +709,7 @@ export default function AdminGrades() {
                       <td className="px-4 py-2 text-center text-sm text-gray-500">{subj.coefficient}</td>
                       <td className="px-4 py-2 text-center">
                         <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
-                          subj.language === 'en' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'
+                          subj.language === 'en' ? 'bg-green-100 text-green-700' : 'bg-primary-100 text-primary-700'
                         }`}>{subj.language === 'en' ? 'EN' : subj.language === 'fr' ? 'FR' : 'BI'}</span>
                       </td>
                       <td className="px-4 py-2 text-center text-sm font-semibold text-gray-800">
@@ -776,15 +776,15 @@ export default function AdminGrades() {
                     return (
                       <div key={item.label} className={`bg-white rounded-xl border-2 ${
                         item.color === 'purple' ? 'border-purple-200' :
-                        item.color === 'green' ? 'border-green-200' : 'border-blue-200'
+                        item.color === 'green' ? 'border-green-200' : 'border-primary-200'
                       } p-4 text-center`}>
                         <span className={`inline-block text-xs font-bold px-2 py-0.5 rounded-full mb-2 ${
-                          item.color === 'purple' ? 'bg-purple-100 text-purple-700' :
-                          item.color === 'green' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'
+                          item.color === 'purple' ? 'bg-purple-100 text-secondary-600' :
+                          item.color === 'green' ? 'bg-green-100 text-green-700' : 'bg-primary-100 text-primary-700'
                         }`}>{item.lang}</span>
                         <div className={`text-3xl font-bold ${
-                          item.color === 'purple' ? 'text-purple-700' :
-                          item.color === 'green' ? 'text-green-700' : 'text-blue-700'
+                          item.color === 'purple' ? 'text-secondary-600' :
+                          item.color === 'green' ? 'text-green-700' : 'text-primary-700'
                         }`}>
                           {item.value != null ? parseFloat(item.value).toFixed(2) : "-"}
                         </div>
@@ -803,9 +803,9 @@ export default function AdminGrades() {
                     <thead className="bg-gray-50">
                       <tr>
                         <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500">{t("Trimestre")}</th>
-                        <th className="px-4 py-2 text-center text-xs font-semibold text-blue-600">{t("Moy. FR")}</th>
+                        <th className="px-4 py-2 text-center text-xs font-semibold text-primary">{t("Moy. FR")}</th>
                         <th className="px-4 py-2 text-center text-xs font-semibold text-green-600">{t("Moy. EN")}</th>
-                        <th className="px-4 py-2 text-center text-xs font-semibold text-purple-600">{t("Moy. Bilingue")}</th>
+                        <th className="px-4 py-2 text-center text-xs font-semibold text-secondary-600">{t("Moy. Bilingue")}</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
@@ -814,15 +814,15 @@ export default function AdminGrades() {
                         return (
                           <tr key={per}>
                             <td className="px-4 py-2 font-medium text-gray-700">{per}</td>
-                            <td className="px-4 py-2 text-center text-blue-700">{td.fr_average != null ? parseFloat(td.fr_average).toFixed(2) : "-"}</td>
+                            <td className="px-4 py-2 text-center text-primary-700">{td.fr_average != null ? parseFloat(td.fr_average).toFixed(2) : "-"}</td>
                             <td className="px-4 py-2 text-center text-green-700">{td.en_average != null ? parseFloat(td.en_average).toFixed(2) : "-"}</td>
-                            <td className="px-4 py-2 text-center font-semibold text-purple-700">{td.bilingual_average != null ? parseFloat(td.bilingual_average).toFixed(2) : "-"}</td>
+                            <td className="px-4 py-2 text-center font-semibold text-secondary-600">{td.bilingual_average != null ? parseFloat(td.bilingual_average).toFixed(2) : "-"}</td>
                           </tr>
                         );
                       })}
                       <tr className="bg-yellow-50 font-bold">
                         <td className="px-4 py-2 text-gray-800">{t("ANNUELLE ★")}</td>
-                        <td className="px-4 py-2 text-center text-blue-800">{bilingual.annual?.fr_average != null ? parseFloat(bilingual.annual.fr_average).toFixed(2) : "-"}</td>
+                        <td className="px-4 py-2 text-center text-primary-800">{bilingual.annual?.fr_average != null ? parseFloat(bilingual.annual.fr_average).toFixed(2) : "-"}</td>
                         <td className="px-4 py-2 text-center text-green-800">{bilingual.annual?.en_average != null ? parseFloat(bilingual.annual.en_average).toFixed(2) : "-"}</td>
                         <td className="px-4 py-2 text-center text-purple-800 text-lg">{bilingual.annual?.bilingual_average != null ? parseFloat(bilingual.annual.bilingual_average).toFixed(2) : "-"}</td>
                       </tr>
@@ -892,7 +892,7 @@ export default function AdminGrades() {
             <div className="flex items-center gap-2">
               <History className="w-5 h-5 text-blue-500" />
               <h3 className="font-semibold text-slate-800">{t("Historique global des modifications")}</h3>
-              <span className="text-xs text-slate-500 bg-blue-50 px-2 py-0.5 rounded-full">{allHistRows.length} {t("entrée(s)")}</span>
+              <span className="text-xs text-slate-500 bg-primary-50 px-2 py-0.5 rounded-full">{allHistRows.length} {t("entrée(s)")}</span>
             </div>
             <div className="flex gap-2 ml-auto flex-wrap">
               <select value={histFilterStudent} onChange={e => setHistFilterStudent(e.target.value)}
@@ -909,7 +909,7 @@ export default function AdminGrades() {
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm min-w-[700px]">
-              <thead className="bg-blue-50 text-blue-700">
+              <thead className="bg-primary-50 text-primary-700">
                 <tr>
                   <th className="px-4 py-2 text-left">{t("Date")}</th>
                   <th className="px-4 py-2 text-left">{t("Élève")}</th>
@@ -937,7 +937,7 @@ export default function AdminGrades() {
                     <td className="px-4 py-2 font-medium text-gray-800">{h.student_name}</td>
                     <td className="px-4 py-2 text-gray-600">{h.subject_name}</td>
                     <td className="px-4 py-2 text-center">
-                      <span className="text-xs font-medium px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full">{h.period}</span>
+                      <span className="text-xs font-medium px-2 py-0.5 bg-primary-100 text-primary-700 rounded-full">{h.period}</span>
                     </td>
                     <td className="px-4 py-2 text-center">
                       <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${h.action === "create" ? "bg-green-100 text-green-700" : "bg-orange-100 text-orange-700"}`}>
@@ -961,9 +961,9 @@ export default function AdminGrades() {
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           {/* In edit mode: show read-only context, no reselection needed */}
           {editItem ? (
-            <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 text-sm">
-              <div className="font-semibold text-blue-800 mb-1">{t("Note sélectionnée : modification")}</div>
-              <div className="text-blue-700 space-y-0.5">
+            <div className="bg-primary-50 border border-primary-200 rounded-xl p-3 text-sm">
+              <div className="font-semibold text-primary-800 mb-1">{t("Note sélectionnée : modification")}</div>
+              <div className="text-primary-700 space-y-0.5">
                 <div><span className="text-blue-500">{t("Élève :")}</span> {editItem.student_name}</div>
                 <div><span className="text-blue-500">{t("Matière :")}</span> {editItem.subject_name}</div>
                 <div><span className="text-blue-500">{t("Période :")}</span> {editItem.period}</div>

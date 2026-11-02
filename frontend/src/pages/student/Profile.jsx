@@ -88,7 +88,7 @@ export default function StudentProfile() {
             <ClipboardList className="w-6 h-6 mx-auto mb-2 text-blue-500" />
             <p className="text-2xl font-bold text-slate-800">{grades.length}</p>
             <p className="text-xs text-slate-500 mt-0.5">{t("Notes cette année")}</p>
-            {avgGrade && <p className="text-sm font-semibold text-blue-600 mt-1">{t("Moy.")} {avgGrade}/20</p>}
+            {avgGrade && <p className="text-sm font-semibold text-primary mt-1">{t("Moy.")} {avgGrade}/20</p>}
           </div>
           <div className="card text-center py-4">
             <AlertCircle className="w-6 h-6 mx-auto mb-2 text-amber-500" />

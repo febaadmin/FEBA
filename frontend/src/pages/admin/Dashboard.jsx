@@ -7,6 +7,7 @@ import StatCard from "../../components/ui/StatCard";
 import PageHeader from "../../components/ui/PageHeader";
 import AnnouncementModal from "../../components/ui/AnnouncementModal";
 import { t } from "../../i18n";
+import { libelleCible } from "../../utils/destinataires";
 import { useMoney } from "../../hooks/useMoney";
 
 const MONTHS = ["Jan","Fév","Mar","Avr","Mai","Jun","Jul","Aoû","Sep","Oct","Nov","Déc"];
@@ -36,9 +37,9 @@ export default function AdminDashboard() {
 
       {/* Active year badge */}
       {d?.active_year && (
-        <div className="flex items-center gap-2 px-4 py-2 bg-blue-50 border border-blue-200 rounded-xl w-fit">
+        <div className="flex items-center gap-2 px-4 py-2 bg-primary-50 border border-primary-200 rounded-xl w-fit">
           <span className="w-2 h-2 rounded-full bg-green-500 inline-block" />
-          <span className="text-sm font-medium text-blue-800">{t("Année scolaire active :")} <strong>{d.active_year.name}</strong>
+          <span className="text-sm font-medium text-primary-800">{t("Année scolaire active :")} <strong>{d.active_year.name}</strong>
           </span>
           <span className="text-xs text-blue-500 ml-1">- {t("statistiques filtrées sur cette année")}</span>
         </div>
@@ -64,7 +65,7 @@ export default function AdminDashboard() {
               <XAxis dataKey="month" tick={{ fontSize: 11 }} />
               <YAxis tick={{ fontSize: 11 }} tickFormatter={v => `${(v/1000).toFixed(0)}k`} />
               <Tooltip formatter={v => [money.format(v), t("Montant")]} />
-              <Bar dataKey="montant" fill="#6366F1" radius={[6,6,0,0]} />
+              <Bar dataKey="montant" fill="#1D4ED8" radius={[6,6,0,0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -76,7 +77,7 @@ export default function AdminDashboard() {
               <XAxis dataKey="month" tick={{ fontSize: 11 }} />
               <YAxis tick={{ fontSize: 11 }} />
               <Tooltip formatter={v => [money.format(v)]} />
-              <Line type="monotone" dataKey="montant" stroke="#6366F1" strokeWidth={2} dot={{ fill: "#6366F1", r: 4 }} />
+              <Line type="monotone" dataKey="montant" stroke="#1D4ED8" strokeWidth={2} dot={{ fill: "#1D4ED8", r: 4 }} />
             </LineChart>
           </ResponsiveContainer>
         </div>
@@ -109,7 +110,7 @@ export default function AdminDashboard() {
                 <div className="w-2 h-2 rounded-full bg-primary mt-1.5 shrink-0" />
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-slate-800 hover:text-primary transition-colors">{a.title}</p>
-                  <p className="text-xs text-slate-400">{(a.target_roles || []).join(", ")} • {a.created_at?.slice(0,10)}</p>
+                  <p className="text-xs text-slate-400">{(a.target_roles || []).map(libelleCible).join(", ")} • {a.created_at?.slice(0,10)}</p>
                 </div>
               </div>
             ))}

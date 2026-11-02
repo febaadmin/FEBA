@@ -47,7 +47,7 @@ export default function VirtualRoomEnded() {
         </p>
         <div className="mt-6 flex flex-wrap gap-3 justify-center">
           <Link to={`/virtual-room/${id}/join`} replace
-                className="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm hover:bg-indigo-500">
+                className="px-4 py-2 rounded-lg bg-primary text-white text-sm hover:bg-indigo-500">
             {t("Rejoindre à nouveau")}
           </Link>
           <Link to={HOME[role] || "/login"}

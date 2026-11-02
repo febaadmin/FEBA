@@ -42,8 +42,8 @@ export default class ErrorBoundary extends Component {
     if (!this.state.error) return this.props.children;
 
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50 p-6">
-        <div className="max-w-lg w-full bg-white rounded-2xl shadow-xl border border-slate-100 p-8 text-center">
+      <div className="min-h-screen flex items-center justify-center fond-app p-6">
+        <div className="card max-w-lg w-full !p-8 text-center shadow-fenetre">
           <div className="w-14 h-14 rounded-2xl bg-red-50 flex items-center justify-center mx-auto mb-4">
             <AlertTriangle className="w-7 h-7 text-red-500" />
           </div>
@@ -60,7 +60,7 @@ export default class ErrorBoundary extends Component {
           )}
           <div className="flex gap-3 justify-center">
             <button onClick={this.handleRetry}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-800 text-white text-sm font-semibold hover:bg-blue-900 transition">
+              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-primary-800 text-white text-sm font-semibold hover:bg-primary-800 transition">
               <RotateCcw className="w-4 h-4" />{tBoth("Réessayer")}
             </button>
             <button onClick={this.handleHome}

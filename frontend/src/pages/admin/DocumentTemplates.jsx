@@ -29,14 +29,14 @@ import { t } from "../../i18n";
 export const STATE_STYLES = {
   absent: ["Absent", "bg-slate-100 text-slate-600"],
   uploaded: ["Téléversé, non validé", "bg-amber-50 text-amber-700"],
-  ready: ["Valide, prêt à être activé", "bg-blue-50 text-blue-700"],
+  ready: ["Valide, prêt à être activé", "bg-primary-50 text-primary-700"],
   active: ["Actif : utilisé pour les documents", "bg-green-50 text-green-700"],
   replacing: ["Actif : remplacement en préparation", "bg-green-50 text-green-700"],
   disabled: ["Désactivé", "bg-slate-200 text-slate-700"],
   invalid: ["Invalide ou incompatible", "bg-red-50 text-red-700"],
 };
 const VERSION_STYLES = {
-  draft: "bg-amber-50 text-amber-700", validated: "bg-blue-50 text-blue-700",
+  draft: "bg-amber-50 text-amber-700", validated: "bg-primary-50 text-primary-700",
   active: "bg-green-50 text-green-700", disabled: "bg-slate-200 text-slate-700",
   archived: "bg-slate-100 text-slate-500", invalid: "bg-red-50 text-red-700",
 };

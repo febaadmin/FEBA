@@ -10,15 +10,10 @@ import Modal from "../../components/ui/Modal";
 import ConfirmDialog from "../../components/ui/ConfirmDialog";
 import { extractApiError } from "../../utils/errors";
 import { t } from "../../i18n";
+import { CIBLES, libelleCible } from "../../utils/destinataires";
 import { useSchoolYearScope } from "../../hooks/useSchoolYearScope";
 
-const TARGET_OPTIONS = [
-  { value: "all", label: "Tous les profils" },
-  { value: "parent", label: "Parents" },
-  { value: "teacher", label: "Enseignants" },
-  { value: "student", label: "Élèves" },
-  { value: "admin", label: "Administrateurs" },
-];
+const TARGET_OPTIONS = CIBLES;
 
 export default function AdminAnnouncements() {
   const qc = useQueryClient();
@@ -90,7 +85,7 @@ export default function AdminAnnouncements() {
 
   const cols = [
     { key: "title", label: t("Titre"), accessor: "title" },
-    { key: "targets", label: t("Destinataires"), render: r => (r.target_roles || []).join(", ") },
+    { key: "targets", label: t("Destinataires"), render: r => (r.target_roles || []).map(libelleCible).join(", ") },
     { key: "attachment", label: t("Pièce jointe"), sortable: false, render: r => r.has_attachment ? (
       <a href={r.attachment} target="_blank" rel="noreferrer" className="flex items-center gap-1 text-xs text-primary hover:underline">
         <FileText className="w-3 h-3" />{r.attachment_name || "Fichier"}
@@ -145,7 +140,7 @@ export default function AdminAnnouncements() {
           <div className="space-y-4">
             <div className="flex gap-2 flex-wrap">
               {(viewItem.target_roles || []).map(r => (
-                <span key={r} className="badge bg-primary-50 text-primary text-xs px-2 py-0.5 rounded-full">{r}</span>
+                <span key={r} className="badge bg-primary-50 text-primary text-xs px-2 py-0.5 rounded-full">{libelleCible(r)}</span>
               ))}
               <span className={`badge text-xs px-2 py-0.5 rounded-full ${viewItem.is_published ? "bg-success-50 text-success" : "bg-slate-100 text-slate-500"}`}>
                 {viewItem.is_published ? t("Publiée") : t("Brouillon")}

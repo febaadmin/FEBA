@@ -22,9 +22,9 @@
  */
 
 const TONES = [
-  "bg-blue-50 text-blue-700 border-blue-200",
+  "bg-primary-50 text-primary-700 border-primary-200",
   "bg-emerald-50 text-emerald-700 border-emerald-200",
-  "bg-indigo-50 text-indigo-700 border-indigo-200",
+  "bg-primary-50 text-primary-700 border-indigo-200",
   "bg-sky-50 text-sky-700 border-sky-200",
   "bg-violet-50 text-violet-700 border-violet-200",
   "bg-teal-50 text-teal-700 border-teal-200",

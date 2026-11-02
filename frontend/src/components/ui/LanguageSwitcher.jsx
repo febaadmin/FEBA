@@ -36,7 +36,7 @@ export default function LanguageSwitcher({ variant = "light", className }) {
   const base = "px-2 py-1 rounded-md text-xs font-semibold transition-colors";
   const activeCls = variant === "dark"
     ? "bg-yellow-400 text-blue-950"
-    : "bg-blue-800 text-white";
+    : "bg-primary-800 text-white";
   const idleCls = variant === "dark"
     ? "text-slate-300 hover:text-white hover:bg-white/10"
     : "text-slate-500 hover:text-slate-800 hover:bg-slate-100";

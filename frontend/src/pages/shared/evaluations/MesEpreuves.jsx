@@ -13,7 +13,7 @@ import { t } from "../../../i18n";
 import { TYPES_EPREUVE, libelle } from "./commun";
 
 const ETATS = {
-  en_cours: { label: "En cours", Icone: RotateCcw, cls: "bg-blue-100 text-blue-800", groupe: "faire" },
+  en_cours: { label: "En cours", Icone: RotateCcw, cls: "bg-primary-100 text-primary-800", groupe: "faire" },
   disponible: { label: "Disponible", Icone: PlayCircle, cls: "bg-green-100 text-green-800", groupe: "faire" },
   a_venir: { label: "À venir", Icone: CalendarClock, cls: "bg-slate-100 text-slate-700", groupe: "venir" },
   correction: { label: "En attente de correction", Icone: Hourglass, cls: "bg-amber-100 text-amber-800", groupe: "fini" },

@@ -15,7 +15,7 @@ import { t, getLang } from "../../i18n";
 import JitsiInfrastructureBanner from "../../components/JitsiInfrastructureBanner";
 
 const STATUS_STYLE = {
-  scheduled: "bg-blue-50 text-blue-600",
+  scheduled: "bg-primary-50 text-primary",
   live: "bg-emerald-50 text-emerald-600",
   ended: "bg-slate-100 text-slate-500",
   cancelled: "bg-red-50 text-red-500",

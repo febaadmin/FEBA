@@ -89,7 +89,7 @@ export default function SuperAdminUsers() {
 
   const roleBadge = (role) => {
     const map = {
-      superadmin: "bg-purple-100 text-purple-700",
+      superadmin: "bg-purple-100 text-secondary-600",
       admin:   "bg-primary-50 text-primary",
       teacher: "bg-emerald-50 text-emerald-700",
       parent:  "bg-amber-50 text-amber-700",

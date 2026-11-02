@@ -79,8 +79,8 @@ export default function ParentPayments() {
       />
 
       {returnState === "succes" && (
-        <div className="card border border-blue-200 bg-blue-50/60 flex items-start gap-3">
-          <Info className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
+        <div className="card border border-primary-200 bg-blue-50/60 flex items-start gap-3">
+          <Info className="w-5 h-5 text-primary shrink-0 mt-0.5" />
           <div>
             <p className="font-medium text-slate-800">
               {t("Paiement en cours de vérification")}

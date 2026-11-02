@@ -17,9 +17,9 @@ import { t } from "../../i18n";
 /* ── Carte moyenne ──────────────────────────────────────────────────────────── */
 function AvgCard({ label, value, icon: Icon, color }) {
   const colors = {
-    blue:   { bg: "bg-blue-50",   text: "text-blue-600",   badge: "bg-blue-100" },
+    blue:   { bg: "bg-primary-50",   text: "text-primary",   badge: "bg-primary-100" },
     green:  { bg: "bg-green-50",  text: "text-green-600",  badge: "bg-green-100" },
-    purple: { bg: "bg-purple-50", text: "text-purple-600", badge: "bg-purple-100" },
+    purple: { bg: "bg-purple-50", text: "text-secondary-600", badge: "bg-purple-100" },
     amber:  { bg: "bg-amber-50",  text: "text-amber-600",  badge: "bg-amber-100" },
   };
   const c = colors[color] || colors.blue;

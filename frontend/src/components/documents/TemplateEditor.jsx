@@ -173,11 +173,11 @@ export default function TemplateEditor({ template, catalog, rules, onClose }) {
                      ${editable ? "cursor-move" : ""}`}
                    style={boxStyle(f, page)}
                    onPointerDown={(e) => startDrag(e, f.name, "move")}>
-                <span className="absolute -top-4 left-0 text-[10px] leading-none font-medium text-blue-800 bg-white/80 px-1 whitespace-nowrap">
+                <span className="absolute -top-4 left-0 text-[10px] leading-none font-medium text-primary-800 bg-white/80 px-1 whitespace-nowrap">
                   {labelOf(f.name)}
                 </span>
                 {editable && (
-                  <span className="absolute -right-1.5 -bottom-1.5 w-3 h-3 bg-blue-600 cursor-se-resize rounded-sm"
+                  <span className="absolute -right-1.5 -bottom-1.5 w-3 h-3 bg-primary cursor-se-resize rounded-sm"
                         onPointerDown={(e) => startDrag(e, f.name, "resize")} />
                 )}
               </div>
@@ -290,7 +290,7 @@ export default function TemplateEditor({ template, catalog, rules, onClose }) {
               <li key={f.name}>
                 <button type="button" onClick={() => setSelected(f.name)}
                         className={`w-full text-left px-2 py-1 rounded-lg ${selected === f.name
-                          ? "bg-blue-50 text-blue-800" : "hover:bg-slate-50"} ${flagged.has(f.name) ? "text-red-700" : ""}`}>
+                          ? "bg-primary-50 text-primary-800" : "hover:bg-slate-50"} ${flagged.has(f.name) ? "text-red-700" : ""}`}>
                   {labelOf(f.name)}{f.required ? " *" : ""}
                 </button>
               </li>

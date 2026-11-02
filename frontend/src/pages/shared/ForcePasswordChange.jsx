@@ -145,7 +145,7 @@ export default function ForcePasswordChange() {
           </ul>
 
           <button type="submit" disabled={submitting}
-            className="w-full bg-blue-800 hover:bg-blue-900 text-white font-semibold py-2.5 rounded-lg transition flex items-center justify-center gap-2 disabled:opacity-60">
+            className="w-full bg-primary-800 hover:bg-primary-800 text-white font-semibold py-2.5 rounded-lg transition flex items-center justify-center gap-2 disabled:opacity-60">
             {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <KeyRound className="w-4 h-4" />}
             {submitting ? t("Enregistrement...") : t("Définir mon nouveau mot de passe")}
           </button>
