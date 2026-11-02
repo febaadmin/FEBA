@@ -77,7 +77,7 @@ export default function MesEpreuves() {
             {resultats.map((r) => (
               <li key={r.id} className="py-2 flex flex-wrap justify-between gap-2 text-sm">
                 <span>{r.epreuve} - {r.eleve}</span>
-                <span className="font-medium">{r.note} / {r.note_max} - {r.reussie ? t("Réussie") : t("Non réussie")}</span>
+                <span className="font-medium">{Number(r.note)} / {Number(r.note_max)} - {r.reussie ? t("Réussie") : t("Non réussie")}</span>
               </li>
             ))}
           </ul>
