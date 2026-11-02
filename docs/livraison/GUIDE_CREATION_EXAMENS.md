@@ -3,9 +3,11 @@
 1. **Nouvelle épreuve** : titre, type, matière, classe, dates, durée, tentatives. Vous devez être affecté à cette matière dans cette classe.
 2. **Quiz ou examen ?** Un quiz sert à s'entraîner. Cochez **Peut produire une note officielle** seulement si l'épreuve doit compter, et indiquez le trimestre.
 3. Ajoutez les questions depuis la banque. Le total des points est ramené à la note maximale.
-4. **Publier l'épreuve.** Elle ne se modifie plus. Les élèves la voient à l'ouverture.
+4. **Publier l'épreuve.** Son contenu ne se modifie plus. Les élèves la voient aussitôt, avec la date d'ouverture. **Ouvrir maintenant** avance l'ouverture tant qu'aucun élève n'a commencé.
 5. **Copies** : les questions objectives sont déjà corrigées. Notez le reste, puis **Valider la copie**.
 6. **Publier les résultats** : les élèves voient leur note. Retirer reste possible.
 7. **Transférer vers les notes** : une note sur 20 par élève, une seule fois. Elle entre dans les moyennes et les bulletins. Cette copie ne se corrige plus ensuite.
 
 La page d'une épreuve indique toujours la prochaine étape. Règles de calcul : `docs/EXAMENS_EN_LIGNE.md`.
+
+Dans un brouillon, faites glisser les questions pour changer leur ordre. Cochez **Montrer le corrigé avec les résultats** si besoin : il n'apparaît qu'une fois l'épreuve terminée.

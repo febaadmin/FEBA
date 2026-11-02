@@ -2,7 +2,8 @@
 
 ## Passer une épreuve
 
-1. Ouvrez **Mes épreuves** et cliquez sur **Commencer**. Le temps démarre.
+1. Ouvrez **Mes épreuves**. Chaque carte indique son état : disponible, à venir avec sa date, en correction, résultat publié, expirée.
+   Cliquez sur **Commencer**, lisez les consignes, puis **Commencer l'épreuve** : le temps démarre seulement là.
 2. Vos réponses sont sauvegardées automatiquement. L'indication **Réponses sauvegardées** le confirme.
 3. En cas de coupure, gardez la page ouverte ou revenez sur **Reprendre** : vos réponses déjà enregistrées vous attendent. Le temps continue pendant la coupure.
 4. Terminez par **Remettre ma copie**. Gardez le reçu affiché.
