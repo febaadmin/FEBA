@@ -392,7 +392,9 @@ class EleveViewSet(Base):
         if est_famille(request.user):
             donnees.pop("participation", None)
         donnees["eleve"] = {"id": eleve.pk, "nom": eleve.get_full_name(), "matricule": eleve.matricule,
-                            "classe": eleve.current_class.name if eleve.current_class else None}
+                            "classe": eleve.current_class.name if eleve.current_class else None,
+                            "sans_classe": eleve.current_class_id is None}
+        donnees["periode"] = {"du": du, "au": au}
         return Response(donnees)
 
     @action(detail=True, methods=["get"])

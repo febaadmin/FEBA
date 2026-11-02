@@ -85,16 +85,25 @@ export default function Passage() {
     setHors(Object.keys(attente.current).length);
   }, [tentativeId, jeton]);
 
-  useEffect(() => {
-    let actif = true;
+  // Le temps ne démarre qu'après la lecture des consignes, sauf pour reprendre une tentative.
+  const [infos, setInfos] = useState(null);
+  const [demarrage, setDemarrage] = useState(false);
+  const demarrer = useCallback(() => {
+    setDemarrage(true);
     evaluationsAPI.demarrer(id).then((r) => {
-      if (!actif) return;
       setEtat(r.data);
       setRestant(r.data.secondes_restantes);
       setValeurs(Object.fromEntries(r.data.questions.map((q) => [q.version, q.valeur])));
-    }).catch((x) => setErreur(extractApiError(x)));
-    return () => { actif = false; };
+    }).catch((x) => { setErreur(extractApiError(x)); setDemarrage(false); });
   }, [id]);
+  useEffect(() => {
+    evaluationsAPI.mesEpreuves().then((r) => {
+      const e = r.data.find((x) => String(x.id) === String(id));
+      if (!e) { setErreur(t("Cette épreuve n'est pas disponible.")); return; }
+      setInfos(e);
+      if (e.en_cours) demarrer();
+    }).catch((x) => setErreur(extractApiError(x)));
+  }, [id, demarrer]);
 
   const remis = !!etat?.remise_le || (etat && etat.statut !== "en_cours");
 
@@ -147,6 +156,24 @@ export default function Passage() {
   };
 
   if (erreur) return <div className="card text-sm text-red-700">{erreur}</div>;
+  if (!etat && infos && !infos.en_cours) {
+    return (
+      <div className="card max-w-xl mx-auto space-y-3">
+        <h1 className="text-lg font-semibold text-slate-900">{infos.titre}</h1>
+        <p className="text-sm text-slate-600">{infos.subject}</p>
+        {infos.consignes && <p className="text-sm text-slate-800 whitespace-pre-wrap">{infos.consignes}</p>}
+        <ul className="text-sm text-slate-700 list-disc pl-5 space-y-1">
+          <li>{t("Durée : {n} minutes. Le temps démarre dès que vous commencez, et continue pendant une coupure.", { n: infos.duree_minutes })}</li>
+          <li>{t("Tentative {a} sur {b}.", { a: infos.tentatives + 1, b: infos.tentatives_max })}</li>
+          <li>{t("Vos réponses sont enregistrées automatiquement. À la fin du temps, la copie est remise.")}</li>
+        </ul>
+        <div className="flex flex-wrap gap-2 justify-end">
+          <button type="button" className="btn-secondary" onClick={() => nav("../..", { relative: "path" })}>{t("Retour")}</button>
+          <button type="button" className="btn-primary" disabled={demarrage} onClick={demarrer}>{t("Commencer l'épreuve")}</button>
+        </div>
+      </div>
+    );
+  }
   if (!etat) return <p className="text-sm text-slate-500">{t("Chargement")}</p>;
   if (remis) {
     return (
@@ -155,7 +182,7 @@ export default function Passage() {
         <h1 className="text-lg font-semibold text-slate-900">{t("Épreuve remise")}</h1>
         <p className="text-sm text-slate-600">{t("Votre copie est enregistrée. Le résultat sera visible après sa publication.")}</p>
         {etat.recu && <p className="text-xs text-slate-500 break-all">{t("Reçu de remise")} : {etat.recu}</p>}
-        <button type="button" className="btn-secondary" onClick={() => nav("..", { relative: "path" })}>{t("Retour")}</button>
+        <button type="button" className="btn-secondary" onClick={() => nav("../..", { relative: "path" })}>{t("Retour")}</button>
       </div>
     );
   }
@@ -203,7 +230,7 @@ export default function Passage() {
           ? <button type="button" className="btn-primary" onClick={() => setIndice(indice + 1)}>{t("Suivante")}</button>
           : <button type="button" className="btn-primary" onClick={() => setConfirmer(true)}>{t("Remettre ma copie")}</button>}
       </div>
-      <ConfirmDialog open={confirmer} onClose={() => setConfirmer(false)} onConfirm={remettre}
+      <ConfirmDialog open={confirmer} title="Confirmer" libelle="Remettre ma copie" onClose={() => setConfirmer(false)} onConfirm={remettre}
         message={t("Remettre votre copie ? {a} réponse(s) sur {b}. Vous ne pourrez plus la modifier.", { a: repondues, b: etat.questions.length })} />
     </div>
   );

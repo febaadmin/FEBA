@@ -43,7 +43,7 @@ function Rapport({ r, gere, onAction }) {
         {gere && r.statut === "valide" && <button type="button" className="btn-primary text-sm" onClick={() => setConfirmer(true)}>{t("Publier")}</button>}
         {gere && r.statut === "publie" && <button type="button" className="btn-secondary text-sm" onClick={() => onAction(() => suiviAPI.nouvelleVersionRapport(r.id))}>{t("Créer une nouvelle version")}</button>}
       </div>
-      <ConfirmDialog open={confirmer} onClose={() => setConfirmer(false)} onConfirm={() => { setConfirmer(false); onAction(() => suiviAPI.publierRapport(r.id)); }}
+      <ConfirmDialog open={confirmer} title="Confirmer" libelle="Publier" onClose={() => setConfirmer(false)} onConfirm={() => { setConfirmer(false); onAction(() => suiviAPI.publierRapport(r.id)); }}
         message={t("Publier ce rapport ? Si l'académie a ouvert le suivi aux familles, il sera visible par l'élève et ses parents.")} />
     </div>
   );

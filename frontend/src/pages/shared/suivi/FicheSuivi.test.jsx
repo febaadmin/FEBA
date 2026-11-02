@@ -6,8 +6,9 @@ import FicheSuivi from "./FicheSuivi";
 
 const vide = { has_data: false };
 const fiche = {
-  eleve: { id: 1, nom: "Élève Test", matricule: "M1", classe: "CM1" },
+  eleve: { id: 1, nom: "Élève Test", matricule: "M1", classe: null, sans_classe: true },
   progression: { ...vide, valeur: null, composantes: {} },
+  par_matiere: { ...vide, lignes: [] },
   assiduite: { ...vide, taux: null },
   participation: { ...vide, moyenne: null, nombre: 0 },
   competences: { ...vide, lignes: [], rang_max: 4 },
@@ -40,11 +41,15 @@ describe("FicheSuivi", () => {
     expect(await screen.findByText("Élève Test")).toBeTruthy();
     expect(screen.getAllByText("Données insuffisantes").length).toBe(6);
     expect(document.body.textContent).not.toMatch(/\d+ %/);
+    expect(screen.getByText("Aucune présence n'est enregistrée pour cette période.")).toBeTruthy();
+    expect(screen.getByText("Saisir les présences dans Absences")).toBeTruthy();
+    expect(screen.getByRole("alert").textContent).toMatch(/pas de classe/);
   });
   it("sans action de saisie pour une famille", async () => {
     role = "parent";
     afficher();
     await screen.findByText("Élève Test");
     expect(screen.queryByRole("button", { name: /Évaluer/ })).toBeNull();
+    expect(screen.queryByText("Saisir les présences dans Absences")).toBeNull();
   });
 });

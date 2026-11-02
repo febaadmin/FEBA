@@ -49,11 +49,49 @@ export function construireQuestion(type, f) {
   return { contenu: {}, corrige: {} };
 }
 
-/** Message à afficher avant l'envoi, ou null si le QCM est complet. */
-export function erreurChoix(type, choix) {
-  if (type !== "qcm_unique" && type !== "qcm_multiple") return null;
-  const remplis = (choix || []).filter((c) => c.texte?.trim());
-  if (remplis.length < 2) return "Saisissez au moins deux réponses.";
-  if (!remplis.some((c) => c.bon)) return "Cochez la bonne réponse.";
-  return null;
+/** Erreurs à afficher sous le champ concerné, avant tout envoi. La saisie reste en place. */
+export function erreursQuestion(type, f) {
+  const e = {};
+  if (!f.enonce?.trim()) e.enonce = "Saisissez l'énoncé de la question.";
+  const items = lignes(f.lignes);
+  const uniques = (l) => new Set(l.map((x) => x.toLowerCase())).size === l.length;
+  if (type === "qcm_unique" || type === "qcm_multiple") {
+    const remplis = (f.choix || []).filter((c) => c.texte?.trim());
+    if (remplis.length < 2) e.reponses = "Saisissez au moins deux réponses.";
+    else if (!uniques(remplis.map((c) => c.texte.trim()))) e.reponses = "Deux réponses sont identiques.";
+    else if (!remplis.some((c) => c.bon)) e.reponses = type === "qcm_unique" ? "Cochez la bonne réponse." : "Cochez au moins une bonne réponse.";
+  }
+  if (type === "courte" && items.length < 1) e.reponses = "Indiquez au moins une réponse acceptée.";
+  if (type === "trous" && items.length < 1) e.reponses = "Indiquez les réponses de chaque trou.";
+  if (type === "classement") {
+    if (items.length < 2) e.reponses = "Indiquez au moins deux éléments à classer.";
+    else if (!uniques(items)) e.reponses = "Deux éléments sont identiques.";
+  }
+  if (type === "association") {
+    if (items.length < 2) e.reponses = "Indiquez au moins deux paires.";
+    else if (items.some((l) => l.split("=").length !== 2 || l.split("=").some((x) => !x.trim()))) e.reponses = "Chaque ligne doit suivre le format : gauche = droite.";
+  }
+  if (type === "numerique" && (f.valeur === undefined || f.valeur === "" || Number.isNaN(Number(String(f.valeur).replace(",", "."))))) e.valeur = "Indiquez un nombre.";
+  if (f.points === "" || Number(f.points) < 0) e.points = "Indiquez un nombre de points positif.";
+  return e;
+}
+
+/** Reconstitue le formulaire depuis une question enregistrée, pour la modifier. */
+export function formulaireDepuis(q) {
+  const v = q.version || {};
+  const c = v.contenu || {};
+  const r = v.corrige || {};
+  const f = { id: q.id, type: q.type, enonce: v.enonce, points: v.points, difficulte: q.difficulte, subject: q.subject || "", prive: q.prive,
+    competence: q.competences?.[0] || "", criteres: v.criteres, explication: v.explication, vrai: "vrai", choix: [{ texte: "" }, { texte: "" }] };
+  if (q.type === "qcm_unique" || q.type === "qcm_multiple") {
+    const bonnes = q.type === "qcm_unique" ? [r.bonne] : r.bonnes || [];
+    f.choix = (c.choix || []).map((x) => ({ texte: x.texte, bon: bonnes.includes(x.id) }));
+  }
+  if (q.type === "vrai_faux") f.vrai = r.valeur ? "vrai" : "faux";
+  if (q.type === "courte") f.lignes = (r.acceptees || []).join("\n");
+  if (q.type === "numerique") { f.valeur = r.valeur; f.tolerance = r.tolerance; }
+  if (q.type === "trous") f.lignes = (r.reponses || []).map((x) => x.join(" | ")).join("\n");
+  if (q.type === "association") f.lignes = (c.gauche || []).map((g, i) => `${g.texte} = ${c.droite?.[i]?.texte ?? ""}`).join("\n");
+  if (q.type === "classement") f.lignes = (c.elements || []).map((x) => x.texte).join("\n");
+  return f;
 }

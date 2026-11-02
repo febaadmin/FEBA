@@ -141,7 +141,7 @@ class EvaluationPedagogique(models.Model):
 class ObservationParticipation(models.Model):
     """Observation saisie par l'enseignant. Jamais déduite d'une caméra ni d'un micro."""
 
-    NIVEAUX = [(1, "Faible"), (2, "Moyenne"), (3, "Bonne"), (4, "Très bonne")]
+    NIVEAUX = [(1, "Insuffisante"), (2, "Occasionnelle"), (3, "Active"), (4, "Très active")]
 
     student = models.ForeignKey("students.Student", on_delete=models.CASCADE, related_name="observations_participation")
     subject = models.ForeignKey("subjects.Subject", on_delete=models.SET_NULL, null=True, blank=True, related_name="+")

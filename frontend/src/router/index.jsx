@@ -100,6 +100,7 @@ const EvalCopie = lazy(() => import("../pages/shared/evaluations/Copie"));
 const EvalMes = lazy(() => import("../pages/shared/evaluations/MesEpreuves"));
 const EvalPassage = lazy(() => import("../pages/shared/evaluations/Passage"));
 const SuiviAlertes = lazy(() => import("../pages/shared/suivi/Alertes"));
+const AideGuides = lazy(() => import("../pages/shared/Aide"));
 const SuiviEleves = lazy(() => import("../pages/shared/suivi/SuiviEleves"));
 const FicheSuivi = lazy(() => import("../pages/shared/suivi/FicheSuivi"));
 const SuiviReferentiels = lazy(() => import("../pages/shared/suivi/Referentiels"));
@@ -349,6 +350,7 @@ export default function AppRouter() {
         <Route path="classes"       element={<AdminClasses />} />
         <Route path="levels"        element={<AdminLevels />} />
         <Route path="grades"        element={<AdminGrades />} />
+        <Route path="aide" element={<AideGuides />} />
         <Route path="evaluations" element={<FeatureGate feature="evaluations_en_ligne"><EvalEpreuves /></FeatureGate>} />
         <Route path="evaluations/banque" element={<FeatureGate feature="evaluations_en_ligne"><EvalBanque /></FeatureGate>} />
         <Route path="evaluations/copies/:id" element={<FeatureGate feature="evaluations_en_ligne"><EvalCopie /></FeatureGate>} />
@@ -403,6 +405,7 @@ export default function AppRouter() {
         <Route path="classes"       element={<AdminClasses />} />
         <Route path="levels"        element={<AdminLevels />} />
         <Route path="grades"        element={<AdminGrades />} />
+        <Route path="aide" element={<AideGuides />} />
         <Route path="evaluations" element={<FeatureGate feature="evaluations_en_ligne"><EvalEpreuves /></FeatureGate>} />
         <Route path="evaluations/banque" element={<FeatureGate feature="evaluations_en_ligne"><EvalBanque /></FeatureGate>} />
         <Route path="evaluations/copies/:id" element={<FeatureGate feature="evaluations_en_ligne"><EvalCopie /></FeatureGate>} />
@@ -450,6 +453,7 @@ export default function AppRouter() {
         <Route path="dashboard"     element={<TeacherDashboard />} />
         <Route path="classes"       element={<TeacherClasses />} />
         <Route path="grades"        element={<TeacherGrades />} />
+        <Route path="aide" element={<AideGuides />} />
         <Route path="evaluations" element={<FeatureGate feature="evaluations_en_ligne"><EvalEpreuves /></FeatureGate>} />
         <Route path="evaluations/banque" element={<FeatureGate feature="evaluations_en_ligne"><EvalBanque /></FeatureGate>} />
         <Route path="evaluations/copies/:id" element={<FeatureGate feature="evaluations_en_ligne"><EvalCopie /></FeatureGate>} />
@@ -477,6 +481,7 @@ export default function AppRouter() {
         <Route path="home"          element={<ParentHome />} />
         <Route path="children"      element={<ParentChildren />} />
         <Route path="grades"        element={<ParentGrades />} />
+        <Route path="aide" element={<AideGuides />} />
         <Route path="evaluations" element={<FeatureGate feature="evaluations_en_ligne"><EvalMes /></FeatureGate>} />
         <Route path="suivi" element={<FeatureGate feature="suivi_familles"><SuiviEleves /></FeatureGate>} />
         <Route path="suivi/:id" element={<FeatureGate feature="suivi_familles"><FicheSuivi /></FeatureGate>} />
@@ -500,6 +505,7 @@ export default function AppRouter() {
         <Route index element={<Navigate to="home" replace />} />
         <Route path="home"          element={<StudentHome />} />
         <Route path="grades"        element={<StudentGrades />} />
+        <Route path="aide" element={<AideGuides />} />
         <Route path="evaluations" element={<FeatureGate feature="evaluations_en_ligne"><EvalMes /></FeatureGate>} />
         <Route path="evaluations/:id/passer" element={<FeatureGate feature="evaluations_en_ligne"><EvalPassage /></FeatureGate>} />
         <Route path="suivi" element={<FeatureGate feature="suivi_familles"><SuiviEleves /></FeatureGate>} />

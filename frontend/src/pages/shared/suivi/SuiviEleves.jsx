@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useLocation } from "react-router-dom";
 import { suiviAPI } from "../../../api";
+import AideModule from "../../../components/ui/AideModule";
 import PageHeader from "../../../components/ui/PageHeader";
 import { useAuth } from "../../../hooks/useAuth";
 import { t } from "../../../i18n";
@@ -20,13 +21,16 @@ export default function SuiviEleves() {
     <div>
       <PageHeader title={t("Suivi pédagogique")} subtitle={t("Progression, compétences et objectifs de chaque élève")}
         action={gere ? <div className="flex gap-2"><Link to={`${base}/alertes`} className="btn-secondary">{t("Alertes")}</Link><Link to={`${base}/referentiels`} className="btn-secondary">{t("Référentiels")}</Link></div> : null} />
+      <AideModule cle={gere ? "suivi-personnel" : "suivi-famille"}
+        description={gere ? t("Le suivi montre ce qu'un élève maîtrise, au-delà des notes. Il ne modifie jamais les notes ni les bulletins.") : t("Vous voyez ici ce que l'enseignant a validé : compétences, objectifs et rapports publiés.")}
+        etapes={gere ? [t("Créez vos compétences dans Référentiels."), t("Ouvrez la fiche d'un élève."), t("Évaluez ses compétences, ajoutez des évaluations et des objectifs."), t("Générez un rapport.")] : [t("Ouvrez une fiche."), t("Parcourez les onglets.")]} />
       <div className="card">
         <input className="input mb-4 max-w-sm" placeholder={t("Rechercher un élève")} aria-label={t("Rechercher un élève")}
           value={recherche} onChange={(e) => setRecherche(e.target.value)} />
         {isLoading && <p className="text-sm text-slate-500">{t("Chargement")}</p>}
         {isError && <p className="text-sm text-red-700">{t("Le suivi n'a pas pu être chargé.")}</p>}
         {!isLoading && !isError && eleves.length === 0 && (
-          <p className="text-sm text-slate-500">{t("Aucun élève dans votre périmètre.")}</p>
+          <p className="text-sm text-slate-500">{t("Aucun élève ici. Un enseignant voit les élèves de ses classes : vérifiez les classes qui lui sont attribuées.")}</p>
         )}
         <ul className="divide-y divide-slate-100">
           {eleves.map((e) => (

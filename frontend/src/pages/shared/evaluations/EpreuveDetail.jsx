@@ -1,7 +1,7 @@
 /** Une épreuve : composition, publication, copies, statistiques, transfert vers les notes. */
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Link, useLocation, useParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import toast from "react-hot-toast";
 import { evaluationsAPI } from "../../../api";
 import ConfirmDialog from "../../../components/ui/ConfirmDialog";
@@ -16,6 +16,7 @@ export default function EpreuveDetail() {
   const { id } = useParams();
   const base = useLocation().pathname.replace(/\/\d+\/?$/, "");
   const qc = useQueryClient();
+  const nav = useNavigate();
   const [confirmer, setConfirmer] = useState(null);
   const { data, isLoading, isError } = useQuery({ queryKey: ["eval-epreuve", id], queryFn: () => evaluationsAPI.epreuve(id) });
   const e = data?.data;
@@ -50,6 +51,9 @@ export default function EpreuveDetail() {
     <div className="space-y-4">
       <PageHeader title={e.titre} subtitle={`${e.subject_name} - ${e.class_name} - ${t(STATUTS_EPREUVE[e.statut])}`}
         action={<Link to={base} className="btn-secondary text-sm">{t("Retour")}</Link>} />
+      <p className="rounded-xl border border-blue-100 bg-blue-50 p-3 text-sm text-slate-700" role="status">
+        {t("Prochaine étape")} : {brouillon ? (e.questions.length ? t("publiez l'épreuve pour l'ouvrir aux élèves. Elle ne se modifiera plus.") : t("ajoutez des questions depuis la banque.")) : s?.a_corriger ? t("corrigez les copies en attente.") : lignesCopies.some((c) => c.statut === "corrigee") ? t("validez les copies corrigées.") : lignesCopies.length === 0 ? t("attendez les premières copies, à partir de l'ouverture.") : !e.resultats_publies ? t("publiez les résultats pour les rendre visibles aux élèves.") : e.produit_note ? t("transférez les copies validées vers les notes si ce n'est pas déjà fait.") : t("rien à faire, l'épreuve est terminée.")}
+      </p>
       <div className="card flex flex-wrap gap-2">
         {brouillon && <button type="button" className="btn-primary" onClick={() => action.mutate(() => evaluationsAPI.publier(id))}>{t("Publier l'épreuve")}</button>}
         {e.statut === "publiee" && <button type="button" className="btn-secondary" onClick={() => setConfirmer("fermer")}>{t("Clore l'épreuve")}</button>}
@@ -57,6 +61,7 @@ export default function EpreuveDetail() {
         {!brouillon && e.produit_note && <button type="button" className="btn-secondary" onClick={() => setConfirmer("transfert")}>{t("Transférer vers les notes")}</button>}
         {!brouillon && <button type="button" className="btn-secondary" onClick={async () => telecharger((await evaluationsAPI.exporterResultats(id)).data, `resultats-${id}.csv`)}>{t("Exporter les résultats")}</button>}
         {brouillon && <Link to={`${base}/banque`} className="btn-secondary">{t("Banque de questions")}</Link>}
+        {brouillon && <button type="button" className="btn-secondary" onClick={() => setConfirmer("supprimer")}>{t("Supprimer le brouillon")}</button>}
       </div>
       <div className="card space-y-2">
         <h2 className="text-sm font-semibold text-slate-800">{t("Questions")} ({e.questions.length})</h2>
@@ -118,8 +123,9 @@ export default function EpreuveDetail() {
         </div>
       )}
       <ConfirmDialog open={!!confirmer} onClose={() => setConfirmer(null)} loading={action.isPending || transfert.isPending}
-        onConfirm={() => (confirmer === "fermer" ? action.mutate(() => evaluationsAPI.fermer(id)) : confirmer === "resultats" ? action.mutate(() => evaluationsAPI.publierResultats(id, true)) : transfert.mutate())}
-        message={confirmer === "fermer" ? t("Clore l'épreuve ? Les tentatives en cours seront remises.") : confirmer === "resultats" ? t("Publier les résultats validés aux élèves ?") : t("Créer une note officielle sur 20 pour chaque élève validé ? Ces notes entreront dans les moyennes et les bulletins.")} />
+        title={confirmer === "supprimer" ? undefined : "Confirmer"} libelle={{ fermer: "Clore l'épreuve", resultats: "Publier les résultats", transfert: "Créer les notes" }[confirmer]}
+        onConfirm={() => (confirmer === "supprimer" ? evaluationsAPI.supprimerEpreuve(id).then(() => nav(base)).catch((x) => toast.error(extractApiError(x))) : confirmer === "fermer" ? action.mutate(() => evaluationsAPI.fermer(id)) : confirmer === "resultats" ? action.mutate(() => evaluationsAPI.publierResultats(id, true)) : transfert.mutate())}
+        message={confirmer === "supprimer" ? t("Supprimer ce brouillon d'épreuve ?") : confirmer === "fermer" ? t("Clore l'épreuve ? Les tentatives en cours seront remises.") : confirmer === "resultats" ? t("Publier les résultats validés aux élèves ?") : t("Créer une note officielle sur 20 pour chaque élève validé ? Ces notes entreront dans les moyennes et les bulletins.")} />
     </div>
   );
 }
