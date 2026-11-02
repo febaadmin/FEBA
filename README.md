@@ -261,4 +261,4 @@ make test   # Lance tests/test_tenant_security.py (16 scénarios cross-tenant)
 Deux modules indépendants des notes, désactivés par défaut par académie (page **Modules pédagogiques** du superadministrateur).
 
 - `docs/SUIVI_PEDAGOGIQUE.md`, `docs/EXAMENS_EN_LIGNE.md`, `docs/RAPPORTS_ET_ALERTES.md`
-- Guides : `docs/guides/`
+- Guides et rapports : `docs/livraison/`
