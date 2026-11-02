@@ -99,6 +99,7 @@ const EvalDetail = lazy(() => import("../pages/shared/evaluations/EpreuveDetail"
 const EvalCopie = lazy(() => import("../pages/shared/evaluations/Copie"));
 const EvalMes = lazy(() => import("../pages/shared/evaluations/MesEpreuves"));
 const EvalPassage = lazy(() => import("../pages/shared/evaluations/Passage"));
+const SuiviAlertes = lazy(() => import("../pages/shared/suivi/Alertes"));
 const SuiviEleves = lazy(() => import("../pages/shared/suivi/SuiviEleves"));
 const FicheSuivi = lazy(() => import("../pages/shared/suivi/FicheSuivi"));
 const SuiviReferentiels = lazy(() => import("../pages/shared/suivi/Referentiels"));
@@ -354,6 +355,7 @@ export default function AppRouter() {
         <Route path="evaluations/:id" element={<FeatureGate feature="evaluations_en_ligne"><EvalDetail /></FeatureGate>} />
         <Route path="suivi" element={<FeatureGate feature="suivi_pedagogique"><SuiviEleves /></FeatureGate>} />
         <Route path="suivi/referentiels" element={<FeatureGate feature="suivi_pedagogique"><SuiviReferentiels /></FeatureGate>} />
+        <Route path="suivi/alertes" element={<FeatureGate feature="suivi_pedagogique"><SuiviAlertes /></FeatureGate>} />
         <Route path="suivi/:id" element={<FeatureGate feature="suivi_pedagogique"><FicheSuivi /></FeatureGate>} />
         <Route path="bulletins"     element={<AdminBulletins />} />
         <Route path="payments"      element={<AdminPayments />} />
@@ -407,6 +409,7 @@ export default function AppRouter() {
         <Route path="evaluations/:id" element={<FeatureGate feature="evaluations_en_ligne"><EvalDetail /></FeatureGate>} />
         <Route path="suivi" element={<FeatureGate feature="suivi_pedagogique"><SuiviEleves /></FeatureGate>} />
         <Route path="suivi/referentiels" element={<FeatureGate feature="suivi_pedagogique"><SuiviReferentiels /></FeatureGate>} />
+        <Route path="suivi/alertes" element={<FeatureGate feature="suivi_pedagogique"><SuiviAlertes /></FeatureGate>} />
         <Route path="suivi/:id" element={<FeatureGate feature="suivi_pedagogique"><FicheSuivi /></FeatureGate>} />
         <Route path="payments"      element={<AdminPayments />} />
         <Route path="card-transactions" element={<AdminCardTransactions />} />
@@ -453,6 +456,7 @@ export default function AppRouter() {
         <Route path="evaluations/:id" element={<FeatureGate feature="evaluations_en_ligne"><EvalDetail /></FeatureGate>} />
         <Route path="suivi" element={<FeatureGate feature="suivi_pedagogique"><SuiviEleves /></FeatureGate>} />
         <Route path="suivi/referentiels" element={<FeatureGate feature="suivi_pedagogique"><SuiviReferentiels /></FeatureGate>} />
+        <Route path="suivi/alertes" element={<FeatureGate feature="suivi_pedagogique"><SuiviAlertes /></FeatureGate>} />
         <Route path="suivi/:id" element={<FeatureGate feature="suivi_pedagogique"><FicheSuivi /></FeatureGate>} />
         <Route path="attendance"    element={<TeacherAttendance />} />
         <Route path="homework"      element={<TeacherHomework />} />

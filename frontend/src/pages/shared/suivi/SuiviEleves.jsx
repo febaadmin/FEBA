@@ -19,7 +19,7 @@ export default function SuiviEleves() {
   return (
     <div>
       <PageHeader title={t("Suivi pédagogique")} subtitle={t("Progression, compétences et objectifs de chaque élève")}
-        action={gere ? <Link to={`${base}/referentiels`} className="btn-secondary">{t("Référentiels")}</Link> : null} />
+        action={gere ? <div className="flex gap-2"><Link to={`${base}/alertes`} className="btn-secondary">{t("Alertes")}</Link><Link to={`${base}/referentiels`} className="btn-secondary">{t("Référentiels")}</Link></div> : null} />
       <div className="card">
         <input className="input mb-4 max-w-sm" placeholder={t("Rechercher un élève")} aria-label={t("Rechercher un élève")}
           value={recherche} onChange={(e) => setRecherche(e.target.value)} />

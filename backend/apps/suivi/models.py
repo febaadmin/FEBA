@@ -265,3 +265,92 @@ class ParametresSuivi(models.Model):
 
     def poids_effectifs(self):
         return {**self.POIDS_DEFAUT, **(self.poids or {})}
+
+
+class RapportPedagogique(models.Model):
+    """
+    Rapport individuel. Les chiffres (`donnees`) viennent des services et ne s'éditent
+    pas ; l'enseignant rédige `contenu`. Toute validation ou publication laisse une
+    version figée : rien ne change en silence après publication.
+    """
+
+    TYPES = [("hebdomadaire", "Hebdomadaire"), ("mensuel", "Mensuel"), ("trimestriel", "Trimestriel"),
+             ("annuel", "Annuel"), ("demande", "À la demande")]
+    BROUILLON, VALIDE, PUBLIE = "brouillon", "valide", "publie"
+    STATUTS = [(BROUILLON, "Brouillon"), (VALIDE, "Validé"), (PUBLIE, "Publié")]
+
+    student = models.ForeignKey("students.Student", on_delete=models.CASCADE, related_name="rapports_pedagogiques")
+    type = models.CharField(max_length=12, choices=TYPES, default="mensuel")
+    du = models.DateField()
+    au = models.DateField()
+    statut = models.CharField(max_length=9, choices=STATUTS, default=BROUILLON)
+    numero_version = models.PositiveIntegerField(default=1)
+    donnees = models.JSONField(default=dict)
+    contenu = models.JSONField(default=dict, blank=True)
+    cree_par = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="+")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-au", "-id"]
+        indexes = [models.Index(fields=["student", "statut"], name="suivi_rp_eleve_idx")]
+
+
+class RapportVersion(models.Model):
+    rapport = models.ForeignKey(RapportPedagogique, on_delete=models.CASCADE, related_name="versions")
+    numero = models.PositiveIntegerField()
+    statut = models.CharField(max_length=9)
+    donnees = models.JSONField(default=dict)
+    contenu = models.JSONField(default=dict)
+    par = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="+")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at", "-id"]
+        constraints = [models.UniqueConstraint(fields=["rapport", "numero", "statut"], name="uniq_version_rapport")]
+
+
+class RegleAlerte(models.Model):
+    """Règle explicite, réglable par académie."""
+
+    CODES = [
+        ("baisse_resultats", "Résultats en baisse"), ("progression_positive", "Résultats en hausse"),
+        ("stagnation", "Compétence qui stagne"), ("absences", "Absences répétées"),
+        ("difficultes", "Plusieurs compétences en difficulté"), ("objectif_atteint", "Objectif atteint"),
+    ]
+    DEFAUTS = {"baisse_resultats": 10, "progression_positive": 10, "stagnation": 3, "absences": 3, "difficultes": 3, "objectif_atteint": 1}
+
+    school = models.ForeignKey("schools.School", on_delete=models.CASCADE, related_name="regles_alerte")
+    code = models.CharField(max_length=24, choices=CODES)
+    seuil = models.PositiveSmallIntegerField()
+    actif = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ["code"]
+        constraints = [models.UniqueConstraint(fields=["school", "code"], name="uniq_regle_alerte")]
+
+
+class AlertePedagogique(models.Model):
+    """Signal à examiner : jamais un diagnostic, jamais une décision automatique."""
+
+    CATEGORIES = [("positif", "Progression positive"), ("attention", "Attention"),
+                  ("surveiller", "À surveiller"), ("objectif", "Objectif atteint")]
+    STATUTS = [("nouvelle", "Nouvelle"), ("acceptee", "Acceptée"), ("modifiee", "Modifiée"), ("refusee", "Refusée")]
+
+    student = models.ForeignKey("students.Student", on_delete=models.CASCADE, related_name="alertes_pedagogiques")
+    code = models.CharField(max_length=24)
+    categorie = models.CharField(max_length=10, choices=CATEGORIES)
+    cle = models.CharField(max_length=60, help_text="Évite de répéter le même signal.")
+    message = models.TextField()
+    donnees = models.JSONField(default=dict)
+    recommandation = models.TextField(blank=True)
+    statut = models.CharField(max_length=8, choices=STATUTS, default="nouvelle")
+    decide_par = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
+    decide_le = models.DateTimeField(null=True, blank=True)
+    note_decision = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        constraints = [models.UniqueConstraint(fields=["student", "code", "cle"], name="uniq_alerte")]
+
