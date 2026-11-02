@@ -28,10 +28,20 @@ Statut « Local » : corrigé et vérifié hors production. Statut « PR 50+ » 
 
 Anomalies de missions précédentes : voir `../INVENTAIRE_BUGS_ANOMALIES.md`.
 
+| 22 | **Flash lumineux à la navigation (vidéo 14.52.33, images 163 à 165)** | framer-motion 11 annule l'animation avant d'écrire la valeur finale : une image à l'opacité initiale | framer-motion 12.43.0 | `sansFlash.test`, mesure : 6 chutes sur 6 ouvertures, puis 0 | Production (PR 52) |
+| 23 | Page qui s'efface à l'entrée | Opacité de départ à 0 | Départ à 0,55 | `sansFlash.test` | Production (PR 52) |
+| 24 | Attente clignotante | `animate-pulse` | `animate-attente`, amplitude réduite | `sansFlash.test` | Production (PR 52) |
+| 25 | Échap exécutait `onClose` des fenêtres fermées | Écouteur toujours actif | Écoute seulement si ouverte | Navigateur | Production (PR 52) |
+| 26 | Valeurs des cartes coupées (« 12.48/2 0 ») | `break-words` sur une colonne étroite | Taille et césure revues | Planches de photos | Production (PR 53) |
+| 27 | Destinataire affiché « all » | Valeur technique | `libelleCible` | `destinataires.test` | Production (PR 53) |
+| 28 | Dates coupées dans les tableaux | Colonne étroite | `whitespace-nowrap` pour les dates brutes | Planches de photos ; dates mises en forme par une colonne personnalisée non couvertes | Production (PR 53) |
+
 ## Encore ouvert
 
 | Sujet | Gravité | Note |
 |---|---|---|
+| **A1. Échec isolé de la campagne d'isolation** | **Haute tant qu'elle n'est pas expliquée** | Run 41466038561, PostgreSQL : `T07Z/admin GET /api/bulletins/ contient l'étiquette de T14Z`. Cause inconnue. Le contrôle jumeau sur le même commit est passé, 6 répétitions locales sous SQLite et les CI suivantes aussi. La vue filtre par `student__school`. Hypothèse du suffixe aléatoire de fichier non démontrée. Le détecteur affiche désormais le texte en cause. **Aucune fuite n'est prouvée, aucune n'est exclue** |
+| Coupure d'environ 5 s à chaque déploiement | Moyenne | 4 réponses 502 sur les compteurs de notifications le 02/11 à 16:12 UTC |
 | Un libellé non relié dans « Nouveau message » | Faible | Bloc à plusieurs champs |
 | Tableaux larges à défilement horizontal sur ordinateur | Faible | Élèves, Paiements, Utilisateurs |
 | Dialogue de l'admin « Nouvel utilisateur » resté ouvert après 201 dans mon automate | À vérifier | Le code ferme la fenêtre après succès : probablement un artefact de l'automate, non confirmé à la main |

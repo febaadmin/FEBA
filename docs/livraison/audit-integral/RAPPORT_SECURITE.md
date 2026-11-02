@@ -12,5 +12,6 @@
 **Non fait :** test d'intrusion, revue complète de chaque API, test de charge. Ce rapport ne constitue pas une attestation de sécurité.
 
 **À connaître :**
+- **Anomalie A1 ouverte :** un échec isolé de la campagne d'isolation entre académies, sans cause établie. Voir `INVENTAIRE_BUGS_ET_CORRECTIONS.md`.
 - L'écart de droits entre notes, devoirs et présences reste ouvert : les devoirs et présences n'utilisent pas encore le contrôle par affectation, et l'extension demande votre accord.
 - Les paiements par carte et les remboursements restent désactivés, comme demandé.

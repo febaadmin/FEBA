@@ -25,8 +25,13 @@ La refonte passe par la couche commune : toutes les pages en héritent sans ré�
 | Carte d'objectif déplacée, objectif atteint | `TableauObjectifs` | Oui ; le glisser a une liste équivalente au clavier |
 | Courbes | `Graphiques.jsx` | Coupées avec `useReducedMotion` |
 
+## Neo Glass (PR 53)
+
+Fond fixe et discret, cartes claires à ombre douce, tuiles d'icône en dégradé, en-tête vitré, couleurs hors charte retirées de 36 fichiers. Détail : `DESIGN_SYSTEM_FEBA.md`.
+
 ## Limites
 
 - Pas de compteur animé sur `StatCard` : le test `academyBoot` interdit un faux zéro au chargement, et je ne l'ai pas affaibli.
 - Une régression m'est imputable : l'animation d'entrée a capturé les fenêtres en PR 49, corrigé en PR 50.
+- **Ce n'est pas 100 % des interfaces :** la couche commune couvre toutes les pages connectées, mais des styles propres à certaines pages subsistent, et le site public n'a pas été refondu.
 - Non harmonisés à fond : Admissions, Fichiers, Transactions, couleurs des graphiques.
