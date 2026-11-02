@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Plus, Pencil, Trash2, Layers } from "lucide-react";
-import { useForm } from "react-hook-form";
+import { useForm } from "../../utils/useFormulaire";
 import toast from "react-hot-toast";
 import { schoolsAPI } from "../../api";
 import PageHeader from "../../components/ui/PageHeader";

@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Plus, Pencil, Trash2, Video, Users, CalendarClock, StopCircle, Film } from "lucide-react";
-import { useForm } from "react-hook-form";
+import { useForm } from "../../utils/useFormulaire";
 import { format } from "date-fns";
 import { fr, enGB } from "date-fns/locale";
 import toast from "react-hot-toast";

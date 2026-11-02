@@ -10,7 +10,7 @@
  */
 import { useState, useEffect } from "react";
 import { useMutation } from "@tanstack/react-query";
-import { useForm } from "react-hook-form";
+import { useForm } from "../../utils/useFormulaire";
 import { Eye, EyeOff, KeyRound, ShieldAlert } from "lucide-react";
 import toast from "react-hot-toast";
 import { authAPI } from "../../api";

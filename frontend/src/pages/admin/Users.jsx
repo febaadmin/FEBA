@@ -10,7 +10,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Plus, Pencil, Trash2, ToggleLeft, ToggleRight, Eye, EyeOff, AlertCircle, KeyRound } from "lucide-react";
-import { useForm } from "react-hook-form";
+import { useForm } from "../../utils/useFormulaire";
 import toast from "react-hot-toast";
 import { authAPI } from "../../api";
 import { extractApiErrors } from "../../utils/errors";
