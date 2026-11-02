@@ -4,6 +4,7 @@ import { useI18n } from "./i18n";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { useNumberInputGuard } from "./utils/useNumberInputGuard";
 import { useSessionKeepAlive } from "./hooks/useSessionKeepAlive";
+import { useLabelLinker } from "./utils/useLabelLinker";
 
 export default function App() {
   // key={lang} : remonte tout l'arbre au changement de langue, garantissant
@@ -14,6 +15,8 @@ export default function App() {
   useNumberInputGuard();
   // Session maintenue pendant les longues visioconférences (voir le hook).
   useSessionKeepAlive();
+  // Accessibilité : chaque libellé désigne son champ.
+  useLabelLinker();
   return (
     <ErrorBoundary>
       <MotionConfig reducedMotion="user">
