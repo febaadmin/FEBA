@@ -20,7 +20,7 @@ export default function SuiviEleves() {
   return (
     <div>
       <PageHeader title={t("Suivi pédagogique")} subtitle={t("Progression, compétences et objectifs de chaque élève")}
-        action={gere ? <div className="flex gap-2"><Link to={`${base}/alertes`} className="btn-secondary">{t("Alertes")}</Link><Link to={`${base}/referentiels`} className="btn-secondary">{t("Référentiels")}</Link></div> : null} />
+        action={gere ? <div className="flex gap-2"><Link to={`${base}/alertes`} className="btn-secondary">{t("Alertes")}</Link><Link to={`${base}/evaluer`} className="btn-secondary">{t("Évaluer une classe")}</Link><Link to={`${base}/referentiels`} className="btn-secondary">{t("Compétences")}</Link></div> : null} />
       <AideModule cle={gere ? "suivi-personnel" : "suivi-famille"}
         description={gere ? t("Le suivi montre ce qu'un élève maîtrise, au-delà des notes. Il ne modifie jamais les notes ni les bulletins.") : t("Vous voyez ici ce que l'enseignant a validé : compétences, objectifs et rapports publiés.")}
         etapes={gere ? [t("Créez vos compétences dans Référentiels."), t("Ouvrez la fiche d'un élève."), t("Évaluez ses compétences, ajoutez des évaluations et des objectifs."), t("Générez un rapport.")] : [t("Ouvrez une fiche."), t("Parcourez les onglets.")]} />

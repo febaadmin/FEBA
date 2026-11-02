@@ -1,7 +1,7 @@
 import { NavLink } from "react-router-dom";
 import { useState, useEffect } from "react";
 import {
-  Building2, Star, Stamp, FileBarChart, LayoutDashboard, Users, Shield, GraduationCap, UserCheck, Users2, BookOpen, DollarSign, Megaphone, Settings, LogOut, Menu, X, MessageSquare, Layers, ClipboardList, FileText, Calendar, UserCog, FolderOpen, Image, ClipboardCheck, CircleHelp, Video, Globe, AlertTriangle, CreditCard, Award, Mail, BellRing, Inbox, TrendingUp } from "lucide-react";
+  Building2, Star, Stamp, FileBarChart, LayoutDashboard, Users, Shield, GraduationCap, UserCheck, Users2, BookOpen, DollarSign, Megaphone, Settings, LogOut, Menu, X, MessageSquare, Layers, ClipboardList, FileText, Calendar, UserCog, FolderOpen, Image, ClipboardCheck, CircleHelp, ListTree, Video, Globe, AlertTriangle, CreditCard, Award, Mail, BellRing, Inbox, TrendingUp } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
 import AcademyLogo from "../components/AcademyLogo";
 import AcademyName from "../components/AcademyName";
@@ -53,6 +53,7 @@ const nav = [
     { label: "Admissions en ligne", icon: ClipboardList, to: "/superadmin/fha-admissions", feature: "online_admissions" },
     { label: "Modules pédagogiques", icon: ClipboardCheck, CircleHelp, to: "/superadmin/modules" },
     { label: "Suivi pédagogique", icon: TrendingUp, to: "/superadmin/suivi", feature: "suivi_pedagogique" },
+    { label: "Compétences", icon: ListTree, to: "/superadmin/suivi/referentiels", feature: "suivi_pedagogique" },
     { label: "Examens et évaluations", icon: ClipboardCheck, CircleHelp, to: "/superadmin/evaluations", feature: "evaluations_en_ligne" },
     { label: "Aide", icon: CircleHelp, to: "/superadmin/aide", feature: "suivi_pedagogique" },
     { label: "Rapports mensuels", icon: FileBarChart, to: "/superadmin/monthly-reports", feature: "monthly_reports" },

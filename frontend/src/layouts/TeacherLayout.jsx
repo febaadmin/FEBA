@@ -1,5 +1,5 @@
 import { NavLink, useNavigate } from "react-router-dom";
-import { LayoutDashboard, BookOpen, ClipboardList, Calendar, FileText, MessageSquare, User, LogOut, School, Menu, X, Bell, Megaphone, Video, TrendingUp, ClipboardCheck, CircleHelp } from "lucide-react";
+import { LayoutDashboard, BookOpen, ClipboardList, Calendar, FileText, MessageSquare, User, LogOut, School, Menu, X, Bell, Megaphone, Video, TrendingUp, ClipboardCheck, CircleHelp, ListTree } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
 import AcademyLogo from "../components/AcademyLogo";
 import AcademyName from "../components/AcademyName";
@@ -20,6 +20,7 @@ const nav = [
   { label: "Mes classes",      icon: BookOpen,        to: "/teacher/classes" },
   { label: "Notes",            icon: ClipboardList,   to: "/teacher/grades" },
   { label: "Suivi pédagogique", icon: TrendingUp,     to: "/teacher/suivi", feature: "suivi_pedagogique" },
+  { label: "Compétences", icon: ListTree, to: "/teacher/suivi/referentiels", feature: "suivi_pedagogique" },
   { label: "Examens et évaluations", icon: ClipboardCheck, to: "/teacher/evaluations", feature: "evaluations_en_ligne" },
   { label: "Aide", icon: CircleHelp, to: "/teacher/aide", feature: "suivi_pedagogique" },
   { label: "Absences",         icon: Calendar,        to: "/teacher/attendance" },
