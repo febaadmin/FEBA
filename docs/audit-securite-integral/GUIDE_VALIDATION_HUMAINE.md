@@ -31,6 +31,8 @@ Créez un jeu par profil dans une classe de test. Parcours :
 | Académie 2 | 5 élèves, 0 compte parent, 0 lien, accès familles activé | Créer les parents, ou couper l'option |
 | Limite par compte (V8) | Risque : blocage d'un utilisateur par un tiers | Accord ou non |
 | 4 comptes superadmin | Nombre relevé | Confirmer qu'ils sont légitimes |
+| Compte 191 | Rôle superadmin, avec un profil parent lié aux élèves 99 et 100 | Normal, ou compte parent séparé |
+| Élève 109, compte 208 | Le compte de l'élève a le rôle « parent » | Corriger le rôle, ou le rattacher autrement. Vérifier ce qu'il voit |
 
 ## 5. Test de restauration
 En root, sur le serveur : `bash scripts/test_restauration_isolee.sh`. Il n'a jamais été exécuté.
