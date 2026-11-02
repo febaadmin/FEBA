@@ -36,7 +36,7 @@ export function AnneauProgression({ valeur, taille = 96, epaisseur = 9, couleur 
 
 export function Squelette({ lignes = 3 }) {
   return (
-    <div className="space-y-3 animate-pulse motion-reduce:animate-none" aria-hidden="true">
+    <div className="space-y-3 animate-attente motion-reduce:animate-none" aria-hidden="true">
       {Array.from({ length: lignes }, (_, i) => <div key={i} className="h-16 rounded-xl bg-slate-100" />)}
     </div>
   );

@@ -23,10 +23,10 @@ export default function NewsDetailPage() {
     return (
       <Section tone="white">
         <div className="max-w-3xl mx-auto space-y-4" aria-hidden="true">
-          <div className="h-8 bg-feba-cream animate-pulse rounded-xl w-2/3" />
-          <div className="h-64 bg-feba-cream animate-pulse rounded-2xl" />
-          <div className="h-4 bg-feba-cream animate-pulse rounded w-full" />
-          <div className="h-4 bg-feba-cream animate-pulse rounded w-5/6" />
+          <div className="h-8 bg-feba-cream animate-attente rounded-xl w-2/3" />
+          <div className="h-64 bg-feba-cream animate-attente rounded-2xl" />
+          <div className="h-4 bg-feba-cream animate-attente rounded w-full" />
+          <div className="h-4 bg-feba-cream animate-attente rounded w-5/6" />
         </div>
       </Section>
     );

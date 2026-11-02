@@ -729,7 +729,7 @@ export default function AdminWebsite() {
         subtitle={t("Contenu public : messages, préinscriptions, actualités et paramètres")} />
       <div className="flex gap-2 flex-wrap">
         {contextLoading && (
-          <div className="h-10 w-96 rounded-xl bg-slate-100 animate-pulse" aria-hidden="true" />
+          <div className="h-10 w-96 rounded-xl bg-slate-100 animate-attente" aria-hidden="true" />
         )}
         {visibleTabs.map((tb) => (
           <button key={tb.key} onClick={() => setTab(tb.key)}

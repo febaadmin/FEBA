@@ -237,7 +237,7 @@ export default function MessagesPage() {
             </div>
           ) : !thread ? (
             <div className="flex-1 flex items-center justify-center">
-              <div className="animate-pulse text-slate-400 text-sm">{t("Chargement…")}</div>
+              <div className="animate-attente text-slate-400 text-sm">{t("Chargement…")}</div>
             </div>
           ) : (
             <>

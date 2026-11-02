@@ -108,7 +108,7 @@ export default function SuperAdminLayout() {
           <motion.div
             key="backdrop"
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/50 z-10"
+            className="fixed inset-0 bg-sidebar/50 z-10"
             onClick={() => setOpen(false)}
           />
         )}

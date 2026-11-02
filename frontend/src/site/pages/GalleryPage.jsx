@@ -43,7 +43,7 @@ export default function GalleryPage() {
         {isLoading && (
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3" aria-hidden="true">
             {[...Array(8)].map((_, i) => (
-              <div key={i} className="rounded-xl bg-feba-cream animate-pulse h-40" />
+              <div key={i} className="rounded-xl bg-feba-cream animate-attente h-40" />
             ))}
           </div>
         )}
