@@ -121,7 +121,7 @@ export default function SuperAdminLayout() {
             initial={{ x: -260 }} animate={{ x: 0 }} exit={{ x: -260 }}
             transition={{ duration: 0.2 }}
             className={clsx(
-              "w-64 bg-[#0F172A] flex flex-col h-full shrink-0 z-20 shadow-2xl",
+              "w-64 bg-gradient-to-b from-sidebar to-sidebar-2 flex flex-col h-full shrink-0 z-20 shadow-2xl",
               isMobile && "fixed inset-y-0 left-0"
             )}
           >
@@ -149,16 +149,9 @@ export default function SuperAdminLayout() {
                   <div className="space-y-0.5">
                     {section.items.filter((item) => isNavItemVisible(item, academy)).map(item => (
                       <NavLink
-                        key={item.to} to={item.to}
+                        key={item.to} to={item.to} end={item.to.endsWith("/suivi")}
                         onClick={closeSidebarOnMobile}
-                        className={({ isActive }) =>
-                          clsx(
-                            "flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm transition-all cursor-pointer",
-                            isActive
-                              ? "text-white bg-gradient-to-r from-purple-600/80 to-pink-600/60 shadow-lg"
-                              : "text-slate-400 hover:text-white hover:bg-white/10"
-                          )
-                        }
+                        className={({ isActive }) => (isActive ? "nav-item-actif" : "nav-item")}
                       >
                         <item.icon className="w-4 h-4 shrink-0" />
                         <span className="flex-1 truncate">{t(item.label)}</span>

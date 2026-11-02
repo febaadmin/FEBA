@@ -146,7 +146,7 @@ export default function AdminLayout() {
             initial={{ x: -260 }} animate={{ x: 0 }} exit={{ x: -260 }}
             transition={{ duration: 0.2 }}
             className={clsx(
-              "w-64 bg-[#0F172A] flex flex-col h-full shrink-0 z-20 shadow-2xl",
+              "w-64 bg-gradient-to-b from-sidebar to-sidebar-2 flex flex-col h-full shrink-0 z-20 shadow-2xl",
               isMobile && "fixed inset-y-0 left-0"
             )}>
             <div className="p-5 flex items-center gap-3 border-b border-white/10">
@@ -165,14 +165,9 @@ export default function AdminLayout() {
             </div>
             <nav className="flex-1 p-3 overflow-y-auto space-y-0.5">
               {visibleNav.map(item => (
-                <NavLink key={item.to} to={item.to}
+                <NavLink key={item.to} to={item.to} end={item.to.endsWith("/suivi")}
                   onClick={closeSidebarOnMobile}
-                  className={({ isActive }) => clsx(
-                    "flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm transition-all",
-                    isActive
-                      ? "text-white bg-primary/70 shadow-lg"
-                      : "text-slate-400 hover:text-white hover:bg-white/10"
-                  )}>
+                  className={({ isActive }) => (isActive ? "nav-item-actif" : "nav-item")}>
                   <item.icon className="w-4 h-4 shrink-0" />
                   <span className="truncate">{t(item.label)}</span>
                   {/* Message badge on nav item */}

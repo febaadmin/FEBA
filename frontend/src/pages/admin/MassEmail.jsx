@@ -62,7 +62,7 @@ function Badge({ tone, children }) {
 
 export default function MassEmail() {
   const qc = useQueryClient();
-  const { activeAcademy } = useAcademy();
+  const { activeAcademy, isAllAcademies } = useAcademy();
   const [academyId, setAcademyId] = useState(activeAcademy?.id || "");
   const [audience, setAudience] = useState(emptyAudience);
   const [roleFilter, setRoleFilter] = useState("");
@@ -79,6 +79,7 @@ export default function MassEmail() {
     queryKey: ["mass-email-options", academyId],
     queryFn: () => massEmailAPI.options(academyId),
     retry: false,
+    enabled: !isAllAcademies,
   });
   const options = optionsQuery.data?.data;
   const effectiveAcademyId = academyId || options?.academy?.id || "";
@@ -157,6 +158,17 @@ export default function MassEmail() {
     onError: (e) => { setConfirmOpen(false); toast.error(extractApiError(e)); },
     onSettled: () => { sendingRef.current = false; },
   });
+
+  if (isAllAcademies) {
+    return (
+      <div className="space-y-4">
+        <PageHeader title={t("E-mails groupés")} subtitle={t("Envoi par académie et par type de profil")} />
+        <div className="card text-sm text-amber-800 bg-amber-50 border-amber-200" role="status">
+          {t("Sélectionnez une académie en haut de la page : chaque envoi part au nom d'une seule académie.")}
+        </div>
+      </div>
+    );
+  }
 
   if (optionsQuery.isError) {
     return (

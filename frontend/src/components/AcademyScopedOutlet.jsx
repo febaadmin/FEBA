@@ -20,12 +20,13 @@
  *     état d'attente explicite. Mieux vaut un écran qui dit « chargement »
  *     qu'un écran qui affiche silencieusement les mauvais chiffres.
  */
-import { Outlet } from "react-router-dom";
+import { Outlet, useLocation } from "react-router-dom";
 import { Loader2 } from "lucide-react";
 import { useAcademy } from "../context/AcademyContext";
 import { getLang } from "../i18n";
 
 export default function AcademyScopedOutlet() {
+  const { pathname } = useLocation();
   const { academyKey, isSwitchingAcademy, scopeReady, hasAcademyError } = useAcademy();
   const en = getLang() === "en";
 
@@ -93,5 +94,7 @@ export default function AcademyScopedOutlet() {
     );
   }
 
-  return <Outlet key={academyKey} />;
+  // Entrée douce commune à toutes les pages. CSS seul : aucun coût de rendu, et coupée
+  // par prefers-reduced-motion.
+  return <div key={`${academyKey}-${pathname}`} className="page-entree"><Outlet /></div>;
 }

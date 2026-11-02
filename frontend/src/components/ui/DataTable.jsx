@@ -3,6 +3,7 @@ import { ChevronUp, ChevronDown, Search, ChevronLeft, ChevronRight, Trash2 } fro
 import { clsx } from "clsx";
 import { t } from "../../i18n";
 import AcademyBadge from "../AcademyBadge";
+import ConfirmDialog from "./ConfirmDialog";
 import { useAcademy } from "../../context/AcademyContext";
 
 /**
@@ -60,6 +61,7 @@ export default function DataTable({
   const [sortDir, setSortDir]   = useState("asc");
   const [page, setPage]         = useState(1);
   const [selected, setSelected] = useState(new Set());
+  const [bulkOpen, setBulkOpen] = useState(false);
 
   useEffect(() => { setSelected(new Set()); }, [data]);
 
@@ -103,22 +105,21 @@ export default function DataTable({
   return (
     <div>
       <div className="mb-4 flex flex-wrap items-center gap-3 justify-between">
-        <div className="relative w-72">
+        <div className="relative w-full sm:w-72">
           <Search className="absolute left-3 top-2.5 w-4 h-4 text-slate-400" />
           <input value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} placeholder={t("Rechercher...")} className="input pl-9" />
         </div>
         {selectable && onBulkDelete && selected.size > 0 && (
-          <button onClick={() => { if (window.confirm(bulkConfirmMessage ? bulkConfirmMessage(selected.size) : `Supprimer ${selected.size} élément(s) sélectionné(s) ?`)) { onBulkDelete([...selected]); setSelected(new Set()); } }} disabled={bulkDeletePending}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-red-600 text-white text-sm font-medium hover:bg-red-700 disabled:opacity-50 transition shadow-sm">
+          <button onClick={() => setBulkOpen(true)} disabled={bulkDeletePending} className="btn-danger flex items-center gap-2">
             <Trash2 className="w-4 h-4" />
-            {bulkDeletePending ? "Suppression…" : `${bulkDeleteLabel} (${selected.size})`}
+            {bulkDeletePending ? t("Suppression...") : `${t(bulkDeleteLabel)} (${selected.size})`}
           </button>
         )}
       </div>
 
-      <div className="overflow-x-auto rounded-xl border border-slate-100">
-        <table className="w-full text-sm">
-          <thead className="bg-slate-50 border-b border-slate-100">
+      <div className="overflow-x-auto rounded-xl border border-slate-200">
+        <table className="w-full text-sm table-cartes">
+          <thead className="bg-slate-50 border-b border-slate-200 sticky top-0">
             <tr>
               {selectable && (
                 <th className="px-4 py-3 w-10">
@@ -128,7 +129,10 @@ export default function DataTable({
                 </th>
               )}
               {tableColumns.map(col => (
-                <th key={col.key} onClick={() => { const k = sortKeyOf(col); if (col.sortable !== false && k) toggleSort(k); }}
+                <th key={col.key} scope="col" aria-sort={sortCol && sortCol === sortKeyOf(col) ? (sortDir === "asc" ? "ascending" : "descending") : undefined}
+                  tabIndex={col.sortable !== false && sortKeyOf(col) ? 0 : undefined}
+                  onKeyDown={e => { const k = sortKeyOf(col); if ((e.key === "Enter" || e.key === " ") && col.sortable !== false && k) { e.preventDefault(); toggleSort(k); } }}
+                  onClick={() => { const k = sortKeyOf(col); if (col.sortable !== false && k) toggleSort(k); }}
                   className={clsx("px-4 py-3 text-left font-semibold text-slate-600", col.sortable !== false && "cursor-pointer hover:text-primary select-none")}>
                   <div className="flex items-center gap-1">
                     {col.label}
@@ -139,9 +143,9 @@ export default function DataTable({
               {actions && <th className="px-4 py-3 text-right font-semibold text-slate-600">{t("Actions")}</th>}
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-50">
+          <tbody className="divide-y divide-slate-100">
             {paged.length === 0 ? (
-              <tr><td colSpan={colSpanTotal} className="px-4 py-12 text-center text-slate-400 whitespace-pre-line">{emptyMessage || "Aucun résultat"}</td></tr>
+              <tr><td colSpan={colSpanTotal} className="px-4 py-12 text-center text-slate-400 whitespace-pre-line">{emptyMessage || t("Aucun résultat")}</td></tr>
             ) : paged.map((row, i) => {
               const isSel = selectable && row.id && selected.has(row.id);
               return (
@@ -153,7 +157,7 @@ export default function DataTable({
                     </td>
                   )}
                   {tableColumns.map(col => (
-                    <td key={col.key} className="px-4 py-3 text-slate-700">{col.render ? col.render(row) : row[col.accessor]}</td>
+                    <td key={col.key} data-label={typeof col.label === "string" ? col.label : ""} className="px-4 py-3 text-slate-700">{col.render ? col.render(row) : row[col.accessor]}</td>
                   ))}
                   {actions && <td className="px-4 py-3 text-right" onClick={e => e.stopPropagation()}>{actions(row)}</td>}
                 </tr>
@@ -165,16 +169,20 @@ export default function DataTable({
 
       {(totalPages > 1 || selected.size > 0) && (
         <div className="flex items-center justify-between mt-4 text-sm text-slate-500">
-          <span>{filtered.length} résultat(s){selected.size > 0 && <span className="ml-2 text-blue-600 font-medium">· {selected.size} {t("sélectionné(s)")}</span>}</span>
+          <span>{t("{n} résultat(s)", { n: filtered.length })}{selected.size > 0 && <span className="ml-2 text-blue-600 font-medium">· {selected.size} {t("sélectionné(s)")}</span>}</span>
           {totalPages > 1 && (
             <div className="flex items-center gap-2">
-              <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} className="p-1 rounded hover:bg-slate-100 disabled:opacity-40"><ChevronLeft className="w-4 h-4" /></button>
+              <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} aria-label={t("Page précédente")} className="p-2 rounded-lg hover:bg-slate-100 disabled:opacity-40"><ChevronLeft className="w-4 h-4" /></button>
               <span>{t("Page")} {page} / {totalPages}</span>
-              <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages} className="p-1 rounded hover:bg-slate-100 disabled:opacity-40"><ChevronRight className="w-4 h-4" /></button>
+              <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages} aria-label={t("Page suivante")} className="p-2 rounded-lg hover:bg-slate-100 disabled:opacity-40"><ChevronRight className="w-4 h-4" /></button>
             </div>
           )}
         </div>
       )}
+      <ConfirmDialog open={bulkOpen} onClose={() => setBulkOpen(false)} loading={bulkDeletePending}
+        title="Supprimer la sélection"
+        message={bulkConfirmMessage ? bulkConfirmMessage(selected.size) : t("Supprimer {n} élément(s) sélectionné(s) ?", { n: selected.size })}
+        onConfirm={() => { onBulkDelete([...selected]); setSelected(new Set()); setBulkOpen(false); }} />
     </div>
   );
 }

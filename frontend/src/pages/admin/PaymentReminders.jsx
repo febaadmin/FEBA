@@ -23,6 +23,8 @@ import {
 import { feeSchedulesAPI, remindersAPI, schoolsAPI, studentsAPI } from "../../api";
 import PageHeader from "../../components/ui/PageHeader";
 import Modal from "../../components/ui/Modal";
+import ConfirmDialog from "../../components/ui/ConfirmDialog";
+import { useAcademy } from "../../context/AcademyContext";
 import { t } from "../../i18n";
 import { extractApiError } from "../../utils/errors";
 import { formatCalendarDate, formatDateTime } from "../../utils/datetime";
@@ -57,6 +59,18 @@ function Badge({ tone, children }) {
 
 export default function PaymentReminders() {
   const [tab, setTab] = useState("status");
+  const { isAllAcademies } = useAcademy();
+  if (isAllAcademies) {
+    return (
+      <div className="space-y-6">
+        <PageHeader title={t("Relances de paiement")}
+                    subtitle={t("Échéanciers, retards et relances automatiques par e-mail et notification")} />
+        <div className="card text-sm text-amber-800 bg-amber-50 border-amber-200" role="status">
+          {t("Sélectionnez une académie en haut de la page : les règles de relance sont propres à chacune.")}
+        </div>
+      </div>
+    );
+  }
   return (
     <div className="space-y-6">
       <PageHeader title={t("Relances de paiement")}
@@ -65,7 +79,7 @@ export default function PaymentReminders() {
         {TABS.map(([key, label, Icon]) => (
           <button key={key} type="button" onClick={() => setTab(key)} aria-pressed={tab === key}
                   className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold ${
-                    tab === key ? "bg-indigo-600 text-white" : "bg-white text-slate-600 border border-slate-200"}`}>
+                    tab === key ? "bg-primary text-white" : "bg-white text-slate-600 border border-slate-200"}`}>
             <Icon className="w-4 h-4" />{t(label)}
           </button>
         ))}
@@ -277,6 +291,7 @@ const emptyFee = () => ({
 function SchedulesTab() {
   const qc = useQueryClient();
   const academyKey = useAcademyKey();
+  const [tarifASupprimer, setTarifASupprimer] = useState(null);
   const feesQ = useQuery({ queryKey: ["fee-schedules", academyKey], queryFn: feeSchedulesAPI.list, retry: false });
   const yearsQ = useQuery({ queryKey: ["years"], queryFn: schoolsAPI.years });
   const levelsQ = useQuery({ queryKey: ["levels"], queryFn: schoolsAPI.levels });
@@ -327,7 +342,7 @@ function SchedulesTab() {
               installments: fee.installments.map((i) => ({ id: i.id, label: i.label, due_date: i.due_date, amount: i.amount_value })),
             })}>{t("Modifier")}</button>
             <button type="button" aria-label={t("Supprimer")} className="text-slate-400 hover:text-danger"
-                    onClick={() => window.confirm(t("Supprimer ce tarif et ses échéances ?")) && deleteMut.mutate(fee.id)}>
+                    onClick={() => setTarifASupprimer(fee)}>
               <Trash2 className="w-4 h-4" />
             </button>
           </div>
@@ -343,6 +358,9 @@ function SchedulesTab() {
                    onCancel={() => setEditing(null)} onSave={(f) => saveMut.mutate(f)} />
       )}
       {arrangementsFor && <ArrangementsModal fee={arrangementsFor} onClose={() => setArrangementsFor(null)} />}
+      <ConfirmDialog open={!!tarifASupprimer} onClose={() => setTarifASupprimer(null)} loading={deleteMut.isPending}
+        title="Supprimer ce tarif" message="Supprimer ce tarif et ses échéances ?"
+        onConfirm={() => { deleteMut.mutate(tarifASupprimer.id); setTarifASupprimer(null); }} />
     </div>
   );
 }
