@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import toast from "react-hot-toast";
 import { subjectsAPI, suiviAPI } from "../../../api";
+import AideModule from "../../../components/ui/AideModule";
 import PageHeader from "../../../components/ui/PageHeader";
 import { useAuth } from "../../../hooks/useAuth";
 import { extractApiError } from "../../../utils/errors";
@@ -37,6 +38,9 @@ export default function Referentiels() {
     <div className="space-y-4">
       <PageHeader title={t("Référentiels de compétences")} subtitle={t("Ce que chaque élève doit savoir faire")}
         action={<Link to=".." relative="path" className="btn-secondary text-sm">{t("Retour")}</Link>} />
+      <AideModule cle="referentiels" description={t("Une compétence décrit ce qu'un élève sait faire. Un référentiel les regroupe, par matière ou par programme.")}
+        etapes={[t("Créez un référentiel, par exemple « Français CM1 »."), t("Sélectionnez-le, puis ajoutez ses compétences."), t("Évaluez-les ensuite depuis la fiche d'un élève.")]}
+        conditions={t("Une compétence déjà évaluée se désactive, elle ne se supprime pas : son historique est conservé.")} />
       <div className="grid gap-4 lg:grid-cols-2">
         <div className="card space-y-3">
           <h2 className="text-sm font-semibold text-slate-800">{t("Référentiels")}</h2>

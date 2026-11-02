@@ -4,11 +4,12 @@
  */
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Link, useParams } from "react-router-dom";
+import { Link, useLocation, useParams } from "react-router-dom";
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { ArrowDownRight, ArrowRight, ArrowUpRight, Minus, Plus } from "lucide-react";
 import toast from "react-hot-toast";
 import { suiviAPI, subjectsAPI } from "../../../api";
+import AideModule from "../../../components/ui/AideModule";
 import Modal from "../../../components/ui/Modal";
 import Rapports from "./Rapports";
 import PageHeader from "../../../components/ui/PageHeader";
@@ -26,14 +27,16 @@ const TENDANCES = {
 };
 const aujourdhui = () => new Date().toISOString().slice(0, 10);
 
-function Indicateur({ titre, valeur, detail }) {
+function Indicateur({ titre, valeur, detail, raison, action, methode }) {
+  const vide = valeur === null;
   return (
     <div className="card">
       <p className="text-sm text-slate-500">{titre}</p>
-      <p className={valeur === null ? "text-sm mt-2 text-slate-500" : "text-2xl font-bold mt-1 text-slate-900"}>
-        {valeur === null ? t(VIDE) : valeur}
-      </p>
-      {detail && <p className="text-xs text-slate-500 mt-1">{detail}</p>}
+      {vide ? <p className="text-sm font-medium mt-1 text-slate-700">{t(VIDE)}</p> : <p className="text-2xl font-bold mt-1 text-slate-900">{valeur}</p>}
+      {vide && raison && <p className="text-xs text-slate-600 mt-1">{raison}</p>}
+      {vide && action}
+      {!vide && detail && <p className="text-xs text-slate-500 mt-1">{detail}</p>}
+      {methode && <details className="mt-2 text-xs text-slate-500"><summary className="cursor-pointer">{t("Comment est-ce calculé ?")}</summary><p className="mt-1">{methode}</p></details>}
     </div>
   );
 }
@@ -102,6 +105,7 @@ export default function FicheSuivi() {
   const [valeurs, setValeurs] = useState({});
   const [cmp, setCmp] = useState({ a_du: "", a_au: "", b_du: "", b_au: "" });
 
+  const racine = useLocation().pathname.split("/")[1];
   const params = Object.fromEntries(Object.entries(filtres).filter(([, v]) => v));
   const { data, isLoading, isError } = useQuery({ queryKey: ["suivi-fiche", id, params], queryFn: () => suiviAPI.fiche(id, params) });
   const { data: matieresData } = useQuery({ queryKey: ["subjects"], queryFn: () => subjectsAPI.list() });
@@ -109,6 +113,8 @@ export default function FicheSuivi() {
   const { data: compsData } = useQuery({ queryKey: ["suivi-competences"], queryFn: () => suiviAPI.competences({ actif: true }), enabled: gere });
   const { data: objData } = useQuery({ queryKey: ["suivi-objectifs", id], queryFn: () => suiviAPI.objectifs({ student: id }) });
   const { data: plansData } = useQuery({ queryKey: ["suivi-plans", id], queryFn: () => suiviAPI.plans({ student: id }) });
+  const { data: histData } = useQuery({ queryKey: ["suivi-historique", id], queryFn: () => suiviAPI.evaluationsCompetences({ student: id, statut: "validee" }) });
+  const { data: obsData } = useQuery({ queryKey: ["suivi-observations", id], queryFn: () => suiviAPI.observations({ student: id }), enabled: gere });
   const { data: propData } = useQuery({ queryKey: ["suivi-propositions", id], queryFn: () => suiviAPI.evaluationsCompetences({ student: id, statut: "proposee" }), enabled: gere });
   const comparaison = useQuery({
     queryKey: ["suivi-comparer", id, cmp],
@@ -116,11 +122,12 @@ export default function FicheSuivi() {
     enabled: Object.values(cmp).every(Boolean),
   });
 
-  const rafraichir = () => ["suivi-fiche", "suivi-objectifs", "suivi-plans", "suivi-propositions"].forEach((k) => qc.invalidateQueries({ queryKey: [k] }));
+  const rafraichir = () => ["suivi-fiche", "suivi-objectifs", "suivi-plans", "suivi-propositions", "suivi-historique", "suivi-observations"].forEach((k) => qc.invalidateQueries({ queryKey: [k] }));
   const opts = { onSuccess: () => { toast.success(t("Enregistré.")); setSaisie(null); setValeurs({}); rafraichir(); }, onError: (e) => toast.error(extractApiError(e)) };
   const enregistrer = useMutation({ mutationFn: ({ fn, corps }) => fn(corps), ...opts });
   const decider = useMutation({ mutationFn: ({ pk, decision }) => suiviAPI.deciderCompetence(pk, { decision }), ...opts });
   const majObjectif = useMutation({ mutationFn: ({ pk, corps }) => suiviAPI.modifierObjectif(pk, corps), ...opts });
+  const majPlan = useMutation({ mutationFn: ({ pk, corps }) => suiviAPI.modifierPlan(pk, corps), ...opts });
   const majAction = useMutation({ mutationFn: ({ pk, corps }) => suiviAPI.modifierAction(pk, corps), ...opts });
 
   if (isLoading) return <p className="text-sm text-slate-500">{t("Chargement")}</p>;
@@ -132,6 +139,8 @@ export default function FicheSuivi() {
   const objectifs = objData?.data?.results || [];
   const plans = plansData?.data?.results || [];
   const propositions = propData?.data?.results || [];
+  const historique = histData?.data?.results || [];
+  const observations = obsData?.data?.results || [];
   const trad = (fr, en) => (localStorage.getItem("feba-lang") === "en" && en ? en : fr);
 
   const FORMULAIRES = {
@@ -161,7 +170,7 @@ export default function FicheSuivi() {
       titre: t("Observer la participation"), fn: suiviAPI.creerObservation,
       init: { date_observation: aujourdhui() },
       champs: [
-        { nom: "niveau", label: t("Participation"), requis: true, options: [[1, t("Faible")], [2, t("Moyenne")], [3, t("Bonne")], [4, t("Très bonne")]] },
+        { nom: "niveau", label: t("Participation"), requis: true, options: [[1, t("Insuffisante")], [2, t("Occasionnelle")], [3, t("Active")], [4, t("Très active")]] },
         { nom: "subject", label: t("Matière"), options: matieres },
         { nom: "date_observation", label: t("Date"), type: "date", requis: true },
         { nom: "note", label: t("Note"), type: "textarea" },
@@ -216,6 +225,7 @@ export default function FicheSuivi() {
 
   return (
     <div className="space-y-4">
+      <AideModule cle={gere ? "fiche-personnel" : "fiche-famille"} description={gere ? t("La fiche réunit le suivi de l'élève, ses examens en ligne et ses notes officielles, chacun avec son origine.") : t("Cette fiche montre ce que l'enseignant a validé.")} />
       <PageHeader title={f.eleve.nom} subtitle={[f.eleve.classe, f.eleve.matricule].filter(Boolean).join(" - ")}
         action={<Link to=".." relative="path" className="btn-secondary text-sm">{t("Retour")}</Link>} />
 
@@ -230,6 +240,12 @@ export default function FicheSuivi() {
         </div>
       </div>
 
+      <div className="flex flex-wrap gap-2 text-xs" aria-label={t("Périodes rapides")}>
+        {[[t("Toutes les données"), null], [t("30 derniers jours"), 30], [t("90 derniers jours"), 90]].map(([l, j]) => (
+          <button key={l} type="button" className="btn-secondary text-xs" onClick={() => setFiltres({ ...filtres, du: j ? new Date(Date.now() - j * 864e5).toISOString().slice(0, 10) : "", au: "" })}>{l}</button>
+        ))}
+      </div>
+
       <div className="flex gap-1 overflow-x-auto border-b border-slate-200" role="tablist">
         {onglets.map(([k, l]) => (
           <button key={k} type="button" role="tab" aria-selected={onglet === k} onClick={() => setOnglet(k)}
@@ -239,15 +255,53 @@ export default function FicheSuivi() {
 
       {onglet === "synthese" && (
         <div className="space-y-4">
+          {f.eleve.sans_classe && gere && <p role="alert" className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">{t("Cet élève n'a pas de classe. Sans classe, aucun enseignant ne le voit et aucune note ni présence ne peut être saisie. Affectez-le depuis la fiche de l'élève.")}</p>}
+          {gere && !f.competences.has_data && !f.evaluations.has_data && !f.objectifs.has_data && (
+            <div className="card space-y-2">
+              <h2 className="text-sm font-semibold text-slate-900">{t("Commencer le suivi de cet élève")}</h2>
+              <ol className="list-decimal pl-5 text-sm text-slate-700 space-y-1">
+                <li><Link className="text-primary underline" to={`/${racine}/suivi/referentiels`}>{t("Créez vos compétences")}</Link>{competences.length ? ` (${t("{n} disponible(s)", { n: competences.length })})` : ""}</li>
+                <li><button type="button" className="text-primary underline" onClick={() => setOnglet("competences")}>{t("Évaluez une compétence")}</button></li>
+                <li><button type="button" className="text-primary underline" onClick={() => setOnglet("evaluations")}>{t("Ajoutez une évaluation ou une observation")}</button></li>
+                <li><button type="button" className="text-primary underline" onClick={() => setOnglet("objectifs")}>{t("Fixez un objectif")}</button></li>
+              </ol>
+            </div>
+          )}
+          <p className="text-xs text-slate-500">{filtres.du || filtres.au ? t("Période : du {a} au {b}.", { a: filtres.du || "...", b: filtres.au || "..." }) : t("Période : toutes les données enregistrées.")}</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            <Indicateur titre={t("Progression générale")} valeur={f.progression.has_data ? `${f.progression.valeur} %` : null} detail={t("Compétences, évaluations du suivi et objectifs. Sans les notes.")} />
+            <Indicateur titre={t("Progression générale")} valeur={f.progression.has_data ? `${f.progression.valeur} %` : null}
+              raison={t("Il faut au moins une compétence évaluée, une évaluation du suivi ou un objectif clos.")}
+              detail={t("Compétences : {c}. Évaluations : {e}. Objectifs : {o}.", { c: f.progression.composantes.competences ?? "-", e: f.progression.composantes.evaluations ?? "-", o: f.progression.composantes.objectifs ?? "-" })}
+              methode={t("Moyenne pondérée des compétences, des évaluations du suivi et des objectifs, sur les seules données disponibles. Les notes officielles n'y entrent pas.")} />
             <Indicateur titre={t("Assiduité")} valeur={f.assiduite.has_data ? `${f.assiduite.taux} %` : null}
-              detail={f.assiduite.has_data ? t("{a} absence(s), {r} retard(s) sur {n} relevé(s)", { a: f.assiduite.absents, r: f.assiduite.retards, n: f.assiduite.total }) : null} />
-            {f.participation && <Indicateur titre={t("Participation")} valeur={f.participation.moyenne !== null ? `${f.participation.moyenne} / 4` : null} detail={t("{n} observation(s)", { n: f.participation.nombre })} />}
-            <Indicateur titre={t("Compétences")} valeur={f.competences.has_data ? `${f.competences.lignes.filter((l) => l.acquis).length} / ${f.competences.lignes.length}` : null} detail={f.competences.has_data ? t("acquises") : null} />
-            <Indicateur titre={t("Évaluations du suivi")} valeur={f.evaluations.has_data ? `${f.evaluations.moyenne} %` : null} detail={f.evaluations.has_data ? t("{n} évaluation(s)", { n: f.evaluations.lignes.length }) : null} />
-            <Indicateur titre={t("Objectifs")} valeur={f.objectifs.has_data ? `${f.objectifs.par_statut.atteint || 0} / ${f.objectifs.total}` : null} detail={f.objectifs.has_data ? t("atteints") : null} />
+              raison={t("Aucune présence n'est enregistrée pour cette période.")}
+              action={gere && <Link className="text-xs text-primary underline" to={`/${racine}/attendance`}>{t("Saisir les présences dans Absences")}</Link>}
+              detail={f.assiduite.has_data ? t("{p} présence(s), {r} retard(s), {j} absence(s) justifiée(s), {n} non justifiée(s), sur {t} séance(s).", { p: f.assiduite.presents, r: f.assiduite.retards, j: f.assiduite.absences_justifiees, n: f.assiduite.absences_non_justifiees, t: f.assiduite.total }) : null}
+              methode={t("Présences et retards divisés par les séances relevées. Une séance sans relevé n'est pas comptée.")} />
+            {f.participation && <Indicateur titre={t("Participation")} valeur={f.participation.moyenne !== null ? `${f.participation.moyenne} / 4` : null}
+              raison={t("{n} observation(s) sur 2 nécessaires.", { n: f.participation.nombre })}
+              action={gere && <button type="button" className="text-xs text-primary underline" onClick={() => { setOnglet("evaluations"); ouvrir("observation"); }}>{t("Observer la participation")}</button>}
+              detail={t("{n} observation(s)", { n: f.participation.nombre })} methode={t("Moyenne des observations saisies par l'enseignant : 1 insuffisante, 2 occasionnelle, 3 active, 4 très active.")} />}
+            <Indicateur titre={t("Compétences")} valeur={f.competences.has_data ? `${f.competences.lignes.filter((l) => l.acquis).length} / ${f.competences.lignes.length}` : null}
+              raison={t("Aucune compétence évaluée sur cette période.")}
+              action={gere && <button type="button" className="text-xs text-primary underline" onClick={() => setOnglet("competences")}>{t("Évaluer une compétence")}</button>}
+              detail={f.competences.has_data ? t("acquises") : null} methode={t("Dernier niveau validé de chaque compétence évaluée.")} />
+            <Indicateur titre={t("Évaluations du suivi")} valeur={f.evaluations.has_data ? `${f.evaluations.moyenne} %` : null}
+              raison={t("Aucune évaluation du suivi sur cette période. Les notes officielles sont dans l'onglet Résultats.")}
+              action={gere && <button type="button" className="text-xs text-primary underline" onClick={() => { setOnglet("evaluations"); ouvrir("evaluation"); }}>{t("Ajouter une évaluation")}</button>}
+              detail={f.evaluations.has_data ? t("{n} évaluation(s)", { n: f.evaluations.lignes.length }) : null} methode={t("Moyenne des résultats en pourcentage.")} />
+            <Indicateur titre={t("Objectifs")} valeur={f.objectifs.has_data ? `${f.objectifs.par_statut.atteint || 0} / ${f.objectifs.total}` : null}
+              raison={t("Aucun objectif sur cette période.")}
+              action={gere && <button type="button" className="text-xs text-primary underline" onClick={() => setOnglet("objectifs")}>{t("Créer un objectif")}</button>}
+              detail={f.objectifs.has_data ? t("atteints") : null} />
           </div>
+          {f.par_matiere?.has_data && (
+            <div className="card space-y-2">
+              <h2 className="text-sm font-semibold text-slate-800">{t("Détail par matière")}</h2>
+              <Tableau colonnes={[t("Matière"), t("Maîtrise"), t("Évaluations du suivi"), t("Notes officielles")]}
+                lignes={f.par_matiere.lignes.map((l) => [l.nom, l.maitrise === null ? "-" : `${l.maitrise} %`, l.evaluations === null ? "-" : `${l.evaluations} %`, l.notes_officielles === null ? "-" : `${l.notes_officielles} / 20`])} />
+            </div>
+          )}
           <div className="card space-y-3">
             <h2 className="text-sm font-semibold text-slate-800">{t("Comparer deux périodes")}</h2>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
@@ -255,6 +309,8 @@ export default function FicheSuivi() {
                 <div key={k}><label className="label" htmlFor={`cmp-${k}`}>{l}</label><input id={`cmp-${k}`} type="date" className="input" value={cmp[k]} onChange={(e) => setCmp({ ...cmp, [k]: e.target.value })} /></div>
               ))}
             </div>
+            <p className="text-xs text-slate-500">{t("Choisissez deux périodes pour voir ce qui a changé. Exemple : septembre puis octobre.")}</p>
+            {comp && comp.ecart_progression === null && comp.ecart_maitrise === null && comp.ecart_evaluations === null && <p className="text-sm text-slate-600">{t("Pas de comparaison possible : il faut des données du suivi dans les deux périodes.")}</p>}
             {comp && (
               <Tableau colonnes={[t("Mesure"), t("Écart")]} lignes={[
                 [t("Progression générale"), fmtEcart(comp.ecart_progression)],
@@ -300,6 +356,11 @@ export default function FicheSuivi() {
                     <div className="h-2 rounded" style={{ width: `${(l.rang / f.competences.rang_max) * 100}%`, background: l.couleur }} />
                   </div>
                   <p className={`text-xs mt-1 flex items-center gap-1 ${tend.cls}`}><tend.Icone className="w-3 h-3" />{t(tend.label)} - {l.date}</p>
+                  {l.nombre_evaluations > 1 && (
+                    <details className="text-xs text-slate-600 mt-1"><summary className="cursor-pointer">{t("Historique ({n})", { n: l.nombre_evaluations })}</summary>
+                      <ul className="mt-1 space-y-0.5">{historique.filter((h) => h.competence === l.competence).map((h) => <li key={h.id}>{h.date_evaluation} : {h.niveau_libelle}{h.commentaire ? ` - ${h.commentaire}` : ""}</li>)}</ul>
+                    </details>
+                  )}
                 </li>
               );
             })}
@@ -321,6 +382,12 @@ export default function FicheSuivi() {
             <Courbe titre={t("Évolution des évaluations du suivi")} lignes={f.evaluations.lignes} cle="score" max={100} unite=" %" />
             {f.evaluations.has_data && <Tableau colonnes={[t("Date"), t("Évaluation"), t("Matière"), t("Résultat")]} lignes={f.evaluations.lignes.map((l) => [l.date, l.titre, l.subject_name || "-", `${l.score} %`])} />}
           </div>
+          {gere && observations.length > 0 && (
+            <div className="card space-y-2">
+              <h2 className="text-sm font-semibold text-slate-800">{t("Observations de participation")}</h2>
+              <Tableau colonnes={[t("Date"), t("Participation"), t("Note")]} lignes={observations.map((o) => [o.date_observation, t({ 1: "Insuffisante", 2: "Occasionnelle", 3: "Active", 4: "Très active" }[o.niveau]), o.note || "-"])} />
+            </div>
+          )}
           {f.resultats_examens?.has_data && (
             <div className="card space-y-3">
               <h2 className="text-sm font-semibold text-slate-800">{t("Examens en ligne")}</h2>
@@ -352,6 +419,8 @@ export default function FicheSuivi() {
                 <div>
                   <p className="text-sm font-medium text-slate-900">{o.titre}{o.class_obj ? ` (${t("collectif")})` : ""}</p>
                   {o.description && <p className="text-xs text-slate-600">{o.description}</p>}
+                  {o.criteres_reussite && <p className="text-xs text-slate-600">{t("Critères de réussite")} : {o.criteres_reussite}</p>}
+                  {o.competence_nom && <p className="text-xs text-slate-500">{t("Compétence")} : {o.competence_nom}</p>}
                   {o.date_cible && <p className="text-xs text-slate-500">{t("Date cible")} : {o.date_cible}</p>}
                 </div>
                 {gere ? (
@@ -382,7 +451,14 @@ export default function FicheSuivi() {
           {plans.length === 0 && <p className="text-sm text-slate-500">{t("Aucun plan d'accompagnement.")}</p>}
           {plans.map((p) => (
             <div key={p.id} className="border border-slate-200 rounded-lg p-3 space-y-2">
-              <p className="text-sm font-medium text-slate-900">{p.titre}</p>
+              <div className="flex flex-wrap justify-between gap-2">
+                <p className="text-sm font-medium text-slate-900">{p.titre}</p>
+                {gere ? (
+                  <select className="input w-auto text-sm" aria-label={t("Statut")} value={p.statut} onChange={(e) => majPlan.mutate({ pk: p.id, corps: { statut: e.target.value, ...(e.target.value !== "actif" && !p.fin ? { fin: aujourdhui() } : {}) } })}>
+                    <option value="actif">{t("Actif")}</option><option value="termine">{t("Terminé")}</option><option value="abandonne">{t("Abandonné")}</option>
+                  </select>
+                ) : null}
+              </div>
               {p.motif && <p className="text-xs text-slate-600">{p.motif}</p>}
               {p.actions.map((a) => (
                 <div key={a.id} className="text-xs text-slate-700 flex flex-wrap justify-between gap-2">

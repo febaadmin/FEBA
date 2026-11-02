@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import toast from "react-hot-toast";
 import { suiviAPI } from "../../../api";
+import AideModule from "../../../components/ui/AideModule";
 import PageHeader from "../../../components/ui/PageHeader";
 import { useAuth } from "../../../hooks/useAuth";
 import { extractApiError } from "../../../utils/errors";
@@ -29,6 +30,8 @@ export default function Alertes() {
     <div className="space-y-4">
       <PageHeader title={t("Alertes pédagogiques")} subtitle={t("Des signaux à examiner, jamais un diagnostic")}
         action={<Link to=".." relative="path" className="btn-secondary text-sm">{t("Retour")}</Link>} />
+      <AideModule cle="alertes" description={t("Le système vérifie chaque nuit des règles simples. Vous décidez ensuite. Aucune alerte n'est envoyée aux familles.")}
+        etapes={[t("Lisez le message et les données."), t("Acceptez ou refusez la recommandation.")]} />
       <div className="card flex flex-wrap gap-2 items-center">
         <select className="input w-auto" aria-label={t("Statut")} value={statut} onChange={(e) => setStatut(e.target.value)}>
           <option value="nouvelle">{t("Nouvelles")}</option><option value="acceptee">{t("Acceptées")}</option><option value="modifiee">{t("Modifiées")}</option><option value="refusee">{t("Refusées")}</option><option value="">{t("Toutes")}</option>
@@ -37,7 +40,7 @@ export default function Alertes() {
       </div>
       <div className="card space-y-3">
         {isLoading && <p className="text-sm text-slate-500">{t("Chargement")}</p>}
-        {!isLoading && liste.length === 0 && <p className="text-sm text-slate-500">{t("Aucune alerte.")}</p>}
+        {!isLoading && liste.length === 0 && <p className="text-sm text-slate-500">{t("Aucune alerte pour ce filtre. Les alertes apparaissent quand des compétences ou des évaluations sont saisies.")}</p>}
         {liste.map((a) => (
           <div key={a.id} className="border border-slate-200 rounded-lg p-3 space-y-1">
             <p className="text-xs font-medium text-slate-600">{t(CATEGORIES[a.categorie])} - {a.eleve}</p>

@@ -82,9 +82,16 @@ def points_auto(type_question, corrige, valeur, points):
 def valider_question(type_question, contenu, corrige):
     """Erreurs de structure d'une question, avant enregistrement."""
     erreurs = []
-    ids = [c.get("id") for c in contenu.get("choix", []) if isinstance(c, dict)]
-    if type_question in ("qcm_unique", "qcm_multiple") and len(ids) < 2:
-        erreurs.append("Il faut au moins deux choix.")
+    choix = [c for c in contenu.get("choix", []) if isinstance(c, dict)]
+    ids = [c.get("id") for c in choix]
+    if type_question in ("qcm_unique", "qcm_multiple"):
+        textes = [_texte(c.get("texte", "")) for c in choix]
+        if len(ids) < 2:
+            erreurs.append("Saisissez au moins deux réponses.")
+        if any(not t for t in textes):
+            erreurs.append("Une réponse est vide.")
+        if len(set(textes)) != len(textes):
+            erreurs.append("Deux réponses sont identiques.")
     if type_question == "qcm_unique" and corrige.get("bonne") not in ids:
         erreurs.append("Indiquez la bonne réponse parmi les choix.")
     if type_question == "qcm_multiple" and (not corrige.get("bonnes") or not set(corrige["bonnes"]) <= set(ids)):
@@ -97,8 +104,8 @@ def valider_question(type_question, contenu, corrige):
         erreurs.append("Indiquez la valeur attendue.")
     if type_question == "trous" and not corrige.get("reponses"):
         erreurs.append("Indiquez les réponses de chaque trou.")
-    if type_question == "association" and not corrige.get("paires"):
-        erreurs.append("Indiquez les paires attendues.")
-    if type_question == "classement" and not corrige.get("ordre"):
-        erreurs.append("Indiquez l'ordre attendu.")
+    if type_question == "association" and len(corrige.get("paires") or {}) < 2:
+        erreurs.append("Indiquez au moins deux paires.")
+    if type_question == "classement" and len(corrige.get("ordre") or []) < 2:
+        erreurs.append("Indiquez au moins deux éléments à classer.")
     return erreurs

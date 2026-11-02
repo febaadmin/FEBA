@@ -142,14 +142,23 @@ def progression(student, du=None, au=None, subject=None):
 
 
 def assiduite(student, du=None, au=None):
-    """Lecture seule du module Présences. Sans relevé, pas de taux : l'absence de relevé n'est pas une présence."""
-    qs = _dans_periode(Attendance.objects.filter(student=student), "date", du, au)
-    compte = dict(qs.values_list("status").annotate(n=Count("id")))
-    total = sum(compte.values())
+    """
+    Lecture seule du module Présences. Une même séance (date et matière) ne compte
+    qu'une fois, la saisie la plus récente faisant foi. Sans relevé, pas de taux :
+    l'absence de relevé n'est pas une présence.
+    """
+    qs = _dans_periode(Attendance.objects.filter(student=student), "date", du, au).order_by("id")
+    seances = {(a.date, a.subject_id): a for a in qs}.values()
+    total = len(seances)
+    presents = sum(a.status == "present" for a in seances)
+    retards = sum(a.status == "late" for a in seances)
+    justifiees = sum(a.status == "excused" or (a.status == "absent" and bool(a.justification)) for a in seances)
+    non_justifiees = sum(a.status == "absent" and not a.justification for a in seances)
     return {
-        "has_data": bool(total), "total": total, "presents": compte.get("present", 0),
-        "absents": compte.get("absent", 0), "retards": compte.get("late", 0), "excuses": compte.get("excused", 0),
-        "taux": round((compte.get("present", 0) + compte.get("late", 0)) / total * 100, 1) if total else None,
+        "has_data": bool(total), "total": total, "presents": presents, "retards": retards,
+        "absents": justifiees + non_justifiees, "absences_justifiees": justifiees, "absences_non_justifiees": non_justifiees,
+        "excuses": sum(a.status == "excused" for a in seances),
+        "taux": round((presents + retards) / total * 100, 1) if total else None,
         "origine": ORIGINE_HISTORIQUE,
     }
 
@@ -164,6 +173,24 @@ def participation(student, du=None, au=None, subject=None):
     return {"has_data": bool(nombre), "suffisant": suffisant, "nombre": nombre,
             "moyenne": round(moyenne, 2) if moyenne and suffisant else None,
             "par_niveau": dict(qs.values_list("niveau").annotate(n=Count("id")))}
+
+
+def progression_par_matiere(student, du=None, au=None):
+    """Détail par matière. Chaque mesure reste séparée : aucune n'est déduite d'une autre."""
+    from apps.subjects.models import Subject
+
+    evals = _dans_periode(EvaluationPedagogique.objects.filter(student=student, subject__isnull=False), "date_evaluation", du, au)
+    notes = _dans_periode(Grade.objects.filter(student=student, is_deleted=False), "created_at__date", du, au)
+    ids = set(evals.values_list("subject_id", flat=True)) | set(notes.values_list("subject_id", flat=True))
+    lignes = []
+    for matiere in Subject.objects.filter(pk__in=ids).order_by("name"):
+        etat = etat_competences(student, du, au, matiere.pk)
+        moy_eval = evals.filter(subject=matiere).aggregate(m=Avg("score_pourcent"))["m"]
+        moy_note = notes.filter(subject=matiere).aggregate(m=Avg("value"))["m"]
+        lignes.append({"subject": matiere.pk, "nom": matiere.name, "maitrise": _maitrise(etat),
+                       "evaluations": round(float(moy_eval), 1) if moy_eval is not None else None,
+                       "notes_officielles": round(float(moy_note), 2) if moy_note is not None else None})
+    return {"has_data": bool(lignes), "lignes": lignes}
 
 
 def resultats_historiques(student, du=None, au=None, subject=None):
@@ -203,6 +230,7 @@ def fiche(student, du=None, au=None, subject=None, famille=False):
         plans = plans.filter(partage_famille=True)
     donnees = {
         "progression": progression(student, du, au, subject),
+        "par_matiere": progression_par_matiere(student, du, au),
         "assiduite": assiduite(student, du, au),
         "participation": participation(student, du, au, subject),
         "competences": etat_competences(student, du, au, subject),

@@ -52,6 +52,24 @@ class CorrectionTests(SimpleTestCase):
         self.assertEqual(self.f("courte", {"acceptees": ["a"]}, 12), 0)
 
 
+class ValidationQuestionTests(SimpleTestCase):
+    def erreurs(self, contenu, corrige, type_q="qcm_unique"):
+        return correction.valider_question(type_q, contenu, corrige)
+
+    def test_reproduction_video_une_seule_ligne_test_test(self):
+        self.assertIn("Saisissez au moins deux réponses.", self.erreurs({"choix": [{"id": "c0", "texte": "test,test"}]}, {"bonne": "c0"}))
+
+    def test_vides_et_doublons(self):
+        c = lambda *t: {"choix": [{"id": f"c{i}", "texte": x} for i, x in enumerate(t)]}  # noqa: E731
+        self.assertIn("Une réponse est vide.", self.erreurs(c("a", "  "), {"bonne": "c0"}))
+        self.assertIn("Deux réponses sont identiques.", self.erreurs(c("Paris", " paris"), {"bonne": "c0"}))
+        self.assertEqual(self.erreurs(c("a", "b"), {"bonne": "c0"}), [])
+
+    def test_minimums(self):
+        self.assertTrue(self.erreurs({}, {"paires": {"g": "d"}}, "association"))
+        self.assertTrue(self.erreurs({}, {"ordre": ["a"]}, "classement"))
+
+
 class Base(TestCase):
     def setUp(self):
         self.school = make_school()

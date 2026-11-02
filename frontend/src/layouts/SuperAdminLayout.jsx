@@ -1,7 +1,7 @@
 import { NavLink } from "react-router-dom";
 import { useState, useEffect } from "react";
 import {
-  Building2, Star, Stamp, FileBarChart, LayoutDashboard, Users, Shield, GraduationCap, UserCheck, Users2, BookOpen, DollarSign, Megaphone, Settings, LogOut, Menu, X, MessageSquare, Layers, ClipboardList, FileText, Calendar, UserCog, FolderOpen, Image, ClipboardCheck, Video, Globe, AlertTriangle, CreditCard, Award, Mail, BellRing, Inbox, TrendingUp } from "lucide-react";
+  Building2, Star, Stamp, FileBarChart, LayoutDashboard, Users, Shield, GraduationCap, UserCheck, Users2, BookOpen, DollarSign, Megaphone, Settings, LogOut, Menu, X, MessageSquare, Layers, ClipboardList, FileText, Calendar, UserCog, FolderOpen, Image, ClipboardCheck, CircleHelp, Video, Globe, AlertTriangle, CreditCard, Award, Mail, BellRing, Inbox, TrendingUp } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
 import AcademyLogo from "../components/AcademyLogo";
 import AcademyName from "../components/AcademyName";
@@ -32,7 +32,7 @@ const nav = [
     { label: "Élèves",            icon: GraduationCap, to: "/superadmin/students" },
     { label: "Enseignants",       icon: UserCheck,     to: "/superadmin/teachers" },
     { label: "Parents",           icon: Users2,        to: "/superadmin/parents" },
-    { label: "Inscriptions",      icon: ClipboardCheck, to: "/superadmin/enrollments" },
+    { label: "Inscriptions",      icon: ClipboardCheck, CircleHelp, to: "/superadmin/enrollments" },
     { label: "Classes",           icon: BookOpen,      to: "/superadmin/classes" },
     { label: "Niveaux",           icon: Layers,        to: "/superadmin/levels" },
     { label: "Notes",             icon: ClipboardList, to: "/superadmin/grades" },
@@ -51,9 +51,10 @@ const nav = [
     { label: "Paramètres",        icon: Settings,      to: "/superadmin/settings" },
     { label: "Fichiers",           icon: FolderOpen,    to: "/superadmin/user-files" },
     { label: "Admissions en ligne", icon: ClipboardList, to: "/superadmin/fha-admissions", feature: "online_admissions" },
-    { label: "Modules pédagogiques", icon: ClipboardCheck, to: "/superadmin/modules" },
+    { label: "Modules pédagogiques", icon: ClipboardCheck, CircleHelp, to: "/superadmin/modules" },
     { label: "Suivi pédagogique", icon: TrendingUp, to: "/superadmin/suivi", feature: "suivi_pedagogique" },
-    { label: "Examens et évaluations", icon: ClipboardCheck, to: "/superadmin/evaluations", feature: "evaluations_en_ligne" },
+    { label: "Examens et évaluations", icon: ClipboardCheck, CircleHelp, to: "/superadmin/evaluations", feature: "evaluations_en_ligne" },
+    { label: "Aide", icon: CircleHelp, to: "/superadmin/aide", feature: "suivi_pedagogique" },
     { label: "Rapports mensuels", icon: FileBarChart, to: "/superadmin/monthly-reports", feature: "monthly_reports" },
   { label: "Site vitrine",       icon: Globe,         to: "/superadmin/website" },
     { label: "Logo & Branding",    icon: Image,         to: "/superadmin/branding" },

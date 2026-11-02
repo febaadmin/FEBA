@@ -2,6 +2,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link, useLocation } from "react-router-dom";
 import { evaluationsAPI } from "../../../api";
+import AideModule from "../../../components/ui/AideModule";
 import PageHeader from "../../../components/ui/PageHeader";
 import { useAuth } from "../../../hooks/useAuth";
 import { t } from "../../../i18n";
@@ -20,6 +21,7 @@ export default function MesEpreuves() {
   return (
     <div className="space-y-4">
       <PageHeader title={eleve ? t("Mes épreuves") : t("Résultats des épreuves")} />
+      {eleve && <AideModule cle="mes-epreuves" description={t("Vos épreuves ouvertes s'affichent ici. Le temps démarre seulement quand vous cliquez sur Commencer l'épreuve.")} />}
       {eleve && (
         <div className="card">
           {isLoading && <p className="text-sm text-slate-500">{t("Chargement")}</p>}

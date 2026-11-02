@@ -188,7 +188,22 @@ class MetierTests(Base):
         for jour, st in ((1, "present"), (2, "late"), (3, "absent"), (4, "excused")):
             Attendance.objects.create(student=self.eleve, date=date(2026, 10, jour), status=st)
         a = services.assiduite(self.eleve)
-        self.assertEqual((a["total"], a["absents"], a["taux"]), (4, 1, 50.0))
+        self.assertEqual((a["total"], a["absents"], a["absences_justifiees"], a["taux"]), (4, 2, 1, 50.0))
+
+    def test_seance_saisie_deux_fois_comptee_une_fois(self):
+        Attendance.objects.create(student=self.eleve, date=date(2026, 10, 1), status="absent")
+        Attendance.objects.create(student=self.eleve, date=date(2026, 10, 1), status="present")
+        Attendance.objects.create(student=self.eleve, date=date(2026, 10, 2), status="absent", justification="Maladie")
+        Attendance.objects.create(student=self.eleve, date=date(2026, 10, 3), status="absent")
+        a = services.assiduite(self.eleve)
+        self.assertEqual((a["total"], a["presents"], a["absents"], a["absences_justifiees"], a["absences_non_justifiees"]), (3, 1, 2, 1, 1))
+
+    def test_detail_par_matiere_sans_melange(self):
+        Grade.objects.create(student=self.eleve, subject=self.maths, school_year=self.year, period="T1", value=12)
+        EvaluationPedagogique.objects.create(student=self.eleve, subject=self.fr, titre="T", score_pourcent=60, date_evaluation=date(2026, 10, 1))
+        lignes = {l["nom"]: l for l in services.progression_par_matiere(self.eleve)["lignes"]}
+        self.assertEqual((lignes["Maths"]["notes_officielles"], lignes["Maths"]["evaluations"]), (12.0, None))
+        self.assertEqual((lignes["Français"]["notes_officielles"], lignes["Français"]["evaluations"]), (None, 60.0))
 
     def test_comparaison_de_periodes(self):
         EvaluationPedagogique.objects.create(student=self.eleve, titre="S", score_pourcent=45, date_evaluation=date(2026, 9, 15))
