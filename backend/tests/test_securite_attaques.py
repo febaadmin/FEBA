@@ -14,6 +14,7 @@ from rest_framework.exceptions import ValidationError
 from rest_framework.test import APIClient
 
 from apps.attendance.serializers import AttendanceSerializer
+from apps.core.csv_sur import cellule
 from apps.core.fichiers_prives import SEL
 from apps.grades.models import Grade
 from apps.suivi import services
@@ -255,3 +256,12 @@ class DetecteurDeFuiteTests(TestCase):
         reponse = SimpleNamespace(status_code=200, get=lambda *a: "application/json", content=b'{"nom": "Eleve T14Z"}')
         rapport.check_body("T07Z/admin", "/x/", reponse, [("T14Z", tag_pattern("T14Z"))])
         self.assertEqual(len(rapport.leaks), 1)
+
+
+class CsvTests(TestCase):
+    def test_formule_neutralisee_nombres_gardes(self):
+        self.assertEqual(cellule('=HYPERLINK("x")'), '\'=HYPERLINK("x")')
+        self.assertEqual(cellule("@cmd"), "'@cmd")
+        self.assertEqual(cellule("+229 97 00 00 00"), "+229 97 00 00 00")
+        self.assertEqual(cellule("-5"), "-5")
+        self.assertEqual(cellule(12), 12)

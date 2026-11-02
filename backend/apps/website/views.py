@@ -18,6 +18,8 @@ from django_ratelimit.decorators import ratelimit
 from rest_framework import generics, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny, IsAuthenticated
+
+from apps.core.csv_sur import cellule
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -380,7 +382,7 @@ class AdminPreRegistrationViewSet(viewsets.ModelViewSet):
         writer = csv.writer(response, delimiter=";")
         writer.writerow([label for label, _ in colonnes])
         for demande in rows:
-            writer.writerow([_prereg_export_value(demande, key)
+            writer.writerow([cellule(_prereg_export_value(demande, key))
                              for _, key in colonnes])
         logger.info("Préinscriptions : export CSV (%d lignes) par %s",
                     rows.count(), request.user.email)

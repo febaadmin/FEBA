@@ -17,6 +17,8 @@ import logging
 from django.utils import timezone
 from django.utils.decorators import method_decorator
 from django_ratelimit.decorators import ratelimit
+
+from apps.core.csv_sur import cellule
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -528,7 +530,7 @@ class FHAApplicationViewSet(viewsets.ModelViewSet):
         columns = _export_columns()
         writer.writerow([label for label, _ in columns])
         for application in rows:
-            writer.writerow([_export_value(application, key) for _, key in columns])
+            writer.writerow([cellule(_export_value(application, key)) for _, key in columns])
 
         logger.info(
             "FHA - export CSV de %d dossier(s) par %s",

@@ -5,12 +5,13 @@ import { Controller } from "react-hook-form";
 import { useForm } from "../../utils/useFormulaire";
 import toast from "react-hot-toast";
 import { gradesAPI, studentsAPI, subjectsAPI, schoolsAPI, classesAPI } from "../../api";
+import { celluleCsv } from "../../utils/csv";
 // Native CSV export — no external dependency required
 function exportCSV(rows, filename) {
   const headers = Object.keys(rows[0] || {});
   const csvLines = [
     headers.join(";"),
-    ...rows.map(r => headers.map(h => `"${String(r[h] ?? "").replace(/"/g, '""')}"`).join(";")),
+    ...rows.map(r => headers.map(h => celluleCsv(r[h])).join(";")),
   ];
   const blob = new Blob(["\uFEFF" + csvLines.join("\n")], { type: "text/csv;charset=utf-8;" });
   const url = URL.createObjectURL(blob);

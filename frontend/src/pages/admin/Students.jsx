@@ -15,13 +15,14 @@ import { extractApiError } from "../../utils/errors";
 import { t } from "../../i18n";
 import { useSchoolYearScope } from "../../hooks/useSchoolYearScope";
 import { ageColumn, ageText } from "../../utils/age";
+import { celluleCsv } from "../../utils/csv";
 
 function exportCSV(rows, filename) {
   if (!rows.length) { toast.error(t("Aucune donnée à exporter.")); return; }
   const headers = Object.keys(rows[0]);
   const lines = [
     headers.join(";"),
-    ...rows.map(r => headers.map(h => `"${String(r[h] ?? "").replace(/"/g, '""')}"`).join(";")),
+    ...rows.map(r => headers.map(h => celluleCsv(r[h])).join(";")),
   ];
   const blob = new Blob(["\uFEFF" + lines.join("\n")], { type: "text/csv;charset=utf-8;" });
   const url = URL.createObjectURL(blob);
