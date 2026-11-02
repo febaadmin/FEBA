@@ -202,12 +202,19 @@ class Payment(models.Model):
         if self.amount_minor is not None and self.amount_minor < 0:
             raise ValidationError({"amount_minor": "Un paiement ne peut pas être négatif."})
 
+    @classmethod
+    def _nouvelle_reference(cls):
+        """Le suffixe est court : deux tirages peuvent coïncider, on vérifie donc avant d'écrire."""
+        year = timezone.now().year
+        while True:
+            reference = f"PAY-{year}-{uuid.uuid4().hex[:6].upper()}"
+            if not cls.objects.filter(reference_number=reference).exists():
+                return reference
+
     def save(self, *args, **kwargs):
         # Auto-generate unique reference on first save
         if not self.reference_number:
-            year = timezone.now().year
-            suffix = uuid.uuid4().hex[:6].upper()
-            self.reference_number = f"PAY-{year}-{suffix}"
+            self.reference_number = self._nouvelle_reference()
 
         # La devise vient de l'académie de l'élève. Un `currency` transmis
         # par un formulaire ou une API est ignoré : l'utilisateur ne choisit
