@@ -31,9 +31,21 @@ WORKDIR /app
 # Requirements d'abord (cache Docker optimisé)
 COPY requirements/base.txt requirements/base.txt
 COPY requirements/prod.txt requirements/prod.txt
-RUN pip install --no-cache-dir -r requirements/prod.txt
+RUN pip install --no-cache-dir -r requirements/prod.txt \
+    # Le compilateur ne sert qu'à l'installation : il ne reste pas dans le conteneur en service.
+    && apt-get purge -y --auto-remove gcc libffi-dev \
+    && apt-get update && apt-get upgrade -y && rm -rf /var/lib/apt/lists/*
 
-COPY . .
+# Utilisateur sans privilège : une faille d'exécution de code ne donne pas root dans le conteneur.
+# Les volumes (media, privés, statiques) lui sont attribués par le déploiement.
+RUN groupadd --system --gid 10001 feba \
+    && useradd --system --uid 10001 --gid 10001 --home-dir /home/feba --create-home feba \
+    && mkdir -p /app/media /app/private_media /app/staticfiles \
+    && chown -R feba:feba /app
+ENV HOME=/home/feba
+
+COPY --chown=feba:feba . .
+USER feba
 
 EXPOSE 8000
 # L'entrypoint prod effectue : attendre postgres → check → migrate → collectstatic → gunicorn

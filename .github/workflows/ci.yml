@@ -318,6 +318,20 @@ jobs:
         run: |
           docker build -f backend/Dockerfile.prod -t feba-backend:ci backend
           docker build -f frontend/Dockerfile.prod -t feba-frontend:ci frontend
+          docker build -t feba-nginx:ci nginx/image
+      - name: Le backend ne tourne pas en root
+        run: test "$(docker run --rm --entrypoint id feba-backend:ci -u)" != "0"
+      - name: Analyse des images (Trivy)
+        # Un secret dans une image bloque la PR. Les vulnérabilités sont listées sans bloquer :
+        # beaucoup n'ont pas encore de correctif publié (voir RAPPORT_SECURITE_FINAL.md).
+        run: |
+          for image in feba-backend:ci feba-frontend:ci feba-nginx:ci; do
+            echo "== $image"
+            docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:0.56.2 \
+              image --quiet --scanners secret --exit-code 1 "$image"
+            docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:0.56.2 \
+              image --quiet --scanners vuln --severity HIGH,CRITICAL --exit-code 0 "$image" | tail -40
+          done
       - name: L'image backend démarre et voit ses dépendances
         run: |
           docker run --rm --entrypoint sh feba-backend:ci -c \
