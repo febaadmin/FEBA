@@ -184,26 +184,35 @@ jobs:
           compose run --rm --no-deps -T --user root --entrypoint sh backend-prod \
             -c 'chown -R 10001:10001 /app/media /app/private_media /app/staticfiles' </dev/null
 
-          relais=feba_backend_relais
-          trap 'docker rm -f "$relais" >/dev/null 2>&1 || true' EXIT
-          docker rm -f "$relais" >/dev/null 2>&1 || true
-          echo "==> Démarrage du relais avec la nouvelle version"
-          compose run -d --no-deps --use-aliases --name "$relais" backend-prod </dev/null >/dev/null
-          for attempt in $(seq 1 36); do
-            status="$(docker inspect --format='{{.State.Health.Status}}' "$relais" 2>/dev/null || echo absent)"
-            echo "Relais, tentative $attempt/36 : $status"
-            [ "$status" = "healthy" ] && break
-            if [ "$attempt" -eq 36 ] || [ "$status" = "unhealthy" ] || [ "$status" = "absent" ]; then
-              echo "ERREUR : la nouvelle version ne démarre pas. L'ancienne reste en service."
-              docker logs "$relais" --tail=200 || true
-              restore_previous
-              exit 1
-            fi
-            sleep 5
-          done
+          # Un relais par service servi par nginx : la nouvelle image démarre à côté de l'ancienne, sous
+          # le même nom réseau, et l'ancienne n'est remplacée qu'une fois le relais sain.
+          relais="feba_backend_relais feba_frontend_relais"
+          trap 'docker rm -f $relais >/dev/null 2>&1 || true' EXIT
+          docker rm -f $relais >/dev/null 2>&1 || true
+          demarrer_relais() {
+            nom="$1"; service="$2"
+            echo "==> Relais $service avec la nouvelle version"
+            compose run -d --no-deps --use-aliases --name "$nom" "$service" </dev/null >/dev/null
+            for attempt in $(seq 1 36); do
+              status="$(docker inspect --format='{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' "$nom" 2>/dev/null || echo absent)"
+              echo "Relais $service, tentative $attempt/36 : $status"
+              case "$status" in healthy|running) [ "$service" = frontend-prod ] && [ "$status" = running ] && sleep 3; return 0 ;; esac
+              if [ "$attempt" -eq 36 ] || [ "$status" = "unhealthy" ] || [ "$status" = "absent" ] || [ "$status" = "exited" ]; then
+                echo "ERREUR : la nouvelle version de $service ne démarre pas. L'ancienne reste en service."
+                docker logs "$nom" --tail=200 || true
+                restore_previous
+                exit 1
+              fi
+              sleep 5
+            done
+          }
+          demarrer_relais feba_backend_relais backend-prod
+          demarrer_relais feba_frontend_relais frontend-prod
 
+          # nginx n'est PAS touché ici : sinon Compose l'arrête pendant tout le remplacement du backend
+          # (coupure mesurée en production le 03/11 : 17 s). Il est traité seul, plus bas.
           echo "==> Démarrage de la nouvelle version"
-          if ! compose up -d --remove-orphans; then
+          if ! compose up -d --no-deps --remove-orphans backend-prod celery-prod celery-beat frontend-prod; then
             echo "ERREUR : la nouvelle version n'a pas démarré."
             compose ps || true
             compose logs backend-prod --tail=200 || true
@@ -241,9 +250,13 @@ jobs:
             sleep 10
           done
 
-          echo "==> Fin du relais : les requêtes en cours se terminent"
-          docker stop -t 30 "$relais" >/dev/null 2>&1 || true
-          docker rm "$relais" >/dev/null 2>&1 || true
+          # Recréé seulement si son image ou sa configuration Compose a changé (coupure d'environ 0,3 s).
+          echo "==> nginx : mise à jour si nécessaire"
+          compose up -d --no-deps nginx-prod
+
+          echo "==> Fin des relais : les requêtes en cours se terminent"
+          docker stop -t 30 $relais >/dev/null 2>&1 || true
+          docker rm $relais >/dev/null 2>&1 || true
 
           echo "==> Vérification de la configuration Django"
           docker compose \
