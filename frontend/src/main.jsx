@@ -1,3 +1,4 @@
+import "./utils/zodSansEval";
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
@@ -35,7 +36,7 @@ const queryClient = new QueryClient({
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
     <QueryClientProvider client={queryClient}>
-      <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+      <BrowserRouter>
         {/* AcademyProvider est monté au-dessus de <App/> — donc au-dessus du
             `key={lang}` qui remonte l'arbre au changement de langue. Changer
             de langue ne doit pas recharger le contexte d'académie ni

@@ -31,6 +31,19 @@ describe("useForm", () => {
   });
 });
 
+describe("double clic", () => {
+  it("n'envoie le formulaire qu'une fois", async () => {
+    const envoyer = vi.fn();
+    render(<Formulaire envoyer={envoyer} />);
+    fireEvent.change(screen.getByLabelText("nom"), { target: { value: "x" } });
+    fireEvent.click(screen.getByText("OK"));
+    fireEvent.click(screen.getByText("OK"));
+    await waitFor(() => expect(envoyer).toHaveBeenCalled());
+    await new Promise((fin) => { setTimeout(fin, 30); });
+    expect(envoyer).toHaveBeenCalledTimes(1);
+  });
+});
+
 describe("Modal", () => {
   it("se rend dans body, hors d'un ancêtre transformé, et prend le focus", () => {
     render(<div data-testid="parent" style={{ transform: "translateY(1px)" }}><Modal open onClose={() => {}} title="T">x</Modal></div>);

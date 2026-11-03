@@ -1,1 +1,9 @@
 *.pdf binary
+
+# Hors archive de livraison : anciens rapports et scénarios qui citent les comptes de démonstration.
+TEST_REPORT_ANTERIEUR.md export-ignore
+VERIFICATION_V7.md export-ignore
+docs/historique export-ignore
+docs/v10-parcours export-ignore
+e2e export-ignore
+scripts/generate_guides.py export-ignore
