@@ -423,7 +423,7 @@ class BulletinViewSet(BulkDeleteMixin, viewsets.ModelViewSet):
 
         try:
             # Le bulletin existant est réutilisé : commentaire conservé.
-            bulletin = generate_bulletin(student, period, school_year)
+            bulletin = generate_bulletin(student, period, school_year, par=request.user)
             # Le bulletin ne garde pas son auteur : le journal est la seule trace.
             logger.info("Bulletin %s généré par le compte %s", bulletin.pk, request.user.pk)
         except BulletinLayoutError as e:

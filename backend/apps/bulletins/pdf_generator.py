@@ -342,7 +342,7 @@ def render_bulletin_pdf(student, period, school_year, *, comment=UNCHANGED, prev
     return pdf_bytes, draft
 
 
-def generate_bulletin(student, period, school_year, *, comment=UNCHANGED):
+def generate_bulletin(student, period, school_year, *, comment=UNCHANGED, par=None):
     """
     Génère (ou régénère) le bulletin PDF d'un élève.
     Template maternelle si le niveau est maternelle, sinon template
@@ -392,6 +392,7 @@ def generate_bulletin(student, period, school_year, *, comment=UNCHANGED):
             bulletin.rank_in_class = None
             bulletin.enrollment = enrollment
             bulletin.generated_at = now
+            bulletin.generated_by = par
             bulletin.pdf_file.save(filename, ContentFile(pdf_bytes), save=False)
             new_name = bulletin.pdf_file.name
             bulletin.save()

@@ -140,9 +140,12 @@ services:
       # Défis ACME (renouvellement Let's Encrypt SANS arrêter nginx) :
       # certbot écrit ici, nginx sert /.well-known/acme-challenge/.
       - /var/www/certbot:/var/www/certbot:ro
+    # nginx résout le backend à chaque requête : il n'a pas à l'attendre. Avec « service_healthy »,
+    # recréer nginx le laissait arrêté ~30 s, le temps que le nouveau backend soit sain (coupure
+    # mesurée le 03/11 : 39 s). Mini-pile : 243 échecs avant, 3 en 0,1 s après.
     depends_on:
       backend-prod:
-        condition: service_healthy
+        condition: service_started
       frontend-prod:
         condition: service_started
     restart: unless-stopped

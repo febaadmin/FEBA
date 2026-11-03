@@ -317,3 +317,18 @@ class VolumeTests(TestCase):
                                      period="T1", value=10, enrollment=e)
         self.assertLessEqual(self._compte(a.admin, "/api/grades/"), avant_notes + 2)
         self.assertLessEqual(self._compte(a.admin, "/api/auth/users/"), avant_comptes + 2)
+
+
+@override_settings(MEDIA_ROOT=tempfile.mkdtemp(prefix="feba-bul-"))
+class AuteurBulletinTests(Base):
+    def test_auteur_conserve_et_non_modifiable(self):
+        from apps.bulletins.models import Bulletin
+        r = client(self.a.admin).post("/api/bulletins/generate/", {
+            "student_id": self.a.student.pk, "student": self.a.student.pk, "period": "T1",
+            "school_year_id": self.a.year.pk, "school_year": self.a.year.pk}, format="json")
+        self.assertIn(r.status_code, (200, 201), r.content)
+        b = Bulletin.objects.get(student=self.a.student, period="T1", school_year=self.a.year)
+        self.assertEqual(b.generated_by_id, self.a.admin.pk)
+        client(self.a.admin).patch(f"/api/bulletins/{b.pk}/", {"generated_by": self.a.teacher_user.pk}, format="json")
+        b.refresh_from_db()
+        self.assertEqual(b.generated_by_id, self.a.admin.pk)

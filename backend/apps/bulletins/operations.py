@@ -184,7 +184,7 @@ def apply_to_student(student, year, period, *, action, comment="", regenerate=Tr
             return None
         try:
             new_comment = comment if action == BulletinOperation.ACTION_SET else UNCHANGED
-            bulletin = generate_bulletin(student, period, year, comment=new_comment)
+            bulletin = generate_bulletin(student, period, year, comment=new_comment, par=user)
         except Exception as exc:
             logger.error("Bulletin non créé %s/%s : %s", student.matricule, period, exc, exc_info=True)
             res["failed"] += 1
@@ -237,7 +237,7 @@ def apply_to_student(student, year, period, *, action, comment="", regenerate=Tr
         outcome += ", PDF non généré (aucune note)"
     if must_generate:
         try:
-            bulletin = generate_bulletin(student, period, year)
+            bulletin = generate_bulletin(student, period, year, par=user)
             res["pdf_generated"] += 1
             outcome += ", PDF régénéré" if action != BulletinOperation.ACTION_GENERATE else ""
         except Exception as exc:
@@ -302,7 +302,7 @@ def save_student_comment(school, *, student_id, school_year_id, period, comment,
         else:
             from .pdf_generator import generate_bulletin
             try:
-                bulletin = generate_bulletin(student, period, year)
+                bulletin = generate_bulletin(student, period, year, par=user)
                 result["pdf_generated"] += 1
                 outcome += ", PDF régénéré"
             except Exception as exc:
