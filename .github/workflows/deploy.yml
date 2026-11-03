@@ -250,9 +250,17 @@ jobs:
             sleep 10
           done
 
-          # Recréé seulement si son image ou sa configuration Compose a changé (coupure d'environ 0,3 s).
-          echo "==> nginx : mise à jour si nécessaire"
-          compose up -d --no-deps nginx-prod
+          # Recréé seulement si son image, sa configuration ou sa définition Compose a changé : la
+          # recréation coupe les connexions environ 1 s (mesuré en production le 03/11).
+          image_en_service="$(docker inspect --format '{{.Image}}' feba_nginx_prod 2>/dev/null || true)"
+          image_construite="$(docker image inspect --format '{{.Id}}' feba-nginx:current 2>/dev/null || true)"
+          if [ -n "$image_en_service" ] && [ "$image_en_service" = "$image_construite" ] \
+             && git diff --quiet "$previous_sha" HEAD -- nginx/ docker-compose.prod.yml; then
+            echo "==> nginx inchangé : conservé"
+          else
+            echo "==> nginx : mise à jour"
+            compose up -d --no-deps nginx-prod
+          fi
 
           echo "==> Fin des relais : les requêtes en cours se terminent"
           docker stop -t 30 $relais >/dev/null 2>&1 || true

@@ -1,3 +1,5 @@
+> Mesures en production plus récentes : `RAPPORT_DEPLOIEMENT_SANS_INTERRUPTION.md`.
+
 # Disponibilité
 
 **Cause :** un seul conteneur backend, remplacé directement. Il met 15 à 20 s à servir : attente de PostgreSQL, contrôles, `migrate`, `collectstatic`. Relevé du 02/11 : 18 réponses 502 de 22:58:30 à 22:58:49. Le redémarrage de nginx s'y ajoutait.
