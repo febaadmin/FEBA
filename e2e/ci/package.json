@@ -1,0 +1,11 @@
+{
+  "name": "feba-e2e-ci",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node lancer.mjs"
+  },
+  "dependencies": {
+    "playwright-core": "1.48.2"
+  }
+}
