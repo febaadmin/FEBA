@@ -186,6 +186,108 @@ jobs:
         working-directory: frontend
         run: npm run build
 
+  e2e:
+    # Parcours navigateur réels (e2e/ci) : serveur Django et application construite, base jetable.
+    # Mots de passe générés à chaque exécution et masqués : aucun n'est écrit dans le dépôt.
+    name: Parcours navigateur (E2E)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: feba_user
+          POSTGRES_PASSWORD: feba_dev_pass
+          POSTGRES_DB: feba_e2e
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U feba_user"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports: ["6379:6379"]
+    env:
+      DJANGO_SETTINGS_MODULE: feba_project.settings.e2e
+      SECRET_KEY: ci-secret-key-not-for-production-use-000000000000000000
+      DATABASE_URL: postgresql://feba_user:feba_dev_pass@localhost:5432/feba_e2e
+      REDIS_URL: redis://localhost:6379/0
+      ALLOWED_HOSTS: localhost,127.0.0.1
+      TEST_DB_NAME: feba_e2e
+      TEST_DB_USER: feba_user
+      TEST_DB_PASSWORD: feba_dev_pass
+      TEST_DB_HOST: localhost
+      TEST_DB_PORT: "5432"
+      E2E_BASE_URL: http://127.0.0.1:4173
+      E2E_API_URL: http://127.0.0.1:8000/api
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements/*.txt
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: |
+            frontend/package-lock.json
+            e2e/ci/package-lock.json
+
+      - name: Mots de passe jetables
+        run: |
+          for role in SUPERADMIN ADMIN TEACHER PARENT STUDENT; do
+            valeur="E2e-$(openssl rand -hex 8)!a"
+            echo "::add-mask::$valeur"
+            echo "E2E_PWD_$role=$valeur" >> "$GITHUB_ENV"
+            echo "DEMO_PASSWORD_$role=$valeur" >> "$GITHUB_ENV"
+          done
+
+      - name: Backend
+        working-directory: backend
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements/dev.txt
+          python manage.py migrate --noinput
+          python manage.py seed_demo_data > /tmp/seed.log 2>&1
+          python manage.py shell < ../e2e/ci/preparer.py
+          nohup python manage.py runserver 127.0.0.1:8000 > /tmp/backend.log 2>&1 &
+
+      - name: Frontend construit
+        working-directory: frontend
+        run: |
+          npm ci
+          npm run build
+          BACKEND_ORIGIN=http://127.0.0.1:8000 nohup npx vite preview --port 4173 --strictPort --host 127.0.0.1 > /tmp/frontend.log 2>&1 &
+
+      - name: Navigateur
+        working-directory: e2e/ci
+        run: |
+          npm ci
+          npx playwright-core install --with-deps chromium
+
+      - name: Attente des serveurs
+        run: |
+          for i in $(seq 1 60); do
+            curl -sf http://127.0.0.1:8000/api/health/ >/dev/null && curl -sf http://127.0.0.1:4173/login >/dev/null && exit 0
+            sleep 2
+          done
+          echo "Serveurs indisponibles"; tail -50 /tmp/backend.log; tail -50 /tmp/frontend.log; exit 1
+
+      - name: Parcours
+        working-directory: e2e/ci
+        run: node lancer.mjs
+
+      - name: Journaux en cas d'échec
+        if: failure()
+        run: |
+          tail -200 /tmp/backend.log || true
+          tail -50 /tmp/frontend.log || true
+
   security:
     name: Sécurité des dépendances
     runs-on: ubuntu-latest

@@ -5,5 +5,9 @@ TEST_REPORT_ANTERIEUR.md export-ignore
 VERIFICATION_V7.md export-ignore
 docs/historique export-ignore
 docs/v10-parcours export-ignore
-e2e export-ignore
+e2e/*.mjs export-ignore
+e2e/*.txt export-ignore
+e2e/*.py export-ignore
+e2e/plugnmeet export-ignore
+e2e/captures export-ignore
 scripts/generate_guides.py export-ignore

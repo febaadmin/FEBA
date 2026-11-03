@@ -37,6 +37,23 @@ utilisables tels quels en intégration continue.
 
 ## Comptes utilisés
 
-Ceux du jeu de démonstration (`make seed`) — voir `DEMO_ACCOUNTS.md`.
+Ceux du jeu de démonstration (`make seed`) : leurs mots de passe viennent de `DEMO_PASSWORD_*`, ou sont générés et affichés par `seed_demo_data`.
 Les scripts ne créent aucun compte et ne modifient aucune donnée
 persistante : ils basculent d'académie, ce qui est réversible, et lisent.
+
+## Suite de la CI (`e2e/ci`)
+
+Lancée à chaque PR par le job « Parcours navigateur (E2E) » de `.github/workflows/ci.yml`, sur une base jetable.
+Scénarios : connexion (5 profils, latence, 429, 502, 504, coupures, session expirée), sélecteur d'académie, toutes les
+pages sur ordinateur et téléphone, formulaires et double envoi, recherche, tri, pagination, messagerie, notes, bulletins,
+paiements, fichiers, rôles, suivi pédagogique, examen complet, absence de flash.
+
+En local, avec une base de démonstration créée par `seed_demo_data` et les mêmes mots de passe dans
+`DEMO_PASSWORD_*` et `E2E_PWD_*` :
+
+```bash
+cd e2e/ci && npm ci && node lancer.mjs            # tous les scénarios
+node lancer.mjs connexion examens                  # quelques-uns
+```
+
+`E2E_BASE_URL`, `E2E_API_URL` et `CHROMIUM_PATH` indiquent les serveurs et le navigateur.

@@ -1,0 +1,98 @@
+// Suivi pédagogique : référentiel, compétences (création, modification, recherche, import, archivage),
+// évaluation de classe, objectifs (modification, archivage, restauration) et plans.
+import { BASE, connecter, ok, unique } from "../outils.mjs";
+
+const S = "suivi";
+export default async function () {
+  const t = await connecter("teacher");
+  const tag = "R" + unique();
+  await t.goto(BASE + "/teacher/suivi/referentiels");
+  await t.waitForTimeout(1800);
+  await t.getByRole("button", { name: "Nouveau référentiel" }).click();
+  await t.locator("#r-nom").fill(tag);
+  await t.locator("#r-mat").selectOption({ index: 1 });
+  await t.locator("#r-niv").selectOption({ index: 1 });
+  await t.locator("form").getByRole("button", { name: "Enregistrer" }).click();
+  await t.waitForTimeout(1200);
+  const carte = t.locator("div.rounded-2xl").filter({ hasText: tag }).first();
+  await carte.getByRole("button", { name: "Compétence", exact: true }).click();
+  await t.locator("#c-nom").fill(tag + " Calcul");
+  await t.locator("#c-dom").fill("Nombres");
+  await t.locator("#c-desc").fill("Additionner");
+  await t.locator("#c-cri").fill("Sans erreur");
+  await t.locator("form").getByRole("button", { name: "Enregistrer" }).click();
+  await t.waitForTimeout(1200);
+  ok(S, "compétence créée dans son domaine", (await t.getByText(tag + " Calcul").count()) > 0);
+  await t.getByRole("button", { name: "Modifier " + tag + " Calcul" }).click();
+  await t.locator("#c-nom").fill(tag + " Calcul mental");
+  await t.locator("form").getByRole("button", { name: "Enregistrer" }).click();
+  await t.waitForTimeout(1000);
+  ok(S, "compétence modifiée", (await t.getByText(tag + " Calcul mental").count()) > 0);
+  await t.getByLabel("Rechercher une compétence").fill("mental");
+  await t.waitForTimeout(400);
+  ok(S, "recherche de compétence", (await t.getByText(tag + " Calcul mental").count()) > 0);
+  await t.getByLabel("Rechercher une compétence").fill("");
+  await carte.locator("input[type=file]").setInputFiles({ name: "c.csv", mimeType: "text/csv", buffer: Buffer.from(`nom,domaine\n${tag} Importe A,Nombres\n${tag} Importe B,Formes\n`) });
+  await t.waitForTimeout(1200);
+  ok(S, "import CSV", (await t.getByText(tag + " Importe A").count()) > 0);
+  await t.getByRole("button", { name: `Archiver ${tag} Importe B` }).click();
+  await t.waitForTimeout(800);
+  ok(S, "archivage masque la compétence", (await t.getByText(tag + " Importe B").count()) === 0);
+
+  await t.goto(BASE + "/teacher/suivi/evaluer");
+  await t.waitForTimeout(1800);
+  await t.locator("#ec-cl").selectOption({ label: "CE1-A" });
+  await t.locator("#ec-co").selectOption({ label: `${tag} Calcul mental (${tag})` });
+  await t.waitForTimeout(1300);
+  await t.getByRole("button", { name: "Tous : En progression" }).click();
+  await t.getByRole("button", { name: "Enregistrer les évaluations" }).click();
+  await t.waitForTimeout(1500);
+  ok(S, "évaluation de toute la classe enregistrée", await t.getByRole("button", { name: "Enregistrer les évaluations" }).isDisabled());
+
+  // Objectifs et plans sur la fiche de l'élève de démonstration.
+  await t.goto(BASE + "/teacher/suivi");
+  await t.waitForTimeout(1800);
+  await t.getByPlaceholder("Rechercher un élève").fill("Acakpo");
+  await t.locator('a[href*="/teacher/suivi/"]').filter({ hasText: "Estelle" }).first().click();
+  await t.waitForTimeout(2000);
+  await t.getByRole("tab", { name: "Compétences", exact: true }).click();
+  await t.waitForTimeout(800);
+  ok(S, "graphique d'évolution de compétence", (await t.getByText("Évolution de la compétence").count()) === 1);
+  await t.getByRole("tab", { name: "Objectifs", exact: true }).click();
+  await t.getByRole("button", { name: "Créer un objectif" }).first().click();
+  await t.locator("[role=dialog] input").first().fill("Objectif" + tag);
+  await t.locator("[role=dialog] button[type=submit]").click();
+  await t.waitForTimeout(1200);
+  const objectif = t.locator("article", { hasText: "Objectif" + tag });
+  await objectif.getByRole("button", { name: "Modifier" }).click();
+  await t.locator("[role=dialog] input").first().fill("Objectif" + tag + "-mod");
+  await t.locator("[role=dialog] button[type=submit]").click();
+  await t.waitForTimeout(1200);
+  const modifie = t.locator("article", { hasText: "Objectif" + tag + "-mod" });
+  ok(S, "objectif modifié", (await modifie.count()) === 1);
+  await modifie.getByRole("button", { name: "Archiver" }).click();
+  await t.locator("[role=dialog]").getByRole("button", { name: "Archiver" }).click();
+  await t.waitForTimeout(1200);
+  ok(S, "objectif archivé", (await t.locator("article", { hasText: "Objectif" + tag }).count()) === 0);
+  await t.getByRole("button", { name: "Voir les archives" }).click();
+  await t.waitForTimeout(900);
+  await t.locator(".card", { hasText: "Objectif" + tag }).getByRole("button", { name: "Sortir des archives" }).click();
+  await t.waitForTimeout(1200);
+  await t.reload();
+  await t.waitForTimeout(1800);
+  await t.getByRole("tab", { name: "Objectifs", exact: true }).click();
+  await t.waitForTimeout(600);
+  ok(S, "objectif restauré et persistant", (await t.locator("article", { hasText: "Objectif" + tag }).count()) === 1);
+  await t.getByRole("tab", { name: "Accompagnement", exact: true }).click();
+  await t.getByRole("button", { name: "Créer un plan d'accompagnement" }).first().click();
+  await t.locator("[role=dialog] input").first().fill("Plan" + tag);
+  await t.locator("[role=dialog] button[type=submit]").click();
+  await t.waitForTimeout(1200);
+  await t.locator("div.border", { hasText: "Plan" + tag }).first().getByRole("button", { name: "Modifier" }).click();
+  await t.locator("[role=dialog] input").first().fill("Plan" + tag + "-mod");
+  await t.locator("[role=dialog] button[type=submit]").click();
+  await t.waitForTimeout(1200);
+  ok(S, "plan créé et modifié", (await t.getByText("Plan" + tag + "-mod").count()) > 0);
+  ok(S, "aucune erreur", t.erreurs.length === 0, t.erreurs.join(" | "));
+  await t.contexte.close();
+}
