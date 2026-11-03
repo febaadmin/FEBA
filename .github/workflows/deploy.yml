@@ -178,6 +178,12 @@ jobs:
           # Un relais démarre donc la nouvelle image à côté de l'ancienne, sous le même nom réseau,
           # et l'ancienne n'est remplacée qu'une fois le relais sain. S'il échoue, elle reste en service.
           # Mesure en charge : 260 réponses 502 avant, 0 après (voir RAPPORT_DISPONIBILITE_502.md).
+          # Le backend tourne sans privilège (uid 10001) : les volumes lui sont attribués. Idempotent ;
+          # une image plus ancienne, exécutée en root, continue d'y écrire en cas de retour arrière.
+          echo "==> Volumes attribués à l'utilisateur du backend"
+          compose run --rm --no-deps -T --user root --entrypoint sh backend-prod \
+            -c 'chown -R 10001:10001 /app/media /app/private_media /app/staticfiles' </dev/null
+
           relais=feba_backend_relais
           trap 'docker rm -f "$relais" >/dev/null 2>&1 || true' EXIT
           docker rm -f "$relais" >/dev/null 2>&1 || true

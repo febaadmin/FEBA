@@ -120,7 +120,10 @@ services:
       - "80"
 
   nginx-prod:
-    image: nginx:1.25-alpine
+    build:
+      context: ./nginx/image
+    image: feba-nginx:current
+    pull_policy: never
     container_name: feba_nginx_prod
     ports:
       - "80:80"
