@@ -364,6 +364,13 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
             password=password,
         )
         if not user:
+            # `authenticate` écarte aussi les comptes désactivés. Le message n'est donné qu'à qui
+            # connaît le bon mot de passe : il ne révèle l'existence du compte à personne d'autre.
+            inactif = CustomUser.objects.filter(email__iexact=email, is_active=False).first()
+            if inactif and inactif.check_password(password):
+                raise serializers.ValidationError(
+                    "Ce compte est désactivé. Contactez votre administrateur."
+                )
             raise serializers.ValidationError(
                 "Identifiants incorrects. Vérifiez votre email et votre mot de passe."
             )
