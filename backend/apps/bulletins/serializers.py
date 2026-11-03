@@ -20,13 +20,15 @@ class BulletinSerializer(TenantRelationsMixin, AcademyMetadataMixin, StudentAgeM
     pdf_outdated = serializers.BooleanField(read_only=True)
     comment_updated_by_name = serializers.CharField(
         source="comment_updated_by.get_full_name", read_only=True, default=None)
+    generated_by_name = serializers.CharField(
+        source="generated_by.get_full_name", read_only=True, default=None)
 
     class Meta:
         model = Bulletin
         fields = "__all__"
         # Le commentaire se modifie par POST /bulletins/{id}/comment/ (texte
         # validé, PDF régénéré) ; les valeurs calculées, par la génération.
-        read_only_fields = ("pdf_file", "generated_at", "general_comment", "comment_updated_at",
+        read_only_fields = ("pdf_file", "generated_at", "generated_by", "general_comment", "comment_updated_at",
                             "comment_updated_by", "average", "rank_in_class", "appreciation",
                             "enrollment")
 

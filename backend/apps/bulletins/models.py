@@ -33,6 +33,12 @@ class Bulletin(models.Model):
         settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
         related_name="+",
     )
+    #: Compte qui a lancé la DERNIÈRE génération du PDF. Vide pour les bulletins antérieurs à ce champ
+    #: et pour les régénérations automatiques. Les journaux Docker disparaissent à chaque déploiement.
+    generated_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name="+",
+    )
     average = models.DecimalField(max_digits=4, decimal_places=2, null=True, blank=True)
     rank_in_class = models.PositiveIntegerField(null=True, blank=True)
     appreciation = models.CharField(max_length=100, blank=True)
