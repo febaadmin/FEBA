@@ -1,3 +1,5 @@
+> État à jour : `RAPPORT_SECURITE_FINAL.md`.
+
 # Sécurité
 
 | Point | État réel | Niveau |
