@@ -264,8 +264,13 @@ jobs:
             echo "==> nginx inchangé : conservé"
           else
             echo "==> nginx : mise à jour"
+            conteneur_avant="$(docker inspect -f '{{.Id}}' feba_nginx_prod 2>/dev/null || true)"
             compose up -d --no-deps nginx-prod
-            nginx_recree=1
+            # « up » ne recrée que si l'image ou la définition a changé : seule une recréation
+            # effective (nouveau conteneur) dispense du redémarrage pour la configuration.
+            if [ "$(docker inspect -f '{{.Id}}' feba_nginx_prod 2>/dev/null || true)" != "$conteneur_avant" ]; then
+              nginx_recree=1
+            fi
           fi
 
           echo "==> Fin des relais : les requêtes en cours se terminent"
