@@ -35,10 +35,11 @@ def identifiant(valeur):
     """Identifiant reçu du client : un entier, sinon None (aucun objet ne correspond)."""
     if isinstance(valeur, bool):
         return None
+    # Bornes d'une clé BigAutoField : au-delà, PostgreSQL refuse la requête (erreur 500).
     if isinstance(valeur, int):
-        return valeur
+        return valeur if 0 < valeur < 2 ** 63 else None
     if isinstance(valeur, str) and valeur.strip().isdigit():
-        return int(valeur)
+        return identifiant(int(valeur))
     return None
 
 

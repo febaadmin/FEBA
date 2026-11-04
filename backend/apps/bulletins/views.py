@@ -329,7 +329,7 @@ class BulletinViewSet(BulkDeleteMixin, viewsets.ModelViewSet):
     def _launch_operation(self, request, data, school):
         from .operations import ScopeError, clean_comment, resolve_scope
         action_name = data.get("action")
-        if action_name not in dict(BulletinOperation.ACTIONS):
+        if not isinstance(action_name, str) or action_name not in dict(BulletinOperation.ACTIONS):
             return Response({"error": "Action invalide."}, status=400)
         try:
             comment = clean_comment(data.get("comment", "")) if action_name == "set_comment" else ""

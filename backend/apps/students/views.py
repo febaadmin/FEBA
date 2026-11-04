@@ -185,6 +185,9 @@ class StudentViewSet(BulkDeleteMixin, viewsets.ModelViewSet):
         target_year_id = request.data.get('target_year_id')
         if not (source_year_id and target_year_id):
             return Response({'error': 'source_year_id et target_year_id requis.'}, status=400)
+        source_year_id, target_year_id = identifiant(source_year_id), identifiant(target_year_id)
+        if source_year_id is None or target_year_id is None:
+            return Response({'error': 'source_year_id et target_year_id doivent être des identifiants.'}, status=400)
         if str(source_year_id) == str(target_year_id):
             return Response({'error': 'Les années source et cible doivent être différentes.'}, status=400)
         school = resolve_school_for_year(request, target_year_id)
@@ -210,11 +213,15 @@ class StudentViewSet(BulkDeleteMixin, viewsets.ModelViewSet):
 
         class_id = request.data.get('class_id')
         target_year_id = request.data.get('target_year_id')
-        school = resolve_school_for_year(request, target_year_id)
         new_class_id = request.data.get('new_class_id')
 
         if not (class_id and target_year_id):
             return Response({'error': 'class_id et target_year_id requis.'}, status=400)
+        class_id, target_year_id = identifiant(class_id), identifiant(target_year_id)
+        if class_id is None or target_year_id is None or (new_class_id and identifiant(new_class_id) is None):
+            return Response({'error': 'class_id, target_year_id et new_class_id doivent être des identifiants.'}, status=400)
+        new_class_id = identifiant(new_class_id) if new_class_id else None
+        school = resolve_school_for_year(request, target_year_id)
 
         result = bulk_promote_students(
             school=school,
@@ -338,6 +345,9 @@ class StudentViewSet(BulkDeleteMixin, viewsets.ModelViewSet):
         year_id = request.data.get('school_year_id')
         if not year_id:
             return Response({'error': 'school_year_id requis.'}, status=400)
+        year_id = identifiant(year_id)
+        if year_id is None:
+            return Response({'error': 'school_year_id doit être un identifiant.'}, status=400)
 
         enrollment = student.enrollments.filter(school_year_id=year_id).first()
         if enrollment is None:
@@ -443,12 +453,17 @@ class StudentViewSet(BulkDeleteMixin, viewsets.ModelViewSet):
 
         student_ids = request.data.get('student_ids', [])
         new_year_id = request.data.get('school_year_id')
-        school = resolve_school_for_year(request, new_year_id)
         new_class_id = request.data.get('class_id')
         promotion_status = request.data.get('promotion_status', 'normal')
 
         if not (student_ids and new_year_id):
             return Response({'error': 'student_ids et school_year_id requis.'}, status=400)
+        student_ids, new_year_id = liste_identifiants(student_ids), identifiant(new_year_id)
+        if (student_ids is None or new_year_id is None or (new_class_id and identifiant(new_class_id) is None)
+                or not isinstance(promotion_status, str)):
+            return Response({'error': 'student_ids (liste), school_year_id et class_id doivent être des identifiants.'}, status=400)
+        new_class_id = identifiant(new_class_id) if new_class_id else None
+        school = resolve_school_for_year(request, new_year_id)
 
         result = bulk_promote_students(
             school=school,
@@ -493,6 +508,9 @@ class StudentViewSet(BulkDeleteMixin, viewsets.ModelViewSet):
 
         if not target_year_id or not decisions:
             return Response({'error': 'target_year_id et decisions[] requis.'}, status=400)
+        target_year_id = identifiant(target_year_id)
+        if target_year_id is None or not isinstance(decisions, list) or not all(isinstance(d, dict) for d in decisions):
+            return Response({'error': 'target_year_id (identifiant) et decisions[] (liste d\'objets) attendus.'}, status=400)
         school = resolve_school_for_year(request, target_year_id)
 
         results = []

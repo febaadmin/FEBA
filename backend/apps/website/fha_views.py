@@ -264,7 +264,7 @@ class FHAApplicationViewSet(viewsets.ModelViewSet):
         application = self.get_object()
         new_status = request.data.get('status')
         valid = {c[0] for c in FHAEnrollmentApplication.STATUS_CHOICES}
-        if new_status not in valid:
+        if not isinstance(new_status, str) or new_status not in valid:
             return Response(
                 {'status': f"État inconnu. Valeurs possibles : {', '.join(sorted(valid))}."},
                 status=status.HTTP_400_BAD_REQUEST,
@@ -770,16 +770,21 @@ class FHAPlacementTestViewSet(viewsets.ModelViewSet):
                 )
             values[field] = score
 
+        # Groupe et niveau : uniquement les valeurs prévues (auparavant, n'importe
+        # quel texte était enregistré, et un texte trop long donnait une erreur 500).
+        from apps.core.request_text import text_field
+        textes = {}
+        for field in ('recommended_group', 'starting_level', 'priority_objectives', 'assessor_notes'):
+            textes[field] = text_field(request.data, field)
+        for field in ('recommended_group', 'starting_level'):
+            permis = {c[0] for c in FHAPlacementTestResult._meta.get_field(field).choices}
+            if textes[field] and textes[field] not in permis:
+                return Response({field: f"Valeur inconnue. Valeurs possibles : {', '.join(sorted(permis))}."},
+                                status=status.HTTP_400_BAD_REQUEST)
+
         result, _ = FHAPlacementTestResult.objects.update_or_create(
             request=test_request,
-            defaults={
-                **values,
-                'recommended_group': request.data.get('recommended_group', ''),
-                'starting_level': request.data.get('starting_level', ''),
-                'priority_objectives': request.data.get('priority_objectives', ''),
-                'assessor_notes': request.data.get('assessor_notes', ''),
-                'assessed_by': request.user,
-            },
+            defaults={**values, **textes, 'assessed_by': request.user},
         )
         test_request.status = 'completed'
         test_request.save(update_fields=['status', 'updated_at'])

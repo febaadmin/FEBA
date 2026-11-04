@@ -51,3 +51,15 @@ class DatesInvalidesEndpointsTests(ReminderBase):
         r = client.post("/api/suivi/evaluations-competences/lot/", {"date": [1], "lignes": [{}]}, format="json")
         self.assertEqual(r.status_code, 400, r.data)
         self.assertIn("date", r.data)
+
+
+class IdentifiantTests(SimpleTestCase):
+    def test_bornes_et_types(self):
+        from apps.core.request_text import identifiant, liste_identifiants
+        self.assertEqual(identifiant(5), 5)
+        self.assertEqual(identifiant(" 7 "), 7)
+        for mauvais in (0, -1, 2 ** 63, 10 ** 30, "abc", "1.5", True, None, {"a": 1}, [1], "9" * 30):
+            self.assertIsNone(identifiant(mauvais), repr(mauvais))
+        self.assertEqual(liste_identifiants([1, "2"]), [1, 2])
+        self.assertIsNone(liste_identifiants([1, {"b": 2}]))
+        self.assertIsNone(liste_identifiants("1,2"))

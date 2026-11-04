@@ -212,6 +212,10 @@ class ParentViewSet(BulkDeleteMixin, viewsets.ModelViewSet):
 
         if not student_id:
             return Response({"error": "student_id requis."}, status=400)
+        from apps.core.request_text import identifiant
+        student_id = identifiant(student_id)
+        if student_id is None:
+            return Response({"error": "student_id invalide."}, status=400)
 
         school = get_request_school(request)
         from apps.students.models import Student
@@ -323,6 +327,10 @@ class ParentViewSet(BulkDeleteMixin, viewsets.ModelViewSet):
 
         if not parent_id or not student_id:
             return Response({"error": "parent_id et student_id requis."}, status=400)
+        from apps.core.request_text import identifiant
+        parent_id, student_id = identifiant(parent_id), identifiant(student_id)
+        if parent_id is None or student_id is None:
+            return Response({"error": "parent_id et student_id doivent être des identifiants."}, status=400)
 
         school = get_request_school(request)
         from apps.students.models import Student
