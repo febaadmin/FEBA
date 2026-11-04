@@ -143,3 +143,13 @@ class EcheancierHorsPeriodeTests(ReminderBase):
         self.assertEqual(xof["indicateurs"]["attendu_minor"], 0)
         self.assertEqual(r["par_academie"][0]["attendu_minor"], 0)
         self.assertIsNone(calculer([self.fha], "7j", aujourd_hui=D(2026, 10, 15))["devises"][0]["indicateurs"]["attendu_minor"])
+
+
+class ExonerationGraphiqueTests(ReminderBase):
+    def test_exoneration_hors_attendu(self):
+        from apps.payments.models import StudentFeeArrangement
+        avant = calculer([self.feba], "12m", aujourd_hui=D(2026, 12, 15))["devises"][0]["indicateurs"]["attendu_minor"]
+        StudentFeeArrangement.objects.create(student=self.alice, fee_schedule=self.tuition_ce, kind="exemption", reason="Bourse totale")
+        apres = calculer([self.feba], "12m", aujourd_hui=D(2026, 12, 15))["devises"][0]["indicateurs"]
+        self.assertEqual(avant - apres["attendu_minor"], 150000 + 100000)   # tranches d'Alice dans la période
+        self.assertEqual(apres["restant_minor"], 150000 + 110000)           # Bob seul, rien payé

@@ -97,6 +97,11 @@ class DueItem:
     def currency(self):
         return self.fee.currency
 
+    @property
+    def net(self):
+        """Montant réellement dû pour cette échéance : réduction déduite, 0 si exonérée."""
+        return 0 if self.status == STATUS_EXEMPTED else self.expected - self.discount
+
     def money(self, minor):
         return Money(minor, self.currency).formatted()
 
