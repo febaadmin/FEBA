@@ -284,6 +284,10 @@ export const EN = {
   "Réinitialisation…": "Resetting…",
   "Mot de passe réinitialisé.": "Password has been reset.",
   "Action sensible": "Sensitive action",
+  "Votre mot de passe (confirmation d'identité) *": "Your password (identity check) *",
+  "Saisissez votre propre mot de passe pour confirmer cette opération.": "Enter your own password to confirm this operation.",
+  "Compte super-administrateur : votre identité est vérifiée et le titulaire est prévenu par e-mail.": "Super administrator account: your identity is checked and the account holder is notified by email.",
+  "Accueil du site FEBA": "FEBA website home",
   "Les sessions actives de cet utilisateur seront déconnectées et il devra choisir un nouveau mot de passe à sa prochaine connexion. Cette opération est journalisée.":
     "This user's active sessions will be signed out and they will have to choose a new password at their next login. This operation is logged.",
   "Nouveau mot de passe *": "New password *",

@@ -131,8 +131,9 @@ export default function SuperAdminUsers() {
               {row.is_active ? <ToggleRight className="w-4 h-4 text-success" /> : <ToggleLeft className="w-4 h-4" />}
             </button>
             <button onClick={() => openEdit(row)} className="p-1.5 rounded-lg hover:bg-primary-50 text-slate-400 hover:text-primary"><Pencil className="w-4 h-4" /></button>
-            {/* P2 : jamais sur un superadmin ni sur soi-même (règle backend) */}
-            {row.role !== "superadmin" && row.id !== me?.id && (
+            {/* Tout compte sauf soi-même (« Mon profil » pour son propre mot de passe) ;
+                pour un superadmin, le backend exige le mot de passe de l'auteur. */}
+            {row.id !== me?.id && (
               <button onClick={() => setResetItem(row)}
                 className="p-1.5 rounded-lg hover:bg-amber-50 text-slate-400 hover:text-amber-600"
                 title={t("Réinitialiser le mot de passe")}>

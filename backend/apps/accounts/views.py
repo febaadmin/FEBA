@@ -222,6 +222,30 @@ class ToggleUserActiveView(APIView):
         return Response({"detail": action_detail, "is_active": target.is_active})
 
 
+def prevenir_reinitialisation(target, requester):
+    """Avertit la cible, sans jamais transmettre le mot de passe. Un échec
+    d'envoi est enregistré dans la boîte d'envoi et n'annule rien."""
+    from apps.notifications.mailer import send_tracked_email
+    texte = (
+        f"Bonjour {target.get_full_name()},\n\n"
+        f"Le mot de passe de votre compte FEBA a été réinitialisé par {requester.get_full_name()} "
+        f"({requester.email}). Vous devrez en choisir un nouveau à votre prochaine connexion.\n\n"
+        "Si vous n'êtes pas à l'origine de cette demande, prévenez immédiatement un autre super-administrateur.\n\n"
+        f"Hello {target.get_full_name()},\n\n"
+        f"Your FEBA password was reset by {requester.get_full_name()} ({requester.email}). "
+        "You will have to choose a new one at your next sign-in. "
+        "If you did not request this, alert another super administrator immediately."
+    )
+    try:
+        send_tracked_email(
+            purpose="password_reset_notice", to_email=target.email,
+            subject="FEBA : votre mot de passe a été réinitialisé / your password was reset",
+            text_body=texte, initiated_by=requester, sms=False,
+        )
+    except Exception:  # noqa: BLE001 - l'avertissement ne bloque jamais la réinitialisation
+        logger.exception("Avertissement de réinitialisation non envoyé à %s", target.email)
+
+
 class AdminResetPasswordView(APIView):
     """
     POST /api/auth/users/<pk>/reset-password/  (P2 v4)
@@ -229,7 +253,9 @@ class AdminResetPasswordView(APIView):
     Réinitialisation du mot de passe d'un utilisateur par un administrateur
     autorisé. Règles appliquées CÔTÉ BACKEND (jamais uniquement frontend) :
       - admin      → teacher / parent / student de SON établissement ;
-      - superadmin → admin / teacher / parent / student (jamais superadmin) ;
+      - superadmin → tout autre compte ; pour un AUTRE superadmin, l'auteur
+        confirme son identité avec son propre mot de passe
+        (`requester_password`), et la cible est prévenue par e-mail ;
       - jamais soi-même (parcours « changer mon mot de passe » distinct).
 
     Effets :
@@ -266,6 +292,25 @@ class AdminResetPasswordView(APIView):
                 status=status.HTTP_403_FORBIDDEN,
             )
 
+        # Compte de plus haut niveau : une session ouverte et laissée sans
+        # surveillance ne suffit pas, l'auteur prouve son identité.
+        if target.is_superadmin():
+            secret = request.data.get("requester_password") or ""
+            if not secret:
+                return Response(
+                    {"requester_password": ["Saisissez votre propre mot de passe pour confirmer cette opération."]},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            if not requester.check_password(secret):
+                logger.warning(
+                    "Password reset REFUSÉ (ré-authentification) : %s → %s",
+                    requester.email, target.email,
+                )
+                return Response(
+                    {"detail": "Votre mot de passe est incorrect : réinitialisation refusée."},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+
         serializer = AdminResetPasswordSerializer(
             data=request.data, context={"request": request, "target_user": target},
         )
@@ -294,6 +339,8 @@ class AdminResetPasswordView(APIView):
             "Password reset : %s (%s) → %s (%s), %d refresh token(s) révoqué(s)",
             requester.email, requester.role, target.email, target.role, revoked,
         )
+        if target.is_superadmin():
+            prevenir_reinitialisation(target, requester)
         return Response({
             "detail": (
                 f"Mot de passe de {target.get_full_name()} réinitialisé. "

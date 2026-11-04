@@ -38,10 +38,11 @@ export default function ResetPasswordModal({ user, onClose }) {
   } = useForm({ mode: "onChange" });
 
   const newPassword = watch("new_password");
+  const cibleSuperadmin = user?.role === "superadmin";
 
   useEffect(() => {
     if (user) {
-      reset({ new_password: "", confirm_password: "", confirm_action: false });
+      reset({ new_password: "", confirm_password: "", requester_password: "", confirm_action: false });
       setApiErrors([]);
       setShowPwd(false);
       setShowPwd2(false);
@@ -53,6 +54,7 @@ export default function ResetPasswordModal({ user, onClose }) {
       authAPI.adminResetPassword(user.id, {
         new_password: d.new_password,
         confirm_password: d.confirm_password,
+        ...(cibleSuperadmin ? { requester_password: d.requester_password } : {}),
       }),
     onSuccess: (resp) => {
       toast.success(resp.data?.detail || t("Mot de passe réinitialisé."));
@@ -154,6 +156,20 @@ export default function ResetPasswordModal({ user, onClose }) {
             )}
           </div>
         </div>
+
+        {cibleSuperadmin && (
+          <div>
+            <label className="label" htmlFor="requester_password">{t("Votre mot de passe (confirmation d'identité) *")}</label>
+            <input id="requester_password"
+              {...register("requester_password", { required: t("Saisissez votre propre mot de passe pour confirmer cette opération.") })}
+              type="password" autoComplete="current-password"
+              className={`input ${errors.requester_password ? "border-red-400" : ""}`} />
+            <p className="mt-1 text-xs text-slate-500">{t("Compte super-administrateur : votre identité est vérifiée et le titulaire est prévenu par e-mail.")}</p>
+            {errors.requester_password && (
+              <p className="mt-1 text-xs text-red-600">{errors.requester_password.message}</p>
+            )}
+          </div>
+        )}
 
         {/* Règles de complexité (validées aussi côté backend par Django) */}
         <ul className="text-xs text-slate-500 list-disc pl-5 space-y-0.5">

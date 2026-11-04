@@ -136,8 +136,9 @@ class CustomUser(AbstractUser):
         Règles métier de la réinitialisation de mot de passe (P2 v4) :
         - personne ne réinitialise son PROPRE mot de passe ici (parcours
           « changer mon mot de passe » distinct, avec ancien mot de passe) ;
-        - superadmin → admin / teacher / parent / student, jamais un autre
-          superadmin (pas de règle métier l'autorisant) ;
+        - superadmin → tout autre compte, y compris un autre superadmin ;
+          pour un superadmin, la vue exige en plus le mot de passe de
+          l'auteur (ré-authentification) ;
         - admin → teacher / parent / student de SON établissement uniquement,
           jamais un admin ni un superadmin ;
         - tous les autres rôles → jamais.
@@ -145,7 +146,7 @@ class CustomUser(AbstractUser):
         if target_user.pk == self.pk:
             return False
         if self.is_superadmin():
-            return target_user.role in ('admin', 'teacher', 'parent', 'student')
+            return target_user.role in ('superadmin', 'admin', 'teacher', 'parent', 'student')
         if self.is_admin():
             if target_user.school_id != self.school_id:
                 return False
