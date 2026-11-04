@@ -22,7 +22,7 @@ const nav = [
   { label: "Suivi pédagogique", icon: TrendingUp,     to: "/teacher/suivi", feature: "suivi_pedagogique" },
   { label: "Compétences", icon: ListTree, to: "/teacher/suivi/referentiels", feature: "suivi_pedagogique" },
   { label: "Examens et évaluations", icon: ClipboardCheck, to: "/teacher/evaluations", feature: "evaluations_en_ligne" },
-  { label: "Aide", icon: CircleHelp, to: "/teacher/aide", feature: "suivi_pedagogique" },
+  { label: "Aide", icon: CircleHelp, to: "/teacher/aide" },
   { label: "Absences",         icon: Calendar,        to: "/teacher/attendance" },
   { label: "Devoirs",          icon: FileText,        to: "/teacher/homework" },
   { label: "Emploi du temps",  icon: Calendar,        to: "/teacher/schedule" },

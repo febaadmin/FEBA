@@ -50,7 +50,7 @@ const nav = [
   { label: "Suivi pédagogique", icon: TrendingUp, to: "/admin/suivi", feature: "suivi_pedagogique" },
   { label: "Compétences", icon: ListTree, to: "/admin/suivi/referentiels", feature: "suivi_pedagogique" },
   { label: "Examens et évaluations", icon: ClipboardCheck, CircleHelp, to: "/admin/evaluations", feature: "evaluations_en_ligne" },
-  { label: "Aide", icon: CircleHelp, to: "/admin/aide", feature: "suivi_pedagogique" },
+  { label: "Aide", icon: CircleHelp, to: "/admin/aide" },
   { label: "Rapports mensuels", icon: FileBarChart, to: "/admin/monthly-reports", feature: "monthly_reports" },
   { label: "Site vitrine",     icon: Globe,            to: "/admin/website" },
   { label: "Branding & Logo",  icon: School,           to: "/admin/branding" },

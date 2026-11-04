@@ -20,7 +20,7 @@ const nav = [
   { label: "Mes notes",       icon: ClipboardList, to: "/student/grades" },
   { label: "Mon suivi",       icon: TrendingUp,    to: "/student/suivi", feature: "suivi_familles" },
   { label: "Mes épreuves", icon: ClipboardCheck, to: "/student/evaluations", feature: "evaluations_en_ligne" },
-  { label: "Aide", icon: CircleHelp, to: "/student/aide", feature: "evaluations_en_ligne" },
+  { label: "Aide", icon: CircleHelp, to: "/student/aide" },
   { label: "Absences",        icon: Calendar,      to: "/student/attendance" },
   { label: "Devoirs",         icon: FileText,      to: "/student/homework" },
   { label: "Emploi du temps", icon: Calendar,      to: "/student/schedule" },
