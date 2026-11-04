@@ -2,8 +2,8 @@ import "./utils/zodSansEval";
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
-import { QueryCache, QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { signalerErreurLecture } from "./utils/erreursRequetes";
+import { MutationCache, QueryCache, QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { signalerErreurEcriture, signalerErreurLecture } from "./utils/erreursRequetes";
 import { Toaster } from "react-hot-toast";
 import App from "./App";
 import { AcademyProvider } from "./context/AcademyContext";
@@ -25,6 +25,7 @@ const noRetryOn4xx = (failureCount, error) => {
 };
 const queryClient = new QueryClient({
   queryCache: new QueryCache({ onError: signalerErreurLecture }),
+  mutationCache: new MutationCache({ onError: signalerErreurEcriture }),
   defaultOptions: {
     queries: { retry: noRetryOn4xx, staleTime: 30000 },
     // Jamais de nouvel essai automatique d'une écriture : après une 500 ou une

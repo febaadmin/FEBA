@@ -83,6 +83,19 @@ export default async function () {
   const corps = await essai.json().catch(() => ({}));
   ok(S, "le superadmin se connecte avec le nouveau mot de passe, changement imposé", essai.status === 200 && corps.must_change_password === true,
     essai.status + " " + JSON.stringify(Object.keys(corps)).slice(0, 120));
+  // Écriture refusée : le motif du serveur s'affiche (auparavant : rien, la fenêtre restait ouverte).
+  await p.goto(BASE + "/superadmin/users");
+  await p.waitForTimeout(900);
+  await p.getByRole("button", { name: "Super Admin", exact: true }).first().click();
+  await p.waitForTimeout(700);
+  await p.locator("tr", { hasText: email }).locator("button").nth(1).click();
+  await p.waitForTimeout(500);
+  const champEmail = p.locator('[role=dialog] input[type=email], [role=dialog] input[name=email]').first();
+  await champEmail.fill(COMPTES.admin[0]);
+  const refusAffiche = await messages(p, () => p.locator('[role=dialog] button[type=submit]').click(), 1500);
+  ok(S, "écriture refusée : motif affiché", refusAffiche.length > 0, JSON.stringify(refusAffiche));
+  await p.keyboard.press("Escape");
+  await p.waitForTimeout(500);
   ok(S, "l'auteur reste connecté", (await api("GET", "/auth/me/", await jeton("superadmin"))).statut === 200);
   ok(S, "aucune erreur JS ni 5xx", p.erreurs.length === 0, p.erreurs.join(" | "));
   await p.contexte.close();

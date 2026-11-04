@@ -20,3 +20,31 @@ describe("signalerErreurLecture", () => {
     expect(toast.error).not.toHaveBeenCalled();
   });
 });
+
+describe("signalerErreurEcriture", () => {
+  it("affiche le motif du serveur quand l'écran ne gère pas l'erreur", async () => {
+    const { signalerErreurEcriture } = await import("./erreursRequetes");
+    toast.error.mockClear();
+    const refus = { response: { status: 400, data: { detail: "Suppression impossible : compte lié à des notes." } } };
+    expect(signalerErreurEcriture(refus, {}, {}, { options: {} })).toBe(true);
+    expect(toast.error).toHaveBeenCalledWith("Suppression impossible : compte lié à des notes.");
+  });
+  it("laisse l'écran parler quand il gère l'erreur, et ignore les annulations", async () => {
+    const { signalerErreurEcriture } = await import("./erreursRequetes");
+    toast.error.mockClear();
+    expect(signalerErreurEcriture({ response: { status: 400 } }, {}, {}, { options: { onError: () => {} } })).toBe(false);
+    expect(signalerErreurEcriture({ response: { status: 400 } }, {}, {}, { options: {}, meta: { erreurGeree: true } })).toBe(false);
+    expect(signalerErreurEcriture({ code: "ERR_CANCELED" }, {}, {}, { options: {} })).toBe(false);
+    expect(toast.error).not.toHaveBeenCalled();
+  });
+  it("branché sur le client : une mutation sans onError affiche l'erreur une seule fois", async () => {
+    const { signalerErreurEcriture } = await import("./erreursRequetes");
+    const { MutationCache, QueryClient } = await import("@tanstack/react-query");
+    toast.error.mockClear();
+    const client = new QueryClient({ mutationCache: new MutationCache({ onError: signalerErreurEcriture }) });
+    const refus = { response: { status: 409, data: { detail: "Déjà supprimé." } } };
+    await client.getMutationCache().build(client, { mutationFn: () => Promise.reject(refus) }).execute().catch(() => {});
+    await client.getMutationCache().build(client, { mutationFn: () => Promise.reject(refus), onError: () => {} }).execute().catch(() => {});
+    expect(toast.error).toHaveBeenCalledTimes(1);
+  });
+});
