@@ -1,7 +1,7 @@
 import { NavLink } from "react-router-dom";
 import { useState, useEffect } from "react";
 import {
-  Building2, Star, Stamp, FileBarChart, LayoutDashboard, Users, Shield, GraduationCap, UserCheck, Users2, BookOpen, DollarSign, Megaphone, Settings, LogOut, Menu, X, MessageSquare, Layers, ClipboardList, FileText, Calendar, UserCog, FolderOpen, Image, ClipboardCheck, CircleHelp, ListTree, Video, Globe, AlertTriangle, CreditCard, Award, Mail, BellRing, Inbox, TrendingUp, ReceiptText } from "lucide-react";
+  Building2, Star, Stamp, FileBarChart, LayoutDashboard, Users, Shield, GraduationCap, UserCheck, Users2, BookOpen, DollarSign, Megaphone, Settings, LogOut, Menu, X, MessageSquare, Layers, ClipboardList, FileText, Calendar, UserCog, FolderOpen, Image, ClipboardCheck, CircleHelp, ListTree, Video, Globe, AlertTriangle, CreditCard, Award, Mail, BellRing, Inbox, TrendingUp, ReceiptText, Wallet } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
 import AcademyLogo from "../components/AcademyLogo";
 import AcademyName from "../components/AcademyName";
@@ -42,6 +42,7 @@ const nav = [
     { label: "Paiements",         icon: DollarSign,    to: "/superadmin/payments" },
   { label: "Transactions carte", icon: CreditCard, to: "/superadmin/card-transactions" },
   { label: "Tarifs et échéances", icon: ReceiptText, to: "/superadmin/tarifs" },
+  { label: "Situation financière", icon: Wallet, to: "/superadmin/situation-financiere" },
   { label: "Relances de paiement", icon: BellRing, to: "/superadmin/payment-reminders" },
   { label: "Documents officiels", icon: Award, to: "/superadmin/official-documents" },
   { label: "Gabarits des documents", icon: Stamp, to: "/superadmin/document-templates" },

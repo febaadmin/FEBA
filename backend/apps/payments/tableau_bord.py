@@ -152,13 +152,13 @@ def calculer(academies, periode="12m", du=None, au=None, aujourd_hui=None):
         # Échéances (module des relances) : attendu, payé, restant.
         echeances = [i for i in compute_dues(academie, on_date=aujourd_hui).items
                      if debut <= i.installment.due_date <= fin]
-        attendu = sum(i.expected - i.discount for i in echeances)
+        attendu = sum(i.net for i in echeances)
         echues = [i for i in echeances if i.installment.due_date <= aujourd_hui]
-        attendu_echu = sum(i.expected - i.discount for i in echues)
-        paye_echu = sum(min(i.paid, i.expected - i.discount) for i in echues)
+        attendu_echu = sum(i.net for i in echues)
+        paye_echu = sum(min(i.paid, i.net) for i in echues)
         restant = sum(i.outstanding for i in echues)
         for i in echeances:
-            d["serie"][_case(i.installment.due_date, par_jour)]["attendu"] += i.expected - i.discount
+            d["serie"][_case(i.installment.due_date, par_jour)]["attendu"] += i.net
         # Calculable dès que l'académie a un tarif actif avec échéances : sinon la valeur
         # est inconnue (« non calculable »). S'il y en a, une période sans échéance vaut 0.
         from apps.payments.models import FeeSchedule
