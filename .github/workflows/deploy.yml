@@ -265,6 +265,7 @@ jobs:
           else
             echo "==> nginx : mise à jour"
             compose up -d --no-deps nginx-prod
+            nginx_recree=1
           fi
 
           echo "==> Fin des relais : les requêtes en cours se terminent"
@@ -296,6 +297,10 @@ jobs:
           # configuration a changé, et coupe sinon toutes les connexions pour rien.
           if git diff --quiet "$previous_sha" HEAD -- nginx/; then
             echo "==> Configuration Nginx inchangée : pas de redémarrage"
+          elif [ "${nginx_recree:-0}" = 1 ]; then
+            # Recréé plus haut : il a déjà lu la nouvelle configuration. Un redémarrage
+            # ajouterait une seconde coupure (constaté sur le journal du 04/11).
+            echo "==> Nginx recréé avec la nouvelle configuration : pas de second redémarrage"
           else
             echo "==> Redémarrage de Nginx : configuration modifiée"
             compose restart nginx-prod
