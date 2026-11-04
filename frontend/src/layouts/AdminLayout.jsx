@@ -1,7 +1,7 @@
 import { NavLink, useNavigate } from "react-router-dom";
 import { useState, useEffect, useRef } from "react";
 import {
-  Star, Stamp, FileBarChart, LayoutDashboard, Users, GraduationCap, UserCheck, BookOpen, ClipboardList, DollarSign, Calendar, FileText, Bell, MessageSquare, Megaphone, Settings, LogOut, School, Menu, X, UserCog, Layers, FolderOpen, ClipboardCheck, CircleHelp, ListTree, Video, Globe, CreditCard, Award, Mail, BellRing, Inbox, TrendingUp } from "lucide-react";
+  Star, Stamp, FileBarChart, LayoutDashboard, Users, GraduationCap, UserCheck, BookOpen, ClipboardList, DollarSign, Calendar, FileText, Bell, MessageSquare, Megaphone, Settings, LogOut, School, Menu, X, UserCog, Layers, FolderOpen, ClipboardCheck, CircleHelp, ListTree, Video, Globe, CreditCard, Award, Mail, BellRing, Inbox, TrendingUp, ReceiptText } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
 import AcademyLogo from "../components/AcademyLogo";
 import AcademyName from "../components/AcademyName";
@@ -37,6 +37,7 @@ const nav = [
   { label: "Devoirs",         icon: BookOpen,         to: "/admin/homework" },
   { label: "Paiements",       icon: DollarSign,       to: "/admin/payments" },
   { label: "Transactions carte", icon: CreditCard, to: "/admin/card-transactions" },
+  { label: "Tarifs et échéances", icon: ReceiptText, to: "/admin/tarifs" },
   { label: "Relances de paiement", icon: BellRing, to: "/admin/payment-reminders" },
   { label: "Documents officiels", icon: Award, to: "/admin/official-documents" },
   { label: "Gabarits des documents", icon: Stamp, to: "/admin/document-templates" },

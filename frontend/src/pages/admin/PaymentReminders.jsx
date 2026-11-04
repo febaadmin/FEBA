@@ -29,6 +29,7 @@ import { t } from "../../i18n";
 import { extractApiError } from "../../utils/errors";
 import { formatCalendarDate, formatDateTime } from "../../utils/datetime";
 import { useAcademyKey } from "../../hooks/useEntityContext";
+import { NATURES_FRAIS } from "../../utils/naturesFrais";
 
 const TABS = [
   ["status", "État et règles", BellRing],
@@ -37,10 +38,7 @@ const TABS = [
   ["history", "Historique", History],
 ];
 
-const PAYMENT_TYPES = [
-  ["inscription", "Inscription"], ["mensualite", "Mensualité"], ["cantine", "Cantine"],
-  ["transport", "Transport"], ["garderie", "Garderie"], ["other", "Autre"],
-];
+const PAYMENT_TYPES = NATURES_FRAIS;
 
 const REMINDER_TONE = {
   sent: "bg-emerald-50 text-emerald-700", notified: "bg-primary-50 text-primary-700",
@@ -288,7 +286,7 @@ const emptyFee = () => ({
   installments: [{ label: "", due_date: "", amount: "" }],
 });
 
-function SchedulesTab() {
+export function SchedulesTab() {
   const qc = useQueryClient();
   const academyKey = useAcademyKey();
   const [tarifASupprimer, setTarifASupprimer] = useState(null);
@@ -306,7 +304,11 @@ function SchedulesTab() {
       const body = { ...fee, school_year: fee.school_year || null, level: fee.level || null };
       return fee.id ? feeSchedulesAPI.update(fee.id, body) : feeSchedulesAPI.create(body);
     },
-    onSuccess: () => { setEditing(null); qc.invalidateQueries({ queryKey: ["fee-schedules", academyKey] }); toast.success(t("Échéancier enregistré.")); },
+    onSuccess: () => {
+      setEditing(null);
+      ["fee-schedules", "fee-changes"].forEach((k) => qc.invalidateQueries({ queryKey: [k, academyKey] }));
+      toast.success(t("Échéancier enregistré."));
+    },
     onError: (e) => toast.error(extractApiError(e)),
   });
   const deleteMut = useMutation({
@@ -365,7 +367,7 @@ function SchedulesTab() {
   );
 }
 
-function FeeEditor({ fee, years, levels, saving, onCancel, onSave }) {
+export function FeeEditor({ fee, years, levels, saving, onCancel, onSave }) {
   const [f, setF] = useState(fee);
   const set = (key) => (e) => setF({ ...f, [key]: e.target.type === "checkbox" ? e.target.checked : e.target.value });
   const setInst = (index, key, value) => setF({ ...f, installments: f.installments.map((row, i) => (i === index ? { ...row, [key]: value } : row)) });
@@ -386,6 +388,10 @@ function FeeEditor({ fee, years, levels, saving, onCancel, onSave }) {
             <option value="recurring">{t("Récurrent (ex. mensuel)")}</option></select></label>
           <label className="flex items-center gap-2 col-span-2"><input type="checkbox" checked={f.is_mandatory} onChange={set("is_mandatory")} />
             {t("Dû par tous les élèves du périmètre (sinon : élèves abonnés uniquement)")}</label>
+          <label className="flex items-center gap-2 col-span-2"><input type="checkbox" checked={f.is_active !== false} onChange={set("is_active")} />
+            {t("Tarif actif (désactivé : plus aucune échéance ni relance, historique conservé)")}</label>
+          <label className="col-span-2">{t("Motif (conservé dans l'historique ; obligatoire pour changer le montant d'un tarif déjà payé)")}
+            <input className="input" value={f.motif || ""} onChange={set("motif")} data-testid="tarif-motif" /></label>
         </div>
         <div className="space-y-2">
           <p className="font-semibold">{t("Échéances")}</p>

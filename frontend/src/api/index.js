@@ -753,6 +753,7 @@ export const feeSchedulesAPI = {
   arrangements:      (feeId) => api.get("/payments/fee-arrangements/", { params: { fee_schedule: feeId } }),
   createArrangement: (d)     => api.post("/payments/fee-arrangements/", d),
   deleteArrangement: (id)    => api.delete(`/payments/fee-arrangements/${id}/`),
+  historique:        (p)     => api.get("/payments/fee-schedules/historique/", { params: p }),
 };
 
 export const remindersAPI = {

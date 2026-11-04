@@ -30,6 +30,13 @@ class Payment(models.Model):
         # sans type de paiement correspondant : il était impossible de
         # l'encaisser autrement que comme « Autre ».
         ("garderie", "Garderie"),
+        # Phase 5 : natures demandées pour les grilles tarifaires. Le libellé
+        # libre du tarif (FeeSchedule.label) précise au-delà (ex. « Examen BEPC »).
+        ("reinscription", "Réinscription"),
+        ("dossier", "Frais de dossier"),
+        ("examen", "Frais d'examen"),
+        ("fournitures", "Fournitures"),
+        ("activites", "Activités"),
         ("other", "Autre"),
     ]
     PAYMENT_METHODS = [
@@ -276,7 +283,7 @@ class PaymentHistory(models.Model):
 # Les modèles de tentative et de journal d'événements vivent dans un module
 # séparé pour ne pas alourdir celui-ci, mais doivent être importés ICI :
 # Django ne découvre les modèles que via `models.py`.
-from apps.payments.fee_models import FeeSchedule  # noqa: E402,F401
+from apps.payments.fee_models import FeeSchedule, FeeScheduleChange  # noqa: E402,F401
 from apps.payments.transaction_models import (  # noqa: E402,F401  (import tardif volontaire)
     PaymentTransaction, WebhookEvent,
 )

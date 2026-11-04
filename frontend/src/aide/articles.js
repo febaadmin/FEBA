@@ -749,6 +749,32 @@ export const ARTICLES = [
     permissions: ["Super administrateur, administrateur ; consultation : parent.", "Super administrator, administrator; viewing: parent."],
   },
   {
+    id: "tarifs", motsCles: "tarif grille scolarite frais echeancier tranche reduction bourse exoneration fees tuition", categorie: "finances",
+    module: ["Tarifs et échéances", "Fees and instalments"], roles: PERSONNEL,
+    liens: { superadmin: "tarifs", admin: "tarifs" },
+    titre: ["Comment définir les tarifs et les échéances de l'année ?", "How do I set the year's fees and instalments?"],
+    objet: ["Enregistrer ce que chaque élève doit payer : montant par niveau et nature de frais, échéancier, réductions et exonérations. C'est la base du montant attendu, du reste à payer et des relances.", "Record what each student must pay: amount per level and fee type, instalments, discounts and exemptions. It is the basis of the expected amount, the outstanding balance and reminders."],
+    prerequis: [SELECTEUR, ["Années scolaires et niveaux créés (Paramètres, Niveaux).", "School years and levels created (Settings, Levels)."]],
+    etapes: [
+      ["Ouvrez « Tarifs et échéances » ; l'onglet « Grille par niveau » montre les montants par niveau et nature pour l'année choisie.", "Open \"Fees and instalments\"; the \"Grid by level\" tab shows amounts per level and fee type for the chosen year."],
+      ["Cliquez sur une case pour créer ou modifier le tarif de ce niveau (une case grise est un tarif général hérité).", "Click a cell to create or edit that level's fee (a grey cell is an inherited general fee)."],
+      ["Saisissez le montant total, le mode (tranches ou récurrent) et les échéances avec leurs dates.", "Enter the total amount, the mode (instalments or recurring) and the instalments with their dates."],
+      ["Dans « Tarifs et échéances », « Élèves (abonnements, exonérations…) » enregistre une réduction, une bourse, une exonération ou un abonnement, avec son motif.", "In \"Fees and instalments\", \"Students (subscriptions, exemptions…)\" records a discount, scholarship, exemption or subscription, with its reason."],
+      ["L'onglet « Historique » montre chaque création, modification, désactivation ou suppression, avec auteur, montants et motif.", "The \"History\" tab shows each creation, change, deactivation or deletion, with author, amounts and reason."],
+    ],
+    champs: [
+      ["Mode « tranches » : la somme des échéances doit égaler le total, sinon aucune relance n'est envoyée.", "\"Instalments\" mode: the sum of instalments must equal the total, otherwise no reminder is sent."],
+      ["Motif : obligatoire pour changer le montant d'un tarif déjà payé par des familles.", "Reason: required to change the amount of a fee families have already paid."],
+    ],
+    resultat: ["Le graphique des paiements affiche alors le montant attendu, le reste à payer et le taux de recouvrement.", "The payments chart then shows the expected amount, the outstanding balance and the collection rate."],
+    erreurs: [
+      [["« Ce tarif est déjà utilisé : désactivez-le »", "\"This fee is already used: deactivate it\""], ["Un tarif payé ou lié à des dispositions d'élèves ne se supprime pas : décochez « Tarif actif ».", "A paid fee, or one linked to student arrangements, cannot be deleted: untick \"Active fee\"."]],
+      [["« Somme des tranches ≠ total »", "\"Sum of instalments ≠ total\""], ["Corrigez les montants des échéances ou le total.", "Fix the instalment amounts or the total."]],
+    ],
+    consequences: ["Un tarif d'une année ne change jamais les montants des années précédentes. Les relances, le paiement par carte et le tableau de bord utilisent ces mêmes tarifs.", "A year's fee never changes previous years' amounts. Reminders, card payment and the dashboard use these same fees."],
+    permissions: ["Super administrateur, administrateur de l'académie.", "Super administrator, academy administrator."],
+  },
+  {
     id: "transactions-carte", categorie: "finances", module: ["Transactions carte", "Card transactions"], roles: PERSONNEL,
     liens: { superadmin: "card-transactions", admin: "card-transactions" },
     titre: ["Comment rembourser un paiement par carte ?", "How do I refund a card payment?"],
