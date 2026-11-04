@@ -69,10 +69,38 @@ def notify_superadmins(incident):
                 related_url=f"/superadmin/incidents/{incident.id}",
             )
             created += 1
+        if incident.severity == "critical":
+            alerter_par_email(incident, superadmins)
         return created
     except Exception:
         logger.exception("Notification des super administrateurs impossible")
         return 0
+
+
+def alerter_par_email(incident, destinataires):
+    """Incident critique : la cloche ne suffit pas (personne ne la regarde la
+    nuit) ; chaque super administrateur reçoit aussi un e-mail, tracé dans la
+    boîte d'envoi. Mêmes seuils que la cloche : pas d'avalanche."""
+    from django.conf import settings
+    from apps.notifications.mailer import send_tracked_email
+    base = (getattr(settings, "PUBLIC_BASE_URL", "") or "").rstrip("/")
+    lien = f"{base}/superadmin/incidents/{incident.id}" if base else f"/superadmin/incidents/{incident.id}"
+    texte = (
+        f"Incident critique {incident.reference} ({incident.occurrences} occurrence(s)).\n"
+        f"{incident.exception_type} : {incident.message}\n"
+        f"Module : {incident.module or '-'}\n\n"
+        f"Détail : {lien}\n\n"
+        f"Critical incident {incident.reference}. Details: {lien}"
+    )
+    for admin in destinataires:
+        try:
+            send_tracked_email(
+                purpose="incident_alert", to_email=admin.email,
+                subject=f"FEBA : incident critique {incident.reference}",
+                text_body=texte, sms=False, reference=incident.reference,
+            )
+        except Exception:  # noqa: BLE001 - l'alerte ne masque jamais l'incident
+            logger.exception("Alerte e-mail de l'incident %s non envoyée", incident.reference)
 
 
 def report_incident(exc, *, request=None, module="", attempted_action="",
