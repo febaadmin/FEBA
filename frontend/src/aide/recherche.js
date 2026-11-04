@@ -18,7 +18,8 @@
  *     (un mot présent seulement dans un détail ne suffit pas à le remonter) ;
  *   - suggestions de mots proches quand rien n'est trouvé.
  */
-import { ARTICLES, CATEGORIES, DEPANNAGE, FAQ, GLOSSAIRE, RACINES } from "./articles";
+import { ARTICLES, CATEGORIES, DEPANNAGE, FAQ, RACINES } from "./articles";
+import { termesPour } from "./glossaire";
 
 const IDX = { fr: 0, en: 1 };
 
@@ -306,10 +307,12 @@ const questions = (liste, prefixe, role, lang, requete) => {
 
 export const faqPour = (role, lang = "fr", requete = "") => questions(FAQ, "faq", role, lang, requete);
 export const depannagePour = (role, lang = "fr", requete = "") => questions(DEPANNAGE, "dep", role, lang, requete);
-export const glossairePour = (lang = "fr", requete = "") => {
-  if (!requete.trim()) return GLOSSAIRE;
-  return classer(GLOSSAIRE, requete, lang, ([mot, def], lg) => ({ titre: L(mot, lg), reste: L(def, lg) }),
-    (x) => `glo:${GLOSSAIRE.indexOf(x)}`).map((c) => c.x);
+/** Glossaire du profil (définitions adaptées au rôle et aux modules actifs), classé par la recherche. */
+export const glossairePour = (role, lang = "fr", requete = "", moduleActif = () => true) => {
+  const termes = termesPour(role, moduleActif);
+  if (!requete.trim()) return termes;
+  return classer(termes, requete, lang, (x, lg) => ({ titre: L(x.terme, lg), reste: L(x.definition, lg) }),
+    (x) => `glo:${role}:${x.id}`).map((c) => c.x);
 };
 
 /** Mots de l'aide proches de la requête, quand rien n'est trouvé. */

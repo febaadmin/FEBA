@@ -168,7 +168,7 @@ export default function Aide() {
   const basculer = (id) => setOuverts((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
   // Une recherche précise ouvre directement les articles trouvés.
   const estOuvert = (id) => ouverts.has(id) || (requete.trim() !== "" && articles.length <= 3);
-  const glossaire = glossairePour(lang, requete);
+  const glossaire = glossairePour(role, lang, requete, actif);
   // Lien direct (?article=…) : l'article demandé est ouvert et amené à l'écran.
   const demande = params.get("article");
   useEffect(() => {
@@ -237,8 +237,8 @@ export default function Aide() {
         <section className="card" data-testid="aide-glossaire">
           <h2 className="text-base font-semibold text-slate-900 mb-3">{L(UI.glossaire, lang)}</h2>
           <dl className="grid gap-x-6 gap-y-2 text-sm md:grid-cols-2">
-            {glossaire.map(([mot, def]) => (
-              <div key={L(mot, "fr")}><dt className="font-medium text-slate-800">{L(mot, lang)}</dt><dd className="text-slate-600">{L(def, lang)}</dd></div>
+            {glossaire.map((x) => (
+              <div key={x.id}><dt className="font-medium text-slate-800">{L(x.terme, lang)}</dt><dd className="text-slate-600">{L(x.definition, lang)}</dd></div>
             ))}
           </dl>
         </section>
