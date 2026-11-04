@@ -39,8 +39,11 @@ export default async function () {
   const cree = await api("POST", "/auth/users/", jt, { email, username: email.split("@")[0], first_name: "Essai", last_name: "Superadmin",
     role: "superadmin", password: initial, password2: initial, school: null });
   ok(S, "superadmin de test créé", cree.statut === 201, cree.statut + " " + cree.brut.slice(0, 200));
-  // La réponse de création ne renvoie pas l'identifiant : on le relit.
-  const tous = await api("GET", `/auth/users/?search=${encodeURIComponent(email)}&page_size=200`, jt);
+  // La réponse de création ne renvoie pas l'identifiant : on le relit. L'académie active
+  // d'un superadmin est mémorisée côté serveur : on se place en « Toutes les Académies »
+  // (les superadmins n'ont pas d'académie), sans dépendre de l'ordre des scénarios.
+  await api("POST", "/auth/entity-context/switch/", jt, { entity_id: null });
+  const tous = await api("GET", "/auth/users/?page_size=500", jt);
   const cible = liste(tous.donnees).find((u) => u.email === email) || {};
   ok(S, "superadmin de test retrouvé", Boolean(cible.id), tous.statut);
 
