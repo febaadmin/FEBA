@@ -17,7 +17,7 @@ vides au lieu d'afficher des valeurs inventées.
 import os
 
 from django.core.validators import MaxValueValidator
-from django.db import models
+from django.db import IntegrityError, models, transaction
 
 from apps.website.private_storage import private_storage
 from django.utils import timezone
@@ -496,6 +496,29 @@ class PreRegistration(models.Model):
         self.sheet_error = ""
 
 
+def enregistrer_avec_reference(objet, enregistrer, *args, **kwargs):
+    """Enregistre un dossier dont la référence vaut « dernier numéro + 1 ».
+
+    Deux dépôts simultanés calculent le même numéro ; la contrainte d'unicité
+    refuse le second (auparavant : erreur 500 sur le formulaire public). On
+    recalcule alors le numéro et on réessaie, dans un point de sauvegarde pour
+    ne pas casser la transaction en cours. Une référence fournie n'est jamais
+    réécrite.
+    """
+    if objet.reference:
+        return enregistrer(*args, **kwargs)
+    for essai in range(5):
+        objet.reference = objet.generate_reference()
+        try:
+            with transaction.atomic():
+                return enregistrer(*args, **kwargs)
+        except IntegrityError as exc:
+            if essai == 4 or "reference" not in str(exc):
+                objet.reference = ""
+                raise
+    return None
+
+
 class FHAEnrollmentApplication(models.Model):
     """
     Fiche de renseignements FEBA French Heritage Academy.
@@ -861,9 +884,7 @@ class FHAEnrollmentApplication(models.Model):
         return f"{base}{seq:04d}"
 
     def save(self, *args, **kwargs):
-        if not self.reference:
-            self.reference = self.generate_reference()
-        super().save(*args, **kwargs)
+        enregistrer_avec_reference(self, super().save, *args, **kwargs)
 
     # ── Fiche PDF ────────────────────────────────────────────────────────
 
@@ -1122,9 +1143,7 @@ class FHAPlacementTestRequest(models.Model):
         return f"{base}{seq:04d}"
 
     def save(self, *args, **kwargs):
-        if not self.reference:
-            self.reference = self.generate_reference()
-        super().save(*args, **kwargs)
+        enregistrer_avec_reference(self, super().save, *args, **kwargs)
 
 
 class FHAPlacementTestResult(models.Model):
