@@ -173,6 +173,8 @@ export function AcademyProvider({ children }) {
           : BOOT.AUTH_READY;
 
   const mutation = useMutation({
+    // L'échec de bascule est affiché par le sélecteur (onError à l'appel).
+    meta: { erreurGeree: true },
     mutationFn: (entityId) =>
       api
         .post("/auth/entity-context/switch/", { entity_id: entityId ?? null })
