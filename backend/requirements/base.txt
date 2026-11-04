@@ -6,6 +6,12 @@ django-filter==24.2
 channels==4.1.0
 channels-redis==4.2.0
 celery==5.3.6
+# Épinglés : kombu 5.7.0 (publié en novembre 2026) exige redis-py ≥ 6.4 ; installé sans
+# borne, il arrêtait le worker et le planificateur Celery (VersionMismatch, panne du 03/11).
+kombu==5.6.2
+amqp==5.3.1
+vine==5.1.0
+billiard==4.2.1
 redis==5.0.3
 psycopg2-binary==2.9.12   # 2.9.9 n'a pas de roue pour Python ≥ 3.13
 Pillow==13.0.0

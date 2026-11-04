@@ -134,6 +134,23 @@ jobs:
           printf '%s\n' "$plan"
           printf '%s\n' "$plan" | grep -q "No planned migration operations"
 
+      # Panne du 03/11/2026 : kombu 5.7.0, installé sans borne, arrêtait le worker et le
+      # planificateur (VersionMismatch avec redis-py) ; aucun test ne démarrait Celery. Ici
+      # un vrai worker et un vrai planificateur se connectent à Redis et exécutent une tâche.
+      - name: Celery réellement opérationnel (worker, planificateur, Redis)
+        working-directory: backend
+        env:
+          DJANGO_SETTINGS_MODULE: feba_project.settings.test_postgres
+        run: |
+          celery -A feba_project worker -l info --detach --pidfile=/tmp/worker.pid --logfile=/tmp/worker.log
+          for i in $(seq 1 30); do celery -A feba_project inspect ping -t 2 >/dev/null 2>&1 && break; sleep 2; done
+          celery -A feba_project inspect ping -t 5
+          python -c "import django; django.setup(); from celery import current_app as a; a.send_task('celery.backend_cleanup').get(timeout=30); print('Tâche exécutée par le worker.')"
+          timeout 20 celery -A feba_project beat -l info -s /tmp/beat-schedule > /tmp/beat.log 2>&1 || true
+          grep -q "beat: Starting" /tmp/beat.log
+          if grep -E "VersionMismatch|Unrecoverable|Traceback" /tmp/worker.log /tmp/beat.log; then exit 1; fi
+          kill "$(cat /tmp/worker.pid)"
+
       - name: Suite backend — PostgreSQL
         working-directory: backend
         env:

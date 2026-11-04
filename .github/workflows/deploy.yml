@@ -292,6 +292,29 @@ jobs:
             exit 1
           fi
 
+          # Panne du 03/11/2026 : le worker et le planificateur redémarraient en boucle
+          # (VersionMismatch kombu/redis-py) sans que le déploiement le voie.
+          echo "==> Vérification de Celery (worker et planificateur)"
+          for attempt in $(seq 1 12); do
+            if compose exec -T celery-prod celery -A feba_project inspect ping -t 5 </dev/null; then
+              break
+            fi
+            if [ "$attempt" -eq 12 ]; then
+              echo "ERREUR : le worker Celery ne répond pas."
+              compose logs celery-prod celery-beat --tail=80
+              exit 1
+            fi
+            sleep 5
+          done
+          sleep 20
+          etat_beat="$(docker inspect -f '{{.State.Running}} {{.RestartCount}}' feba_celery_beat)"
+          echo "Planificateur : en marche, redémarrages = $etat_beat"
+          if [ "$etat_beat" != "true 0" ]; then
+            echo "ERREUR : le planificateur Celery ne tient pas."
+            compose logs celery-beat --tail=80
+            exit 1
+          fi
+
           # nginx résout le backend à chaque requête : le redémarrer n'est utile que si sa
           # configuration a changé, et coupe sinon toutes les connexions pour rien.
           if git diff --quiet "$previous_sha" HEAD -- nginx/; then
