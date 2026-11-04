@@ -4,7 +4,7 @@ import { BASE, connecter, ok } from "../outils.mjs";
 
 const S = "aide";
 const ATTENDUS = {
-  superadmin: { present: "reinitialiser-mdp", absent: null },
+  superadmin: { present: "reinitialiser-mdp", absent: null, aussi: ["famille-paiements", "passer-epreuve"] },
   admin: { present: "bulletins-generer", absent: "academies" },
   teacher: { present: "notes-saisir", absent: "utilisateurs-creer" },
   parent: { present: "famille-paiements", absent: "paiements" },
@@ -12,7 +12,7 @@ const ATTENDUS = {
 };
 
 export default async function () {
-  for (const [role, { present, absent }] of Object.entries(ATTENDUS)) {
+  for (const [role, { present, absent, aussi = [] }] of Object.entries(ATTENDUS)) {
     const p = await connecter(role);
     // L'entrée « Aide » existe dans le menu, quel que soit le module activé.
     const menu = p.locator(`a[href="${p.racine}/aide"]`).first();
@@ -20,7 +20,7 @@ export default async function () {
     await p.goto(BASE + p.racine + "/aide");
     await p.waitForTimeout(800);
     const ids = await p.locator("[data-testid=aide-article]").evaluateAll((l) => l.map((e) => e.dataset.article));
-    ok(S, `${role} : articles du profil`, ids.includes(present) && (!absent || !ids.includes(absent)), `${ids.length} articles`);
+    ok(S, `${role} : articles du profil`, ids.includes(present) && (!absent || !ids.includes(absent)) && aussi.every((i) => ids.includes(i)), `${ids.length} articles`);
     ok(S, `${role} : FAQ et glossaire`, await p.getByTestId("aide-faq").count() === 1 && await p.getByTestId("aide-glossaire").count() === 1);
 
     // Ouvrir un article et suivre son lien vers le module.
@@ -50,6 +50,19 @@ export default async function () {
   await p.waitForTimeout(300);
   let ids = await p.locator("[data-testid=aide-article]").evaluateAll((l) => l.map((e) => e.dataset.article));
   ok(S, "recherche « bulletin »", ids.includes("bulletins-generer") && !ids.includes("absences"), ids.join(","));
+  // Recherche classée : « message » ne doit plus remonter tout article qui contient le mot.
+  await p.getByTestId("aide-recherche").fill("message");
+  await p.waitForTimeout(300);
+  ids = await p.locator("[data-testid=aide-article]").evaluateAll((l) => l.map((e) => e.dataset.article));
+  ok(S, "recherche « message » : messagerie en tête, peu de résultats", ids[0] === "messagerie" && ids.length <= 3, ids.join(","));
+  ok(S, "terme surligné dans le titre", await p.locator('[data-article="messagerie"] mark').count() > 0);
+  await p.getByTestId("aide-recherche").fill("bulettin");
+  await p.waitForTimeout(300);
+  ids = await p.locator("[data-testid=aide-article]").evaluateAll((l) => l.map((e) => e.dataset.article));
+  ok(S, "faute de frappe « bulettin » corrigée", ids[0] === "bulletins-generer", ids.join(","));
+  await p.getByTestId("aide-recherche").fill("bultinzz");
+  await p.waitForTimeout(300);
+  ok(S, "aucun résultat : message et suggestions", await p.getByTestId("aide-aucun").count() === 1);
   await p.getByTestId("aide-recherche").fill("eleve");
   await p.waitForTimeout(300);
   ids = await p.locator("[data-testid=aide-article]").evaluateAll((l) => l.map((e) => e.dataset.article));
