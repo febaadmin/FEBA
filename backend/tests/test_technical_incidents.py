@@ -134,7 +134,7 @@ class RealServerErrorTests(IncidentFixture):
         incident = TechnicalIncident.objects.get()
         self.assertEqual(TechnicalIncident.objects.count(), 1)
         self.assertEqual(incident.occurrences, 3)
-        # Pas une notification par occurrence (paliers 1, 5, 25…)
+        # Une seule notification pour une erreur répétée sans interruption.
         self.assertEqual(Notification.objects.filter(user=self.superadmin).count(), 1)
 
 
@@ -154,20 +154,43 @@ class ReportServiceTests(IncidentFixture):
         self.assertIsNotNone(incident)
         self.assertEqual(Notification.objects.filter(title__contains=incident.reference).count(), 2)
 
-    def test_incident_critique_alerte_par_email_selon_les_seuils(self):
-        """ERR-310AC0 : 19 occurrences en 4 h 30 sans que personne ne le voie.
-        Un incident critique prévient aussi par e-mail, aux mêmes seuils que
-        la cloche (1, 5, 25…), jamais à chaque occurrence."""
-        from apps.notifications.email_models import EmailDelivery
+    def critique(self):
         from apps.incidents.tasks import AnomaliePlateforme
-        for _ in range(6):
-            report_incident(AnomaliePlateforme("Sauvegarde : aucune réussite"), module="surveillance",
-                            severity="critical", status_code=0)
+        return report_incident(AnomaliePlateforme("Sauvegarde : aucune réussite"), module="surveillance",
+                               severity="critical", status_code=0)
+
+    def test_panne_continue_une_seule_alerte(self):
+        """ERR-310AC0 : notifications à 06:00 et 07:00 pour la même panne continue
+        (paliers 1 et 5). Une panne continue n'alerte qu'une fois ; toutes les
+        occurrences restent comptées."""
+        from apps.notifications.email_models import EmailDelivery
+        for _ in range(30):
+            incident = self.critique()
+        self.assertEqual(incident.occurrences, 30)
+        self.assertEqual(Notification.objects.filter(user=self.superadmin, title__contains=incident.reference).count(), 1)
         alertes = EmailDelivery.objects.filter(purpose="incident_alert", to_email="sa@test.bj")
-        self.assertEqual(alertes.count(), 2)  # 1re et 5e occurrence
-        premiere = alertes.order_by("id").first()
-        self.assertIn("incident critique", premiere.subject)
-        self.assertIn("/superadmin/incidents/", premiere.content.text_body)
+        self.assertEqual(alertes.count(), 1)
+        self.assertIn("incident critique", alertes.first().subject)
+        self.assertIn(f"/superadmin/incidents/{incident.id}", alertes.first().content.text_body)
+
+    def test_retour_apres_silence_nouvelle_alerte(self):
+        import datetime
+        from django.utils import timezone
+        incident = self.critique()
+        TechnicalIncident.objects.filter(pk=incident.pk).update(last_seen_at=timezone.now() - datetime.timedelta(hours=7))
+        self.critique()
+        self.assertEqual(Notification.objects.filter(user=self.superadmin, title__contains=incident.reference).count(), 2)
+        TechnicalIncident.objects.filter(pk=incident.pk).update(last_seen_at=timezone.now() - datetime.timedelta(hours=2))
+        self.critique()
+        self.assertEqual(Notification.objects.filter(user=self.superadmin, title__contains=incident.reference).count(), 2)
+
+    def test_reapparition_apres_correction_rouvre_et_alerte(self):
+        from apps.incidents.models import changer_statut
+        incident = self.critique()
+        changer_statut(incident, "corrected", note="test")
+        incident = self.critique()
+        self.assertEqual(incident.status, "reopened")
+        self.assertEqual(Notification.objects.filter(user=self.superadmin, title__contains=incident.reference).count(), 2)
 
     def test_incident_ordinaire_sans_email(self):
         from apps.notifications.email_models import EmailDelivery

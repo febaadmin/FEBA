@@ -4,6 +4,7 @@ Enregistrement des incidents techniques + notification réelle des super admins.
 Règle d'honnêteté (V8) : le message renvoyé à l'utilisateur n'annonce une
 remontée à l'équipe technique QUE si l'incident a réellement été enregistré.
 """
+import datetime
 import logging
 import os
 import traceback
@@ -18,9 +19,13 @@ from .models import (
 
 logger = logging.getLogger("apps")
 
-# Au-delà du 1er signalement, on ne renotifie que sur ces paliers d'occurrences
-# (évite de saturer la cloche des super administrateurs).
-NOTIFY_THRESHOLDS = {1, 5, 25, 100, 500}
+# Notification : à la création, à la réapparition après correction, ou au retour
+# après un silence d'au moins REPRISE_APRES. Les paliers d'occurrences (1, 5, 25…)
+# produisaient des rappels sans information nouvelle (ERR-310AC0 : deux
+# notifications à une heure d'intervalle pour la même panne continue).
+# La règle ne dépend que de l'état en base : un redémarrage de Celery ne la
+# fait ni oublier, ni répéter.
+REPRISE_APRES = datetime.timedelta(hours=6)
 
 
 def _exception_location(exc):
@@ -80,7 +85,7 @@ def notify_superadmins(incident):
 def alerter_par_email(incident, destinataires):
     """Incident critique : la cloche ne suffit pas (personne ne la regarde la
     nuit) ; chaque super administrateur reçoit aussi un e-mail, tracé dans la
-    boîte d'envoi. Mêmes seuils que la cloche : pas d'avalanche."""
+    boîte d'envoi. Même règle que la cloche (création, réapparition, retour après silence)."""
     from django.conf import settings
     from apps.notifications.mailer import send_tracked_email
     base = (getattr(settings, "PUBLIC_BASE_URL", "") or "").rstrip("/")
@@ -170,13 +175,14 @@ def report_incident(exc, *, request=None, module="", attempted_action="",
                 should_notify = True
             else:
                 incident.occurrences += 1
+                silence = timezone.now() - incident.last_seen_at
                 incident.last_seen_at = timezone.now()
                 incident.save(update_fields=["occurrences", "last_seen_at"])
                 # Une erreur qui revient après correction ou résolution est rouverte.
                 revient = incident.status in ("resolved", "corrected")
                 if revient:
                     changer_statut(incident, "reopened", note="Nouvelle occurrence après correction.")
-                should_notify = revient or incident.occurrences in NOTIFY_THRESHOLDS
+                should_notify = revient or silence >= REPRISE_APRES
 
         if should_notify:
             notify_superadmins(incident)
