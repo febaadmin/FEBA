@@ -21,7 +21,8 @@ class ClassViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         user = self.request.user
         school = get_request_school(self.request)
-        qs = Class.objects.select_related("level", "school_year__school").prefetch_related("students", "subjects")
+        from .serializers import classes_optimisees
+        qs = classes_optimisees(Class.objects.prefetch_related("students"))
 
         if school is not None:
             qs = qs.filter(school_year__school=school)

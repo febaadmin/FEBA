@@ -34,8 +34,13 @@ class TeacherViewSet(BulkDeleteMixin, viewsets.ModelViewSet):
         school = get_request_school(self.request)
         # Ordre explicite : la pagination d'un queryset non ordonné peut
         # répéter ou omettre des lignes d'une page à l'autre.
-        qs = Teacher.objects.select_related("user").prefetch_related(
-            "subjects", "classes__level"
+        from django.db.models import Prefetch
+        from apps.classes.models import Class
+        from apps.classes.serializers import classes_optimisees
+        from apps.subjects.models import Subject
+        qs = Teacher.objects.select_related("user__school").prefetch_related(
+            Prefetch("subjects", queryset=Subject.objects.select_related("school")),
+            Prefetch("classes", queryset=classes_optimisees(Class.objects.all())),
         ).order_by("user__last_name", "user__first_name", "pk")
 
         if school is not None:
@@ -124,7 +129,8 @@ class TeacherViewSet(BulkDeleteMixin, viewsets.ModelViewSet):
         except Exception:
             return Response({"error": "Profil enseignant introuvable."}, status=404)
         from apps.classes.serializers import ClassSerializer
-        return Response(ClassSerializer(teacher.classes.all(), many=True).data)
+        from apps.classes.serializers import classes_optimisees
+        return Response(ClassSerializer(classes_optimisees(teacher.classes.all()), many=True).data)
 
     @action(detail=True, methods=["get"])
     def schedule(self, request, pk=None):

@@ -1,4 +1,5 @@
 import { FileText, X, Calendar, User } from "lucide-react";
+import { t } from "../../i18n";
 
 /**
  * Reusable modal to display an announcement detail with attachment.
@@ -30,8 +31,8 @@ export default function AnnouncementModal({ announcement, onClose }) {
               ))}
             </div>
           </div>
-          <button onClick={onClose} className="p-2 rounded-xl hover:bg-slate-100 text-slate-400 shrink-0 transition-colors">
-            <X className="w-5 h-5" />
+          <button type="button" onClick={onClose} aria-label={t("Fermer")} className="p-2 rounded-xl hover:bg-slate-100 text-slate-400 shrink-0 transition-colors">
+            <X className="w-5 h-5" aria-hidden="true" />
           </button>
         </div>
 

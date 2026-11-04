@@ -55,7 +55,23 @@ class ClassSerializer(TenantRelationsMixin, AcademyMetadataMixin, serializers.Mo
             "created_at",
         ] + ACADEMY_FIELDS
 
+    # ── Données d'une classe, lues une fois ──────────────────────────────
+    # Les listes (classes, enseignants et leurs classes) préchargent matières,
+    # année et académie (`classes_optimisees`) et annotent l'effectif : ces
+    # helpers s'en servent, et retombent sur une requête sinon. Les règles
+    # restent celles du modèle et de `subject_rules`.
+    @staticmethod
+    def _matieres(obj):
+        if not hasattr(obj, "_matieres_lues"):
+            obj._matieres_lues = list(obj.subjects.all())
+        return obj._matieres_lues
+
+    def _langues(self, obj):
+        return {s.language for s in self._matieres(obj)}
+
     def get_student_count(self, obj):
+        if hasattr(obj, "_nb_inscrits"):
+            return obj._nb_inscrits or obj._nb_pointes
         # FIX v37 (vidéo 3) : l'effectif d'une classe se compte via les
         # INSCRIPTIONS annuelles (une classe appartient à une année), plus
         # via le pointeur current_class — les classes des années passées
@@ -68,13 +84,11 @@ class ClassSerializer(TenantRelationsMixin, AcademyMetadataMixin, serializers.Mo
 
     def get_subjects_detail(self, obj):
         from apps.subjects.serializers import SubjectSerializer
-        return SubjectSerializer(
-            obj.subjects.all().order_by("language", "order", "name"),
-            many=True,
-        ).data
+        matieres = sorted(self._matieres(obj), key=lambda s: (s.language or "", s.order or 0, s.name or ""))
+        return SubjectSerializer(matieres, many=True).data
 
     def get_has_bilingual(self, obj):
-        return obj.has_bilingual_subjects()
+        return {"fr", "en"} <= self._langues(obj)
 
     def get_effective_language_track(self, obj):
         return obj.effective_language_track
@@ -90,16 +104,19 @@ class ClassSerializer(TenantRelationsMixin, AcademyMetadataMixin, serializers.Mo
         return list(obj.expected_subject_languages())
 
     def get_missing_languages(self, obj):
-        return obj.missing_subject_languages()
+        # Même règle que Class.missing_subject_languages, sur les matières déjà lues.
+        from .subject_rules import required_languages
+        presentes = self._langues(obj)
+        return [lang for lang in required_languages(obj) if lang not in presentes]
 
     def get_language_config_ok(self, obj):
-        return obj.is_language_configuration_complete()
+        return not self.get_missing_languages(obj)
 
     def get_fr_subject_count(self, obj):
-        return obj.get_fr_subjects().count()
+        return sum(1 for s in self._matieres(obj) if s.language == "fr")
 
     def get_en_subject_count(self, obj):
-        return obj.get_en_subjects().count()
+        return sum(1 for s in self._matieres(obj) if s.language == "en")
 
     def validate(self, attrs):
         """
@@ -126,9 +143,7 @@ class ClassSerializer(TenantRelationsMixin, AcademyMetadataMixin, serializers.Mo
     def to_representation(self, instance):
         """Ajoute subject_ids (liste d'entiers) dans la réponse GET."""
         rep = super().to_representation(instance)
-        rep["subject_ids"] = list(
-            instance.subjects.values_list("id", flat=True)
-        )
+        rep["subject_ids"] = [s.pk for s in self._matieres(instance)]
         return rep
 
     def _set_subjects(self, instance, subject_ids):
@@ -184,3 +199,17 @@ class ClassSerializer(TenantRelationsMixin, AcademyMetadataMixin, serializers.Mo
             instance = super().update(instance, validated_data)
             self._set_subjects(instance, subject_ids)
         return instance
+
+
+
+def classes_optimisees(qs):
+    """Classes prêtes pour ClassSerializer : année, académie, niveau, matières
+    (avec leur académie) et effectif en une poignée de requêtes."""
+    from django.db.models import Count, Prefetch, Q
+    from apps.subjects.models import Subject
+    return qs.select_related("level", "school_year__school").prefetch_related(
+        Prefetch("subjects", queryset=Subject.objects.select_related("school")),
+    ).annotate(
+        _nb_inscrits=Count("enrollments__student", filter=Q(enrollments__student__is_active=True), distinct=True),
+        _nb_pointes=Count("students", filter=Q(students__is_active=True), distinct=True),
+    ).order_by(*(qs.model._meta.ordering or []), "pk")  # une requête agrégée ignore Meta.ordering
