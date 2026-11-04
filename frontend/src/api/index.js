@@ -517,6 +517,7 @@ export const paymentsAPI = {
   restore: (id)     => api.post(`/payments/${id}/restore/`),
   cancel: (id, justification) => api.post(`/payments/${id}/cancel/`, { justification }),
   summary: ()       => api.get("/payments/summary/"),
+  tableauDeBord: (p) => api.get("/payments/tableau-de-bord/", { params: p }),
   pending: ()       => api.get("/payments/pending/"),
   generateReceipt: (id) => api.post(`/payments/${id}/generate-receipt/`),
   history: (id)     => api.get(`/payments/${id}/history/`),
