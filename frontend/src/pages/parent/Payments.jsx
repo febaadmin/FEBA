@@ -4,6 +4,7 @@ import { paymentsAPI, parentsAPI, schoolsAPI } from "../../api";
 import PageHeader from "../../components/ui/PageHeader";
 import DataTable from "../../components/ui/DataTable";
 import CardPaymentPanel from "../../components/payments/CardPaymentPanel";
+import ReleveEleve from "../../components/payments/ReleveEleve";
 import { Download, CheckCircle, Clock, Info } from "lucide-react";
 import { t } from "../../i18n";
 import { useMoney } from "../../hooks/useMoney";
@@ -77,6 +78,21 @@ export default function ParentPayments() {
         title={t("Paiements")}
         subtitle={t("Total confirmé : {n}", { n: total }) + (activeYear ? ` - ${activeYear.name}` : "")}
       />
+
+      {/* Situation de chaque enfant : dû, payé, reste et échéances (calcul du serveur). */}
+      {children.length > 0 && (
+        <section className="space-y-2" data-testid="situation-enfants">
+          <h2 className="font-bold text-slate-800">{t("Situation de mes enfants")}</h2>
+          {children.map((enfant) => (
+            <details key={enfant.id} className="card" open={children.length === 1}>
+              <summary className="cursor-pointer font-semibold text-slate-800">
+                {[enfant.first_name, enfant.last_name].filter(Boolean).join(" ") || enfant.full_name}
+              </summary>
+              <div className="mt-3"><ReleveEleve eleveId={enfant.id} academyKey="parent" /></div>
+            </details>
+          ))}
+        </section>
+      )}
 
       {returnState === "succes" && (
         <div className="card border border-primary-200 bg-blue-50/60 flex items-start gap-3">

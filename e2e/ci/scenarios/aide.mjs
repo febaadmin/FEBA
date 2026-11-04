@@ -75,7 +75,7 @@ export default async function () {
   await p.locator('[data-testid=aide-categorie][data-categorie="finances"]').click();
   await p.waitForTimeout(300);
   ids = await p.locator("[data-testid=aide-article]").evaluateAll((l) => l.map((e) => e.dataset.article));
-  ok(S, "catégorie Paiements", ids.length > 0 && ids.every((i) => ["paiements", "tarifs", "transactions-carte", "relances"].includes(i)), ids.join(","));
+  ok(S, "catégorie Paiements", ids.length > 0 && ids.every((i) => ["paiements", "tarifs", "situation-financiere", "transactions-carte", "relances"].includes(i)), ids.join(","));
   ok(S, "catégorie dans l'adresse", new URL(p.url()).searchParams.get("categorie") === "finances");
   await p.getByRole("button", { name: "English", exact: true }).first().click();
   await p.waitForTimeout(500);
