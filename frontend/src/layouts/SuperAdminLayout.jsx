@@ -55,7 +55,7 @@ const nav = [
     { label: "Suivi pédagogique", icon: TrendingUp, to: "/superadmin/suivi", feature: "suivi_pedagogique" },
     { label: "Compétences", icon: ListTree, to: "/superadmin/suivi/referentiels", feature: "suivi_pedagogique" },
     { label: "Examens et évaluations", icon: ClipboardCheck, CircleHelp, to: "/superadmin/evaluations", feature: "evaluations_en_ligne" },
-    { label: "Aide", icon: CircleHelp, to: "/superadmin/aide", feature: "suivi_pedagogique" },
+    { label: "Aide", icon: CircleHelp, to: "/superadmin/aide" },
     { label: "Rapports mensuels", icon: FileBarChart, to: "/superadmin/monthly-reports", feature: "monthly_reports" },
   { label: "Site vitrine",       icon: Globe,         to: "/superadmin/website" },
     { label: "Logo & Branding",    icon: Image,         to: "/superadmin/branding" },

@@ -1,7 +1,7 @@
 // Lance les scénarios (tous, ou ceux nommés en argument) et sort en échec si un contrôle échoue.
 import { fermer, lancer, ok, resultats } from "./outils.mjs";
 
-const TOUS = ["connexion", "comptes", "selecteur", "navigation", "formulaires", "messagerie", "donnees", "modules", "suivi", "examens", "flash"];
+const TOUS = ["connexion", "comptes", "aide", "selecteur", "navigation", "formulaires", "messagerie", "donnees", "modules", "suivi", "examens", "flash"];
 const choisis = process.argv.slice(2).length ? process.argv.slice(2) : TOUS;
 await lancer();
 for (const nom of choisis) {
