@@ -30,8 +30,8 @@ from django.db.models import Count, Q
 from django.http import FileResponse
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
-from django.utils.dateparse import parse_date
 from rest_framework import status
+from apps.core.request_text import date_field
 from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -161,10 +161,8 @@ class OutboxListView(APIView):
             qs = qs.filter(Q(subject__icontains=q) | Q(to_email__icontains=q)
                            | Q(content__text_body__icontains=q) | Q(subject_reference__icontains=q))
         for key, lookup in (("date_from", "created_at__date__gte"), ("date_to", "created_at__date__lte")):
-            if p.get(key):
-                value = parse_date(p[key])
-                if value is None:
-                    raise ValidationError({key: "Date invalide : AAAA-MM-JJ."})
+            value = date_field(p.get(key), key)
+            if value is not None:
                 qs = qs.filter(**{lookup: value})
         if p.get("has_attachments") == "1":
             qs = qs.filter(content__attachments__isnull=False).distinct()

@@ -7,7 +7,6 @@ from django.db import transaction
 from django.db.models import Q
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
-from django.utils.dateparse import parse_datetime
 from rest_framework import mixins, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied, ValidationError
@@ -288,8 +287,9 @@ class EpreuveViewSet(Base, viewsets.ModelViewSet):
         self._droit_sur(epreuve)
         if epreuve.statut != Epreuve.PUBLIEE:
             raise ValidationError({"detail": "Seule une épreuve publiée a des dates à ajuster."})
-        ouverture = parse_datetime(text_field(request.data, "ouverture")) if request.data.get("ouverture") else epreuve.ouverture
-        fermeture = parse_datetime(text_field(request.data, "fermeture")) if request.data.get("fermeture") else epreuve.fermeture
+        from apps.core.request_text import datetime_field
+        ouverture = datetime_field(request.data.get("ouverture"), "ouverture") or epreuve.ouverture
+        fermeture = datetime_field(request.data.get("fermeture"), "fermeture") or epreuve.fermeture
         if ouverture is None or fermeture is None or fermeture <= ouverture:
             raise ValidationError({"detail": "Dates invalides : la fermeture doit suivre l'ouverture."})
         if ouverture != epreuve.ouverture and epreuve.tentatives.exists():

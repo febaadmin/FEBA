@@ -48,3 +48,40 @@ def liste_identifiants(valeurs):
         return None
     ids = [identifiant(v) for v in valeurs]
     return None if None in ids else ids
+
+
+def date_field(value, name):
+    """Date AAAA-MM-JJ venue du client : None si absente, 400 si invalide.
+
+    `parse_date` lève ValueError pour une date bien formée mais impossible
+    (« 2026-02-30 ») et TypeError pour une valeur qui n'est pas un texte :
+    sans ce contrôle, l'une et l'autre donnaient une erreur 500.
+    """
+    from django.utils.dateparse import parse_date
+    if value is None or value == "":
+        return None
+    parsed = None
+    if isinstance(value, str):
+        try:
+            parsed = parse_date(value.strip())
+        except ValueError:
+            parsed = None
+    if parsed is None:
+        raise ValidationError({name: "Date invalide : format attendu AAAA-MM-JJ."})
+    return parsed
+
+
+def datetime_field(value, name):
+    """Date et heure ISO 8601 venue du client : None si absente, 400 si invalide."""
+    from django.utils.dateparse import parse_datetime
+    if value is None or value == "":
+        return None
+    parsed = None
+    if isinstance(value, str):
+        try:
+            parsed = parse_datetime(value.strip())
+        except ValueError:
+            parsed = None
+    if parsed is None:
+        raise ValidationError({name: "Date et heure invalides : format ISO 8601 attendu."})
+    return parsed

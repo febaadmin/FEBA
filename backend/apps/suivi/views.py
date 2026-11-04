@@ -8,7 +8,6 @@ from django.db.models import Count, Q
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
-from django.utils.dateparse import parse_date
 from rest_framework import mixins, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied, ValidationError
@@ -72,18 +71,8 @@ def _reserve_personnel(request):
 
 
 def _periode(params, du="du", au="au"):
-    def lire(cle):
-        valeur = params.get(cle)
-        if not valeur:
-            return None
-        try:
-            date = parse_date(valeur)
-        except ValueError:
-            date = None
-        if date is None:
-            raise ValidationError({cle: "Date attendue au format AAAA-MM-JJ."})
-        return date
-    return lire(du), lire(au)
+    from apps.core.request_text import date_field
+    return date_field(params.get(du), du), date_field(params.get(au), au)
 
 
 class Base(viewsets.GenericViewSet):
@@ -159,6 +148,9 @@ class CompetenceViewSet(ReferentielConfigMixin, Base, viewsets.ModelViewSet):
             "referentiel__subject", "subject").annotate(
             nombre_evaluations=Count("evaluations", filter=valide),
             nombre_eleves=Count("evaluations__student", filter=valide, distinct=True))
+        # Une requête agrégée ignore Meta.ordering : sans ordre explicite et stable, la
+        # pagination pouvait répéter ou omettre des compétences d'une page à l'autre.
+        qs = qs.order_by("referentiel_id", "ordre", "nom", "pk")
         recherche = self.request.query_params.get("q")
         if recherche:
             qs = qs.filter(Q(nom__icontains=recherche) | Q(domaine__icontains=recherche) | Q(description__icontains=recherche))

@@ -721,7 +721,10 @@ class FHAPlacementTestViewSet(viewsets.ModelViewSet):
                 {'scheduled_at': "Créneau requis (ISO 8601 avec fuseau)."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-        moment = parse_datetime(raw)
+        try:
+            moment = parse_datetime(raw) if isinstance(raw, str) else None
+        except ValueError:
+            moment = None
         if moment is None:
             return Response(
                 {'scheduled_at': "Format de date invalide."},
