@@ -48,6 +48,7 @@ INSTALLED_APPS = [
     'apps.monthly_reports',
     'apps.incidents',
     'apps.suivi',
+    'apps.analytics',
     'apps.evaluations',
 ]
 

@@ -882,3 +882,15 @@ export const evaluationsAPI = {
   resultats: () => api.get("/evaluations/passage/resultats/"),
   resultat: (id) => api.get(`/evaluations/passage/${id}/resultat/`),
 };
+
+// Centre d'analyse (lecture seule ; périmètre appliqué par le serveur).
+export const analyticsAPI = {
+  filtres:     (p) => api.get("/analytics/filtres/", { params: p }),
+  effectifs:   (p) => api.get("/analytics/effectifs/", { params: p }),
+  resultats:   (p) => api.get("/analytics/resultats/", { params: p }),
+  matieres:    (p) => api.get("/analytics/matieres/", { params: p }),
+  enseignants: (p) => api.get("/analytics/enseignants/", { params: p }),
+  presences:   (p) => api.get("/analytics/presences/", { params: p }),
+  eleve:       (id, p) => api.get(`/analytics/eleves/${id}/`, { params: p }),
+  mesEleves:   () => api.get("/analytics/mes-eleves/"),
+};

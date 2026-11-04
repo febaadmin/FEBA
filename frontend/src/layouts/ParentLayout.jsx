@@ -1,5 +1,5 @@
 import { NavLink, useNavigate } from "react-router-dom";
-import { Home, Users, ClipboardList, Calendar, FileText, MessageSquare, DollarSign, BookOpen, User, LogOut, School, Menu, X, Bell, Megaphone, Video, TrendingUp, ClipboardCheck, CircleHelp } from "lucide-react";
+import { BarChart3, Home, Users, ClipboardList, Calendar, FileText, MessageSquare, DollarSign, BookOpen, User, LogOut, School, Menu, X, Bell, Megaphone, Video, TrendingUp, ClipboardCheck, CircleHelp } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
 import AcademyLogo from "../components/AcademyLogo";
 import AcademyName from "../components/AcademyName";
@@ -19,6 +19,7 @@ const nav = [
   { label: "Accueil",           icon: Home,           to: "/parent/home" },
   { label: "Mes enfants",       icon: Users,          to: "/parent/children" },
   { label: "Notes",             icon: ClipboardList,  to: "/parent/grades" },
+  { label: "Analyse des résultats", icon: BarChart3, to: "/parent/analyses" },
   { label: "Suivi pédagogique", icon: TrendingUp,    to: "/parent/suivi", feature: "suivi_familles" },
   { label: "Résultats des épreuves", icon: ClipboardCheck, to: "/parent/evaluations", feature: "evaluations_en_ligne" },
   { label: "Aide", icon: CircleHelp, to: "/parent/aide" },

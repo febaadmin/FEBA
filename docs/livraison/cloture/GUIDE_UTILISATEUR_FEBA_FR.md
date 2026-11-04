@@ -33,6 +33,7 @@ Ce guide reprend le centre d'aide intégré à FEBA (menu « Aide »), généré
 - **Gestion pédagogique**
   - [Comment enregistrer une note officielle ?](#notes-saisir)
   - [Comment modifier, supprimer ou restaurer une note ?](#notes-modifier)
+  - [Comment analyser les résultats, les effectifs et les présences ?](#centre-analyse)
   - [Comment générer un bulletin ?](#bulletins-generer)
   - [Comment personnaliser les appréciations des bulletins ?](#appreciations)
   - [Comment créer un référentiel de compétences ?](#referentiels)
@@ -51,6 +52,9 @@ Ce guide reprend le centre d'aide intégré à FEBA (menu « Aide »), généré
   - [Comment organiser ou rejoindre un cours en ligne ?](#salles-virtuelles)
 - **Paiements**
   - [Comment enregistrer un paiement et produire un reçu ?](#paiements)
+  - [Comment définir les tarifs et les échéances de l'année ?](#tarifs)
+  - [Comment analyser les paiements avec le graphique ?](#graphique-paiements)
+  - [Comment savoir ce que chaque élève doit encore payer ?](#situation-financiere)
   - [Comment rembourser un paiement par carte ?](#transactions-carte)
   - [Comment configurer les relances de paiement ?](#relances)
 - **Documents et fichiers**
@@ -61,6 +65,7 @@ Ce guide reprend le centre d'aide intégré à FEBA (menu « Aide »), généré
   - [Comment traiter les messages et préinscriptions du site ?](#site-vitrine)
   - [Comment traiter une fiche d'inscription en ligne ?](#admissions-en-ligne)
 - **Espace famille**
+  - [Comment suivre la progression des résultats ?](#analyses-famille)
   - [Comment consulter les notes et télécharger un bulletin ?](#famille-notes)
   - [Comment suivre les compétences et les résultats des épreuves ?](#famille-suivi)
   - [Comment consulter mes paiements et reçus ?](#famille-paiements)
@@ -873,6 +878,43 @@ Ce guide reprend le centre d'aide intégré à FEBA (menu « Aide »), généré
 
 **Permissions.** Super administrateur, administrateur ; enseignant dans ses matières.
 
+<a id="centre-analyse"></a>
+### Comment analyser les résultats, les effectifs et les présences ?
+
+**À quoi ça sert.** Voir les moyennes, la réussite, la répartition, la progression, les matières, les effectifs et les présences, avec des filtres communs.
+
+**Qui peut l'utiliser.** Super administrateur, Administrateur, Enseignant
+
+**Prérequis.**
+
+- Super administrateur : choisir une académie dans le sélecteur.
+- Des notes et des appels enregistrés pour l'année choisie.
+
+**Où la trouver.** Menu « Centre d'analyse » : `/superadmin/analyses`, `/admin/analyses`, `/teacher/analyses`
+
+**Étapes.**
+
+1. Ouvrez « Centre d'analyse » (enseignant : « Analyses de mes classes »).
+2. Choisissez l'année, la période, puis au besoin le cycle, le niveau, la classe, la matière ou l'élève ; chaque choix limite les suivants.
+3. Passez d'un onglet à l'autre : Résultats, Matières, Enseignants, Effectifs, Présences. Les filtres restent les mêmes.
+4. Choisissez « Français », « English » ou « FR / EN » : seuls les libellés changent, jamais les chiffres.
+
+**Champs importants.**
+
+- Les listes d'élèves (moyennes les plus élevées, élèves à accompagner) n'apparaissent que pour une classe ou un niveau, et seulement pour les élèves ayant assez de notes.
+- L'onglet Enseignants décrit des résultats d'élèves, pas la qualité d'un enseignement.
+
+**Résultat attendu.** Chaque onglet a ses « Définitions » : moyenne, réussite, maîtrise, présence.
+
+**Erreurs fréquentes.**
+
+- *« Choisissez une académie »* : Super administrateur : les analyses portent sur une académie à la fois.
+- *Moyennes sur 20 au lieu de 10* : La sélection mélange des niveaux notés sur 10 et sur 20 : choisissez un cycle ou un niveau.
+
+**Effets sur les autres modules.** Lecture seule : aucune note ni aucun appel n'est modifié.
+
+**Permissions.** Super administrateur et administrateur : toute l'académie. Enseignant : ses classes seulement, sans aucune donnée financière.
+
 <a id="bulletins-generer"></a>
 ### Comment générer un bulletin ?
 
@@ -1368,6 +1410,117 @@ Ce guide reprend le centre d'aide intégré à FEBA (menu « Aide »), généré
 
 **Permissions.** Super administrateur, administrateur ; consultation : parent.
 
+<a id="tarifs"></a>
+### Comment définir les tarifs et les échéances de l'année ?
+
+**À quoi ça sert.** Enregistrer ce que chaque élève doit payer : montant par niveau et nature de frais, échéancier, réductions et exonérations. C'est la base du montant attendu, du reste à payer et des relances.
+
+**Qui peut l'utiliser.** Super administrateur, Administrateur
+
+**Prérequis.**
+
+- Les données affichées sont celles de l'académie choisie dans le sélecteur en haut de page.
+- Années scolaires et niveaux créés (Paramètres, Niveaux).
+
+**Où la trouver.** Menu « Tarifs et échéances » : `/superadmin/tarifs`, `/admin/tarifs`
+
+**Étapes.**
+
+1. Ouvrez « Tarifs et échéances » ; l'onglet « Grille par niveau » montre les montants par niveau et nature pour l'année choisie.
+2. Cliquez sur une case pour créer ou modifier le tarif de ce niveau (une case grise est un tarif général hérité).
+3. Saisissez le montant total, le mode (tranches ou récurrent) et les échéances avec leurs dates.
+4. Dans « Tarifs et échéances », « Élèves (abonnements, exonérations…) » enregistre une réduction, une bourse, une exonération ou un abonnement, avec son motif.
+5. L'onglet « Historique » montre chaque création, modification, désactivation ou suppression, avec auteur, montants et motif.
+
+**Champs importants.**
+
+- Mode « tranches » : la somme des échéances doit égaler le total, sinon aucune relance n'est envoyée.
+- Motif : obligatoire pour changer le montant d'un tarif déjà payé par des familles.
+
+**Résultat attendu.** Le graphique des paiements affiche alors le montant attendu, le reste à payer et le taux de recouvrement.
+
+**Erreurs fréquentes.**
+
+- *« Ce tarif est déjà utilisé : désactivez-le »* : Un tarif payé ou lié à des dispositions d'élèves ne se supprime pas : décochez « Tarif actif ».
+- *« Somme des tranches ≠ total »* : Corrigez les montants des échéances ou le total.
+
+**Effets sur les autres modules.** Un tarif d'une année ne change jamais les montants des années précédentes. Les relances, le paiement par carte et le tableau de bord utilisent ces mêmes tarifs.
+
+**Permissions.** Super administrateur, administrateur de l'académie.
+
+<a id="graphique-paiements"></a>
+### Comment analyser les paiements avec le graphique ?
+
+**À quoi ça sert.** Suivre les encaissements, l'attendu et le reste à payer sur une période, filtrer, comparer avec la période précédente et ouvrir les paiements d'une barre.
+
+**Qui peut l'utiliser.** Super administrateur
+
+**Prérequis.**
+
+- Pour l'attendu et le reste à payer : des tarifs avec échéances (« Tarifs et échéances »).
+
+**Où la trouver.** Menu « Tableau de bord » : `/superadmin/dashboard`
+
+**Étapes.**
+
+1. Ouvrez « Tableau de bord » ; choisissez la période (7 jours à année civile, ou personnalisée).
+2. Choisissez une académie dans le sélecteur pour filtrer par année, cycle, niveau, classe et élève ; chaque choix limite les suivants.
+3. « Plus de filtres » : nature de frais, mode et statut du paiement, statut d'échéance, solde de l'élève, montants.
+4. Cochez « Comparer avec la période précédente » pour voir la variation de chaque indicateur.
+5. Cliquez sur une barre, ou sur « Voir les paiements », pour la liste des paiements ; « Exporter (CSV) » télécharge la sélection.
+
+**Champs importants.**
+
+- Les filtres actifs s'affichent sous forme de puces ; « Réinitialiser les filtres » les retire tous.
+- « Définitions des indicateurs », sous le graphique, explique chaque montant.
+
+**Résultat attendu.** Les montants restent dans leur devise : XOF et USD ne sont jamais additionnés.
+
+**Erreurs fréquentes.**
+
+- *« Non calculable »* : Aucun tarif avec échéances n'est configuré : la valeur est inconnue, pas nulle.
+- *Filtres de structure grisés* : Choisissez une académie : en « Toutes les Académies », seuls les filtres financiers s'appliquent.
+
+**Effets sur les autres modules.** Lecture seule : aucun paiement n'est modifié.
+
+**Permissions.** Super administrateur.
+
+<a id="situation-financiere"></a>
+### Comment savoir ce que chaque élève doit encore payer ?
+
+**À quoi ça sert.** Voir, par classe, par niveau et par élève, le montant attendu, payé, restant et en retard, et le taux de recouvrement.
+
+**Qui peut l'utiliser.** Super administrateur, Administrateur
+
+**Prérequis.**
+
+- Les données affichées sont celles de l'académie choisie dans le sélecteur en haut de page.
+- Des tarifs avec échéances (« Tarifs et échéances ») : sans eux, les montants dus ne sont pas calculables.
+
+**Où la trouver.** Menu « Situation financière » : `/superadmin/situation-financiere`, `/admin/situation-financiere`
+
+**Étapes.**
+
+1. Ouvrez « Situation financière » ; choisissez « Par classe » ou « Par niveau ».
+2. Lisez les totaux de l'académie : attendu, payé, reste à payer, dont en retard, recouvrement.
+3. Cliquez sur une classe pour n'afficher que ses élèves ; filtrez « En retard », « Reste à payer » ou « Soldé ».
+4. Cliquez sur un élève pour ouvrir son relevé : chaque échéance (dû, payé, reste, statut) et ses paiements.
+
+**Champs importants.**
+
+- Payé : part des paiements confirmés imputée aux échéances (d'abord au mois indiqué, puis dans l'ordre des échéances), remboursements déduits.
+- Hors échéancier : paiements sans tarif correspondant ou trop-perçus, jamais perdus, affichés à part.
+
+**Résultat attendu.** Les élèves en retard apparaissent en tête, avec le montant échu non payé.
+
+**Erreurs fréquentes.**
+
+- *« Aucun tarif avec échéances »* : Configurez les tarifs de l'académie dans « Tarifs et échéances ».
+
+**Effets sur les autres modules.** Les mêmes calculs alimentent les relances et le graphique des paiements. Une exonération ramène le montant dû à 0.
+
+**Permissions.** Super administrateur, administrateur de l'académie. Les parents voient la situation de leurs enfants dans « Paiements ».
+
 <a id="transactions-carte"></a>
 ### Comment rembourser un paiement par carte ?
 
@@ -1580,6 +1733,35 @@ Ce guide reprend le centre d'aide intégré à FEBA (menu « Aide »), généré
 
 ## Espace famille
 
+<a id="analyses-famille"></a>
+### Comment suivre la progression des résultats ?
+
+**À quoi ça sert.** Voir les moyennes par période et par matière, et les présences de l'élève.
+
+**Qui peut l'utiliser.** Parent, Élève
+
+**Où la trouver.** Menu « Analyse des résultats » : `/parent/analyses`, `/student/analyses`
+
+**Étapes.**
+
+1. Ouvrez « Analyse des résultats ».
+2. Parent : choisissez l'enfant si vous en avez plusieurs.
+3. Lisez les moyennes de chaque période, leur évolution, puis le détail par matière.
+
+**Champs importants.**
+
+- « Non noté » : aucune note dans cette matière pour la période ; ce n'est pas un zéro.
+
+**Résultat attendu.** Les moyennes sont calculées comme sur le bulletin.
+
+**Erreurs fréquentes.**
+
+- *Aucune note pour cette année* : Les notes apparaissent dès que les enseignants les ont saisies.
+
+**Effets sur les autres modules.** Seules les données de l'élève sont affichées : aucune comparaison avec d'autres élèves.
+
+**Permissions.** Parent (ses enfants), élève (lui-même).
+
 <a id="famille-notes"></a>
 ### Comment consulter les notes et télécharger un bulletin ?
 
@@ -1645,7 +1827,8 @@ Ce guide reprend le centre d'aide intégré à FEBA (menu « Aide »), généré
 **Étapes.**
 
 1. Ouvrez « Paiements ».
-2. Consultez le total confirmé et la liste ; « PDF » télécharge le reçu.
+2. « Situation de mes enfants » : pour chaque enfant, ce qui est dû, payé et reste à payer, échéance par échéance.
+3. Consultez le total confirmé et la liste ; « PDF » télécharge le reçu.
 
 **Résultat attendu.** Chaque paiement indique son statut : Confirmé ou Annulé.
 

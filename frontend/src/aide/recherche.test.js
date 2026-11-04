@@ -39,10 +39,10 @@ describe("pertinence : le bon article en tête, sans articles hors sujet", () =>
     ["superadmin", "paiement", "fr", "paiements", 7],
     ["superadmin", "payer", "fr", "situation-financiere", 7], // « ce que chaque élève doit encore payer »,
     ["superadmin", "bulletin", "fr", "bulletins-generer", 4],
-    ["superadmin", "absence", "fr", "absences", 3],
-    ["superadmin", "note", "fr", "notes-saisir", 5],
+    ["superadmin", "absence", "fr", "absences", 4], // + centre-analyse (présences)
+    ["superadmin", "note", "fr", "notes-saisir", 6], // + centre-analyse (moyennes)
     ["superadmin", "classe", "fr", "classes", 5],
-    ["superadmin", "élève", "fr", "eleves", 5],
+    ["superadmin", "élève", "fr", "eleves", 6], // + centre-analyse
     ["superadmin", "enseignant", "fr", "enseignants", 3],
     ["superadmin", "emploi du temps", "fr", "emploi-du-temps", 3],
     ["superadmin", "visioconférence", "fr", "salles-virtuelles", 2],

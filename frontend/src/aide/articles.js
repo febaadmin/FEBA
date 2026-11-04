@@ -489,6 +489,31 @@ export const ARTICLES = [
     permissions: ["Super administrateur, administrateur ; enseignant dans ses matières.", "Super administrator, administrator; teacher in their subjects."],
   },
   {
+    id: "centre-analyse", motsCles: "analyse statistiques moyenne reussite repartition effectifs presences matieres enseignants analytics statistics average",
+    categorie: "pedagogie", module: ["Centre d'analyse", "Analytics centre"], roles: PEDAGOGIE,
+    liens: { superadmin: "analyses", admin: "analyses", teacher: "analyses" },
+    titre: ["Comment analyser les résultats, les effectifs et les présences ?", "How do I analyse results, enrolment and attendance?"],
+    objet: ["Voir les moyennes, la réussite, la répartition, la progression, les matières, les effectifs et les présences, avec des filtres communs.", "See averages, success rates, distribution, progress, subjects, enrolment and attendance, with shared filters."],
+    prerequis: [["Super administrateur : choisir une académie dans le sélecteur.", "Super administrator: choose an academy in the selector."], ["Des notes et des appels enregistrés pour l'année choisie.", "Grades and attendance recorded for the chosen year."]],
+    etapes: [
+      ["Ouvrez « Centre d'analyse » (enseignant : « Analyses de mes classes »).", "Open \"Analytics centre\" (teacher: \"Analyses of my classes\")."],
+      ["Choisissez l'année, la période, puis au besoin le cycle, le niveau, la classe, la matière ou l'élève ; chaque choix limite les suivants.", "Choose the year, the period, then if needed the cycle, grade level, class, subject or student; each choice narrows the next ones."],
+      ["Passez d'un onglet à l'autre : Résultats, Matières, Enseignants, Effectifs, Présences. Les filtres restent les mêmes.", "Switch tabs: Results, Subjects, Teachers, Enrolment, Attendance. The filters stay the same."],
+      ["Choisissez « Français », « English » ou « FR / EN » : seuls les libellés changent, jamais les chiffres.", "Choose \"Français\", \"English\" or \"FR / EN\": only the labels change, never the figures."],
+    ],
+    champs: [
+      ["Les listes d'élèves (moyennes les plus élevées, élèves à accompagner) n'apparaissent que pour une classe ou un niveau, et seulement pour les élèves ayant assez de notes.", "Student lists (highest averages, students to support) only appear for one class or grade level, and only for students with enough grades."],
+      ["L'onglet Enseignants décrit des résultats d'élèves, pas la qualité d'un enseignement.", "The Teachers tab describes student results, not teaching quality."],
+    ],
+    resultat: ["Chaque onglet a ses « Définitions » : moyenne, réussite, maîtrise, présence.", "Each tab has its \"Definitions\": average, success, mastery, attendance."],
+    erreurs: [
+      [["« Choisissez une académie »", "\"Choose an academy\""], ["Super administrateur : les analyses portent sur une académie à la fois.", "Super administrator: analyses cover one academy at a time."]],
+      [["Moyennes sur 20 au lieu de 10", "Averages out of 20 instead of 10"], ["La sélection mélange des niveaux notés sur 10 et sur 20 : choisissez un cycle ou un niveau.", "The selection mixes levels graded out of 10 and out of 20: choose a cycle or grade level."]],
+    ],
+    consequences: ["Lecture seule : aucune note ni aucun appel n'est modifié.", "Read only: no grade or attendance record is changed."],
+    permissions: ["Super administrateur et administrateur : toute l'académie. Enseignant : ses classes seulement, sans aucune donnée financière.", "Super administrator and administrator: the whole academy. Teacher: their classes only, with no financial data."],
+  },
+  {
     id: "bulletins-generer", motsCles: "bulletin pdf report card", categorie: "pedagogie", module: ["Bulletins", "Report cards"], roles: PERSONNEL,
     liens: { superadmin: "bulletins", admin: "bulletins" },
     titre: ["Comment générer un bulletin ?", "How do I generate a report card?"],
@@ -925,6 +950,24 @@ export const ARTICLES = [
   },
 
   // ── Espace famille ────────────────────────────────────────────────────────
+  {
+    id: "analyses-famille", motsCles: "analyse progression moyenne resultats enfant analysis progress average",
+    categorie: "famille", module: ["Analyse des résultats", "Results analysis"], roles: ["parent", "student"],
+    liens: { parent: "analyses", student: "analyses" },
+    titre: ["Comment suivre la progression des résultats ?", "How do I follow progress in results?"],
+    objet: ["Voir les moyennes par période et par matière, et les présences de l'élève.", "See the student's averages per period and per subject, and attendance."],
+    prerequis: [],
+    etapes: [
+      ["Ouvrez « Analyse des résultats ».", "Open \"Results analysis\"."],
+      ["Parent : choisissez l'enfant si vous en avez plusieurs.", "Parent: choose the child if you have several."],
+      ["Lisez les moyennes de chaque période, leur évolution, puis le détail par matière.", "Read each period's averages, their trend, then the detail per subject."],
+    ],
+    champs: [["« Non noté » : aucune note dans cette matière pour la période ; ce n'est pas un zéro.", "\"Not graded\": no grade in this subject for the period; it is not a zero."]],
+    resultat: ["Les moyennes sont calculées comme sur le bulletin.", "Averages are computed as on the report card."],
+    erreurs: [[["Aucune note pour cette année", "No grade for this year"], ["Les notes apparaissent dès que les enseignants les ont saisies.", "Grades appear as soon as teachers have entered them."]]],
+    consequences: ["Seules les données de l'élève sont affichées : aucune comparaison avec d'autres élèves.", "Only the student's data is shown: no comparison with other students."],
+    permissions: ["Parent (ses enfants), élève (lui-même).", "Parent (their children), student (themselves)."],
+  },
   {
     id: "famille-notes", categorie: "famille", module: ["Notes et bulletins", "Grades and report cards"], roles: ["parent", "student"],
     liens: { parent: "grades", student: "grades" }, ecrans: { parent: ["bulletins"], student: ["bulletins"] },
