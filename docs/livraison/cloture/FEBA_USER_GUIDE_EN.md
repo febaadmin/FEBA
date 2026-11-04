@@ -1727,18 +1727,40 @@ Check that a specific academy is selected and that fields marked * are filled in
 
 ## Glossary
 
-- **Academy** : School managed in FEBA, isolated from the others.
-- **Active school year** : Year used by default in lists and the dashboard.
-- **Coefficient** : Weight of a subject in the average.
-- **Competency** : What a student can do, for example "understand a short text".
-- **Framework** : A list of competencies, by subject or programme.
-- **Mastery level** : To work on, To strengthen, In progress or Acquired.
-- **Follow-up assessment** : Result useful for support. It does not count in the report card.
-- **Official grade** : Grade from the Grades module, which counts in averages and report cards.
-- **Quiz** : Practice test. It does not have to produce a grade.
-- **Official exam** : Test that can produce an official grade, after validation.
-- **Attempt** : A complete run of a test. Each attempt is kept.
+- **Academy** : School managed in FEBA, isolated from the others: students, finances and documents never mix.
+- **All academies** : Consolidated view: each row shows its academy; amounts stay in their currency.
+- **Optional module** : Feature enabled per academy (follow-up, online exams, monthly reports, admissions, virtual rooms).
+- **Technical incident** : Server error or monitoring alert recorded automatically, with its occurrences and validation levels.
+- **Active school year** : Year used by default in lists, enrolments and the dashboard.
+- **Temporary password** : Password you give at creation or reset; the user must replace it at sign-in.
+- **Template** : Official background of a diploma or certificate, with the position of printed fields.
+- **Class** : Group of students of an academy, for one year, linked to a level and a language track.
+- **Level** : Stage of the curriculum (CI, CM2, 6th grade…); its cycle sets the grading scale and is used to set fees.
+- **Subject** : Subject taught, with its code, language and coefficient.
+- **Coefficient** : Weight of a subject in the average; a change applies to report cards generated afterwards.
+- **Enrolment** : Link between a student and a class for one year; a promotion creates the next enrolment.
+- **Official grade** : Grade from the Grades module, counted in averages and report cards; never erased, deleted with a justification and restorable.
+- **Average** : Result computed from grades and their coefficients, per subject then overall.
+- **Term** : Part of the year (term 1, 2, 3 or exam) a grade belongs to.
+- **Report card** : PDF of a term's results, generated per student, per class or for the academy.
+- **Appreciation** : Remark given according to the grade percentage (scale set per academy and cycle).
+- **Quiz** : Online practice test; it does not have to produce a grade.
+- **Official exam** : Online test that can produce an official grade after validation and transfer.
+- **Attempt** : One complete run of a test; each attempt is kept.
 - **Transfer** : Creation of the official grade from a validated test, once per student.
-- **Publication** : Making a result or report visible. Nothing is visible before.
-- **Template** : Official background of a diploma or certificate, with field positions.
-- **Temporary password** : Password given by the administration, to replace at sign-in.
+- **Publication** : Making a result or report visible to families; nothing is visible before.
+- **Competency** : What a student can do, for example "understand a short text".
+- **Framework** : List of competencies, by subject or programme, specific to the academy.
+- **Mastery level** : To work on, To strengthen, In progress or Acquired.
+- **Follow-up assessment** : Result useful for support; it does not count in the report card.
+- **Absence** : Attendance status of a student on a date (present, absent, late, excused), with an optional supporting document.
+- **Supporting document** : Document attached to an absence or late arrival (certificate, note from parents).
+- **Homework** : Work to do by a due date, with its instructions and attachments.
+- **Virtual room** : Video conferencing room for an online class or meeting.
+- **Fee** : Amount of a fee type (tuition, registration…) for an academy, a year and, if needed, a level.
+- **Instalment** : Part of a fee to pay by a date; the sum of instalments must equal the fee.
+- **Outstanding balance** : Amount due not yet covered by confirmed payments, after discounts and exemptions.
+- **Receipt** : PDF generated for a recorded payment.
+- **Discount / exemption** : Arrangement for one student that reduces or removes a fee, keeping the reason and author.
+- **Collection rate** : Share of the amount due on past instalments that has actually been paid.
+- **Currency** : Currency of an academy (CFA franc, dollar…); amounts in different currencies are never added together.

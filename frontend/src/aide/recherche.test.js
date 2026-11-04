@@ -103,7 +103,7 @@ describe("tolérance", () => {
 describe("FAQ, dépannage et glossaire classés aussi", () => {
   it("trouvent par synonyme et respectent le profil", () => {
     expect(faqPour("parent", "fr", "password").length).toBeGreaterThan(0);
-    expect(glossairePour("fr", "coefficient").length).toBe(1);
+    expect(glossairePour("parent", "fr", "coefficient").length).toBe(1);
     expect(faqPour("superadmin").length).toBeGreaterThanOrEqual(faqPour("parent").length);
   });
 });

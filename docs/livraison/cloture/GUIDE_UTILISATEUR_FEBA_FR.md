@@ -1727,18 +1727,40 @@ Vérifiez qu'une académie précise est sélectionnée et que les champs marqué
 
 ## Glossaire
 
-- **Académie** : Établissement géré dans FEBA, isolé des autres.
-- **Année scolaire active** : Année utilisée par défaut dans les listes et le tableau de bord.
-- **Coefficient** : Poids d'une matière dans la moyenne.
-- **Compétence** : Ce qu'un élève sait faire, par exemple « comprendre un texte court ».
-- **Référentiel** : Une liste de compétences, par matière ou par programme.
-- **Niveau de maîtrise** : À travailler, À renforcer, En progression ou Acquis.
-- **Évaluation du suivi** : Résultat utile à l'accompagnement. Elle ne compte pas dans le bulletin.
-- **Note officielle** : Note du module Notes, qui compte dans les moyennes et les bulletins.
-- **Quiz** : Épreuve d'entraînement. Elle n'a pas à produire de note.
-- **Examen officiel** : Épreuve qui peut produire une note officielle, après validation.
-- **Tentative** : Un passage complet d'une épreuve. Chaque tentative est conservée.
+- **Académie** : Établissement géré dans FEBA, isolé des autres : élèves, finances et documents ne se mélangent jamais.
+- **Toutes les Académies** : Vue consolidée : chaque ligne indique son académie ; les montants restent dans leur devise.
+- **Module optionnel** : Fonction activée académie par académie (suivi, examens en ligne, rapports mensuels, admissions, salles virtuelles).
+- **Incident technique** : Erreur serveur ou alerte de surveillance enregistrée automatiquement, avec ses occurrences et ses niveaux de validation.
+- **Année scolaire active** : Année utilisée par défaut dans les listes, les inscriptions et le tableau de bord.
+- **Mot de passe temporaire** : Mot de passe que vous donnez lors d'une création ou d'une réinitialisation ; l'utilisateur doit le remplacer à la connexion.
+- **Gabarit** : Fond officiel d'un diplôme ou certificat, avec l'emplacement des champs imprimés.
+- **Classe** : Groupe d'élèves d'une académie, pour une année, rattaché à un niveau et à un parcours linguistique.
+- **Niveau** : Étape du cursus (CI, CM2, 6e…) ; son cycle fixe le barème des notes et sert à définir les tarifs.
+- **Matière** : Discipline enseignée, avec son code, sa langue et son coefficient.
+- **Coefficient** : Poids d'une matière dans la moyenne ; un changement s'applique aux bulletins générés ensuite.
+- **Inscription** : Rattachement d'un élève à une classe pour une année ; un passage de niveau crée l'inscription suivante.
+- **Note officielle** : Note du module Notes, qui compte dans les moyennes et les bulletins ; jamais effacée, supprimée avec justification et restaurable.
+- **Moyenne** : Résultat calculé à partir des notes et de leurs coefficients, par matière puis générale.
+- **Période** : Partie de l'année (trimestre 1, 2, 3 ou examen) à laquelle une note se rattache.
+- **Bulletin** : Document PDF des résultats d'une période, généré par élève, par classe ou pour l'académie.
+- **Appréciation** : Mention attribuée selon le pourcentage de la note (barème réglable par académie et par cycle).
+- **Quiz** : Épreuve en ligne d'entraînement ; elle n'a pas à produire de note.
+- **Examen officiel** : Épreuve en ligne qui peut produire une note officielle après validation et transfert.
+- **Tentative** : Un passage complet d'une épreuve ; chaque tentative est conservée.
 - **Transfert** : Création de la note officielle depuis une épreuve validée, une seule fois par élève.
-- **Publication** : Rendre un résultat ou un rapport visible. Rien n'est visible avant.
-- **Gabarit** : Fond officiel d'un diplôme ou certificat, avec l'emplacement des champs.
-- **Mot de passe temporaire** : Mot de passe donné par l'administration, à remplacer à la connexion.
+- **Publication** : Rendre un résultat ou un rapport visible des familles ; rien n'est visible avant.
+- **Compétence** : Ce qu'un élève sait faire, par exemple « comprendre un texte court ».
+- **Référentiel** : Liste de compétences, par matière ou par programme, propre à l'académie.
+- **Niveau de maîtrise** : À travailler, À renforcer, En progression ou Acquis.
+- **Évaluation du suivi** : Résultat utile à l'accompagnement ; il ne compte pas dans le bulletin.
+- **Absence** : Statut de présence d'un élève à une date (présent, absent, en retard, excusé), avec justificatif éventuel.
+- **Justificatif** : Document joint à une absence ou un retard (certificat, mot des parents).
+- **Devoir** : Travail à faire pour une date limite, avec ses consignes et pièces jointes.
+- **Salle virtuelle** : Salle de visioconférence pour un cours ou une réunion en ligne.
+- **Tarif** : Montant d'une nature de frais (scolarité, inscription…) pour une académie, une année et, si besoin, un niveau.
+- **Échéance** : Part d'un tarif à payer avant une date ; la somme des tranches doit égaler le tarif.
+- **Reste à payer** : Montant dû non encore couvert par les paiements confirmés, après réductions et exonérations.
+- **Reçu** : Document PDF généré pour un paiement enregistré.
+- **Réduction / exonération** : Disposition propre à un élève qui diminue ou supprime un frais, avec motif et auteur conservés.
+- **Taux de recouvrement** : Part du montant dû aux échéances passées qui a été effectivement payée.
+- **Devise** : Monnaie d'une académie (FCFA, dollar…) ; des montants de devises différentes ne sont jamais additionnés.

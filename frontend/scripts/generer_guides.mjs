@@ -3,7 +3,8 @@
 //   node frontend/scripts/generer_guides.mjs <dossier de sortie>
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { ARTICLES, CATEGORIES, DEPANNAGE, FAQ, GLOSSAIRE, LIBELLES_ROLES, RACINES } from "../src/aide/articles.js";
+import { ARTICLES, CATEGORIES, DEPANNAGE, FAQ, LIBELLES_ROLES, RACINES } from "../src/aide/articles.js";
+import { termesPour } from "../src/aide/glossaire.js";
 
 const sortie = process.argv[2] || ".";
 const T = {
@@ -49,7 +50,8 @@ function guide(lang) {
   }
   l.push("", `## ${t.faq}`, "", ...FAQ.flatMap((x) => [`**${L(x.q)}**`, "", L(x.r), ""]));
   l.push(`## ${t.depannage}`, "", ...DEPANNAGE.flatMap((x) => [`**${L(x.q)}**`, "", L(x.r), ""]));
-  l.push(`## ${t.glossaire}`, "", ...GLOSSAIRE.map(([m, d]) => `- **${L(m)}** : ${L(d)}`), "");
+  // Guide complet : définitions du super administrateur (tous les termes).
+  l.push(`## ${t.glossaire}`, "", ...termesPour("superadmin").map((x) => `- **${L(x.terme)}** : ${L(x.definition)}`), "");
   return l.join("\n");
 }
 

@@ -22,6 +22,10 @@ export default async function () {
     const ids = await p.locator("[data-testid=aide-article]").evaluateAll((l) => l.map((e) => e.dataset.article));
     ok(S, `${role} : articles du profil`, ids.includes(present) && (!absent || !ids.includes(absent)) && aussi.every((i) => ids.includes(i)), `${ids.length} articles`);
     ok(S, `${role} : FAQ et glossaire`, await p.getByTestId("aide-faq").count() === 1 && await p.getByTestId("aide-glossaire").count() === 1);
+    // Glossaire personnalisé : « Académie » est une notion d'administration.
+    const termes = await p.locator("[data-testid=aide-glossaire] dt").allInnerTexts();
+    const admin = ["superadmin", "admin"].includes(role);
+    ok(S, `${role} : glossaire adapté au profil`, termes.includes("Académie") === admin && termes.length > 5, termes.join(", ").slice(0, 200));
 
     // Ouvrir un article et suivre son lien vers le module.
     const article = p.locator(`[data-article="${present}"]`);

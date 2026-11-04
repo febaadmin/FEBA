@@ -3,7 +3,8 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { ARTICLES, CATEGORIES, DEPANNAGE, FAQ, GLOSSAIRE, RACINES, ROLES } from "./articles";
+import { ARTICLES, CATEGORIES, DEPANNAGE, FAQ, RACINES, ROLES } from "./articles";
+import { TERMES } from "./glossaire";
 import { articlesPour, categoriesPour, faqPour, glossairePour, lienPour, normaliser } from "./recherche";
 
 const SRC = join(globalThis.process.cwd(), "src");
@@ -48,7 +49,10 @@ describe("contenu du centre d'aide", () => {
       expect(Array.isArray(a.consequences) && a.consequences.length === 0 || paire(a.consequences), a.id).toBe(true);
     }
     for (const x of [...FAQ, ...DEPANNAGE]) expect(paire(x.q) && paire(x.r)).toBe(true);
-    for (const [mot, def] of GLOSSAIRE) expect(paire(mot) && paire(def)).toBe(true);
+    for (const t of TERMES) {
+      expect(paire(t.terme), t.id).toBe(true);
+      for (const d of Object.values(t.definitions)) expect(d === null || paire(d), t.id).toBe(true);
+    }
     for (const c of CATEGORIES) expect(paire(c.titre)).toBe(true);
   });
 
@@ -127,7 +131,7 @@ describe("recherche", () => {
     expect(r.every((a) => a.categorie === "finances")).toBe(true);
   });
   it("glossaire filtré par la recherche", () => {
-    expect(glossairePour("fr", "coefficient").length).toBe(1);
+    expect(glossairePour("admin", "fr", "coefficient").length).toBe(1);
   });
   it("lien construit sous la racine du rôle", () => {
     const a = ARTICLES.find((x) => x.id === "classes");

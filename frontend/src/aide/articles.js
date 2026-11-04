@@ -927,20 +927,5 @@ export const DEPANNAGE = [
     r: ["Vérifiez qu'une académie précise est sélectionnée et que les champs marqués * sont remplis.", "Check that a specific academy is selected and that fields marked * are filled in."] },
 ];
 
-export const GLOSSAIRE = [
-  [["Académie", "Academy"], ["Établissement géré dans FEBA, isolé des autres.", "School managed in FEBA, isolated from the others."]],
-  [["Année scolaire active", "Active school year"], ["Année utilisée par défaut dans les listes et le tableau de bord.", "Year used by default in lists and the dashboard."]],
-  [["Coefficient", "Coefficient"], ["Poids d'une matière dans la moyenne.", "Weight of a subject in the average."]],
-  [["Compétence", "Competency"], ["Ce qu'un élève sait faire, par exemple « comprendre un texte court ».", "What a student can do, for example \"understand a short text\"."]],
-  [["Référentiel", "Framework"], ["Une liste de compétences, par matière ou par programme.", "A list of competencies, by subject or programme."]],
-  [["Niveau de maîtrise", "Mastery level"], ["À travailler, À renforcer, En progression ou Acquis.", "To work on, To strengthen, In progress or Acquired."]],
-  [["Évaluation du suivi", "Follow-up assessment"], ["Résultat utile à l'accompagnement. Elle ne compte pas dans le bulletin.", "Result useful for support. It does not count in the report card."]],
-  [["Note officielle", "Official grade"], ["Note du module Notes, qui compte dans les moyennes et les bulletins.", "Grade from the Grades module, which counts in averages and report cards."]],
-  [["Quiz", "Quiz"], ["Épreuve d'entraînement. Elle n'a pas à produire de note.", "Practice test. It does not have to produce a grade."]],
-  [["Examen officiel", "Official exam"], ["Épreuve qui peut produire une note officielle, après validation.", "Test that can produce an official grade, after validation."]],
-  [["Tentative", "Attempt"], ["Un passage complet d'une épreuve. Chaque tentative est conservée.", "A complete run of a test. Each attempt is kept."]],
-  [["Transfert", "Transfer"], ["Création de la note officielle depuis une épreuve validée, une seule fois par élève.", "Creation of the official grade from a validated test, once per student."]],
-  [["Publication", "Publication"], ["Rendre un résultat ou un rapport visible. Rien n'est visible avant.", "Making a result or report visible. Nothing is visible before."]],
-  [["Gabarit", "Template"], ["Fond officiel d'un diplôme ou certificat, avec l'emplacement des champs.", "Official background of a diploma or certificate, with field positions."]],
-  [["Mot de passe temporaire", "Temporary password"], ["Mot de passe donné par l'administration, à remplacer à la connexion.", "Password given by the administration, to replace at sign-in."]],
-];
+// Le glossaire, personnalisé par profil, est dans glossaire.js.
+
