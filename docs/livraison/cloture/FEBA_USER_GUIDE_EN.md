@@ -33,6 +33,7 @@ This guide mirrors the help centre built into FEBA ("Help" menu), generated from
 - **Teaching and learning**
   - [How do I record an official grade?](#notes-saisir)
   - [How do I edit, delete or restore a grade?](#notes-modifier)
+  - [How do I analyse results, enrolment and attendance?](#centre-analyse)
   - [How do I generate a report card?](#bulletins-generer)
   - [How do I customise report card appreciations?](#appreciations)
   - [How do I create a competency framework?](#referentiels)
@@ -51,6 +52,9 @@ This guide mirrors the help centre built into FEBA ("Help" menu), generated from
   - [How do I hold or join an online class?](#salles-virtuelles)
 - **Payments**
   - [How do I record a payment and produce a receipt?](#paiements)
+  - [How do I set the year's fees and instalments?](#tarifs)
+  - [How do I analyse payments with the chart?](#graphique-paiements)
+  - [How do I see what each student still owes?](#situation-financiere)
   - [How do I refund a card payment?](#transactions-carte)
   - [How do I configure payment reminders?](#relances)
 - **Documents and files**
@@ -61,6 +65,7 @@ This guide mirrors the help centre built into FEBA ("Help" menu), generated from
   - [How do I handle website messages and pre-registrations?](#site-vitrine)
   - [How do I process an online application?](#admissions-en-ligne)
 - **Family area**
+  - [How do I follow progress in results?](#analyses-famille)
   - [How do I view grades and download a report card?](#famille-notes)
   - [How do I follow competencies and test results?](#famille-suivi)
   - [How do I view my payments and receipts?](#famille-paiements)
@@ -873,6 +878,43 @@ This guide mirrors the help centre built into FEBA ("Help" menu), generated from
 
 **Permissions.** Super administrator, administrator; teacher in their subjects.
 
+<a id="centre-analyse"></a>
+### How do I analyse results, enrolment and attendance?
+
+**What it is for.** See averages, success rates, distribution, progress, subjects, enrolment and attendance, with shared filters.
+
+**Who can use it.** Super administrator, Administrator, Teacher
+
+**Prerequisites.**
+
+- Super administrator: choose an academy in the selector.
+- Grades and attendance recorded for the chosen year.
+
+**Where to find it.** Menu « Analytics centre » : `/superadmin/analyses`, `/admin/analyses`, `/teacher/analyses`
+
+**Steps.**
+
+1. Open "Analytics centre" (teacher: "Analyses of my classes").
+2. Choose the year, the period, then if needed the cycle, grade level, class, subject or student; each choice narrows the next ones.
+3. Switch tabs: Results, Subjects, Teachers, Enrolment, Attendance. The filters stay the same.
+4. Choose "Français", "English" or "FR / EN": only the labels change, never the figures.
+
+**Important fields.**
+
+- Student lists (highest averages, students to support) only appear for one class or grade level, and only for students with enough grades.
+- The Teachers tab describes student results, not teaching quality.
+
+**Expected result.** Each tab has its "Definitions": average, success, mastery, attendance.
+
+**Common errors.**
+
+- *"Choose an academy"* : Super administrator: analyses cover one academy at a time.
+- *Averages out of 20 instead of 10* : The selection mixes levels graded out of 10 and out of 20: choose a cycle or grade level.
+
+**Effects on other modules.** Read only: no grade or attendance record is changed.
+
+**Permissions.** Super administrator and administrator: the whole academy. Teacher: their classes only, with no financial data.
+
 <a id="bulletins-generer"></a>
 ### How do I generate a report card?
 
@@ -1368,6 +1410,117 @@ This guide mirrors the help centre built into FEBA ("Help" menu), generated from
 
 **Permissions.** Super administrator, administrator; viewing: parent.
 
+<a id="tarifs"></a>
+### How do I set the year's fees and instalments?
+
+**What it is for.** Record what each student must pay: amount per level and fee type, instalments, discounts and exemptions. It is the basis of the expected amount, the outstanding balance and reminders.
+
+**Who can use it.** Super administrator, Administrator
+
+**Prerequisites.**
+
+- The data shown belongs to the academy chosen in the selector at the top of the page.
+- School years and levels created (Settings, Levels).
+
+**Where to find it.** Menu « Fees and instalments » : `/superadmin/tarifs`, `/admin/tarifs`
+
+**Steps.**
+
+1. Open "Fees and instalments"; the "Grid by level" tab shows amounts per level and fee type for the chosen year.
+2. Click a cell to create or edit that level's fee (a grey cell is an inherited general fee).
+3. Enter the total amount, the mode (instalments or recurring) and the instalments with their dates.
+4. In "Fees and instalments", "Students (subscriptions, exemptions…)" records a discount, scholarship, exemption or subscription, with its reason.
+5. The "History" tab shows each creation, change, deactivation or deletion, with author, amounts and reason.
+
+**Important fields.**
+
+- "Instalments" mode: the sum of instalments must equal the total, otherwise no reminder is sent.
+- Reason: required to change the amount of a fee families have already paid.
+
+**Expected result.** The payments chart then shows the expected amount, the outstanding balance and the collection rate.
+
+**Common errors.**
+
+- *"This fee is already used: deactivate it"* : A paid fee, or one linked to student arrangements, cannot be deleted: untick "Active fee".
+- *"Sum of instalments ≠ total"* : Fix the instalment amounts or the total.
+
+**Effects on other modules.** A year's fee never changes previous years' amounts. Reminders, card payment and the dashboard use these same fees.
+
+**Permissions.** Super administrator, academy administrator.
+
+<a id="graphique-paiements"></a>
+### How do I analyse payments with the chart?
+
+**What it is for.** Track collections, expected amounts and outstanding balances over a period, filter, compare with the previous period and open the payments behind a bar.
+
+**Who can use it.** Super administrator
+
+**Prerequisites.**
+
+- For expected and outstanding amounts: fees with instalments ("Fees and instalments").
+
+**Where to find it.** Menu « Dashboard » : `/superadmin/dashboard`
+
+**Steps.**
+
+1. Open "Dashboard"; choose the period (7 days to calendar year, or custom).
+2. Choose an academy in the selector to filter by year, cycle, grade level, class and student; each choice narrows the next ones.
+3. "More filters": fee type, payment method and status, instalment status, student balance, amounts.
+4. Tick "Compare with the previous period" to see each indicator's change.
+5. Click a bar, or "See the payments", for the list of payments; "Export (CSV)" downloads the selection.
+
+**Important fields.**
+
+- Active filters are shown as chips; "Reset filters" removes them all.
+- "Indicator definitions", below the chart, explains each amount.
+
+**Expected result.** Amounts stay in their currency: XOF and USD are never added together.
+
+**Common errors.**
+
+- *"Not computable"* : No fee with instalments is configured: the value is unknown, not zero.
+- *Structure filters greyed out* : Choose an academy: in "All academies", only financial filters apply.
+
+**Effects on other modules.** Read only: no payment is changed.
+
+**Permissions.** Super administrator.
+
+<a id="situation-financiere"></a>
+### How do I see what each student still owes?
+
+**What it is for.** See, per class, level and student, the expected, paid, outstanding and overdue amounts, and the collection rate.
+
+**Who can use it.** Super administrator, Administrator
+
+**Prerequisites.**
+
+- The data shown belongs to the academy chosen in the selector at the top of the page.
+- Fees with instalments ("Fees and instalments"): without them, amounts due cannot be computed.
+
+**Where to find it.** Menu « Financial position » : `/superadmin/situation-financiere`, `/admin/situation-financiere`
+
+**Steps.**
+
+1. Open "Financial position"; choose "By class" or "By level".
+2. Read the academy totals: expected, paid, outstanding, overdue part, collection rate.
+3. Click a class to show only its students; filter "Overdue", "Outstanding" or "Settled".
+4. Click a student to open their statement: each instalment (due, paid, remaining, status) and their payments.
+
+**Important fields.**
+
+- Paid: share of confirmed payments allocated to instalments (first to the stated month, then in instalment order), refunds deducted.
+- Outside schedule: payments with no matching fee or overpayments, never lost, shown separately.
+
+**Expected result.** Students in arrears appear first, with the overdue unpaid amount.
+
+**Common errors.**
+
+- *"No fee with instalments"* : Set up the academy's fees in "Fees and instalments".
+
+**Effects on other modules.** The same calculations feed reminders and the payments chart. An exemption brings the amount due to 0.
+
+**Permissions.** Super administrator, academy administrator. Parents see their children's position in "Payments".
+
 <a id="transactions-carte"></a>
 ### How do I refund a card payment?
 
@@ -1580,6 +1733,35 @@ This guide mirrors the help centre built into FEBA ("Help" menu), generated from
 
 ## Family area
 
+<a id="analyses-famille"></a>
+### How do I follow progress in results?
+
+**What it is for.** See the student's averages per period and per subject, and attendance.
+
+**Who can use it.** Parent, Student
+
+**Where to find it.** Menu « Results analysis » : `/parent/analyses`, `/student/analyses`
+
+**Steps.**
+
+1. Open "Results analysis".
+2. Parent: choose the child if you have several.
+3. Read each period's averages, their trend, then the detail per subject.
+
+**Important fields.**
+
+- "Not graded": no grade in this subject for the period; it is not a zero.
+
+**Expected result.** Averages are computed as on the report card.
+
+**Common errors.**
+
+- *No grade for this year* : Grades appear as soon as teachers have entered them.
+
+**Effects on other modules.** Only the student's data is shown: no comparison with other students.
+
+**Permissions.** Parent (their children), student (themselves).
+
 <a id="famille-notes"></a>
 ### How do I view grades and download a report card?
 
@@ -1645,7 +1827,8 @@ This guide mirrors the help centre built into FEBA ("Help" menu), generated from
 **Steps.**
 
 1. Open "Payments".
-2. Check the confirmed total and the list; "PDF" downloads the receipt.
+2. "My children's position": for each child, what is due, paid and outstanding, instalment by instalment.
+3. Check the confirmed total and the list; "PDF" downloads the receipt.
 
 **Expected result.** Each payment shows its status: Confirmed or Cancelled.
 

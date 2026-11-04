@@ -7,7 +7,7 @@ Le test `src/aide/aide.test.js` échoue si un écran de menu n'a pas d'article.
 
 | Menu | Route | Écran | Module activable | API utilisées par l'écran | Articles d'aide |
 |---|---|---|---|---|---|
-| Tableau de bord | `/superadmin/dashboard` | SuperAdminDashboard |  | authAPI.listUsers | tableau-de-bord |
+| Tableau de bord | `/superadmin/dashboard` | SuperAdminDashboard |  | authAPI.listUsers | tableau-de-bord, graphique-paiements |
 | Tous les utilisateurs | `/superadmin/users` | SuperAdminUsers |  | authAPI.createUser, authAPI.deleteUser, authAPI.listUsers, authAPI.toggleActive, authAPI.updateUser, schoolsAPI.list | utilisateurs-creer, utilisateurs-gerer, reinitialiser-mdp |
 | Académies | `/superadmin/academies` | SuperAdminAcademies |  | schoolsAPI.createAcademy, schoolsAPI.deleteAcademy, schoolsAPI.languageDiagnostic, schoolsAPI.list, schoolsAPI.setupStatus, schoolsAPI.update | academies |
 | Gestion Admins | `/superadmin/admins` | SuperAdminAdmins |  | authAPI.createUser, authAPI.deleteUser, authAPI.listUsers, authAPI.toggleActive, authAPI.updateUser, schoolsAPI.list | administrateurs |
@@ -24,9 +24,12 @@ Le test `src/aide/aide.test.js` échoue si un écran de menu n'a pas d'article.
 | Niveaux | `/superadmin/levels` | AdminLevels |  | schoolsAPI.createLevel, schoolsAPI.deleteLevel, schoolsAPI.levels, schoolsAPI.updateLevel | niveaux |
 | Notes | `/superadmin/grades` | AdminGrades |  | classesAPI.list, gradesAPI.allHistory, gradesAPI.bilingual, gradesAPI.bulkDelete, gradesAPI.create, gradesAPI.delete | notes-saisir, notes-modifier |
 | Bulletins | `/superadmin/bulletins` | AdminBulletins |  | bulletinsAPI.bulkDelete, bulletinsAPI.commentPreview, bulletinsAPI.createOperation, bulletinsAPI.generateAll, bulletinsAPI.generateClass, bulletinsAPI.list | bulletins-generer |
+| Centre d'analyse | `/superadmin/analyses` | Analyses |  | analyticsAPI.filtres | centre-analyse |
 | Appréciations | `/superadmin/appreciations` | AdminAppreciations |  | appreciationsAPI.get, appreciationsAPI.preview, appreciationsAPI.reset, appreciationsAPI.save | appreciations |
 | Paiements | `/superadmin/payments` | AdminPayments |  | paymentsAPI.bulkDelete, paymentsAPI.cancel, paymentsAPI.create, paymentsAPI.delete, paymentsAPI.generateReceipt, paymentsAPI.history | paiements |
 | Transactions carte | `/superadmin/card-transactions` | AdminCardTransactions |  | cardPaymentsAPI.refund, cardPaymentsAPI.transactions | transactions-carte |
+| Tarifs et échéances | `/superadmin/tarifs` | Tarifs |  | feeSchedulesAPI.create, feeSchedulesAPI.historique, feeSchedulesAPI.list, feeSchedulesAPI.update, schoolsAPI.levels, schoolsAPI.years | tarifs |
+| Situation financière | `/superadmin/situation-financiere` | SituationFinanciere |  | paymentsAPI.situation | situation-financiere |
 | Relances de paiement | `/superadmin/payment-reminders` | PaymentReminders |  | feeSchedulesAPI.arrangements, feeSchedulesAPI.create, feeSchedulesAPI.createArrangement, feeSchedulesAPI.delete, feeSchedulesAPI.deleteArrangement, feeSchedulesAPI.list | relances |
 | Documents officiels | `/superadmin/official-documents` | AdminOfficialDocuments |  | classesAPI.list, documentTemplatesAPI.list, documentsAPI.batch, documentsAPI.batchIssue, documentsAPI.check, documentsAPI.create | documents-officiels |
 | Gabarits des documents | `/superadmin/document-templates` | AdminDocumentTemplates |  | documentTemplatesAPI.action, documentTemplatesAPI.list, documentTemplatesAPI.original, documentTemplatesAPI.preview, documentTemplatesAPI.remove, documentTemplatesAPI.upload | gabarits |
@@ -60,6 +63,7 @@ Le test `src/aide/aide.test.js` échoue si un écran de menu n'a pas d'article.
 | Niveaux | `/admin/levels` | AdminLevels |  | schoolsAPI.createLevel, schoolsAPI.deleteLevel, schoolsAPI.levels, schoolsAPI.updateLevel | niveaux |
 | Notes | `/admin/grades` | AdminGrades |  | classesAPI.list, gradesAPI.allHistory, gradesAPI.bilingual, gradesAPI.bulkDelete, gradesAPI.create, gradesAPI.delete | notes-saisir, notes-modifier |
 | Bulletins | `/admin/bulletins` | AdminBulletins |  | bulletinsAPI.bulkDelete, bulletinsAPI.commentPreview, bulletinsAPI.createOperation, bulletinsAPI.generateAll, bulletinsAPI.generateClass, bulletinsAPI.list | bulletins-generer |
+| Centre d'analyse | `/admin/analyses` | Analyses |  | analyticsAPI.filtres | centre-analyse |
 | Appréciations | `/admin/appreciations` | AdminAppreciations |  | appreciationsAPI.get, appreciationsAPI.preview, appreciationsAPI.reset, appreciationsAPI.save | appreciations |
 | Absences | `/admin/attendance` | AdminAttendance |  | attendanceAPI.create, attendanceAPI.delete, attendanceAPI.list, attendanceAPI.update, schoolsAPI.years, studentsAPI.list | absences |
 | Emploi du temps | `/admin/schedule` | AdminSchedule |  |  | emploi-du-temps |
@@ -67,6 +71,8 @@ Le test `src/aide/aide.test.js` échoue si un écran de menu n'a pas d'article.
 | Devoirs | `/admin/homework` | AdminHomework |  | classesAPI.list, homeworkAPI.bulkDelete, homeworkAPI.create, homeworkAPI.delete, homeworkAPI.list, homeworkAPI.update | devoirs |
 | Paiements | `/admin/payments` | AdminPayments |  | paymentsAPI.bulkDelete, paymentsAPI.cancel, paymentsAPI.create, paymentsAPI.delete, paymentsAPI.generateReceipt, paymentsAPI.history | paiements |
 | Transactions carte | `/admin/card-transactions` | AdminCardTransactions |  | cardPaymentsAPI.refund, cardPaymentsAPI.transactions | transactions-carte |
+| Tarifs et échéances | `/admin/tarifs` | Tarifs |  | feeSchedulesAPI.create, feeSchedulesAPI.historique, feeSchedulesAPI.list, feeSchedulesAPI.update, schoolsAPI.levels, schoolsAPI.years | tarifs |
+| Situation financière | `/admin/situation-financiere` | SituationFinanciere |  | paymentsAPI.situation | situation-financiere |
 | Relances de paiement | `/admin/payment-reminders` | PaymentReminders |  | feeSchedulesAPI.arrangements, feeSchedulesAPI.create, feeSchedulesAPI.createArrangement, feeSchedulesAPI.delete, feeSchedulesAPI.deleteArrangement, feeSchedulesAPI.list | relances |
 | Documents officiels | `/admin/official-documents` | AdminOfficialDocuments |  | classesAPI.list, documentTemplatesAPI.list, documentsAPI.batch, documentsAPI.batchIssue, documentsAPI.check, documentsAPI.create | documents-officiels |
 | Gabarits des documents | `/admin/document-templates` | AdminDocumentTemplates |  | documentTemplatesAPI.action, documentTemplatesAPI.list, documentTemplatesAPI.original, documentTemplatesAPI.preview, documentTemplatesAPI.remove, documentTemplatesAPI.upload | gabarits |
@@ -94,6 +100,7 @@ Le test `src/aide/aide.test.js` échoue si un écran de menu n'a pas d'article.
 | Tableau de bord | `/teacher/dashboard` | TeacherDashboard |  | announcementsAPI.list, dashboardAPI.teacher | tableau-de-bord |
 | Mes classes | `/teacher/classes` | TeacherClasses |  | classesAPI.list, classesAPI.students | tableau-de-bord |
 | Notes | `/teacher/grades` | TeacherGrades |  | classesAPI.list, gradesAPI.create, gradesAPI.delete, gradesAPI.history, gradesAPI.list, gradesAPI.listDeleted | notes-saisir, notes-modifier |
+| Analyses de mes classes | `/teacher/analyses` | Analyses |  | analyticsAPI.filtres | centre-analyse |
 | Suivi pédagogique | `/teacher/suivi` | SuiviEleves | suivi_pedagogique | suiviAPI.eleves | suivi-eleve, rapports-pedagogiques |
 | Compétences | `/teacher/suivi/referentiels` | SuiviReferentiels | suivi_pedagogique | classesAPI.list, schoolsAPI.levels, subjectsAPI.list, suiviAPI.competences, suiviAPI.creerCompetence, suiviAPI.creerReferentiel | referentiels |
 | Examens et évaluations | `/teacher/evaluations` | EvalEpreuves | evaluations_en_ligne | classesAPI.list, evaluationsAPI.creerEpreuve, evaluationsAPI.epreuves, subjectsAPI.list | epreuves |
@@ -113,6 +120,7 @@ Le test `src/aide/aide.test.js` échoue si un écran de menu n'a pas d'article.
 | Accueil | `/parent/home` | ParentHome |  | announcementsAPI.list, dashboardAPI.parent | famille-vie |
 | Mes enfants | `/parent/children` | ParentChildren |  | parentsAPI.me | famille-vie |
 | Notes | `/parent/grades` | ParentGrades |  | gradesAPI.averages, gradesAPI.bilingual, gradesAPI.list, parentsAPI.me, schoolsAPI.years | famille-notes |
+| Analyse des résultats | `/parent/analyses` | MesAnalyses |  | analyticsAPI.eleve, analyticsAPI.mesEleves | analyses-famille |
 | Suivi pédagogique | `/parent/suivi` | SuiviEleves | suivi_familles | suiviAPI.eleves | famille-suivi |
 | Résultats des épreuves | `/parent/evaluations` | EvalMes | evaluations_en_ligne | evaluationsAPI.mesEpreuves, evaluationsAPI.resultats | famille-suivi |
 | Aide | `/parent/aide` | AideGuides |  |  | (cette page) |
@@ -132,6 +140,7 @@ Le test `src/aide/aide.test.js` échoue si un écran de menu n'a pas d'article.
 |---|---|---|---|---|---|
 | Accueil | `/student/home` | StudentHome |  | announcementsAPI.list, dashboardAPI.student | famille-vie |
 | Mes notes | `/student/grades` | StudentGrades |  | gradesAPI.averages, gradesAPI.list, schoolsAPI.years | famille-notes |
+| Analyse des résultats | `/student/analyses` | MesAnalyses |  | analyticsAPI.eleve, analyticsAPI.mesEleves | analyses-famille |
 | Mon suivi | `/student/suivi` | SuiviEleves | suivi_familles | suiviAPI.eleves | famille-suivi |
 | Mes épreuves | `/student/evaluations` | EvalMes | evaluations_en_ligne | evaluationsAPI.mesEpreuves, evaluationsAPI.resultats | passer-epreuve |
 | Aide | `/student/aide` | AideGuides |  |  | (cette page) |

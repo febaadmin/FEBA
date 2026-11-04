@@ -19,6 +19,11 @@ Ce fichier dit exactement où en est le travail, pour une reprise sans perte.
 | #79 | Rapport de l'archive finale | fusionnée |
 | #80 à #85 | Phase 4 : graphique des paiements, aide, notifications, API sans erreur 500, N+1, E2E | fusionnées, déployées (`4b8b165`) ; voir `RAPPORT_PHASE4.md` |
 
+| #87, #88 | Phase 5 : glossaire par profil ; tarifs et échéances | fusionnées (`693bcde`, `3dc4e3a`) |
+| #92 → #93 → #91 | Phase 5 : situation financière → filtres du graphique → centre d'analyse (empilées ; #89 et #90 remplacées) | ouvertes ; fusionner dans l'ordre, par **commit de fusion** (pas squash) pour ne pas casser la pile |
+
+Rapport de la phase 5 : `docs/livraison/phase5/RAPPORT_PHASE5.md`.
+
 Vérifier l'état réel avec `gh pr list --state all -L 12` : ce tableau peut être en retard.
 
 ## Actions qui nécessitent un humain
@@ -48,7 +53,7 @@ Vérifier l'état réel avec `gh pr list --state all -L 12` : ce tableau peut ê
 ## Prochaines étapes techniques possibles
 
 - Tableau de bord parent (132 requêtes) et liste du suivi (123) : regrouper les calculs de moyennes et de progression.
-- Échéanciers à saisir dans « Relances de paiement » pour que le graphique affiche l'attendu et le reste à payer (décision métier).
+- Tarifs et échéances à saisir dans « Tarifs et échéances » (menu dédié depuis la phase 5) pour que le graphique et la situation financière affichent l'attendu et le reste à payer (décision métier, aucune valeur créée par le code).
 
 - Expiration d'une requête par déploiement lors du remplacement du backend : éprouver `proxy_connect_timeout` court et `proxy_next_upstream` sur la mini-pile (voir `RAPPORT_DEPLOIEMENT_FINAL.md`).
 
