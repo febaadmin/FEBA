@@ -1,7 +1,7 @@
 import { NavLink, useNavigate } from "react-router-dom";
 import { useState, useEffect, useRef } from "react";
 import {
-  Star, Stamp, FileBarChart, LayoutDashboard, Users, GraduationCap, UserCheck, BookOpen, ClipboardList, DollarSign, Calendar, FileText, Bell, MessageSquare, Megaphone, Settings, LogOut, School, Menu, X, UserCog, Layers, FolderOpen, ClipboardCheck, CircleHelp, ListTree, Video, Globe, CreditCard, Award, Mail, BellRing, Inbox, TrendingUp, ReceiptText, Wallet } from "lucide-react";
+  BarChart3, Star, Stamp, FileBarChart, LayoutDashboard, Users, GraduationCap, UserCheck, BookOpen, ClipboardList, DollarSign, Calendar, FileText, Bell, MessageSquare, Megaphone, Settings, LogOut, School, Menu, X, UserCog, Layers, FolderOpen, ClipboardCheck, CircleHelp, ListTree, Video, Globe, CreditCard, Award, Mail, BellRing, Inbox, TrendingUp, ReceiptText, Wallet } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
 import AcademyLogo from "../components/AcademyLogo";
 import AcademyName from "../components/AcademyName";
@@ -28,6 +28,7 @@ const nav = [
   { label: "Niveaux",         icon: Layers,           to: "/admin/levels" },
   { label: "Notes",           icon: ClipboardList,    to: "/admin/grades" },
   { label: "Bulletins",       icon: FileText,         to: "/admin/bulletins" },
+  { label: "Centre d'analyse", icon: BarChart3,       to: "/admin/analyses" },
   { label: "Appréciations",   icon: Star,             to: "/admin/appreciations" },
   { label: "Absences",        icon: Calendar,         to: "/admin/attendance" },
   { label: "Emploi du temps", icon: Calendar,         to: "/admin/schedule" },

@@ -9,7 +9,7 @@
  * jamais 0.
  */
 import { useEffect, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { Bar, CartesianGrid, ComposedChart, Legend, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { Download, X } from "lucide-react";
 import { paymentsAPI } from "../../api";
@@ -198,6 +198,7 @@ export default function GraphiquePaiements() {
     queryKey: ["tableau-paiements-filtres", academyKey, choixStructure],
     queryFn: () => paymentsAPI.tableauDeBordFiltres(Object.fromEntries(Object.entries(choixStructure).filter(([, v]) => v))),
     enabled: businessDataEnabled,
+    placeholderData: keepPreviousData,
   });
   const o = optionsData?.data;
   const structureDispo = Boolean(o?.structure_disponible);

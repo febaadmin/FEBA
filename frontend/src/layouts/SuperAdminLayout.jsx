@@ -1,7 +1,7 @@
 import { NavLink } from "react-router-dom";
 import { useState, useEffect } from "react";
 import {
-  Building2, Star, Stamp, FileBarChart, LayoutDashboard, Users, Shield, GraduationCap, UserCheck, Users2, BookOpen, DollarSign, Megaphone, Settings, LogOut, Menu, X, MessageSquare, Layers, ClipboardList, FileText, Calendar, UserCog, FolderOpen, Image, ClipboardCheck, CircleHelp, ListTree, Video, Globe, AlertTriangle, CreditCard, Award, Mail, BellRing, Inbox, TrendingUp, ReceiptText, Wallet } from "lucide-react";
+  BarChart3, Building2, Star, Stamp, FileBarChart, LayoutDashboard, Users, Shield, GraduationCap, UserCheck, Users2, BookOpen, DollarSign, Megaphone, Settings, LogOut, Menu, X, MessageSquare, Layers, ClipboardList, FileText, Calendar, UserCog, FolderOpen, Image, ClipboardCheck, CircleHelp, ListTree, Video, Globe, AlertTriangle, CreditCard, Award, Mail, BellRing, Inbox, TrendingUp, ReceiptText, Wallet } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
 import AcademyLogo from "../components/AcademyLogo";
 import AcademyName from "../components/AcademyName";
@@ -38,6 +38,7 @@ const nav = [
     { label: "Niveaux",           icon: Layers,        to: "/superadmin/levels" },
     { label: "Notes",             icon: ClipboardList, to: "/superadmin/grades" },
     { label: "Bulletins",         icon: FileText,      to: "/superadmin/bulletins" },
+  { label: "Centre d'analyse", icon: BarChart3, to: "/superadmin/analyses" },
     { label: "Appréciations",     icon: Star,          to: "/superadmin/appreciations" },
     { label: "Paiements",         icon: DollarSign,    to: "/superadmin/payments" },
   { label: "Transactions carte", icon: CreditCard, to: "/superadmin/card-transactions" },

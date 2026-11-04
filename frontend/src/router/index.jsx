@@ -127,6 +127,8 @@ const Outbox = lazy(() => import("../pages/admin/Outbox"));
 const PaymentReminders = lazy(() => import("../pages/admin/PaymentReminders"));
 const Tarifs = lazy(() => import("../pages/admin/Tarifs"));
 const SituationFinanciere = lazy(() => import("../pages/admin/SituationFinanciere"));
+const Analyses = lazy(() => import("../pages/shared/Analyses"));
+const MesAnalyses = lazy(() => import("../pages/shared/MesAnalyses"));
 const MonthlyReports = lazy(() => import("../pages/admin/MonthlyReports"));
 const AdminWebsite = lazy(() => import("../pages/admin/Website"));
 
@@ -388,6 +390,7 @@ export default function AppRouter() {
         <Route path="payment-reminders" element={<PaymentReminders />} />
         <Route path="tarifs" element={<Tarifs />} />
         <Route path="situation-financiere" element={<SituationFinanciere />} />
+        <Route path="analyses" element={<Analyses />} />
         {/* P3 : rapports mensuels — académie en ligne uniquement. Le
             backend refuse toute autre académie, l'entrée de menu ne fait
             que suivre. */}
@@ -448,6 +451,7 @@ export default function AppRouter() {
         <Route path="payment-reminders" element={<PaymentReminders />} />
         <Route path="tarifs" element={<Tarifs />} />
         <Route path="situation-financiere" element={<SituationFinanciere />} />
+        <Route path="analyses" element={<Analyses />} />
         {/* P3 : rapports mensuels — académie en ligne uniquement. Le
             backend refuse toute autre académie, l'entrée de menu ne fait
             que suivre. */}
@@ -463,6 +467,7 @@ export default function AppRouter() {
         <Route path="dashboard"     element={<TeacherDashboard />} />
         <Route path="classes"       element={<TeacherClasses />} />
         <Route path="grades"        element={<TeacherGrades />} />
+        <Route path="analyses" element={<Analyses />} />
         <Route path="aide" element={<AideGuides />} />
         <Route path="evaluations" element={<FeatureGate feature="evaluations_en_ligne"><EvalEpreuves /></FeatureGate>} />
         <Route path="evaluations/banque" element={<FeatureGate feature="evaluations_en_ligne"><EvalBanque /></FeatureGate>} />
@@ -492,6 +497,7 @@ export default function AppRouter() {
         <Route path="home"          element={<ParentHome />} />
         <Route path="children"      element={<ParentChildren />} />
         <Route path="grades"        element={<ParentGrades />} />
+        <Route path="analyses" element={<MesAnalyses />} />
         <Route path="aide" element={<AideGuides />} />
         <Route path="evaluations" element={<FeatureGate feature="evaluations_en_ligne"><EvalMes /></FeatureGate>} />
         <Route path="suivi" element={<FeatureGate feature="suivi_familles"><SuiviEleves /></FeatureGate>} />
@@ -516,6 +522,7 @@ export default function AppRouter() {
         <Route index element={<Navigate to="home" replace />} />
         <Route path="home"          element={<StudentHome />} />
         <Route path="grades"        element={<StudentGrades />} />
+        <Route path="analyses" element={<MesAnalyses />} />
         <Route path="aide" element={<AideGuides />} />
         <Route path="evaluations" element={<FeatureGate feature="evaluations_en_ligne"><EvalMes /></FeatureGate>} />
         <Route path="evaluations/:id/passer" element={<FeatureGate feature="evaluations_en_ligne"><EvalPassage /></FeatureGate>} />
