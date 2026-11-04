@@ -212,3 +212,39 @@ class FeeSchedule(models.Model):
 
         ranked = sorted(candidates, key=specificity, reverse=True)
         return ranked[0] if ranked else None
+
+
+class FeeScheduleChange(models.Model):
+    """
+    Historique d'un tarif : qui l'a créé, modifié, désactivé ou supprimé,
+    quand, avec quels montants avant et après, et pourquoi. En ajout seul :
+    l'historique survit à la suppression du tarif (copie de l'identité).
+    """
+    CREATION, MODIFICATION, DESACTIVATION, REACTIVATION, SUPPRESSION = (
+        "creation", "modification", "desactivation", "reactivation", "suppression")
+    ACTIONS = [(CREATION, "Création"), (MODIFICATION, "Modification"), (DESACTIVATION, "Désactivation"),
+               (REACTIVATION, "Réactivation"), (SUPPRESSION, "Suppression")]
+
+    academy = models.ForeignKey("schools.School", on_delete=models.CASCADE, related_name="fee_changes")
+    fee_schedule = models.ForeignKey(FeeSchedule, on_delete=models.SET_NULL, null=True, blank=True,
+                                     related_name="changes")
+    fee_description = models.CharField(max_length=200, help_text="Nature, libellé, année et niveau au moment du changement.")
+    action = models.CharField(max_length=14, choices=ACTIONS)
+    old_amount_minor = models.BigIntegerField(null=True, blank=True)
+    new_amount_minor = models.BigIntegerField(null=True, blank=True)
+    currency = models.CharField(max_length=3, default=DEFAULT_CURRENCY)
+    fields_changed = models.JSONField(default=list, blank=True)
+    reason = models.CharField(max_length=255, blank=True)
+    changed_by = models.ForeignKey("accounts.CustomUser", on_delete=models.SET_NULL, null=True, blank=True,
+                                   related_name="+")
+    changed_by_email = models.EmailField(blank=True)
+    changed_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Historique d'un tarif"
+        verbose_name_plural = "Historique des tarifs"
+        ordering = ["-changed_at", "-pk"]
+        indexes = [models.Index(fields=["academy", "-changed_at"], name="fee_change_academy_idx")]
+
+    def __str__(self):
+        return f"{self.get_action_display()} - {self.fee_description}"

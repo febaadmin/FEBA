@@ -131,3 +131,15 @@ class TableauBordPaiementsTests(ReminderBase):
         r = client.get(url)
         self.assertEqual([d["devise"] for d in r.data["devises"]], ["USD"])
         self.assertEqual(client.get(url.replace("2026-01-01", "pas-une-date")).status_code, 400)
+
+
+class EcheancierHorsPeriodeTests(ReminderBase):
+    """Une académie avec des tarifs mais sans échéance dans la période : attendu 0, pas « non calculable »."""
+
+    def test_attendu_zero_si_aucune_echeance_dans_la_periode(self):
+        r = calculer([self.feba], "7j", aujourd_hui=D(2026, 10, 15))   # tranches au 30/09 et 30/11
+        xof = r["devises"][0]
+        self.assertTrue(xof["echeancier_configure"])
+        self.assertEqual(xof["indicateurs"]["attendu_minor"], 0)
+        self.assertEqual(r["par_academie"][0]["attendu_minor"], 0)
+        self.assertIsNone(calculer([self.fha], "7j", aujourd_hui=D(2026, 10, 15))["devises"][0]["indicateurs"]["attendu_minor"])

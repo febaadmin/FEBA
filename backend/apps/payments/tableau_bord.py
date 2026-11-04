@@ -159,7 +159,11 @@ def calculer(academies, periode="12m", du=None, au=None, aujourd_hui=None):
         restant = sum(i.outstanding for i in echues)
         for i in echeances:
             d["serie"][_case(i.installment.due_date, par_jour)]["attendu"] += i.expected - i.discount
-        d["echeancier"] = d["echeancier"] or bool(echeances)
+        # Calculable dès que l'académie a un tarif actif avec échéances : sinon la valeur
+        # est inconnue (« non calculable »). S'il y en a, une période sans échéance vaut 0.
+        from apps.payments.models import FeeSchedule
+        a_tarifs = FeeSchedule.objects.filter(academy=academie, is_active=True, installments__isnull=False).exists()
+        d["echeancier"] = d["echeancier"] or a_tarifs
 
         for cle, valeur in (("encaisse_brut", total_brut), ("rembourse", total_remb), ("nb_paiements", nb),
                             ("annule", annules["t"] or 0), ("nb_annules", annules["n"]),
@@ -171,8 +175,8 @@ def calculer(academies, periode="12m", du=None, au=None, aujourd_hui=None):
         par_academie.append({
             "id": academie.pk, "nom": academie.name, "devise": code,
             "encaisse_minor": total_brut - total_remb, "nb_paiements": nb,
-            "attendu_minor": attendu if echeances else None,
-            "restant_minor": restant if echeances else None,
+            "attendu_minor": attendu if a_tarifs else None,
+            "restant_minor": restant if a_tarifs else None,
         })
 
     resultat = []

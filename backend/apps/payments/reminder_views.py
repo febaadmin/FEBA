@@ -150,6 +150,22 @@ class FeeScheduleSerializer(serializers.ModelSerializer):
             keep.append(inst.pk)
         fee.installments.exclude(pk__in=keep).delete()
 
+    def _journaliser(self, fee, action, ancien=None, champs=(), motif=""):
+        from .models import FeeScheduleChange
+        request = self.context.get("request")
+        user = getattr(request, "user", None)
+        FeeScheduleChange.objects.create(
+            academy=fee.academy, fee_schedule=fee if fee.pk else None, fee_description=decrire_tarif(fee),
+            action=action, old_amount_minor=ancien, new_amount_minor=fee.amount_minor, currency=fee.currency,
+            fields_changed=list(champs), reason=motif[:255],
+            changed_by=user if getattr(user, "is_authenticated", False) else None,
+            changed_by_email=getattr(user, "email", "") or "")
+
+    def _motif(self):
+        request = self.context.get("request")
+        valeur = (request.data.get("motif") if request is not None else "") or ""
+        return valeur.strip() if isinstance(valeur, str) else ""
+
     @transaction.atomic
     def create(self, validated):
         rows = validated.pop("installments", [])
@@ -162,13 +178,23 @@ class FeeScheduleSerializer(serializers.ModelSerializer):
         except Exception as exc:
             raise ValidationError({"non_field_errors": [str(exc)]})
         self._save_installments(fee, rows)
+        self._journaliser(fee, "creation", motif=self._motif())
         return fee
 
     @transaction.atomic
     def update(self, fee, validated):
         rows = validated.pop("installments", None)
+        ancien, etait_actif = fee.amount_minor, fee.is_active
+        champs = [k for k, v in validated.items() if k != "amount" and getattr(fee, k, None) != v]
         if "amount" in validated:
             fee.amount_minor = _to_minor(validated.pop("amount"), fee.academy.currency_code, "amount")
+            if fee.amount_minor != ancien:
+                champs.append("amount")
+                # Un tarif déjà réglé par des familles ne change pas de montant sans motif tracé.
+                if tarif_utilise(fee) and not self._motif():
+                    raise ValidationError({"motif": "Ce tarif a déjà des paiements : indiquez le motif du changement de montant."})
+        if rows is not None:
+            champs.append("installments")
         for key, value in validated.items():
             setattr(fee, key, value)
         try:
@@ -177,6 +203,10 @@ class FeeScheduleSerializer(serializers.ModelSerializer):
             raise ValidationError({"non_field_errors": [str(exc)]})
         if rows is not None:
             self._save_installments(fee, rows)
+        if champs:
+            action = ("desactivation" if etait_actif and not fee.is_active
+                      else "reactivation" if not etait_actif and fee.is_active else "modification")
+            self._journaliser(fee, action, ancien=ancien, champs=champs, motif=self._motif())
         return fee
 
 
@@ -196,6 +226,60 @@ class FeeScheduleViewSet(AcademyScopedMixin, viewsets.ModelViewSet):
         ctx = super().get_serializer_context()
         ctx["academy"] = self.academy()
         return ctx
+
+    @transaction.atomic
+    def destroy(self, request, *args, **kwargs):
+        fee = self.get_object()
+        # Supprimer en cascade effacerait les réductions, exonérations et abonnements des élèves.
+        if tarif_utilise(fee) or fee.arrangements.exists():
+            return Response({"detail": "Ce tarif est déjà utilisé (paiements ou dispositions d'élèves) : "
+                                       "désactivez-le au lieu de le supprimer."}, status=status.HTTP_409_CONFLICT)
+        from .models import FeeScheduleChange
+        motif = request.data.get("motif") if isinstance(request.data.get("motif"), str) else ""
+        FeeScheduleChange.objects.create(
+            academy=fee.academy, fee_schedule=None, fee_description=decrire_tarif(fee), action="suppression",
+            old_amount_minor=fee.amount_minor, currency=fee.currency, reason=(motif or "")[:255],
+            changed_by=request.user, changed_by_email=request.user.email)
+        return super().destroy(request, *args, **kwargs)
+
+
+class FeeChangeHistoryView(AcademyScopedMixin, APIView):
+    """GET /api/payments/fee-schedules/historique/ : historique des tarifs de l'académie."""
+
+    def get(self, request):
+        from .models import FeeScheduleChange
+        qs = FeeScheduleChange.objects.filter(academy=self.academy()).select_related("changed_by")
+        fee_id = request.query_params.get("tarif")
+        if fee_id:
+            from apps.core.request_text import identifiant
+            qs = qs.filter(fee_schedule_id=identifiant(fee_id))
+        return Response([{
+            "id": c.pk, "tarif": c.fee_schedule_id, "description": c.fee_description, "action": c.action,
+            "action_label": c.get_action_display(),
+            "ancien": Money(c.old_amount_minor, c.currency).formatted() if c.old_amount_minor is not None else None,
+            "nouveau": Money(c.new_amount_minor, c.currency).formatted() if c.new_amount_minor is not None else None,
+            "champs": c.fields_changed, "motif": c.reason,
+            "auteur": c.changed_by.get_full_name() if c.changed_by else c.changed_by_email,
+            "date": c.changed_at,
+        } for c in qs[:500]])
+
+
+def decrire_tarif(fee):
+    nature = dict(Payment.PAYMENT_TYPES).get(fee.payment_type, fee.payment_type)
+    parts = [nature, fee.label or "", getattr(fee.school_year, "name", "") or "toutes années",
+             getattr(fee.level, "name", "") or "tous niveaux"]
+    return " · ".join(p for p in parts if p)[:200]
+
+
+def tarif_utilise(fee):
+    """Des paiements confirmés existent-ils déjà pour cette nature, cette académie (et cette année) ?"""
+    qs = Payment.objects.filter(student__school_id=fee.academy_id, payment_type=fee.payment_type,
+                                is_confirmed=True, is_deleted=False)
+    if fee.school_year_id:
+        qs = qs.filter(school_year_id=fee.school_year_id)
+    if fee.level_id:
+        qs = qs.filter(student__current_class__level_id=fee.level_id)
+    return qs.exists()
 
 
 class ArrangementSerializer(serializers.ModelSerializer):

@@ -25,6 +25,7 @@ schedules_router.register(r"fee-arrangements", reminder_views.ArrangementViewSet
 urlpatterns = [
     path("tableau-de-bord/", tableau_bord.TableauBordPaiementsView.as_view(), name="payments-dashboard"),
     # ── Relances de paiement ──────────────────────────────────────────
+    path("fee-schedules/historique/", reminder_views.FeeChangeHistoryView.as_view(), name="fee-changes"),
     path("reminders/status/", reminder_views.ReminderStatusView.as_view(), name="reminders-status"),
     path("reminders/policy/", reminder_views.ReminderPolicyView.as_view(), name="reminders-policy"),
     path("reminders/preview/", reminder_views.ReminderPreviewView.as_view(), name="reminders-preview"),

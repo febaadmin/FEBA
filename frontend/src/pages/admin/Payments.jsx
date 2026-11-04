@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { NATURES_FRAIS } from "../../utils/naturesFrais";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Plus, Trash2, Receipt, DollarSign, TrendingUp, Eye, RotateCcw, FileSpreadsheet } from "lucide-react";
 import { Controller } from "react-hook-form";
@@ -398,13 +399,8 @@ export default function AdminPayments() {
             <div>
               <label className="label">{t("Type *")}</label>
               <select {...register("payment_type", { required: true })} className="input">
-                <option value="">Choisir</option>
-                <option value="inscription">{t("Inscription")}</option>
-                <option value="mensualite">{t("Mensualité")}</option>
-                <option value="cantine">{t("Cantine")}</option>
-                <option value="transport">{t("Transport")}</option>
-                <option value="garderie">{t("Garderie")}</option>
-                <option value="other">{t("Autre")}</option>
+                <option value="">{t("Choisir")}</option>
+                {NATURES_FRAIS.map(([valeur, libelle]) => <option key={valeur} value={valeur}>{t(libelle)}</option>)}
               </select>
             </div>
             <div>

@@ -125,6 +125,7 @@ const FhaAdmissions = lazy(() => import("../pages/admin/FhaAdmissions"));
 const MassEmail = lazy(() => import("../pages/admin/MassEmail"));
 const Outbox = lazy(() => import("../pages/admin/Outbox"));
 const PaymentReminders = lazy(() => import("../pages/admin/PaymentReminders"));
+const Tarifs = lazy(() => import("../pages/admin/Tarifs"));
 const MonthlyReports = lazy(() => import("../pages/admin/MonthlyReports"));
 const AdminWebsite = lazy(() => import("../pages/admin/Website"));
 
@@ -384,6 +385,7 @@ export default function AppRouter() {
         <Route path="emails" element={<MassEmail />} />
         <Route path="outbox" element={<Outbox />} />
         <Route path="payment-reminders" element={<PaymentReminders />} />
+        <Route path="tarifs" element={<Tarifs />} />
         {/* P3 : rapports mensuels — académie en ligne uniquement. Le
             backend refuse toute autre académie, l'entrée de menu ne fait
             que suivre. */}
@@ -442,6 +444,7 @@ export default function AppRouter() {
         <Route path="emails" element={<MassEmail />} />
         <Route path="outbox" element={<Outbox />} />
         <Route path="payment-reminders" element={<PaymentReminders />} />
+        <Route path="tarifs" element={<Tarifs />} />
         {/* P3 : rapports mensuels — académie en ligne uniquement. Le
             backend refuse toute autre académie, l'entrée de menu ne fait
             que suivre. */}
