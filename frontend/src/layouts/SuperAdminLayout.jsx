@@ -13,6 +13,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useAuthStore } from "../store/authStore";
 import { t } from "../i18n";
 import LanguageSwitcher from "../components/ui/LanguageSwitcher";
+import NotificationBell from "../components/NotificationBell";
 import EntitySwitcher from "../components/EntitySwitcher";
 import AcademyScopedOutlet from "../components/AcademyScopedOutlet";
 
@@ -196,6 +197,7 @@ export default function SuperAdminLayout() {
                 la portée réelle des données consultées. */}
             <EntitySwitcher />
             <LanguageSwitcher />
+            <NotificationBell toutVoir="/superadmin/incidents" toutVoirLibelle={t("Voir les incidents techniques →")} />
             <span className="text-xs font-bold px-3 py-1 rounded-full bg-gradient-to-r from-primary-50 to-primary-100 text-primary">
               Super Admin
             </span>

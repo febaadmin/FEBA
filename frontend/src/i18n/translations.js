@@ -284,6 +284,7 @@ export const EN = {
   "Réinitialisation…": "Resetting…",
   "Mot de passe réinitialisé.": "Password has been reset.",
   "Action sensible": "Sensitive action",
+  "Voir les incidents techniques →": "View technical incidents →",
   "Votre mot de passe (confirmation d'identité) *": "Your password (identity check) *",
   "Saisissez votre propre mot de passe pour confirmer cette opération.": "Enter your own password to confirm this operation.",
   "Compte super-administrateur : votre identité est vérifiée et le titulaire est prévenu par e-mail.": "Super administrator account: your identity is checked and the account holder is notified by email.",
