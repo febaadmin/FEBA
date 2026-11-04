@@ -15,7 +15,9 @@ Ce fichier dit exactement où en est le travail, pour une reprise sans perte.
 | #75 | Écritures refusées : motif toujours affiché | fusionnée, déployée (`48a9377`) |
 | #76 | URGENT : Celery en panne (kombu 5.7.0) | fusionnée, déployée (`48a9377`) ; Celery vérifié en production |
 | #77 | Une seule coupure nginx quand sa configuration change | fusionnée (`935b1ca`) |
-| #78 | Ce dossier de clôture | — |
+| #78 | Dossier de clôture | fusionnée |
+| #79 | Rapport de l'archive finale | fusionnée |
+| #80 à #85 | Phase 4 : graphique des paiements, aide, notifications, API sans erreur 500, N+1, E2E | fusionnées, déployées (`4b8b165`) ; voir `RAPPORT_PHASE4.md` |
 
 Vérifier l'état réel avec `gh pr list --state all -L 12` : ce tableau peut être en retard.
 
@@ -44,6 +46,9 @@ Vérifier l'état réel avec `gh pr list --state all -L 12` : ce tableau peut ê
    - test Restic root.
 
 ## Prochaines étapes techniques possibles
+
+- Tableau de bord parent (132 requêtes) et liste du suivi (123) : regrouper les calculs de moyennes et de progression.
+- Échéanciers à saisir dans « Relances de paiement » pour que le graphique affiche l'attendu et le reste à payer (décision métier).
 
 - Expiration d'une requête par déploiement lors du remplacement du backend : éprouver `proxy_connect_timeout` court et `proxy_next_upstream` sur la mini-pile (voir `RAPPORT_DEPLOIEMENT_FINAL.md`).
 

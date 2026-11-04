@@ -87,3 +87,17 @@ Aucun statut n'a été modifié automatiquement. Proposition :
 | ERR-72B72D, FF13EF, 291699, CBAA57 | Résolu (inchangé) | — | — |
 
 Le passage à « Résolu » exige le niveau « Parcours réel validé par l'utilisateur concerné », que seul l'utilisateur peut fournir.
+
+## 5. Mise à jour du 04/11/2026 (phase 4)
+
+Les modifications ci-dessous ont été faites en production, avec preuve, sans supprimer ni masquer aucun incident.
+
+- **ERR-310AC0** : passé de « Nouveau » à « Corrigé, à valider ». Quatre niveaux sont prouvés :
+  - développé : PR #69 ;
+  - testé automatiquement : `test_surveillance_sauvegarde.py` ;
+  - testé localement : course reproduite 3/3 avec l'ancienne attente, 3/3 réussites avec la nouvelle ;
+  - testé en production : sauvegardes VALIDES le 04/11 à 02:04 et 02:40 UTC, surveillance sans anomalie depuis.
+
+  La validation utilisateur reste attendue.
+- **ERR-A036A8, ERR-FC6DC7, ERR-4744E2** : le niveau « testé en production » est renseigné. Preuve : 10 suppressions de notes par un enseignant ont réussi le 01/11 entre 14:44 et 14:49 UTC, après le déploiement du correctif (01/11 à 01:49 UTC, commit `6e10073`), sans nouvelle occurrence. Le statut reste « Corrigé, à valider », faute de validation utilisateur.
+- **Notifications redondantes** : les deux notifications de 06:00 et 07:00 pour ERR-310AC0 correspondaient à la 1ʳᵉ et à la 5ᵉ occurrence d'une même panne continue. La règle est changée par la PR #82 : une alerte à la création, à la réapparition après correction, ou au retour après 6 h de silence.
