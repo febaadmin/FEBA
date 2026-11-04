@@ -284,6 +284,7 @@ export const EN = {
   "Réinitialisation…": "Resetting…",
   "Mot de passe réinitialisé.": "Password has been reset.",
   "Action sensible": "Sensitive action",
+  "Montants en": "Amounts in",
   "12 mois": "12 months",
   "3 mois": "3 months",
   "30 jours": "30 days",

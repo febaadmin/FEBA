@@ -69,7 +69,7 @@ export default function GraphiquePaiements() {
         <div>
           <h2 id="titre-paiements" className="font-bold text-slate-800">{t("Paiements")}</h2>
           <p className="text-xs text-slate-500">
-            {r ? `${new Date(r.periode.du).toLocaleDateString(dateLocale())} → ${new Date(r.periode.au).toLocaleDateString(dateLocale())}` : t("Encaissements réels, par devise")}
+            {r ? `${new Date(r.periode.du).toLocaleDateString(dateLocale())} → ${new Date(r.periode.au).toLocaleDateString(dateLocale())}${code ? ` · ${t("Montants en")} ${code}` : ""}` : t("Encaissements réels, par devise")}
           </p>
         </div>
         <div className="flex flex-wrap gap-1.5" role="group" aria-label={t("Période")}>
@@ -129,8 +129,8 @@ export default function GraphiquePaiements() {
               <ComposedChart data={serie} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
                 <XAxis dataKey="date" tick={{ fontSize: 11, fill: "#64748b" }} interval="preserveStartEnd" />
-                <YAxis tick={{ fontSize: 11, fill: "#64748b" }} width={70}
-                  tickFormatter={(v) => formatMinor(v * 10 ** decimales, code)} />
+                <YAxis tick={{ fontSize: 11, fill: "#64748b" }} width={48}
+                  tickFormatter={(v) => new Intl.NumberFormat(dateLocale(), { notation: "compact", maximumFractionDigits: 1 }).format(v)} />
                 <Tooltip formatter={(v, nom) => [v === null ? t("Non calculable") : formatMinor(v * 10 ** decimales, code), nom]} />
                 <Legend wrapperStyle={{ fontSize: 12 }} />
                 <Bar dataKey="encaisse" name={t("Encaissé")} fill={COULEUR_ENCAISSE} radius={[4, 4, 0, 0]} maxBarSize={36} isAnimationActive={false} />
