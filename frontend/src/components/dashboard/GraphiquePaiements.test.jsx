@@ -1,12 +1,20 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, fireEvent, waitFor, act } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import GraphiquePaiements from "./GraphiquePaiements";
+import GraphiquePaiements, { changerFiltre, parametres, FILTRES_VIDES } from "./GraphiquePaiements";
 import { setLang } from "../../i18n";
 
 const tableauDeBord = vi.fn();
-vi.mock("../../api", () => ({ paymentsAPI: { tableauDeBord: (...a) => tableauDeBord(...a) } }));
-vi.mock("../../context/AcademyContext", () => ({ useAcademy: () => ({ academyKey: "all", businessDataEnabled: true }) }));
+const filtresAPI = vi.fn();
+const detailAPI = vi.fn();
+vi.mock("../../api", () => ({ paymentsAPI: {
+  tableauDeBord: (...a) => tableauDeBord(...a),
+  tableauDeBordFiltres: (...a) => filtresAPI(...a),
+  tableauDeBordDetail: (...a) => detailAPI(...a),
+  tableauDeBordExport: vi.fn(),
+} }));
+const academie = { academyKey: "all", businessDataEnabled: true };
+vi.mock("../../context/AcademyContext", () => ({ useAcademy: () => academie }));
 // recharts mesure son conteneur : sans dimensions en jsdom, on se contente du rendu des données.
 vi.mock("recharts", async (orig) => {
   const vrai = await orig();
@@ -32,7 +40,12 @@ const reponse = {
 const monter = () => render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><GraphiquePaiements /></QueryClientProvider>);
 
 describe("graphique des paiements", () => {
-  beforeEach(() => { tableauDeBord.mockReset(); setLang("fr"); });
+  beforeEach(() => {
+    tableauDeBord.mockReset(); detailAPI.mockReset(); filtresAPI.mockReset(); setLang("fr");
+    academie.academyKey = "all";
+    filtresAPI.mockResolvedValue({ data: { structure_disponible: false, annees: [], cycles: [], niveaux: [], classes: [], eleves: [],
+      natures: [{ id: "mensualite", nom: "Mensualité" }], modes: [{ id: "cash", nom: "Espèces" }] } });
+  });
   afterEach(() => setLang("fr"));
 
   it("affiche les indicateurs du serveur, devise par devise, sans additionner XOF et USD", async () => {
@@ -75,5 +88,78 @@ describe("graphique des paiements", () => {
     await screen.findByTestId("ind-encaisse");
     expect(screen.getByTestId("ind-attendu").textContent).toMatch(/Not computable/);
     expect(screen.getByTestId("ind-encaisse").textContent).toMatch(/Collected \(net of refunds\)/);
+  });
+
+  it("paramètres : seulement les filtres renseignés ; un choix de structure efface ceux qui en dépendent", () => {
+    expect(parametres("12m", "", "", FILTRES_VIDES, false)).toEqual({ periode: "12m" });
+    expect(parametres("perso", "2026-01-01", "2026-01-31", { ...FILTRES_VIDES, classe: "4", mode: "cash" }, true))
+      .toEqual({ periode: "perso", du: "2026-01-01", au: "2026-01-31", comparer: 1, classe: "4", mode: "cash" });
+    const f = { ...FILTRES_VIDES, annee: "1", cycle: "primaire", niveau: "2", classe: "3", eleve: "9", nature: "cantine" };
+    expect(changerFiltre(f, "niveau", "5")).toMatchObject({ annee: "1", cycle: "primaire", niveau: "5", classe: "", eleve: "", nature: "cantine" });
+    expect(changerFiltre(f, "cycle", "")).toMatchObject({ niveau: "", classe: "", eleve: "" });
+    expect(changerFiltre(f, "annee", "7")).toMatchObject({ niveau: "2", classe: "", eleve: "" });
+  });
+
+  it("structure désactivée en « Toutes les Académies » ; filtres dépendants, puces et réinitialisation pour une académie", async () => {
+    tableauDeBord.mockResolvedValue({ data: reponse });
+    const { unmount } = monter();
+    await screen.findByTestId("ind-encaisse");
+    await waitFor(() => expect(screen.getByTestId("filtre-classe").disabled).toBe(true));
+    unmount();
+    academie.academyKey = "1";
+    filtresAPI.mockImplementation(async (p) => ({ data: { structure_disponible: true,
+      annees: [{ id: 1, nom: "2026-2027" }], cycles: [{ id: "primaire", nom: "Primaire" }],
+      niveaux: [{ id: 2, nom: "CE1" }], classes: p.niveau ? [{ id: 3, nom: "CE1-A" }] : [{ id: 3, nom: "CE1-A" }, { id: 4, nom: "CM1-A" }],
+      eleves: p.classe ? [{ id: 9, nom: "Alice Élève" }] : [], natures: [{ id: "mensualite", nom: "Mensualité" }], modes: [] } }));
+    monter();
+    await screen.findByTestId("ind-encaisse");
+    await waitFor(() => expect(screen.getByTestId("filtre-classe").disabled).toBe(false));
+    expect(screen.getByTestId("filtre-eleve").disabled).toBe(true);           // il faut d'abord une classe
+    fireEvent.change(screen.getByTestId("filtre-niveau"), { target: { value: "2" } });
+    await waitFor(() => expect(filtresAPI).toHaveBeenLastCalledWith({ niveau: "2" }));
+    await waitFor(() => expect(screen.getByTestId("filtre-classe").querySelectorAll("option").length).toBe(2));
+    fireEvent.change(screen.getByTestId("filtre-classe"), { target: { value: "3" } });
+    await waitFor(() => expect(tableauDeBord).toHaveBeenLastCalledWith({ periode: "12m", niveau: "2", classe: "3" }));
+    await waitFor(() => expect(screen.getByTestId("filtre-eleve").disabled).toBe(false));
+    expect(screen.getByTestId("filtres-actifs").textContent).toMatch(/Niveau : CE1.*Classe : CE1-A/);
+    fireEvent.click(screen.getByRole("button", { name: /Retirer le filtre Niveau/ }));
+    await waitFor(() => expect(tableauDeBord).toHaveBeenLastCalledWith({ periode: "12m" }));   // la classe dépendait du niveau
+    fireEvent.click(screen.getByTestId("filtres-plus"));
+    fireEvent.change(screen.getByTestId("filtre-statut"), { target: { value: "annule" } });
+    await waitFor(() => expect(tableauDeBord).toHaveBeenLastCalledWith({ periode: "12m", statut: "annule" }));
+    fireEvent.click(screen.getByTestId("filtres-reinitialiser"));
+    await waitFor(() => expect(tableauDeBord).toHaveBeenLastCalledWith({ periode: "12m" }));
+    expect(screen.queryByTestId("filtres-actifs")).toBeNull();
+  });
+
+  it("comparaison : variation affichée, « non calculable » sans base ; message 400 explicite", async () => {
+    const xof = { ...reponse.devises[1], precedent: ind({ encaisse_minor: 300000 }),
+      variations: { encaisse_minor: -30, nb_paiements: 50, attendu_minor: null, restant_minor: null } };
+    tableauDeBord.mockImplementation(async (p) => (p.comparer
+      ? { data: { ...reponse, devises: [xof], periode_precedente: { du: "2024-12-01", au: "2025-11-30" } } }
+      : { data: reponse }));
+    monter();
+    await screen.findByTestId("ind-encaisse");
+    fireEvent.click(screen.getByTestId("comparer"));
+    await waitFor(() => expect(screen.getByTestId("ind-encaisse-variation").textContent).toMatch(/-30 % vs période précédente/));
+    expect(screen.getByTestId("ind-attendu-variation").textContent).toMatch(/variation non calculable/);
+    expect(screen.getByTestId("periode-precedente").textContent).toMatch(/300\s?000/);
+    tableauDeBord.mockRejectedValue({ response: { status: 400, data: { detail: "Filtre invalide.", nature: "Valeur inconnue : x." } } });
+    fireEvent.click(screen.getByTestId("periode-7j"));
+    expect((await screen.findByRole("alert")).textContent).toMatch(/Filtre invalide\. Nature de frais : Valeur inconnue/);
+  });
+
+  it("clic sur une barre : détail des paiements de cette case, avec les mêmes filtres", async () => {
+    tableauDeBord.mockResolvedValue({ data: reponse });
+    detailAPI.mockResolvedValue({ data: { du: "2026-11-01", au: "2026-11-30", total: 1, tronque: false, paiements: [
+      { id: 5, date: "2026-11-03", eleve: "Cyril Élève", classe: null, nature_libelle: "Mensualité", mode_libelle: "Carte bancaire",
+        montant_minor: 12550, rembourse_minor: 2000, devise: "USD", statut: "confirme" }] } });
+    monter();
+    await screen.findByTestId("ind-encaisse");
+    fireEvent.click(screen.getByTestId("case-2026-11-01"));
+    await screen.findByTestId("detail-paiements");
+    expect(detailAPI).toHaveBeenCalledWith({ periode: "12m", case: "2026-11-01" });
+    expect(screen.getByTestId("detail-total").textContent).toBe("1");
+    expect(screen.getByTestId("detail-paiements").textContent).toMatch(/Cyril Élève.*125[.,]50.*remboursé.*20[.,]00.*Confirmé/);
   });
 });
