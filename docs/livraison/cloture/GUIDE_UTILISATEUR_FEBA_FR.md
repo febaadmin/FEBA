@@ -162,7 +162,7 @@ Ce guide reprend le centre d'aide intégré à FEBA (menu « Aide »), généré
 
 - L'adresse e-mail ne se modifie pas ici : demandez-le à l'administration.
 
-**Résultat attendu.** Message « Profil mis à jour ! » ou « Mot de passe modifié avec succès. ».
+**Résultat attendu.** Confirmation affichée : « Profil mis à jour ! » ou « Mot de passe modifié avec succès. ».
 
 **Erreurs fréquentes.**
 
@@ -282,7 +282,7 @@ Ce guide reprend le centre d'aide intégré à FEBA (menu « Aide »), généré
 - E-mail unique : il sert d'identifiant de connexion.
 - Rôle : un administrateur ne peut créer que des enseignants, parents et élèves.
 
-**Résultat attendu.** Message « Utilisateur créé avec succès ! » ; l'utilisateur doit changer son mot de passe à la première connexion.
+**Résultat attendu.** Confirmation affichée : « Utilisateur créé avec succès ! » ; l'utilisateur doit changer son mot de passe à la première connexion.
 
 **Erreurs fréquentes.**
 
@@ -377,7 +377,7 @@ Ce guide reprend le centre d'aide intégré à FEBA (menu « Aide »), généré
 
 - Établissement : l'administrateur ne voit que cette académie.
 
-**Résultat attendu.** Message « Administrateur créé! ».
+**Résultat attendu.** Confirmation affichée : « Administrateur créé! ».
 
 **Erreurs fréquentes.**
 
@@ -408,7 +408,7 @@ Ce guide reprend le centre d'aide intégré à FEBA (menu « Aide »), généré
 - Programme linguistique : langues des matières, des parcours et des bulletins, distinct de la langue de l'interface.
 - Code interne : ne peut plus être modifié.
 
-**Résultat attendu.** Message « Académie créée et initialisée. ».
+**Résultat attendu.** Confirmation affichée : « Académie créée et initialisée. ».
 
 **Erreurs fréquentes.**
 
@@ -472,7 +472,7 @@ Ce guide reprend le centre d'aide intégré à FEBA (menu « Aide »), généré
 
 - Coefficient : poids de la matière dans les moyennes et les bulletins.
 
-**Résultat attendu.** Messages « Année activée ! », « Matière créée ! », « Salle créée ! ».
+**Résultat attendu.** Confirmation affichée : « Année activée ! », « Matière créée ! », « Salle créée ! ».
 
 **Erreurs fréquentes.**
 
@@ -503,7 +503,7 @@ Ce guide reprend le centre d'aide intégré à FEBA (menu « Aide »), généré
 3. Vérifiez l'aperçu et envoyez : le logo devient actif.
 4. L'historique permet de réactiver une ancienne version.
 
-**Résultat attendu.** Message « Logo uploadé et activé avec succès ! Propagé dans toute l'application. ».
+**Résultat attendu.** Confirmation affichée : « Logo uploadé et activé avec succès ! Propagé dans toute l'application. ».
 
 **Erreurs fréquentes.**
 
@@ -629,7 +629,7 @@ Ce guide reprend le centre d'aide intégré à FEBA (menu « Aide »), généré
 
 - Matricule : identifiant de l'élève dans l'établissement.
 
-**Résultat attendu.** Message « Élève créé ! » ; l'élève apparaît dans sa classe.
+**Résultat attendu.** Confirmation affichée : « Élève créé ! » ; l'élève apparaît dans sa classe.
 
 **Erreurs fréquentes.**
 
@@ -664,7 +664,7 @@ Ce guide reprend le centre d'aide intégré à FEBA (menu « Aide »), généré
 
 - Type de contrat : Permanent, Contractuel ou Vacataire.
 
-**Résultat attendu.** Message « Enseignant créé ! » ; ses classes apparaissent dans « Mes classes ».
+**Résultat attendu.** Confirmation affichée : « Enseignant créé ! » ; ses classes apparaissent dans « Mes classes ».
 
 **Erreurs fréquentes.**
 
@@ -762,7 +762,7 @@ Ce guide reprend le centre d'aide intégré à FEBA (menu « Aide »), généré
 
 - Parcours linguistique : francophone, anglophone ou bilingue ; il détermine les matières attendues et la forme du bulletin.
 
-**Résultat attendu.** Message « Classe créée ! ». Le badge « Incomplet » signale des matières manquantes.
+**Résultat attendu.** Confirmation affichée : « Classe créée ! ». Le badge « Incomplet » signale des matières manquantes.
 
 **Erreurs fréquentes.**
 
@@ -795,7 +795,7 @@ Ce guide reprend le centre d'aide intégré à FEBA (menu « Aide »), généré
 
 - Cycle : il fixe le barème des notes (sur 10 ou sur 20) du bulletin.
 
-**Résultat attendu.** Message « Niveau créé ! ».
+**Résultat attendu.** Confirmation affichée : « Niveau créé ! ».
 
 **Erreurs fréquentes.**
 
@@ -832,7 +832,7 @@ Ce guide reprend le centre d'aide intégré à FEBA (menu « Aide »), généré
 - Période : Trimestre 1, 2, 3 ou Examen.
 - Type : devoir, interrogation, contrôle, examen, travaux pratiques ou autre.
 
-**Résultat attendu.** Message « Note ajoutée ! » ; le bulletin concerné est signalé « PDF à régénérer ».
+**Résultat attendu.** Confirmation affichée : « Note ajoutée ! » ; le bulletin concerné est signalé « PDF à régénérer ».
 
 **Erreurs fréquentes.**
 
@@ -898,7 +898,7 @@ Ce guide reprend le centre d'aide intégré à FEBA (menu « Aide »), généré
 
 - Commentaire commun (facultatif) : remplace les commentaires du directeur existants.
 
-**Résultat attendu.** Message « Bulletin généré avec succès ! PDF disponible. ».
+**Résultat attendu.** Confirmation affichée : « Bulletin généré avec succès ! PDF disponible. ».
 
 **Erreurs fréquentes.**
 
@@ -933,7 +933,7 @@ Ce guide reprend le centre d'aide intégré à FEBA (menu « Aide »), généré
 
 - Le seuil le plus bas doit valoir 0 % ; au moins une appréciation active.
 
-**Résultat attendu.** Message « Barème enregistré. ».
+**Résultat attendu.** Confirmation affichée : « Barème enregistré. ».
 
 **Erreurs fréquentes.**
 
@@ -967,7 +967,7 @@ Ce guide reprend le centre d'aide intégré à FEBA (menu « Aide »), généré
 
 - Niveaux de maîtrise : À travailler, À renforcer, En progression, Acquis.
 
-**Résultat attendu.** Message « Référentiel enregistré. ».
+**Résultat attendu.** Confirmation affichée : « Référentiel enregistré. ».
 
 **Erreurs fréquentes.**
 
@@ -1002,7 +1002,7 @@ Ce guide reprend le centre d'aide intégré à FEBA (menu « Aide »), généré
 
 - Évaluation du suivi : ne compte pas dans le bulletin.
 
-**Résultat attendu.** Message « Enregistré. » ; la synthèse et les graphiques se mettent à jour.
+**Résultat attendu.** Confirmation affichée : « Enregistré. » ; la synthèse et les graphiques se mettent à jour.
 
 **Erreurs fréquentes.**
 
@@ -1063,7 +1063,7 @@ Ce guide reprend le centre d'aide intégré à FEBA (menu « Aide »), généré
 
 - Matière, type et difficulté servent aux filtres.
 
-**Résultat attendu.** Message « Question enregistrée dans la banque. ».
+**Résultat attendu.** Confirmation affichée : « Question enregistrée dans la banque. ».
 
 **Erreurs fréquentes.**
 
@@ -1189,7 +1189,7 @@ Ce guide reprend le centre d'aide intégré à FEBA (menu « Aide »), généré
 
 - Justificatif : image, PDF ou document.
 
-**Résultat attendu.** Message « Présence enregistrée ! ».
+**Résultat attendu.** Confirmation affichée : « Présence enregistrée ! ».
 
 **Erreurs fréquentes.**
 
@@ -1214,7 +1214,7 @@ Ce guide reprend le centre d'aide intégré à FEBA (menu « Aide »), généré
 2. Saisissez titre, description, classe, matière et date limite.
 3. Ajoutez des fichiers si besoin, puis enregistrez.
 
-**Résultat attendu.** Message « Devoir créé ! » ; les élèves de la classe et leurs parents le voient.
+**Résultat attendu.** Confirmation affichée : « Devoir créé ! » ; les élèves de la classe et leurs parents le voient.
 
 **Erreurs fréquentes.**
 
@@ -1248,7 +1248,7 @@ Ce guide reprend le centre d'aide intégré à FEBA (menu « Aide »), généré
 
 - Séances en ligne : l'heure est saisie en UTC et affichée aussi en heure locale.
 
-**Résultat attendu.** Message « Créneau créé! » ou « Séance planifiée. » ; enseignants, élèves et parents voient leur emploi du temps.
+**Résultat attendu.** Confirmation affichée : « Créneau créé! » ou « Séance planifiée. » ; enseignants, élèves et parents voient leur emploi du temps.
 
 **Erreurs fréquentes.**
 
@@ -1272,7 +1272,7 @@ Ce guide reprend le centre d'aide intégré à FEBA (menu « Aide »), généré
 3. Cochez « Publier immédiatement » ou gardez un brouillon, puis « Publier ».
 4. Les autres profils lisent les annonces publiées dans « Annonces ».
 
-**Résultat attendu.** Message « Annonce publiée ! » ; elle apparaît dans « Annonces » des destinataires.
+**Résultat attendu.** Confirmation affichée : « Annonce publiée ! » ; elle apparaît dans « Annonces » des destinataires.
 
 **Effets sur les autres modules.** Un brouillon n'est visible de personne d'autre.
 
@@ -1293,7 +1293,7 @@ Ce guide reprend le centre d'aide intégré à FEBA (menu « Aide »), généré
 2. Choisissez le destinataire, saisissez le sujet et le message, joignez un fichier si besoin.
 3. « Envoyer ». Pour répondre, ouvrez la conversation et écrivez dans « Écrire une réponse… ».
 
-**Résultat attendu.** Message « Message envoyé ! » ; le destinataire est notifié.
+**Résultat attendu.** Confirmation affichée : « Message envoyé ! » ; le destinataire est notifié.
 
 **Erreurs fréquentes.**
 
@@ -1358,7 +1358,7 @@ Ce guide reprend le centre d'aide intégré à FEBA (menu « Aide »), généré
 
 - Heure : heure locale de l'académie ; laissez vide si elle n'est pas connue.
 
-**Résultat attendu.** Message « Paiement enregistré! » ; le total encaissé se met à jour.
+**Résultat attendu.** Confirmation affichée : « Paiement enregistré! » ; le total encaissé se met à jour.
 
 **Erreurs fréquentes.**
 
@@ -1419,7 +1419,7 @@ Ce guide reprend le centre d'aide intégré à FEBA (menu « Aide »), généré
 
 - « Suspendre les envois automatiques » arrête les relances sans perdre les règles.
 
-**Résultat attendu.** Message « Relances lancées : le résultat apparaîtra dans l'historique. ».
+**Résultat attendu.** Confirmation affichée : « Relances lancées : le résultat apparaîtra dans l'historique. ».
 
 **Erreurs fréquentes.**
 
@@ -1454,7 +1454,7 @@ Ce guide reprend le centre d'aide intégré à FEBA (menu « Aide »), généré
 
 - L'élève détermine l'académie émettrice.
 
-**Résultat attendu.** Message « Brouillon produit. Il n'est pas encore délivré. ».
+**Résultat attendu.** Confirmation affichée : « Brouillon produit. Il n'est pas encore délivré. ».
 
 **Erreurs fréquentes.**
 
@@ -1483,7 +1483,7 @@ Ce guide reprend le centre d'aide intégré à FEBA (menu « Aide »), généré
 2. « Placer les champs » et choisissez le format de page.
 3. « Aperçu PDF », puis « Vérifier » (rendu d'essai) et « Activer ».
 
-**Résultat attendu.** Message « Version activée : elle sert désormais à produire les documents. ».
+**Résultat attendu.** Confirmation affichée : « Version activée : elle sert désormais à produire les documents. ».
 
 **Erreurs fréquentes.**
 
@@ -1512,7 +1512,7 @@ Ce guide reprend le centre d'aide intégré à FEBA (menu « Aide »), généré
 
 - Images, PDF, Word, Excel, CSV, ZIP, 5 Mo au maximum.
 
-**Résultat attendu.** Message « Fichier uploadé ! ».
+**Résultat attendu.** Confirmation affichée : « Fichier uploadé ! ».
 
 **Erreurs fréquentes.**
 
@@ -1570,7 +1570,7 @@ Ce guide reprend le centre d'aide intégré à FEBA (menu « Aide »), généré
 
 - « Ne pas renvoyer aux dossiers dont la confirmation est déjà partie » évite les doublons.
 
-**Résultat attendu.** Message « Statut mis à jour. » ; l'e-mail au parent a son propre statut.
+**Résultat attendu.** Confirmation affichée : « Statut mis à jour. » ; l'e-mail au parent a son propre statut.
 
 **Erreurs fréquentes.**
 

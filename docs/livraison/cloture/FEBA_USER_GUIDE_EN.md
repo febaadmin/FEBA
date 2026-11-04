@@ -162,7 +162,7 @@ This guide mirrors the help centre built into FEBA ("Help" menu), generated from
 
 - The email address cannot be changed here: ask the administration.
 
-**Expected result.** Message "Profile updated!" or "Password changed successfully."
+**Expected result.** Confirmation shown: "Profile updated!" or "Password changed successfully."
 
 **Common errors.**
 
@@ -282,7 +282,7 @@ This guide mirrors the help centre built into FEBA ("Help" menu), generated from
 - Unique email: it is the sign-in identifier.
 - Role: an administrator can only create teachers, parents and students.
 
-**Expected result.** Message "User created successfully!"; the user must change their password at first sign-in.
+**Expected result.** Confirmation shown: "User created successfully!"; the user must change their password at first sign-in.
 
 **Common errors.**
 
@@ -377,7 +377,7 @@ This guide mirrors the help centre built into FEBA ("Help" menu), generated from
 
 - School: the administrator only sees this academy.
 
-**Expected result.** Message "Administrator created!"
+**Expected result.** Confirmation shown: "Administrator created!"
 
 **Common errors.**
 
@@ -408,7 +408,7 @@ This guide mirrors the help centre built into FEBA ("Help" menu), generated from
 - Language programme: languages of subjects, tracks and report cards, separate from the interface language.
 - Internal code: cannot be changed later.
 
-**Expected result.** Message "Academy created and initialised."
+**Expected result.** Confirmation shown: "Academy created and initialised."
 
 **Common errors.**
 
@@ -472,7 +472,7 @@ This guide mirrors the help centre built into FEBA ("Help" menu), generated from
 
 - Coefficient: weight of the subject in averages and report cards.
 
-**Expected result.** Messages "Year activated!", "Subject created!", "Room created!"
+**Expected result.** Confirmation shown: "Year activated!", "Subject created!", "Room created!"
 
 **Common errors.**
 
@@ -503,7 +503,7 @@ This guide mirrors the help centre built into FEBA ("Help" menu), generated from
 3. Check the preview and upload: the logo becomes active.
 4. The history lets you reactivate an older version.
 
-**Expected result.** Message "Logo uploaded and activated successfully! Applied across the application."
+**Expected result.** Confirmation shown: "Logo uploaded and activated successfully! Applied across the application."
 
 **Common errors.**
 
@@ -629,7 +629,7 @@ This guide mirrors the help centre built into FEBA ("Help" menu), generated from
 
 - Registration number: the student's identifier in the school.
 
-**Expected result.** Message "Student created!"; the student appears in their class.
+**Expected result.** Confirmation shown: "Student created!"; the student appears in their class.
 
 **Common errors.**
 
@@ -664,7 +664,7 @@ This guide mirrors the help centre built into FEBA ("Help" menu), generated from
 
 - Contract type: Permanent, Contract or Hourly.
 
-**Expected result.** Message "Teacher created!"; their classes appear in "My classes".
+**Expected result.** Confirmation shown: "Teacher created!"; their classes appear in "My classes".
 
 **Common errors.**
 
@@ -762,7 +762,7 @@ This guide mirrors the help centre built into FEBA ("Help" menu), generated from
 
 - Language track: French, English or bilingual; it determines expected subjects and the report card layout.
 
-**Expected result.** Message "Class created!". The "Incomplete" badge flags missing subjects.
+**Expected result.** Confirmation shown: "Class created!". The "Incomplete" badge flags missing subjects.
 
 **Common errors.**
 
@@ -795,7 +795,7 @@ This guide mirrors the help centre built into FEBA ("Help" menu), generated from
 
 - Cycle: it sets the grading scale (out of 10 or 20) of the report card.
 
-**Expected result.** Message "Level created!"
+**Expected result.** Confirmation shown: "Level created!"
 
 **Common errors.**
 
@@ -832,7 +832,7 @@ This guide mirrors the help centre built into FEBA ("Help" menu), generated from
 - Period: Term 1, 2, 3 or Exam.
 - Type: homework, quiz, test, exam, practical work or other.
 
-**Expected result.** Message "Grade added!"; the related report card is flagged "PDF to regenerate".
+**Expected result.** Confirmation shown: "Grade added!"; the related report card is flagged "PDF to regenerate".
 
 **Common errors.**
 
@@ -898,7 +898,7 @@ This guide mirrors the help centre built into FEBA ("Help" menu), generated from
 
 - Common comment (optional): replaces the existing principal's comments.
 
-**Expected result.** Message "Report card generated successfully! PDF available."
+**Expected result.** Confirmation shown: "Report card generated successfully! PDF available."
 
 **Common errors.**
 
@@ -933,7 +933,7 @@ This guide mirrors the help centre built into FEBA ("Help" menu), generated from
 
 - The lowest threshold must be 0%; at least one active appreciation.
 
-**Expected result.** Message "Scale saved."
+**Expected result.** Confirmation shown: "Scale saved."
 
 **Common errors.**
 
@@ -967,7 +967,7 @@ This guide mirrors the help centre built into FEBA ("Help" menu), generated from
 
 - Mastery levels: To work on, To strengthen, In progress, Acquired.
 
-**Expected result.** Message "Framework saved."
+**Expected result.** Confirmation shown: "Framework saved."
 
 **Common errors.**
 
@@ -1002,7 +1002,7 @@ This guide mirrors the help centre built into FEBA ("Help" menu), generated from
 
 - Follow-up assessment: does not count in the report card.
 
-**Expected result.** Message "Saved."; the summary and charts update.
+**Expected result.** Confirmation shown: "Saved."; the summary and charts update.
 
 **Common errors.**
 
@@ -1063,7 +1063,7 @@ This guide mirrors the help centre built into FEBA ("Help" menu), generated from
 
 - Subject, type and difficulty are used by filters.
 
-**Expected result.** Message "Question saved in the bank."
+**Expected result.** Confirmation shown: "Question saved in the bank."
 
 **Common errors.**
 
@@ -1189,7 +1189,7 @@ This guide mirrors the help centre built into FEBA ("Help" menu), generated from
 
 - Supporting document: image, PDF or document.
 
-**Expected result.** Message "Attendance recorded!"
+**Expected result.** Confirmation shown: "Attendance recorded!"
 
 **Common errors.**
 
@@ -1214,7 +1214,7 @@ This guide mirrors the help centre built into FEBA ("Help" menu), generated from
 2. Enter title, description, class, subject and due date.
 3. Add files if needed, then save.
 
-**Expected result.** Message "Homework created!"; the class's students and their parents see it.
+**Expected result.** Confirmation shown: "Homework created!"; the class's students and their parents see it.
 
 **Common errors.**
 
@@ -1248,7 +1248,7 @@ This guide mirrors the help centre built into FEBA ("Help" menu), generated from
 
 - Online sessions: time is entered in UTC and also shown in local time.
 
-**Expected result.** Message "Slot created!" or "Session scheduled."; teachers, students and parents see their timetable.
+**Expected result.** Confirmation shown: "Slot created!" or "Session scheduled."; teachers, students and parents see their timetable.
 
 **Common errors.**
 
@@ -1272,7 +1272,7 @@ This guide mirrors the help centre built into FEBA ("Help" menu), generated from
 3. Tick "Publish now" or keep a draft, then "Publish".
 4. Other profiles read published announcements in "Announcements".
 
-**Expected result.** Message "Announcement published!"; it appears in the recipients' "Announcements".
+**Expected result.** Confirmation shown: "Announcement published!"; it appears in the recipients' "Announcements".
 
 **Effects on other modules.** A draft is not visible to anyone else.
 
@@ -1293,7 +1293,7 @@ This guide mirrors the help centre built into FEBA ("Help" menu), generated from
 2. Choose the recipient, enter the subject and message, attach a file if needed.
 3. "Send". To reply, open the conversation and write in "Write a reply...".
 
-**Expected result.** Message "Message sent!"; the recipient is notified.
+**Expected result.** Confirmation shown: "Message sent!"; the recipient is notified.
 
 **Common errors.**
 
@@ -1358,7 +1358,7 @@ This guide mirrors the help centre built into FEBA ("Help" menu), generated from
 
 - Time: the academy's local time; leave blank if unknown.
 
-**Expected result.** Message "Payment recorded!"; the total collected updates.
+**Expected result.** Confirmation shown: "Payment recorded!"; the total collected updates.
 
 **Common errors.**
 
@@ -1419,7 +1419,7 @@ This guide mirrors the help centre built into FEBA ("Help" menu), generated from
 
 - "Suspend automatic sending" stops reminders without losing the rules.
 
-**Expected result.** Message "Reminders started: the result will appear in the history."
+**Expected result.** Confirmation shown: "Reminders started: the result will appear in the history."
 
 **Common errors.**
 
@@ -1454,7 +1454,7 @@ This guide mirrors the help centre built into FEBA ("Help" menu), generated from
 
 - The student determines the issuing academy.
 
-**Expected result.** Message "Draft produced. It is not issued yet."
+**Expected result.** Confirmation shown: "Draft produced. It is not issued yet."
 
 **Common errors.**
 
@@ -1483,7 +1483,7 @@ This guide mirrors the help centre built into FEBA ("Help" menu), generated from
 2. "Place the fields" and choose the page format.
 3. "PDF preview", then "Verify" (test render) and "Activate".
 
-**Expected result.** Message "Version activated: it is now used to produce documents."
+**Expected result.** Confirmation shown: "Version activated: it is now used to produce documents."
 
 **Common errors.**
 
@@ -1512,7 +1512,7 @@ This guide mirrors the help centre built into FEBA ("Help" menu), generated from
 
 - Images, PDF, Word, Excel, CSV, ZIP, 5 MB maximum.
 
-**Expected result.** Message "File uploaded!"
+**Expected result.** Confirmation shown: "File uploaded!"
 
 **Common errors.**
 
@@ -1570,7 +1570,7 @@ This guide mirrors the help centre built into FEBA ("Help" menu), generated from
 
 - "Do not resend to files already confirmed" avoids duplicates.
 
-**Expected result.** Message "Status updated."; the email to the parent has its own status.
+**Expected result.** Confirmation shown: "Status updated."; the email to the parent has its own status.
 
 **Common errors.**
 

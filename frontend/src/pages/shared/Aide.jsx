@@ -12,7 +12,7 @@ import { useI18n } from "../../i18n";
 import { isNavItemVisible } from "../../layouts/navFeatures";
 import PageHeader from "../../components/ui/PageHeader";
 import { LIBELLES_ROLES } from "../../aide/articles";
-import { L, articlesPour, categoriesPour, depannagePour, faqPour, glossairePour, lienPour } from "../../aide/recherche";
+import { L, articlesPour, categoriesPour, depannagePour, faqPour, glossairePour, lienPour, mots, suggestions } from "../../aide/recherche";
 
 const UI = {
   titre: ["Aide", "Help"],
@@ -38,6 +38,10 @@ const UI = {
   depannage: ["Dépannage", "Troubleshooting"],
   glossaire: ["Glossaire", "Glossary"],
   articles: ["article(s)", "article(s)"],
+  resultats: ["résultat(s) pour", "result(s) for"],
+  classement: ["Classés par pertinence", "Sorted by relevance"],
+  essayez: ["Essayez :", "Try:"],
+  tousProfils: ["Vue super administrateur : documentation de tous les profils.", "Super administrator view: documentation for every profile."],
 };
 
 function Bloc({ titre, children }) {
@@ -49,7 +53,22 @@ function Bloc({ titre, children }) {
   );
 }
 
-function Article({ a, role, lang, ouvert, basculer, moduleActif }) {
+/** Met en évidence les mots de la recherche (sans accents ni casse) dans un texte. */
+function Surligne({ texte, termes }) {
+  if (!termes.length) return texte;
+  const norm = (c) => c.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  const parties = [];
+  let i = 0;
+  const plat = norm(texte);
+  while (i < texte.length) {
+    const t = termes.find((m) => plat.startsWith(m, i) && (i === 0 || !/[a-z0-9]/.test(plat[i - 1])));
+    if (t) { parties.push(<mark key={i} className="bg-feba-gold/25 text-inherit rounded px-0.5">{texte.slice(i, i + t.length)}</mark>); i += t.length; }
+    else { const j = parties.length && typeof parties[parties.length - 1] === "string" ? parties.pop() : ""; parties.push(j + texte[i]); i += 1; }
+  }
+  return parties;
+}
+
+function Article({ a, role, lang, ouvert, basculer, moduleActif, termes = [] }) {
   const lien = moduleActif ? lienPour(a, role) : null;
   const corps = `aide-${a.id}`;
   return (
@@ -58,7 +77,7 @@ function Article({ a, role, lang, ouvert, basculer, moduleActif }) {
         <button type="button" onClick={basculer} aria-expanded={ouvert} aria-controls={corps}
           className="w-full flex items-start gap-3 text-left px-5 py-4 hover:bg-feba-cream/40 transition-colors">
           <span className="flex-1 min-w-0">
-            <span className="block font-semibold text-slate-900">{L(a.titre, lang)}</span>
+            <span className="block font-semibold text-slate-900"><Surligne texte={L(a.titre, lang)} termes={termes} /></span>
             <span className="mt-1 inline-block badge bg-primary-50 text-primary">{L(a.module, lang)}</span>
           </span>
           <ChevronDown className={`w-5 h-5 mt-0.5 shrink-0 text-slate-400 transition-transform ${ouvert ? "rotate-180" : ""}`} aria-hidden="true" />
@@ -132,9 +151,15 @@ export default function Aide() {
   const categorie = params.get("categorie");
   const [ouverts, setOuverts] = useState(() => new Set(params.get("article") ? [params.get("article")] : []));
 
-  const categories = useMemo(() => categoriesPour(role), [role]);
-  const articles = useMemo(() => articlesPour(role, { lang, requete, categorie }), [role, lang, requete, categorie]);
   const actif = (a) => isNavItemVisible(a, { hasFeature, isAllAcademies: allEntitiesMode, allowedAcademies: entities || [] });
+  // Le super administrateur voit toute la documentation ; les autres profils, les modules actifs de leur académie.
+  const categories = categoriesPour(role, actif);
+  const recherche = requete.trim() !== "";
+  const resultats = useMemo(() => articlesPour(role, { lang, requete, categorie, moduleActif: actif, avecDetails: true }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [role, lang, requete, categorie, hasFeature, allEntitiesMode, entities]);
+  const articles = resultats.map((r) => r.article);
+  const termes = recherche ? mots(requete).filter((m) => m.length >= 3) : [];
   const choisir = (id) => {
     const p = new URLSearchParams(params);
     if (id) p.set("categorie", id); else p.delete("categorie");
@@ -170,11 +195,34 @@ export default function Aide() {
             </button>
           ))}
         </div>
-        <p className="text-xs text-slate-500" aria-live="polite" data-testid="aide-compte">{articles.length} {L(UI.articles, lang)}</p>
+        <p className="text-xs text-slate-500" aria-live="polite" data-testid="aide-compte">
+          {recherche ? `${articles.length} ${L(UI.resultats, lang)} « ${requete.trim()} » · ${L(UI.classement, lang)}` : `${articles.length} ${L(UI.articles, lang)}`}
+        </p>
+        {role === "superadmin" && <p className="text-xs text-slate-500">{L(UI.tousProfils, lang)}</p>}
       </div>
 
-      {articles.length === 0 && <p className="card text-sm text-slate-600">{L(UI.aucun, lang)}</p>}
-      {categories.filter((c) => articles.some((a) => a.categorie === c.id)).map((c) => (
+      {articles.length === 0 && (
+        <div className="card text-sm text-slate-600" data-testid="aide-aucun">
+          <p>{L(UI.aucun, lang)}</p>
+          {recherche && suggestions(requete, lang).length > 0 && (
+            <p className="mt-2">{L(UI.essayez, lang)}{" "}
+              {suggestions(requete, lang).map((m) => (
+                <button key={m} type="button" onClick={() => setRequete(m)} data-testid="aide-suggestion"
+                  className="mr-2 text-primary font-medium hover:underline">{m}</button>
+              ))}
+            </p>
+          )}
+        </div>
+      )}
+      {recherche && articles.length > 0 && (
+        <div className="space-y-2" data-testid="aide-resultats">
+          {articles.map((a) => (
+            <Article key={a.id} a={a} role={role} lang={lang} ouvert={estOuvert(a.id)} basculer={() => basculer(a.id)}
+              moduleActif={actif(a)} termes={termes} />
+          ))}
+        </div>
+      )}
+      {!recherche && categories.filter((c) => articles.some((a) => a.categorie === c.id)).map((c) => (
         <div key={c.id} className="space-y-2">
           <h2 className="text-sm font-semibold text-feba-navy pt-2">{L(c.titre, lang)}</h2>
           {articles.filter((a) => a.categorie === c.id).map((a) => (
