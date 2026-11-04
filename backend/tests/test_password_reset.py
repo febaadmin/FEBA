@@ -5,7 +5,8 @@ Matrice de permissions (appliquée CÔTÉ BACKEND) :
   admin      → teacher / parent / student (même établissement) : AUTORISÉ
   admin      → admin / superadmin / autre établissement / soi-même : REFUSÉ
   superadmin → admin / teacher / parent / student : AUTORISÉ
-  superadmin → superadmin (y compris soi-même) : REFUSÉ
+  superadmin → autre superadmin : AUTORISÉ avec le mot de passe de l'auteur
+  superadmin → soi-même : REFUSÉ (parcours « changer mon mot de passe »)
   teacher / parent / student → quiconque : REFUSÉ
 
 Effets vérifiés : hachage Django, ancien mot de passe refusé, nouveau accepté,
@@ -129,10 +130,52 @@ class SuperAdminPermissionTests(PasswordResetFixture):
         resp = self.reset(self.client, self.student)
         self.assertEqual(resp.status_code, status.HTTP_200_OK, resp.data)
 
-    def test_superadmin_cannot_reset_superadmin(self):
-        """Pas de règle métier autorisant superadmin → superadmin : refus."""
-        resp = self.reset(self.client, self.superadmin2)
+    def reset_sa(self, extra):
+        return self.client.post(
+            f"/api/auth/users/{self.superadmin2.pk}/reset-password/",
+            {"new_password": NEW_PWD, "confirm_password": NEW_PWD, **extra}, format="json",
+        )
+
+    def test_superadmin_resets_superadmin_with_own_password(self):
+        from rest_framework_simplejwt.token_blacklist.models import OutstandingToken, BlacklistedToken
+        login(APIClient(), "superadmin2@test.bj")
+        resp = self.reset_sa({"requester_password": OLD_PWD})
+        self.assertEqual(resp.status_code, status.HTTP_200_OK, resp.data)
+        self.assertNotIn(NEW_PWD, str(resp.data))
+        cible = CustomUser.objects.get(pk=self.superadmin2.pk)
+        self.assertTrue(cible.check_password(NEW_PWD))
+        self.assertTrue(cible.must_change_password)
+        jetons = OutstandingToken.objects.filter(user=cible)
+        self.assertTrue(jetons.exists())
+        self.assertEqual(BlacklistedToken.objects.filter(token__in=jetons).count(), jetons.count())
+        log = PasswordResetLog.objects.get(target_user=cible)
+        self.assertEqual((log.performed_by, log.target_role), (self.superadmin, "superadmin"))
+        from apps.notifications.email_models import EmailDelivery
+        avis = EmailDelivery.objects.get(purpose="password_reset_notice")
+        self.assertEqual(avis.to_email, "superadmin2@test.bj")
+        self.assertNotIn(NEW_PWD, avis.subject)
+
+    def test_superadmin_reset_superadmin_requires_own_password(self):
+        resp = self.reset_sa({})
+        self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("requester_password", resp.data)
+        self.assertTrue(CustomUser.objects.get(pk=self.superadmin2.pk).check_password(OLD_PWD))
+
+    def test_superadmin_reset_superadmin_wrong_own_password(self):
+        resp = self.reset_sa({"requester_password": "PasLeBon#2026"})
         self.assertEqual(resp.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertTrue(CustomUser.objects.get(pk=self.superadmin2.pk).check_password(OLD_PWD))
+        self.assertFalse(PasswordResetLog.objects.exists())
+
+    def test_admin_cannot_reset_superadmin_even_with_password(self):
+        client = APIClient()
+        auth(client, "admin@test.bj")
+        resp = client.post(
+            f"/api/auth/users/{self.superadmin2.pk}/reset-password/",
+            {"new_password": NEW_PWD, "confirm_password": NEW_PWD, "requester_password": OLD_PWD}, format="json",
+        )
+        self.assertEqual(resp.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertTrue(CustomUser.objects.get(pk=self.superadmin2.pk).check_password(OLD_PWD))
 
     def test_superadmin_cannot_reset_himself(self):
         resp = self.reset(self.client, self.superadmin)

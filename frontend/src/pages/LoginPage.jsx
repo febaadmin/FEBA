@@ -3,6 +3,7 @@ import { useForm } from "../utils/useFormulaire";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { motion } from "framer-motion";
+import { Link } from "react-router-dom";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
 import { useBranding } from "../hooks/useBranding";
@@ -64,11 +65,13 @@ export default function LoginPage() {
 
         {/* Logo + School Name */}
         <div className="text-center mb-8">
-          <div className="inline-block mb-4">
-            <div className="w-24 h-24 rounded-full overflow-hidden border-4 border-yellow-400 shadow-2xl mx-auto">
-              <img src={logoSrc} alt="FEBA Logo" className="w-full h-full object-contain bg-white" />
+          {/* Le logo ramène au site public (accueil), hors du formulaire. */}
+          <Link to="/" data-testid="logo-accueil" aria-label={tBoth("Accueil du site FEBA")}
+            className="inline-block mb-4 rounded-full focus:outline-none focus-visible:ring-4 focus-visible:ring-yellow-300/70">
+            <div className="w-24 h-24 rounded-full overflow-hidden border-4 border-yellow-400 shadow-2xl mx-auto transition-transform hover:scale-105">
+              <img src={logoSrc} alt="" className="w-full h-full object-contain bg-white" />
             </div>
-          </div>
+          </Link>
           <h1 className="text-2xl font-bold text-white mb-1">
             Faith & Excellence Bilingual Academy
           </h1>
