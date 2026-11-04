@@ -95,15 +95,11 @@ class PaymentViewSet(BulkDeleteMixin, viewsets.ModelViewSet):
             if current_years.exists():
                 qs = qs.filter(school_year__in=current_years)
 
-        # Filtre par période (dates LOCALES de paiement, bornes incluses).
-        from django.utils.dateparse import parse_date
-        from rest_framework.exceptions import ValidationError
+        # Filtre par période (dates LOCALES de paiement, bornes incluses ; 400 si date invalide).
+        from apps.core.request_text import date_field
         for param, lookup in (("date_from", "payment_date__gte"), ("date_to", "payment_date__lte")):
-            raw = self.request.query_params.get(param)
-            if raw:
-                parsed = parse_date(raw)
-                if parsed is None:
-                    raise ValidationError({param: "Date invalide : format attendu AAAA-MM-JJ."})
+            parsed = date_field(self.request.query_params.get(param), param)
+            if parsed is not None:
                 qs = qs.filter(**{lookup: parsed})
 
         if user.role_level >= 80:

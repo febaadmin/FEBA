@@ -296,6 +296,9 @@ class AdminResetPasswordView(APIView):
         # surveillance ne suffit pas, l'auteur prouve son identité.
         if target.is_superadmin():
             secret = request.data.get("requester_password") or ""
+            if not isinstance(secret, str):
+                return Response({"requester_password": ["Ce champ doit être un texte."]},
+                                status=status.HTTP_400_BAD_REQUEST)
             if not secret:
                 return Response(
                     {"requester_password": ["Saisissez votre propre mot de passe pour confirmer cette opération."]},

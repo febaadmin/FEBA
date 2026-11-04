@@ -222,8 +222,10 @@ class ClassViewSet(viewsets.ModelViewSet):
 
         if request.method == "POST":
             subject_ids = request.data.get("subject_ids", [])
-            if not isinstance(subject_ids, list):
-                return Response({"error": "subject_ids doit être une liste."}, status=status.HTTP_400_BAD_REQUEST)
+            from apps.core.request_text import liste_identifiants
+            subject_ids = liste_identifiants(subject_ids)
+            if subject_ids is None:
+                return Response({"error": "subject_ids doit être une liste d'identifiants."}, status=status.HTTP_400_BAD_REQUEST)
 
             # LA RÈGLE MÉTIER EST VÉRIFIÉE ICI, PAS SEULEMENT À L'ÉCRAN.
             #
@@ -252,6 +254,10 @@ class ClassViewSet(viewsets.ModelViewSet):
             subject_id = request.data.get("subject_id")
             if not subject_id:
                 return Response({"error": "subject_id requis."}, status=status.HTTP_400_BAD_REQUEST)
+            from apps.core.request_text import identifiant
+            subject_id = identifiant(subject_id)
+            if subject_id is None:
+                return Response({"error": "subject_id doit être un identifiant."}, status=status.HTTP_400_BAD_REQUEST)
             try:
                 subj = cls.subjects.get(id=subject_id)
                 # Retirer la dernière matière d'une langue attendue laisse

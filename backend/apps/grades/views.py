@@ -376,6 +376,8 @@ class GradeViewSet(BulkDeleteMixin, viewsets.ModelViewSet):
         Crée de nouvelles notes en masse (multi-notes autorisées).
         """
         grades_data = request.data.get("grades", [])
+        if not isinstance(grades_data, list) or not all(isinstance(g, dict) for g in grades_data):
+            return Response({"error": "grades doit être une liste d'objets."}, status=status.HTTP_400_BAD_REQUEST)
         teacher     = self._resolve_teacher()
         school      = get_request_school(request)
         saved, errors = 0, []

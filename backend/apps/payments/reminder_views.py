@@ -19,7 +19,6 @@ from decimal import Decimal, InvalidOperation
 
 from django.db import transaction
 from django.utils import timezone
-from django.utils.dateparse import parse_date
 from rest_framework import serializers, status, viewsets
 from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import IsAuthenticated
@@ -372,10 +371,8 @@ class ReminderPreviewView(AcademyScopedMixin, APIView):
 
     def get(self, request):
         academy = self.academy()
-        on = request.query_params.get("on")
-        on_date = parse_date(on) if on else None
-        if on and on_date is None:
-            raise ValidationError({"on": "Date invalide : AAAA-MM-JJ."})
+        from apps.core.request_text import date_field
+        on_date = date_field(request.query_params.get("on"), "on")
         run = run_reminders(academy, trigger=ReminderRun.TRIGGER_DRY_RUN, user=request.user,
                             on_date=on_date, dry_run=True)
         if run.status == ReminderRun.FAILED:

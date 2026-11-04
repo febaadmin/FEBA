@@ -141,7 +141,9 @@ class EntitySwitchView(APIView):
         if raw in (None, "", "all"):
             target = None
         else:
-            target = School.objects.filter(pk=raw).first()
+            from apps.core.request_text import identifiant
+            ident = identifiant(raw)
+            target = School.objects.filter(pk=ident).first() if ident is not None else None
             if target is None:
                 return Response(
                     {"entity_id": "Entité inconnue."},
