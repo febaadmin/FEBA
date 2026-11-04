@@ -158,6 +158,10 @@ jobs:
           done
 
           echo "==> Construction des images (les conteneurs en service restent actifs)"
+          # Sans attestation de provenance (horodatée), une construction entièrement en cache
+          # redonne le même identifiant d'image : nginx inchangé est alors reconnu comme tel
+          # (déploiements #66 à #68 : même configuration 1b23d44b, trois identifiants différents).
+          export BUILDX_NO_DEFAULT_ATTESTATIONS=1
           if ! compose build; then
             echo "ERREUR : construction impossible. Rien n'a été remplacé."
             restore_previous
@@ -251,7 +255,8 @@ jobs:
           done
 
           # Recréé seulement si son image, sa configuration ou sa définition Compose a changé : la
-          # recréation coupe les connexions environ 1 s (mesuré en production le 03/11).
+          # recréation coupe les connexions environ 1 s (mesuré en production le 03/11). Le premier
+          # déploiement sans attestation recrée nginx une dernière fois (ancien identifiant).
           image_en_service="$(docker inspect --format '{{.Image}}' feba_nginx_prod 2>/dev/null || true)"
           image_construite="$(docker image inspect --format '{{.Id}}' feba-nginx:current 2>/dev/null || true)"
           if [ -n "$image_en_service" ] && [ "$image_en_service" = "$image_construite" ] \
