@@ -775,6 +775,32 @@ export const ARTICLES = [
     permissions: ["Super administrateur, administrateur de l'académie.", "Super administrator, academy administrator."],
   },
   {
+    id: "graphique-paiements", motsCles: "graphique paiements filtres comparaison export csv encaisse chart filters comparison",
+    categorie: "finances", module: ["Tableau de bord", "Dashboard"], roles: ["superadmin"],
+    liens: { superadmin: "dashboard" },
+    titre: ["Comment analyser les paiements avec le graphique ?", "How do I analyse payments with the chart?"],
+    objet: ["Suivre les encaissements, l'attendu et le reste à payer sur une période, filtrer, comparer avec la période précédente et ouvrir les paiements d'une barre.", "Track collections, expected amounts and outstanding balances over a period, filter, compare with the previous period and open the payments behind a bar."],
+    prerequis: [["Pour l'attendu et le reste à payer : des tarifs avec échéances (« Tarifs et échéances »).", "For expected and outstanding amounts: fees with instalments (\"Fees and instalments\")."]],
+    etapes: [
+      ["Ouvrez « Tableau de bord » ; choisissez la période (7 jours à année civile, ou personnalisée).", "Open \"Dashboard\"; choose the period (7 days to calendar year, or custom)."],
+      ["Choisissez une académie dans le sélecteur pour filtrer par année, cycle, niveau, classe et élève ; chaque choix limite les suivants.", "Choose an academy in the selector to filter by year, cycle, grade level, class and student; each choice narrows the next ones."],
+      ["« Plus de filtres » : nature de frais, mode et statut du paiement, statut d'échéance, solde de l'élève, montants.", "\"More filters\": fee type, payment method and status, instalment status, student balance, amounts."],
+      ["Cochez « Comparer avec la période précédente » pour voir la variation de chaque indicateur.", "Tick \"Compare with the previous period\" to see each indicator's change."],
+      ["Cliquez sur une barre, ou sur « Voir les paiements », pour la liste des paiements ; « Exporter (CSV) » télécharge la sélection.", "Click a bar, or \"See the payments\", for the list of payments; \"Export (CSV)\" downloads the selection."],
+    ],
+    champs: [
+      ["Les filtres actifs s'affichent sous forme de puces ; « Réinitialiser les filtres » les retire tous.", "Active filters are shown as chips; \"Reset filters\" removes them all."],
+      ["« Définitions des indicateurs », sous le graphique, explique chaque montant.", "\"Indicator definitions\", below the chart, explains each amount."],
+    ],
+    resultat: ["Les montants restent dans leur devise : XOF et USD ne sont jamais additionnés.", "Amounts stay in their currency: XOF and USD are never added together."],
+    erreurs: [
+      [["« Non calculable »", "\"Not computable\""], ["Aucun tarif avec échéances n'est configuré : la valeur est inconnue, pas nulle.", "No fee with instalments is configured: the value is unknown, not zero."]],
+      [["Filtres de structure grisés", "Structure filters greyed out"], ["Choisissez une académie : en « Toutes les Académies », seuls les filtres financiers s'appliquent.", "Choose an academy: in \"All academies\", only financial filters apply."]],
+    ],
+    consequences: ["Lecture seule : aucun paiement n'est modifié.", "Read only: no payment is changed."],
+    permissions: ["Super administrateur.", "Super administrator."],
+  },
+  {
     id: "situation-financiere", motsCles: "situation reste a payer impaye retard solde recouvrement balance outstanding arrears",
     categorie: "finances", module: ["Situation financière", "Financial position"], roles: PERSONNEL,
     liens: { superadmin: "situation-financiere", admin: "situation-financiere" },
