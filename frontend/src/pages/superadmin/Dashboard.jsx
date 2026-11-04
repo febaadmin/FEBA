@@ -7,6 +7,7 @@ import StatCard from "../../components/ui/StatCard";
 import PageHeader from "../../components/ui/PageHeader";
 import { motion } from "framer-motion";
 import { t } from "../../i18n";
+import GraphiquePaiements from "../../components/dashboard/GraphiquePaiements";
 
 export default function SuperAdminDashboard() {
   /* La clé inclut la portée : deux académies ne peuvent plus partager la
@@ -100,6 +101,7 @@ export default function SuperAdminDashboard() {
           </div>
         )}
       </div>
+      <GraphiquePaiements />
     </div>
   );
 }

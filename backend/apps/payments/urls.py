@@ -9,7 +9,7 @@ détail d'un paiement dont l'identifiant serait « card ».
 from django.urls import path
 from rest_framework.routers import DefaultRouter, SimpleRouter
 
-from . import card_views, reminder_views, views
+from . import card_views, reminder_views, tableau_bord, views
 
 router = DefaultRouter()
 router.register(r"", views.PaymentViewSet, basename="payment")
@@ -23,6 +23,7 @@ schedules_router.register(r"fee-schedules", reminder_views.FeeScheduleViewSet, b
 schedules_router.register(r"fee-arrangements", reminder_views.ArrangementViewSet, basename="fee-arrangement")
 
 urlpatterns = [
+    path("tableau-de-bord/", tableau_bord.TableauBordPaiementsView.as_view(), name="payments-dashboard"),
     # ── Relances de paiement ──────────────────────────────────────────
     path("reminders/status/", reminder_views.ReminderStatusView.as_view(), name="reminders-status"),
     path("reminders/policy/", reminder_views.ReminderPolicyView.as_view(), name="reminders-policy"),
