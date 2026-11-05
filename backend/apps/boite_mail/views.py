@@ -151,7 +151,7 @@ class ActionView(APIView):
                 erreurs.append(str(exc))
                 break
         if erreurs and not faits:
-            return Response({"detail": erreurs[0]}, status=status.HTTP_502_BAD_GATEWAY)
+            return Response({"detail": erreurs[0]}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
         return Response({"faits": faits, "erreurs": erreurs})
 
 
@@ -208,7 +208,7 @@ class SynchroniserView(APIView):
         from .imap import synchroniser_tout
         bilan = synchroniser_tout()
         if bilan.get("erreur"):
-            return Response({"detail": bilan["erreur"], **bilan}, status=status.HTTP_502_BAD_GATEWAY)
+            return Response({"detail": bilan["erreur"], **bilan}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
         return Response(bilan)
 
 

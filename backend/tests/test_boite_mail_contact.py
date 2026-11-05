@@ -258,7 +258,7 @@ class BoiteMailTests(TestCase):
         # Refus du fournisseur : aucune modification locale annoncée comme réussie.
         FauxImap.refus_store = True
         r = c.post(f"/api/boite-mail/messages/{m.pk}/action/", {"action": "non_lu"}, format="json")
-        self.assertEqual(r.status_code, 502)
+        self.assertEqual(r.status_code, 503)
         m.refresh_from_db()
         self.assertTrue(m.lu)
 
@@ -368,7 +368,7 @@ class BoiteMailTests(TestCase):
     @override_settings(MAILBOX_IMAP_PASSWORD="mauvais")
     def test_fournisseur_indisponible_message_clair_sans_secret(self):
         r = self.cli(self.sa).post("/api/boite-mail/synchroniser/")
-        self.assertEqual(r.status_code, 502)
+        self.assertEqual(r.status_code, 503)
         self.assertIn("fournisseur", r.data["detail"])
         self.assertNotIn("mauvais", str(r.data))
 
