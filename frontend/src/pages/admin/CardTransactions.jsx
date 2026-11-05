@@ -43,6 +43,9 @@ export default function AdminCardTransactions() {
   const { academyKey, isAllAcademies } = useAcademy();
   const [refundItem, setRefundItem] = useState(null);
   const [refundAmount, setRefundAmount] = useState("");
+  // FedaPay ne rembourse pas par API : l'administration rembourse dans son tableau de
+  // bord, puis CONSTATE ici le remboursement (case obligatoire).
+  const [constate, setConstate] = useState(false);
 
   const { data, isLoading } = useQuery({
     // Clé portée par l'académie : basculer d'entité ne doit jamais laisser
@@ -53,13 +56,14 @@ export default function AdminCardTransactions() {
   const rows = data?.data || [];
 
   const refund = useMutation({
-    mutationFn: ({ id, amount }) => cardPaymentsAPI.refund(id, amount || null),
+    mutationFn: ({ id, amount, horsLigne }) => cardPaymentsAPI.refund(id, amount || null, horsLigne),
     onSuccess: (response) => {
       toast.success(t("Remboursement enregistré : {n}", {
         n: response?.data?.refunded_total || "",
       }));
       setRefundItem(null);
       setRefundAmount("");
+      setConstate(false);
       qc.invalidateQueries({ queryKey: ["card-transactions", academyKey] });
       qc.invalidateQueries({ queryKey: ["payments"] });
     },
@@ -162,7 +166,9 @@ export default function AdminCardTransactions() {
             <div className="flex items-start gap-3 p-3 rounded-xl bg-amber-50 border border-amber-200">
               <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
               <p className="text-sm text-slate-700">
-                {t("Le remboursement est transmis au prestataire et ne peut pas être annulé. Il apparaîtra sur le relevé du payeur sous quelques jours.")}
+                {refundItem.provider === "fedapay"
+                  ? t("FedaPay ne permet pas de rembourser depuis FEBA : effectuez d'abord le remboursement dans le tableau de bord FedaPay, puis enregistrez-le ici pour que les montants encaissés soient justes partout.")
+                  : t("Le remboursement est transmis au prestataire et ne peut pas être annulé. Il apparaîtra sur le relevé du payeur sous quelques jours.")}
               </p>
             </div>
 
@@ -190,6 +196,12 @@ export default function AdminCardTransactions() {
               </p>
             </div>
 
+            {refundItem.provider === "fedapay" && (
+              <label className="flex items-start gap-2 text-sm text-slate-700">
+                <input type="checkbox" checked={constate} onChange={(e) => setConstate(e.target.checked)} data-testid="remboursement-constate" />
+                {t("Je confirme que ce remboursement a été effectué dans le tableau de bord FedaPay.")}
+              </label>
+            )}
             <div className="flex justify-end gap-2">
               <button type="button" className="btn-secondary"
                       onClick={() => setRefundItem(null)}>
@@ -198,10 +210,10 @@ export default function AdminCardTransactions() {
               <button
                 type="button"
                 className="btn-primary"
-                disabled={refund.isPending}
-                onClick={() => refund.mutate({ id: refundItem.id, amount: refundAmount.trim() })}
+                disabled={refund.isPending || (refundItem.provider === "fedapay" && !constate)}
+                onClick={() => refund.mutate({ id: refundItem.id, amount: refundAmount.trim(), horsLigne: refundItem.provider === "fedapay" })}
               >
-                {refund.isPending ? t("Envoi…") : t("Confirmer le remboursement")}
+                {refund.isPending ? t("Envoi…") : refundItem.provider === "fedapay" ? t("Enregistrer le remboursement") : t("Confirmer le remboursement")}
               </button>
             </div>
           </div>

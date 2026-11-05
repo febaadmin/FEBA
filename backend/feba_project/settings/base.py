@@ -376,6 +376,13 @@ CELERY_BEAT_SCHEDULE = {
     },
     # Reprise des envois groupés interrompus (broker indisponible au moment
     # de la création, worker redémarré pendant l'envoi).
+    # Paiements par carte : rapprochement des tentatives restées ouvertes (webhook
+    # perdu, navigateur fermé) par interrogation du prestataire, puis expiration.
+    'paiements-carte-rapprochement': {
+        'task': 'payments.rapprocher_tentatives_carte',
+        'schedule': crontab(minute='*/30'),
+        'options': {'expires': 1500},
+    },
     # Boîte contact@globalfeba.com : synchronisation incrémentale (IMAP).
     'boite-mail-synchronisation': {
         'task': 'boite_mail.synchroniser',
@@ -599,6 +606,18 @@ STRIPE_CANCEL_URL = config(
 STRIPE_WEBHOOK_URL = config(
     'STRIPE_WEBHOOK_URL', default=f'{PUBLIC_BASE_URL}/api/payments/webhook/stripe/',
 )
+
+# FedaPay (Bénin, XOF) — prestataire retenu pour les académies FEBA. Clés et secret
+# de webhook fournis par le compte marchand (tableau de bord FedaPay → Workbench) ;
+# jamais dans le dépôt. `FEDAPAY_ENVIRONMENT` : « sandbox » (défaut) ou « live ».
+FEDAPAY_ENVIRONMENT = config('FEDAPAY_ENVIRONMENT', default='sandbox')
+FEDAPAY_SECRET_KEY = config('FEDAPAY_SECRET_KEY', default='')
+FEDAPAY_WEBHOOK_SECRET = config('FEDAPAY_WEBHOOK_SECRET', default='')
+# Retour du navigateur après le paiement : la page VÉRIFIE auprès du serveur
+# (qui interroge FedaPay) ; elle ne constate rien par elle-même.
+CARD_RETURN_URL = config('CARD_RETURN_URL', default=f'{PUBLIC_BASE_URL}/parent/payments?paiement=retour&transaction={{id}}')
+# Une tentative restée sans issue au-delà de ce délai est rapprochée puis close (expirée).
+CARD_ATTEMPT_EXPIRY_HOURS = config('CARD_ATTEMPT_EXPIRY_HOURS', default=24, cast=int)
 
 # ── Conversion de devises — totaux consolidés multi-académies (P1) ──────
 #

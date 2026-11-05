@@ -5,6 +5,7 @@ import PageHeader from "../../components/ui/PageHeader";
 import DataTable from "../../components/ui/DataTable";
 import CardPaymentPanel from "../../components/payments/CardPaymentPanel";
 import ReleveEleve from "../../components/payments/ReleveEleve";
+import RetourPaiementCarte from "../../components/payments/RetourPaiementCarte";
 import { Download, CheckCircle, Clock, Info } from "lucide-react";
 import { t } from "../../i18n";
 import { useMoney } from "../../hooks/useMoney";
@@ -93,6 +94,8 @@ export default function ParentPayments() {
           ))}
         </section>
       )}
+
+      {returnState === "retour" && <RetourPaiementCarte transactionId={Number(searchParams.get("transaction")) || null} />}
 
       {returnState === "succes" && (
         <div className="card border border-primary-200 bg-blue-50/60 flex items-start gap-3">

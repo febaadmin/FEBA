@@ -84,3 +84,13 @@ def run_payment_reminders_for(academy_id, user_id=None):
         return run_reminders(academy, trigger=ReminderRun.TRIGGER_MANUAL, user=user).pk
     finally:
         cache.delete(lock)
+
+
+@shared_task(name="payments.rapprocher_tentatives_carte", ignore_result=True)
+def rapprocher_tentatives_carte():
+    """Tentatives ouvertes depuis plus de 30 minutes : statut relu chez le prestataire ;
+    au-delà de CARD_ATTEMPT_EXPIRY_HOURS sans paiement, la tentative expire."""
+    from apps.payments.card_views import rapprocher_tentatives
+    resultat = rapprocher_tentatives()
+    logger.info("Rapprochement des paiements carte : %s", resultat)
+    return resultat
