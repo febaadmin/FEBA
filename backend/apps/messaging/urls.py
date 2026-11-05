@@ -1,9 +1,10 @@
 from django.urls import path
 from rest_framework.routers import DefaultRouter
-from .views import ConversationViewSet, MessageViewSet
+from .views import BrouillonMessageViewSet, ConversationViewSet, MessageViewSet
 
 router = DefaultRouter()
 router.register("conversations", ConversationViewSet, basename="conversation")
+router.register("brouillons", BrouillonMessageViewSet, basename="brouillon-message")
 router.register("", MessageViewSet, basename="message")
 
 urlpatterns = router.urls + [
