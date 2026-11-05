@@ -48,7 +48,7 @@ describe("page Paiements : recherche et filtres", () => {
     monter();
     await screen.findByTestId("paiement-1");
     expect(screen.getByTestId("paiements-total").textContent).toMatch(/2 paiement\(s\)/);
-    expect(screen.getByTestId("totaux-XOF").textContent).toMatch(/150[\s  .]?000.*encaissé net.*1 confirmé.*1 annulé/);
+    expect(screen.getByTestId("totaux-XOF").textContent).toMatch(/150[\s\u202f\u00a0.]?000.*encaissé net.*1 confirmé.*1 annulé/);
     expect(screen.getByTestId("paiement-2").textContent).toMatch(/Annulé/);
   });
 
@@ -84,8 +84,8 @@ describe("page Paiements : recherche et filtres", () => {
     fireEvent.click(screen.getByTestId("tri-montant"));
     await waitFor(() => expect(recherche).toHaveBeenLastCalledWith(expect.objectContaining({ tri: "-montant" })));
     exportXlsx.mockResolvedValue({ data: new Blob(["x"]) });
-    global.URL.createObjectURL = vi.fn(() => "blob:x");
-    global.URL.revokeObjectURL = vi.fn();
+    URL.createObjectURL = vi.fn(() => "blob:x");
+    URL.revokeObjectURL = vi.fn();
     fireEvent.click(screen.getByTestId("paiements-export"));
     await waitFor(() => expect(exportXlsx).toHaveBeenCalledWith({ tri: "-montant", all_years: 1, periode: "mois",
       nature: "cantine", statut: "confirme" }));
