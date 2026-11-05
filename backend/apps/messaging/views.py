@@ -9,7 +9,7 @@ Architecture:
   PUT  /api/messages/conversations/{id}/mark_read/ → mark all as read
   GET  /api/messages/unread_count/          → badge count
 """
-from apps.core.request_text import checked_upload, text_field
+from apps.core.request_text import checked_upload, identifiant, text_field
 from rest_framework import viewsets, status, views
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -137,8 +137,8 @@ class ConversationViewSet(viewsets.ModelViewSet):
                                    text_field(data, "body"), fichiers, request)
         except svc.RegleMessagerie as exc:
             return _erreur(exc)
-        if data.get("brouillon_id"):
-            BrouillonMessage.objects.filter(pk=data.get("brouillon_id"), auteur=request.user).delete()
+        if identifiant(data.get("brouillon_id")):
+            BrouillonMessage.objects.filter(pk=identifiant(data.get("brouillon_id")), auteur=request.user).delete()
         logger.info("Message interne : %s → %d destinataire(s) [conversation %s]",
                     request.user.pk, len(destinataires), conv.pk)
         self.kwargs["pk"] = conv.pk
@@ -153,8 +153,8 @@ class ConversationViewSet(viewsets.ModelViewSet):
             conv2, msg = svc.repondre(request.user, conv, text_field(request.data, "body"), fichiers, a_tous=a_tous)
         except svc.RegleMessagerie as exc:
             return _erreur(exc)
-        if request.data.get("brouillon_id"):
-            BrouillonMessage.objects.filter(pk=request.data.get("brouillon_id"), auteur=request.user).delete()
+        if identifiant(request.data.get("brouillon_id")):
+            BrouillonMessage.objects.filter(pk=identifiant(request.data.get("brouillon_id")), auteur=request.user).delete()
         corps = _message(Message.objects.select_related("sender").prefetch_related("pieces").get(pk=msg.pk), request)
         corps["conversation"] = conv2.pk
         return Response(corps, status=status.HTTP_201_CREATED)
@@ -238,14 +238,15 @@ class BrouillonMessageViewSet(viewsets.ModelViewSet):
         ids = data.get("destinataires") or []
         if not isinstance(ids, list) or len(ids) > svc.MAX_DESTINATAIRES:
             raise svc.RegleMessagerie("Destinataires invalides.", "destinataires")
-        try:
-            b.destinataires = [int(x) for x in ids]
-        except (TypeError, ValueError):
+        propres = [identifiant(x) for x in ids]
+        if None in propres:
             raise svc.RegleMessagerie("Destinataires invalides.", "destinataires")
-        b.objet = (data.get("objet") or "")[:200]
-        b.corps = (data.get("corps") or "")[:20000]
+        b.destinataires = propres
+        b.objet = str(data.get("objet") or "")[:200]
+        b.corps = str(data.get("corps") or "")[:20000]
         conv_id = data.get("conversation")
-        b.conversation = svc.conversations_de(self.request.user).filter(pk=conv_id).first() if conv_id else None
+        cible = identifiant(conv_id) if conv_id not in (None, "") else None
+        b.conversation = svc.conversations_de(self.request.user).filter(pk=cible).first() if cible else None
         if conv_id and b.conversation is None:
             raise svc.RegleMessagerie("Conversation introuvable.", "conversation", statut=404)
         return b

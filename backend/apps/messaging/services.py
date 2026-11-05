@@ -55,12 +55,16 @@ def destinataires_autorises(user, request=None):
 
 def resoudre_destinataires(user, ids, request=None):
     """Comptes destinataires, tous autorisés ; sinon refus global (rien n'est envoyé)."""
+    from apps.core.request_text import identifiant
+    if not isinstance(ids, (list, tuple)):
+        ids = [ids] if ids not in (None, "") else []
     propres = []
-    for v in ids or []:
-        try:
-            propres.append(int(v))
-        except (TypeError, ValueError):
+    for v in ids:
+        # Bornes de clé : un identifiant démesuré ferait échouer la requête SQL (500).
+        valeur = identifiant(v)
+        if valeur is None:
             raise RegleMessagerie("Destinataire introuvable.", "recipient_ids", statut=404)
+        propres.append(valeur)
     propres = list(dict.fromkeys(propres))
     if not propres:
         raise RegleMessagerie("Choisissez au moins un destinataire.", "recipient_ids")
@@ -221,10 +225,11 @@ def filtrer(user, params):
         qs = qs.filter(Q(subject__icontains=q) | Q(messages__body__icontains=q)
                        | Q(participants__first_name__icontains=q) | Q(participants__last_name__icontains=q)).distinct()
     if params.get("correspondant"):
-        try:
-            qs = qs.filter(participants__pk=int(params["correspondant"]))
-        except ValueError:
+        from apps.core.request_text import identifiant
+        cible = identifiant(params["correspondant"])
+        if cible is None:
             raise RegleMessagerie("Correspondant invalide.", "correspondant")
+        qs = qs.filter(participants__pk=cible)
     if params.get("non_lus") in ("1", "true"):
         qs = qs.filter(Exists(Message.objects.filter(conversation=OuterRef("pk")).filter(non_lus_q(user))))
     for cle, lookup in (("du", "updated_at__date__gte"), ("au", "updated_at__date__lte")):
