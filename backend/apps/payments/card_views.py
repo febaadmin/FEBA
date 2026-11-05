@@ -84,9 +84,14 @@ class CardPaymentConfigView(APIView):
         except PaymentProviderNotConfigured as exc:
             provider, configured, reason = None, False, str(exc)
 
+        devise = getattr(academy, "currency_code", None)
+        devise_ok = bool(provider and devise and provider.supports_currency(devise))
+        if configured and devise and not devise_ok:
+            reason = f"Le prestataire de paiement n'encaisse pas en {devise} : paiement en ligne indisponible pour cette académie."
         return Response({
-            "enabled": bool(configured),
+            "enabled": bool(configured) and (devise is None or devise_ok),
             "provider": getattr(provider, "name", settings.PAYMENT_PROVIDER),
+            "environment": getattr(provider, "environnement", settings.STRIPE_MODE) if provider else "",
             "mode": settings.STRIPE_MODE,
             "publishable_key": settings.STRIPE_PUBLISHABLE_KEY if configured else "",
             "currency": getattr(academy, "currency_code", None),
@@ -193,6 +198,13 @@ class CreateCardPaymentView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+        if not provider.supports_currency(academy.currency_code):
+            return Response(
+                {"detail": f"Le prestataire de paiement n'encaisse pas en {academy.currency_code} : "
+                           "réglez ces frais auprès du secrétariat."},
+                status=status.HTTP_409_CONFLICT,
+            )
+
         current_year = academy.years.filter(is_current=True).first()
 
         # ── LE MONTANT EST DÉCIDÉ ICI, PAS DANS LA REQUÊTE ────────────
@@ -260,11 +272,16 @@ class CreateCardPaymentView(APIView):
         )
         description = f"{student.get_full_name()} - {label}"
 
+        if provider.name == "stripe":
+            success_url, cancel_url = settings.STRIPE_SUCCESS_URL, settings.STRIPE_CANCEL_URL
+        else:
+            success_url = settings.CARD_RETURN_URL.replace("{id}", str(attempt.pk))
+            cancel_url = success_url
         try:
             session_id, checkout_url = provider.create_checkout(
                 attempt,
-                success_url=settings.STRIPE_SUCCESS_URL,
-                cancel_url=settings.STRIPE_CANCEL_URL,
+                success_url=success_url,
+                cancel_url=cancel_url,
                 description=description,
             )
         except PaymentProviderError as exc:
@@ -272,10 +289,13 @@ class CreateCardPaymentView(APIView):
             return Response({"detail": str(exc)}, status=status.HTTP_502_BAD_GATEWAY)
 
         attempt.provider_session_id = session_id or ""
+        if provider.name != "stripe":
+            # FedaPay : l'identifiant de la transaction est la clé de toute vérification.
+            attempt.provider_intent_id = session_id or ""
         attempt.provider_metadata = {"checkout_url": checkout_url}
         attempt.status = PaymentTransaction.PENDING
         attempt.save(update_fields=[
-            "provider_session_id", "provider_metadata", "status", "updated_at",
+            "provider_session_id", "provider_intent_id", "provider_metadata", "status", "updated_at",
         ])
 
         return Response({
@@ -501,10 +521,17 @@ class RefundCardPaymentView(APIView):
         )
 
         provider = get_provider(attempt.provider)
-        try:
-            provider.refund(attempt, amount_minor)
-        except (PaymentProviderError, PaymentProviderNotConfigured) as exc:
-            return Response({"detail": str(exc)}, status=status.HTTP_502_BAD_GATEWAY)
+        hors_ligne = str(request.data.get("rembourse_chez_prestataire", "")).lower() in ("1", "true", "oui")
+        if hors_ligne and attempt.provider == "stripe":
+            return Response({"detail": "Un paiement Stripe se rembourse depuis FEBA."}, status=status.HTTP_400_BAD_REQUEST)
+        if not hors_ligne:
+            try:
+                provider.refund(attempt, amount_minor)
+            except (PaymentProviderError, PaymentProviderNotConfigured) as exc:
+                code = status.HTTP_409_CONFLICT if attempt.provider == "fedapay" else status.HTTP_502_BAD_GATEWAY
+                return Response({"detail": str(exc)}, status=code)
+        logger.info("Remboursement carte %s : %s (%s) par %s", attempt.pk, amount_minor,
+                    "constaté hors ligne" if hors_ligne else "via le prestataire", user.pk)
 
         try:
             refunded = attempt.register_refund(amount_minor)
@@ -625,3 +652,160 @@ class CardTransactionListView(APIView):
             }
             for tx in queryset[:500]
         ])
+
+
+# ── FedaPay : webhook, vérification au retour, rapprochement ──────────
+
+def appliquer_etat_prestataire(attempt_pk, etat, origine):
+    """
+    Applique l'état RELU chez le prestataire (jamais celui annoncé par un navigateur
+    ou un événement). Verrou de ligne : webhook, retour du navigateur et rapprochement
+    peuvent arriver en même temps ; un seul encaissement est créé.
+
+    Renvoie le statut FEBA obtenu, ou « ecart » si le montant ou la devise diffèrent.
+    """
+    from apps.core.currency import currency_for
+
+    with db_transaction.atomic():
+        attempt = PaymentTransaction.objects.select_for_update().get(pk=attempt_pk)
+        provider = get_provider(attempt.provider)
+        cible = getattr(provider, "STATUTS", {}).get(etat.get("statut"), "pending")
+        brut = f"{origine}:{etat.get('statut')}"
+        if cible == "succeeded":
+            unite = currency_for(attempt.academy).minor_units_per_unit
+            try:
+                montant = int(etat.get("montant")) * unite
+            except (TypeError, ValueError):
+                montant = None
+            if montant != attempt.amount_minor or (etat.get("devise") and etat["devise"] != attempt.currency):
+                # Montant ou devise falsifiés / incohérents : aucun encaissement, alerte.
+                logger.error("Paiement carte %s : écart prestataire (montant %s / attendu %s, devise %s / %s).",
+                             attempt.pk, montant, attempt.amount_minor, etat.get("devise"), attempt.currency)
+                if not attempt.is_settled:
+                    # Jamais d'encaissement sur un montant non conforme : échec explicite, à vérifier
+                    # à la main dans le tableau de bord du prestataire (pas « contesté », qui vaut encaissé).
+                    attempt.mark_failed(reason="Montant ou devise différents chez le prestataire : vérification manuelle requise.",
+                                        provider_status=f"{brut}:ecart")
+                return "ecart"
+            attempt.mark_succeeded(provider_status=brut)
+            return attempt.status
+        if cible in ("failed", "cancelled", "expired"):
+            if not attempt.is_settled:
+                attempt.mark_failed(
+                    reason={"failed": "Paiement refusé.", "cancelled": "Paiement abandonné.",
+                            "expired": "Paiement expiré."}[cible],
+                    provider_status=brut, status=cible)
+            return attempt.status
+        if cible == "refunded":
+            if attempt.is_settled and attempt.refundable_minor > 0:
+                attempt.register_refund(attempt.refundable_minor)
+            return attempt.status
+        if attempt.status in PaymentTransaction.OPEN_STATUSES and attempt.provider_status != brut:
+            attempt.provider_status = brut
+            attempt.save(update_fields=["provider_status", "updated_at"])
+        return attempt.status
+
+
+@api_view(["POST"])
+@authentication_classes([])          # le prestataire n'a pas de session
+@permission_classes([AllowAny])      # la SIGNATURE fait l'authentification
+def fedapay_webhook(request):
+    """
+    POST /api/payments/webhook/fedapay/
+
+    Signature vérifiée sur le CORPS BRUT, événement dédoublonné en base, puis la
+    transaction est RELUE chez FedaPay : l'événement désigne, il ne prouve pas.
+    """
+    import hashlib
+    provider = get_provider("fedapay")
+    try:
+        event = provider.verify_webhook(request.body, request.META.get("HTTP_X_FEDAPAY_SIGNATURE", ""))
+    except PaymentProviderNotConfigured:
+        return Response({"detail": "Webhook non configuré."}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+    except ValidationError:
+        logger.warning("Webhook FedaPay refusé : signature invalide.")
+        return Response({"detail": "Signature invalide."}, status=status.HTTP_400_BAD_REQUEST)
+
+    nom = event.get("name") or event.get("type") or ""
+    entite = event.get("entity") or (event.get("data") or {}).get("object") or {}
+    event_id = str(event.get("id") or hashlib.sha256(request.body).hexdigest())
+    try:
+        with db_transaction.atomic():
+            record = WebhookEvent.objects.create(provider="fedapay", event_id=event_id[:255], event_type=nom[:100])
+    except IntegrityError:
+        return Response({"received": True, "duplicate": True})
+
+    attempt = None
+    if entite.get("id"):
+        attempt = PaymentTransaction.objects.filter(provider="fedapay", provider_intent_id=str(entite["id"])).first()
+    if attempt is None or not nom.startswith("transaction."):
+        record.status = WebhookEvent.IGNORED
+        record.detail = "Aucune tentative correspondante." if attempt is None else f"Type non géré : {nom}"
+        record.processed_at = timezone.now()
+        record.save(update_fields=["status", "detail", "processed_at"])
+        return Response({"received": True, "handled": False})
+    record.transaction = attempt
+    try:
+        etat = provider.fetch(attempt.provider_intent_id)
+        resultat = appliquer_etat_prestataire(attempt.pk, etat, "webhook")
+    except PaymentProviderError as exc:
+        # Prestataire injoignable : 503 pour que FedaPay rejoue l'événement plus tard.
+        logger.warning("Webhook FedaPay %s : vérification impossible (%s), rejeu attendu.", event_id, exc)
+        record.delete()      # l'événement rejoué par FedaPay doit pouvoir être traité
+        return Response({"detail": "Vérification impossible, réessayez."}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+    record.status = WebhookEvent.PROCESSED
+    record.detail = f"Statut appliqué : {resultat}"
+    record.processed_at = timezone.now()
+    record.save(update_fields=["status", "detail", "processed_at", "transaction"])
+    return Response({"received": True, "handled": True})
+
+
+class VerifierPaiementCarteView(APIView):
+    """
+    POST /api/payments/card/<id>/verifier/
+
+    Appelé par la page de retour : FEBA interroge le prestataire (serveur à serveur)
+    et applique son état. Le navigateur ne constate rien ; il demande une vérification.
+    Accès : le payeur, un parent de l'élève, l'administration de l'académie.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, pk):
+        attempt = PaymentTransaction.objects.filter(pk=pk, student__in=_visible_students(request.user)).first()
+        if attempt is None:
+            return Response({"detail": "Transaction introuvable."}, status=status.HTTP_404_NOT_FOUND)
+        if attempt.status in PaymentTransaction.OPEN_STATUSES and attempt.provider_intent_id and attempt.provider != "stripe":
+            try:
+                appliquer_etat_prestataire(attempt.pk, get_provider(attempt.provider).fetch(attempt.provider_intent_id), "retour")
+            except PaymentProviderError as exc:
+                return Response({"detail": str(exc), "status": attempt.status}, status=status.HTTP_502_BAD_GATEWAY)
+            attempt.refresh_from_db()
+        return Response({
+            "transaction_id": attempt.pk, "status": attempt.status, "status_display": attempt.get_status_display(),
+            "amount_display": attempt.money.formatted(), "payment_id": attempt.payment_id,
+            "reason": attempt.failure_reason,
+        })
+
+
+def rapprocher_tentatives(maintenant=None):
+    """Tentatives ouvertes : statut relu chez le prestataire, expiration au-delà du délai."""
+    from datetime import timedelta
+    maintenant = maintenant or timezone.now()
+    limite = maintenant - timedelta(hours=settings.CARD_ATTEMPT_EXPIRY_HOURS)
+    ouvertes = PaymentTransaction.objects.filter(status__in=PaymentTransaction.OPEN_STATUSES,
+                                                 created_at__lte=maintenant - timedelta(minutes=30)).exclude(provider="stripe")
+    bilan = {"verifiees": 0, "expirees": 0, "erreurs": 0}
+    for attempt in ouvertes[:500]:
+        if attempt.provider_intent_id:
+            try:
+                appliquer_etat_prestataire(attempt.pk, get_provider(attempt.provider).fetch(attempt.provider_intent_id), "rapprochement")
+                bilan["verifiees"] += 1
+            except PaymentProviderError:
+                bilan["erreurs"] += 1
+                continue
+            attempt.refresh_from_db()
+        if attempt.status in PaymentTransaction.OPEN_STATUSES and attempt.created_at <= limite:
+            attempt.mark_failed(reason="Paiement non finalisé dans le délai : tentative expirée.",
+                                provider_status="rapprochement:expire", status=PaymentTransaction.EXPIRED)
+            bilan["expirees"] += 1
+    return bilan

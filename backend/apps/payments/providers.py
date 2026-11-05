@@ -58,6 +58,14 @@ class PaymentProvider:
         """Rembourse tout ou partie d'une transaction encaissée."""
         raise NotImplementedError
 
+    def supports_currency(self, code):
+        """Devise acceptée par ce prestataire (Stripe : toutes celles de FEBA)."""
+        return True
+
+    def fetch(self, provider_id):
+        """État de la transaction chez le prestataire (vérification serveur à serveur)."""
+        raise NotImplementedError
+
 
 class StripePaymentProvider(PaymentProvider):
     """Stripe, en Checkout hébergé."""
@@ -176,8 +184,165 @@ class StripePaymentProvider(PaymentProvider):
             raise PaymentProviderError(str(exc)) from exc
 
 
+class FedaPayPaymentProvider(PaymentProvider):
+    """
+    FedaPay (Cotonou, Bénin) : page de paiement hébergée, cartes Visa/Mastercard
+    et Mobile Money, en francs CFA (XOF).
+
+    Pourquoi FedaPay : Stripe n'ouvre pas de compte marchand à une entreprise
+    établie au Bénin ; FedaPay est un établissement béninois qui encaisse en XOF
+    (voir docs/livraison/phase7/RAPPORT_VALIDATION_PAIEMENTS.md, comparatif).
+
+    Rien n'est cru sur parole :
+    - le webhook est authentifié (en-tête X-FEDAPAY-SIGNATURE : « t=<horodatage>,s=<HMAC-SHA256
+      hexadécimal de "<t>.<corps>"> », tolérance 5 minutes, comparaison à temps constant) ;
+    - même authentifié, l'événement ne sert qu'à désigner la transaction : son statut,
+      son montant et sa devise sont RELUS chez FedaPay (appel serveur à serveur) ;
+    - le retour du navigateur ne déclenche qu'une vérification serveur à serveur.
+
+    Les données de carte ne transitent jamais par FEBA (page hébergée par FedaPay).
+    """
+
+    name = "fedapay"
+    DEVISES = {"XOF"}            # seule devise documentée par FedaPay pour l'encaissement
+    TOLERANCE_SECONDES = 300
+    URLS = {"sandbox": "https://sandbox-api.fedapay.com/v1", "live": "https://api.fedapay.com/v1"}
+    #: Statut FedaPay → statut FEBA (PaymentTransaction).
+    STATUTS = {
+        "pending": "pending", "approved": "succeeded", "transferred": "succeeded",
+        "declined": "failed", "canceled": "cancelled", "cancelled": "cancelled",
+        "expired": "expired", "refunded": "refunded",
+    }
+
+    def is_configured(self):
+        return bool(getattr(settings, "CARD_PAYMENTS_ENABLED", False)
+                    and getattr(settings, "FEDAPAY_SECRET_KEY", "")
+                    and getattr(settings, "FEDAPAY_WEBHOOK_SECRET", ""))
+
+    def assert_configured(self):
+        if not self.is_configured():
+            raise PaymentProviderNotConfigured(
+                "Le paiement par carte n'est pas configuré sur cette instance "
+                "(compte marchand FedaPay, clé secrète et secret de webhook requis)."
+            )
+
+    def supports_currency(self, code):
+        return (code or "").upper() in self.DEVISES
+
+    @property
+    def environnement(self):
+        env = (getattr(settings, "FEDAPAY_ENVIRONMENT", "sandbox") or "sandbox").lower()
+        return env if env in self.URLS else "sandbox"
+
+    def _requete(self, methode, chemin, corps=None):
+        """Appel authentifié à l'API FedaPay (bibliothèque standard, délai borné)."""
+        import json
+        import urllib.error
+        import urllib.request
+        requete = urllib.request.Request(
+            self.URLS[self.environnement] + chemin, method=methode,
+            data=json.dumps(corps).encode() if corps is not None else None,
+            headers={"Authorization": f"Bearer {settings.FEDAPAY_SECRET_KEY}",
+                     "Content-Type": "application/json", "Accept": "application/json"},
+        )
+        try:
+            with urllib.request.urlopen(requete, timeout=20) as reponse:
+                return json.loads(reponse.read().decode() or "{}")
+        except urllib.error.HTTPError as exc:
+            detail = exc.read().decode(errors="ignore")[:300]
+            # Jamais la clé dans le journal : seulement le code et le message du prestataire.
+            logger.warning("FedaPay %s %s : HTTP %s %s", methode, chemin, exc.code, detail)
+            raise PaymentProviderError(f"Le prestataire a refusé la demande (HTTP {exc.code}).") from exc
+        except (urllib.error.URLError, TimeoutError, ValueError) as exc:
+            logger.warning("FedaPay %s %s injoignable : %s", methode, chemin, exc)
+            raise PaymentProviderError("Le prestataire de paiement est injoignable. Réessayez dans un instant.") from exc
+
+    @staticmethod
+    def _objet(reponse, cle="transaction"):
+        """L'API enveloppe ses objets (« v1/transaction ») ; on accepte les deux formes."""
+        if not isinstance(reponse, dict):
+            return {}
+        for k in (f"v1/{cle}", cle):
+            if isinstance(reponse.get(k), dict):
+                return reponse[k]
+        return reponse
+
+    def create_checkout(self, transaction, success_url, cancel_url, description=""):
+        self.assert_configured()
+        if not self.supports_currency(transaction.currency):
+            raise PaymentProviderError(
+                f"FedaPay n'encaisse pas en {transaction.currency} : paiement en ligne indisponible pour cette académie.")
+        from apps.core.currency import currency_for
+        unite = currency_for(transaction.academy).minor_units_per_unit
+        if transaction.amount_minor % unite:
+            raise PaymentProviderError("Montant non représentable dans la devise du prestataire.")
+        payeur = transaction.payer
+        corps = {
+            "description": (description or "Frais de scolarité")[:250],
+            "amount": transaction.amount_minor // unite,
+            "currency": {"iso": transaction.currency},
+            "callback_url": success_url,
+            # Métadonnées NON SENSIBLES : rapprochement de secours.
+            "custom_metadata": {"transaction_id": str(transaction.pk), "reference": transaction.idempotency_key,
+                                "academy_code": transaction.academy.code or ""},
+        }
+        if payeur and payeur.email:
+            corps["customer"] = {"firstname": (payeur.first_name or "")[:60], "lastname": (payeur.last_name or "")[:60],
+                                 "email": payeur.email}
+        cree = self._objet(self._requete("POST", "/transactions", corps))
+        if not cree.get("id"):
+            raise PaymentProviderError("Réponse du prestataire inattendue (transaction sans identifiant).")
+        jeton = self._requete("POST", f"/transactions/{cree['id']}/token")
+        url = (jeton or {}).get("url") or self._objet(jeton, "token").get("url")
+        if not url:
+            raise PaymentProviderError("Réponse du prestataire inattendue (lien de paiement absent).")
+        return str(cree["id"]), url
+
+    def fetch(self, provider_id):
+        """Transaction telle que FedaPay la connaît : {statut, montant (unités), devise, brut}."""
+        self.assert_configured()
+        t = self._objet(self._requete("GET", f"/transactions/{int(provider_id)}"))
+        devise = t.get("currency", {})
+        if isinstance(devise, dict):
+            devise = devise.get("iso") or devise.get("code")
+        return {"statut": (t.get("status") or "").lower(), "montant": t.get("amount"),
+                "devise": (devise or "").upper() or None, "id": str(t.get("id") or provider_id),
+                "metadata": t.get("custom_metadata") or {}}
+
+    def verify_webhook(self, payload, signature_header):
+        import hashlib
+        import hmac
+        import json
+        import time
+        secret = getattr(settings, "FEDAPAY_WEBHOOK_SECRET", "")
+        if not secret:
+            raise PaymentProviderNotConfigured(
+                "FEDAPAY_WEBHOOK_SECRET n'est pas configuré : les événements ne peuvent pas être authentifiés.")
+        morceaux = [x.split("=", 1) for x in (signature_header or "").split(",") if "=" in x]
+        horodatage = next((v for k, v in morceaux if k.strip() == "t"), "")
+        signatures = [v.strip() for k, v in morceaux if k.strip() == "s"]
+        if not horodatage.isdigit() or not signatures:
+            raise ValidationError("Signature de webhook absente ou illisible.")
+        if abs(time.time() - int(horodatage)) > self.TOLERANCE_SECONDES:
+            raise ValidationError("Signature de webhook périmée (rejeu possible).")
+        corps = payload if isinstance(payload, bytes) else str(payload).encode()
+        attendue = hmac.new(secret.encode(), horodatage.encode() + b"." + corps, hashlib.sha256).hexdigest()
+        if not any(hmac.compare_digest(attendue, s) for s in signatures):
+            raise ValidationError("Signature de webhook invalide.")
+        try:
+            return json.loads(corps.decode())
+        except ValueError as exc:
+            raise ValidationError("Corps de webhook illisible.") from exc
+
+    def refund(self, transaction, amount_minor):
+        # FedaPay ne documente pas de remboursement par API : il se fait depuis son tableau de bord.
+        raise PaymentProviderError(
+            "Le remboursement d'un paiement FedaPay se fait depuis le tableau de bord FedaPay ; "
+            "enregistrez-le ensuite dans FEBA.")
+
+
 #: Prestataires disponibles.
-PROVIDERS = {StripePaymentProvider.name: StripePaymentProvider}
+PROVIDERS = {StripePaymentProvider.name: StripePaymentProvider, FedaPayPaymentProvider.name: FedaPayPaymentProvider}
 
 
 def get_provider(name=None):

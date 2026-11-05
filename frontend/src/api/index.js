@@ -551,6 +551,8 @@ export const cardPaymentsAPI = {
   refund:   (id, amount) => api.post(`/payments/card/${id}/refund/`,
                                      amount ? { amount } : {}),
   receipt:  (id)        => api.get(`/payments/card/${id}/receipt/`),
+  // Retour du prestataire : le SERVEUR interroge le prestataire (le navigateur ne prouve rien).
+  verifier: (id)        => api.post(`/payments/card/${id}/verifier/`),
 };
 
 /**

@@ -51,9 +51,12 @@ urlpatterns = [
          name="card-payment-refund"),
     path("card/<int:pk>/receipt/", card_views.CardReceiptView.as_view(),
          name="card-payment-receipt"),
+    path("card/<int:pk>/verifier/", card_views.VerifierPaiementCarteView.as_view(),
+         name="card-payment-verify"),
 
     # ── Webhook du prestataire ────────────────────────────────────────
     # Non authentifié au sens applicatif : c'est la SIGNATURE de l'événement
     # qui tient lieu d'authentification. Voir card_views.stripe_webhook.
     path("webhook/stripe/", card_views.stripe_webhook, name="stripe-webhook"),
+    path("webhook/fedapay/", card_views.fedapay_webhook, name="fedapay-webhook"),
 ] + router.urls
