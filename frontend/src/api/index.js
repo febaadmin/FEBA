@@ -893,4 +893,8 @@ export const analyticsAPI = {
   presences:   (p) => api.get("/analytics/presences/", { params: p }),
   eleve:       (id, p) => api.get(`/analytics/eleves/${id}/`, { params: p }),
   mesEleves:   () => api.get("/analytics/mes-eleves/"),
+  vueEnsemble: (p) => api.get("/analytics/vue-ensemble/", { params: p }),
+  matieresDetail: (p) => api.get("/analytics/matieres/detail/", { params: p }),
+  classes:     (p) => api.get("/analytics/classes/", { params: p }),
+  enseignantsProfils: (p) => api.get("/analytics/enseignants/profils/", { params: p }),
 };

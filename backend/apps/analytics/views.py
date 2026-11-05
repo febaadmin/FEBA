@@ -91,9 +91,9 @@ class OptionsView(_Vue):
             from django.db.models import Q
             matieres = matieres.filter(Q(level=ctx.niveau) | Q(level__isnull=True))
         eleves = []
-        if ctx.classe:
+        if ctx.classes:
             eleves = [{"id": e.pk, "nom": e.get_full_name()} for e in
-                      Student.objects.filter(school=a, current_class=ctx.classe, is_active=True).order_by("last_name", "first_name")]
+                      Student.objects.filter(school=a, current_class__in=ctx.classes, is_active=True).order_by("last_name", "first_name")]
         enseignants = []
         if ctx.est_personnel:
             enseignants = [{"id": t.pk, "nom": t.user.get_full_name()} for t in
@@ -123,3 +123,25 @@ class MesElevesView(_Vue):
         eleves = Student.objects.filter(pk__in=ctx.eleves_autorises, school=ctx.academie).select_related("current_class")
         return {"eleves": [{"id": e.pk, "nom": e.get_full_name(), "classe": getattr(e.current_class, "name", None)}
                            for e in eleves.order_by("first_name")]}
+
+
+class VueEnsembleView(_Vue):
+    """GET /api/analytics/vue-ensemble/ : KPI de pilotage, graphiques de synthèse, limites des données."""
+    def calculer(self, ctx, request):
+        return calculs.vue_ensemble(ctx, request.query_params)
+
+
+class MatieresDetailView(_Vue):
+    def calculer(self, ctx, request):
+        return calculs.matieres_detail(ctx, request.query_params)
+
+
+class ClassesView(_Vue):
+    def calculer(self, ctx, request):
+        return calculs.classes_detail(ctx, request.query_params)
+
+
+class EnseignantsProfilsView(_Vue):
+    """Administration : tous les enseignants (filtre multiple pour comparer) ; enseignant : lui-même."""
+    def calculer(self, ctx, request):
+        return calculs.enseignants_profils(ctx, request.query_params)

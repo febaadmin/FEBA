@@ -498,7 +498,10 @@ export const ARTICLES = [
     etapes: [
       ["Ouvrez « Centre d'analyse » (enseignant : « Analyses de mes classes »).", "Open \"Analytics centre\" (teacher: \"Analyses of my classes\")."],
       ["Choisissez l'année, la période, puis au besoin le cycle, le niveau, la classe, la matière ou l'élève ; chaque choix limite les suivants.", "Choose the year, the period, then if needed the cycle, grade level, class, subject or student; each choice narrows the next ones."],
-      ["Passez d'un onglet à l'autre : Résultats, Matières, Enseignants, Effectifs, Présences. Les filtres restent les mêmes.", "Switch tabs: Results, Subjects, Teachers, Enrolment, Attendance. The filters stay the same."],
+      ["Commencez par « Vue d'ensemble » : indicateurs clés, graphiques de synthèse et limites des données (ce qui ne peut pas être calculé, et pourquoi).", "Start with \"Overview\": key indicators, summary charts and data limitations (what cannot be computed, and why)."],
+      ["Classes, matières, enseignants et types d'évaluation acceptent plusieurs choix ; les puces montrent les filtres actifs, « Réinitialiser les filtres » les retire.", "Classes, subjects, teachers and assessment types accept several choices; chips show the active filters, \"Reset filters\" removes them."],
+      ["Passez d'un onglet à l'autre : Résultats, Matières, Classes, Enseignants, Effectifs, Présences. Les filtres restent les mêmes ; « Voir le détail » ouvre le tableau d'un graphique.", "Switch tabs: Results, Subjects, Classes, Teachers, Enrolment, Attendance. The filters stay the same; \"Show details\" opens a chart's table."],
+      ["Enseignants : choisissez un ou plusieurs noms pour afficher leurs profils et une comparaison descriptive.", "Teachers: choose one or more names to show their profiles and a descriptive comparison."],
       ["Choisissez « Français », « English » ou « FR / EN » : seuls les libellés changent, jamais les chiffres.", "Choose \"Français\", \"English\" or \"FR / EN\": only the labels change, never the figures."],
     ],
     champs: [
