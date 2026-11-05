@@ -232,6 +232,33 @@ class StudentEnrollment(models.Model):
         ordering = ["-school_year__start_date"]
         unique_together = [["student", "school_year"]]
 
+    def save(self, *args, **kwargs):
+        nouvelle = self._state.adding
+        super().save(*args, **kwargs)
+        if nouvelle:
+            rattacher_donnees_orphelines(self)
+
     def __str__(self):
         cls_name = self.class_obj.name if self.class_obj else "-"
         return f"{self.student} - {self.school_year} - {cls_name}"
+
+
+def rattacher_donnees_orphelines(enrollment):
+    """Rattache à une inscription les données de son élève et de son année restées sans inscription.
+
+    Phase 6 : la suppression d'une inscription (« Désinscrire ») détache ses notes,
+    paiements, absences et bulletins (on_delete=SET_NULL). Si l'élève est réinscrit
+    pour la même année, ces données restaient orphelines (constaté : 15 notes en
+    production). Seules les lignes du MÊME élève et de la MÊME année, sans inscription,
+    sont rattachées ; aucune valeur n'est modifiée.
+    """
+    from apps.attendance.models import Attendance
+    from apps.bulletins.models import Bulletin
+    from apps.grades.models import Grade
+    from apps.payments.models import Payment
+    resultat = {}
+    for nom, modele in (("notes", Grade), ("paiements", Payment), ("absences", Attendance), ("bulletins", Bulletin)):
+        resultat[nom] = modele.objects.filter(student_id=enrollment.student_id, school_year_id=enrollment.school_year_id,
+                                              enrollment__isnull=True).update(enrollment=enrollment)
+    return resultat
+
