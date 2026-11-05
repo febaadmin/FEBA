@@ -508,6 +508,11 @@ export const homeworkAPI = {
 
 export const paymentsAPI = {
   list: (p)         => api.get("/payments/", { params: { ...BIG, ...p } }),
+  // Page « Paiements » : recherche, filtres, tri et pagination côté serveur ;
+  // la réponse porte `totaux` (toute la sélection, par devise).
+  recherche: (p)    => api.get("/payments/", { params: p }),
+  exportXlsx: (p)   => api.get("/payments/", { params: { ...p, export: "xlsx" }, responseType: "blob" }),
+  filtres: (p)      => api.get("/payments/filtres/", { params: p }),
   listDeleted: ()   => api.get("/payments/", { params: { ...BIG, show_deleted: 1 } }),
   get: (id)         => api.get(`/payments/${id}/`),
   create: (d)       => api.post("/payments/", d),

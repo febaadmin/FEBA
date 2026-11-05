@@ -19,17 +19,26 @@ import { useAcademy } from "../../context/AcademyContext";
 import { currencyRules, formatMinor } from "../../utils/money";
 import { dateLocale, t, useI18n } from "../../i18n";
 import Modal from "../ui/Modal";
+import ChoixMultiple from "../ui/ChoixMultiple";
 
-const PERIODES = [
+// Périodes calendaires (jour, semaine, mois) puis durées glissantes et années.
+export const PERIODES_CALENDAIRES = [
+  ["jour", "Aujourd'hui"], ["hier", "Hier"], ["semaine", "Cette semaine"], ["semaine_prec", "Semaine précédente"],
+  ["mois", "Ce mois"], ["mois_prec", "Mois précédent"],
+];
+export const PERIODES_DUREES = [
   ["7j", "7 jours"], ["30j", "30 jours"], ["3m", "3 mois"], ["6m", "6 mois"],
   ["12m", "12 mois"], ["annee", "Année scolaire"], ["civile", "Année civile"], ["perso", "Personnalisée"],
 ];
+const GRANULARITES = { heure: "Par heure", jour: "Par jour", semaine: "Par semaine", mois: "Par mois" };
+// Filtres à choix multiples (listes envoyées séparées par des virgules).
+const MULTIPLES = ["nature", "mode"];
 const COULEUR_ENCAISSE = "#0E2A63";   // bleu marine FEBA
 const COULEUR_ATTENDU = "#D89B16";    // or FEBA
 
 export const FILTRES_VIDES = {
   annee: "", cycle: "", niveau: "", classe: "", eleve: "",
-  nature: "", mode: "", statut: "", statut_echeance: "", solde: "", montant_min: "", montant_max: "",
+  nature: [], mode: [], statut: "", statut_echeance: "", solde: "", montant_min: "", montant_max: "",
 };
 // Un choix de structure rend caducs ceux qui en dépendent.
 const DEPENDANTS = {
@@ -49,11 +58,48 @@ export function changerFiltre(filtres, cle, valeur) {
 }
 
 /** Paramètres envoyés au serveur : seulement les filtres renseignés. */
-export function parametres(periode, du, au, filtres, comparer) {
+export function parametres(periode, du, au, filtres, comparer, granularite = "auto") {
   const p = { periode, ...(periode === "perso" ? { du, au } : {}) };
   if (comparer) p.comparer = 1;
-  for (const [k, v] of Object.entries(filtres)) if (v !== "" && v !== null && v !== undefined) p[k] = v;
+  if (granularite && granularite !== "auto") p.granularite = granularite;
+  for (const [k, v] of Object.entries(filtres)) {
+    if (Array.isArray(v)) { if (v.length) p[k] = v.join(","); }
+    else if (v !== "" && v !== null && v !== undefined) p[k] = v;
+  }
   return p;
+}
+
+const estActif = (v) => (Array.isArray(v) ? v.length > 0 : v !== "");
+
+/** Répartition des encaissements (par nature ou par mode) : barres horizontales cliquables. */
+function Repartition({ titre, lignes, total, devise, onChoisir, testid, choisis }) {
+  if (!lignes?.length) return null;
+  return (
+    <div className="rounded-xl border border-slate-100 p-3" data-testid={testid}>
+      <p className="text-xs font-semibold text-slate-700 mb-2">{titre}</p>
+      <ul className="space-y-1.5">
+        {lignes.map((l) => {
+          const part = total > 0 ? Math.max(0, (100 * l.montant_minor) / total) : 0;
+          const actif = choisis.includes(l.code);
+          return (
+            <li key={l.code}>
+              <button type="button" onClick={() => onChoisir(l.code)} aria-pressed={actif}
+                title={t("Filtrer sur « {n} »", { n: t(l.libelle) })} data-testid={`${testid}-${l.code}`}
+                className={`w-full text-left rounded-lg px-1.5 py-1 transition-colors ${actif ? "bg-feba-navy/10" : "hover:bg-slate-50"}`}>
+                <span className="flex justify-between gap-2 text-xs text-slate-700">
+                  <span className="truncate">{t(l.libelle)} <span className="text-slate-400">· {l.nb}</span></span>
+                  <span className="tabular-nums whitespace-nowrap">{formatMinor(l.montant_minor, devise)} · {part.toFixed(0)} %</span>
+                </span>
+                <span className="mt-1 block h-1.5 rounded-full bg-slate-100 overflow-hidden" aria-hidden="true">
+                  <span className="block h-full rounded-full bg-feba-navy" style={{ width: `${part}%` }} />
+                </span>
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
 }
 
 function telecharger(nom, donnees) {
@@ -209,6 +255,22 @@ function DetailPaiements({ ouvert, onClose, params, titre }) {
   );
 }
 
+function InfobulleCase({ active, payload, grain, decimales, code }) {
+  if (!active || !payload?.length) return null;
+  const c = payload[0].payload;
+  const periodeCase = grain === "semaine" && c.fin
+    ? `${new Date(`${c.iso}T12:00:00`).toLocaleDateString(dateLocale())} → ${new Date(`${c.fin}T12:00:00`).toLocaleDateString(dateLocale())}`
+    : c.date;
+  return (
+    <div className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs shadow-sm" data-testid="infobulle-paiements">
+      <p className="font-semibold text-slate-800">{periodeCase}</p>
+      <p>{t("Encaissé")} : {formatMinor(c.encaisse * 10 ** decimales, code)}</p>
+      <p>{t("Paiements")} : {c.nb}</p>
+      {c.attendu !== null && c.attendu !== undefined && <p>{t("Attendu")} : {formatMinor(c.attendu * 10 ** decimales, code)}</p>}
+    </div>
+  );
+}
+
 export default function GraphiquePaiements() {
   useI18n(); // rendu à chaque changement de langue
   const { academyKey, businessDataEnabled } = useAcademy();
@@ -219,6 +281,7 @@ export default function GraphiquePaiements() {
   const [filtres, setFiltres] = useState(FILTRES_VIDES);
   const [comparer, setComparer] = useState(false);
   const [plus, setPlus] = useState(false);
+  const [granularite, setGranularite] = useState("auto");
   const [detail, setDetail] = useState(null);       // { case, titre } ; case null = toute la période
   const persoPret = periode !== "perso" || (du && au);
 
@@ -227,7 +290,8 @@ export default function GraphiquePaiements() {
     setFiltres((f) => ({ ...f, annee: "", cycle: "", niveau: "", classe: "", eleve: "" }));
   }, [academyKey]);
 
-  const params = parametres(periode, du, au, filtres, comparer);
+  const choisirPeriode = (v) => { setPeriode(v); setGranularite("auto"); };
+  const params = parametres(periode, du, au, filtres, comparer, granularite);
   const { data, isPending, isError, error } = useQuery({
     queryKey: ["tableau-paiements", academyKey, params],
     queryFn: () => paymentsAPI.tableauDeBord(params),
@@ -242,7 +306,7 @@ export default function GraphiquePaiements() {
   });
   const o = optionsData?.data;
   const structureDispo = Boolean(o?.structure_disponible);
-  const opts = (liste) => (liste || []).map((x) => [String(x.id), t(x.nom)]);
+  const opts = (liste) => (liste || []).map((x) => [String(x.id), x.nb !== undefined ? `${t(x.nom)} (${x.nb})` : t(x.nom)]);
   const choix = {
     annee: opts(o?.annees), cycle: opts(o?.cycles), niveau: opts(o?.niveaux), classe: opts(o?.classes), eleve: opts(o?.eleves),
     nature: opts(o?.natures), mode: opts(o?.modes),
@@ -255,7 +319,9 @@ export default function GraphiquePaiements() {
     statut_echeance: t("Statut d'échéance"), solde: t("Solde de l'élève"), montant_min: t("Montant minimal"), montant_max: t("Montant maximal"),
   };
   const changer = (cle) => (v) => setFiltres((f) => changerFiltre(f, cle, v));
-  const actifs = Object.entries(filtres).filter(([, v]) => v !== "");
+  const actifs = Object.entries(filtres).filter(([, v]) => estActif(v));
+  const basculer = (cle) => (code) => setFiltres((f) => ({
+    ...f, [cle]: f[cle].includes(code) ? f[cle].filter((x) => x !== code) : [...f[cle], code] }));
 
   const r = data?.data;
   const devises = r?.devises || [];
@@ -264,10 +330,16 @@ export default function GraphiquePaiements() {
   const decimales = currencyRules(code)?.decimals ?? 0;
   const m = (v) => (v === null || v === undefined ? t("Non calculable") : formatMinor(v, code));
   const enMonnaie = (v) => (v === null || v === undefined ? null : v / 10 ** decimales);
-  const fmtCase = (iso) => new Date(`${iso}T12:00:00`).toLocaleDateString(dateLocale(),
-    r?.periode?.granularite === "jour" ? { day: "2-digit", month: "short" } : { month: "short", year: "2-digit" });
+  const grain = r?.periode?.granularite;
+  const fmtCase = (iso) => {
+    if (grain === "heure") return `${iso} h`;
+    const d = new Date(`${iso}T12:00:00`).toLocaleDateString(dateLocale(),
+      grain === "mois" ? { month: "short", year: "2-digit" } : { day: "2-digit", month: "short" });
+    return grain === "semaine" ? `${t("sem.")} ${d}` : d;
+  };
   const serie = (courante?.serie || []).map((c) => ({
-    iso: c.date, date: fmtCase(c.date), encaisse: enMonnaie(c.encaisse_minor), attendu: enMonnaie(c.attendu_minor),
+    iso: c.date, fin: c.fin, date: fmtCase(c.date), nb: c.nb_paiements,
+    encaisse: enMonnaie(c.encaisse_minor), attendu: enMonnaie(c.attendu_minor),
   }));
   const ind = courante?.indicateurs;
   const vide = courante && ind.nb_paiements === 0 && !ind.nb_annules && !courante.echeancier_configure && !ind.nb_en_attente && !ind.nb_echoues;
@@ -280,8 +352,12 @@ export default function GraphiquePaiements() {
   const variations = courante?.variations || {};
   const ouvrirCase = (point) => {
     const iso = point?.payload?.iso;
-    if (iso) setDetail({ case: iso, titre: `${t("Paiements")} · ${point.payload.date}` });
+    if (iso === undefined || iso === null) return;
+    setDetail(grain === "heure"
+      ? { heure: iso, titre: `${t("Paiements")} · ${point.payload.date}` }
+      : { case: iso, titre: `${t("Paiements")} · ${point.payload.date}` });
   };
+
 
   return (
     <section className="card" aria-labelledby="titre-paiements" data-testid="graphique-paiements">
@@ -292,13 +368,17 @@ export default function GraphiquePaiements() {
             {r ? `${new Date(r.periode.du).toLocaleDateString(dateLocale())} → ${new Date(r.periode.au).toLocaleDateString(dateLocale())}${code ? ` · ${t("Montants en")} ${code}` : ""}` : t("Encaissements réels, par devise")}
           </p>
         </div>
-        <div className="flex flex-wrap gap-1.5" role="group" aria-label={t("Période")}>
-          {PERIODES.map(([v, libelle]) => (
-            <button key={v} type="button" onClick={() => setPeriode(v)} aria-pressed={periode === v}
-              data-testid={`periode-${v}`}
-              className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-colors ${periode === v ? "bg-feba-navy text-white" : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50"}`}>
-              {t(libelle)}
-            </button>
+        <div className="flex flex-col gap-1.5 items-start lg:items-end" role="group" aria-label={t("Période")}>
+          {[PERIODES_CALENDAIRES, PERIODES_DUREES].map((groupe, i) => (
+            <div key={i} className="flex flex-wrap gap-1.5 lg:justify-end">
+              {groupe.map(([v, libelle]) => (
+                <button key={v} type="button" onClick={() => choisirPeriode(v)} aria-pressed={periode === v}
+                  data-testid={`periode-${v}`}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-colors ${periode === v ? "bg-feba-navy text-white" : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50"}`}>
+                  {t(libelle)}
+                </button>
+              ))}
+            </div>
           ))}
         </div>
       </div>
@@ -311,11 +391,15 @@ export default function GraphiquePaiements() {
       )}
 
       <div className="mb-4 rounded-xl border border-slate-100 p-3" data-testid="paiements-filtres">
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2">
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2">
           {STRUCTURE.map((cle) => (
             <Choix key={cle} libelle={LIBELLES[cle]} valeur={filtres[cle]} onChange={changer(cle)} options={choix[cle]}
               testid={`filtre-${cle}`} desactive={!structureDispo || (cle === "eleve" && !filtres.classe)}
               aide={!structureDispo ? t("Choisissez une académie pour filtrer par structure.") : cle === "eleve" && !filtres.classe ? t("Choisissez d'abord une classe.") : null} />
+          ))}
+          {MULTIPLES.map((cle) => (
+            <ChoixMultiple key={cle} libelle={LIBELLES[cle]} options={choix[cle]} valeurs={filtres[cle]}
+              onChange={changer(cle)} testid={`filtre-${cle}`} />
           ))}
         </div>
         {!structureDispo && o && (
@@ -323,7 +407,7 @@ export default function GraphiquePaiements() {
         )}
         {plus && (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2 mt-2">
-            {["nature", "mode", "statut", "statut_echeance", "solde"].map((cle) => (
+            {["statut", "statut_echeance", "solde"].map((cle) => (
               <Choix key={cle} libelle={LIBELLES[cle]} valeur={filtres[cle]} onChange={changer(cle)} options={choix[cle]} testid={`filtre-${cle}`} />
             ))}
             {["montant_min", "montant_max"].map((cle) => (
@@ -354,11 +438,12 @@ export default function GraphiquePaiements() {
         {actifs.length > 0 && (
           <ul className="flex flex-wrap gap-1.5 mt-2" aria-label={t("Filtres actifs")} data-testid="filtres-actifs">
             {actifs.map(([cle, v]) => {
-              const nom = (choix[cle] || []).find(([id]) => id === String(v))?.[1] || v;
+              const nomDe = (x) => (choix[cle] || []).find(([id]) => id === String(x))?.[1]?.replace(/ \(\d+\)$/, "") || x;
+              const nom = Array.isArray(v) ? v.map(nomDe).join(", ") : nomDe(v);
               return (
                 <li key={cle} className="inline-flex items-center gap-1 rounded-full bg-feba-navy/10 text-feba-navy text-xs px-2 py-0.5">
                   {LIBELLES[cle]} : {nom}
-                  <button type="button" onClick={() => changer(cle)("")} aria-label={`${t("Retirer le filtre")} ${LIBELLES[cle]}`}>
+                  <button type="button" onClick={() => changer(cle)(Array.isArray(v) ? [] : "")} aria-label={`${t("Retirer le filtre")} ${LIBELLES[cle]}`}>
                     <X className="w-3 h-3" aria-hidden="true" />
                   </button>
                 </li>
@@ -405,6 +490,17 @@ export default function GraphiquePaiements() {
             <Indicateur testid="ind-attente" titre={t("En attente / échoués (carte)")} valeur={`${m(ind.en_attente_minor)} / ${m(ind.echoue_minor)}`}
               detail={`${ind.nb_en_attente} / ${ind.nb_echoues} · ${t("annulés")} ${ind.nb_annules} (${m(ind.annule_minor)})`} />
           </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+            <Indicateur testid="ind-moyenne" titre={t("Montant moyen par paiement")} valeur={m(ind.moyenne_minor)}
+              comparer={comparer} variation={variations.moyenne_minor}
+              detail={ind.moyenne_minor === null || ind.moyenne_minor === undefined ? t("Aucun paiement sur la période") : null} />
+            <Indicateur testid="ind-payeurs" titre={t("Élèves ayant payé")} valeur={ind.nb_eleves_payeurs ?? 0}
+              comparer={comparer} variation={variations.nb_eleves_payeurs} />
+            <Indicateur testid="ind-rembourse" titre={t("Remboursements (carte)")} valeur={m(ind.rembourse_minor)}
+              detail={`${t("Encaissé brut")} ${m(ind.encaisse_brut_minor)}`} />
+            <Indicateur testid="ind-annules" titre={t("Paiements annulés")} valeur={m(ind.annule_minor)}
+              detail={`${ind.nb_annules} ${t("paiement(s)")} · ${t("non comptés dans l'encaissé")}`} />
+          </div>
           <CouvertureTarifs devise={courante} />
           {comparer && r.periode_precedente && (
             <p className="text-xs text-slate-500 mb-2" data-testid="periode-precedente">
@@ -412,6 +508,22 @@ export default function GraphiquePaiements() {
               {" · "}{t("Encaissé")} {m(courante.precedent?.encaisse_minor)}
             </p>
           )}
+          <div className="flex flex-wrap items-center gap-2 mb-2">
+            <div className="inline-flex rounded-lg border border-slate-200 p-0.5" role="group" aria-label={t("Granularité")} data-testid="granularites">
+              {(r.periode.granularites_possibles || [grain]).map((g) => (
+                <button key={g} type="button" onClick={() => setGranularite(g)} aria-pressed={grain === g}
+                  data-testid={`granularite-${g}`}
+                  className={`px-2 py-0.5 rounded-md text-xs ${grain === g ? "bg-feba-navy text-white" : "text-slate-600 hover:bg-slate-50"}`}>
+                  {t(GRANULARITES[g] || g)}
+                </button>
+              ))}
+            </div>
+            {grain === "heure" && ind.nb_sans_heure > 0 && (
+              <p className="text-xs text-amber-800" data-testid="paiements-sans-heure">
+                {t("{n} paiement(s) sans heure enregistrée : comptés dans les indicateurs, absents du graphique horaire.", { n: ind.nb_sans_heure })}
+              </p>
+            )}
+          </div>
           <div className="h-64" data-testid="paiements-graphique">
             <ResponsiveContainer width="100%" height="100%">
               <ComposedChart data={serie} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
@@ -419,7 +531,7 @@ export default function GraphiquePaiements() {
                 <XAxis dataKey="date" tick={{ fontSize: 11, fill: "#64748b" }} interval="preserveStartEnd" />
                 <YAxis tick={{ fontSize: 11, fill: "#64748b" }} width={48}
                   tickFormatter={(v) => new Intl.NumberFormat(dateLocale(), { notation: "compact", maximumFractionDigits: 1 }).format(v)} />
-                <Tooltip formatter={(v, nom) => [v === null ? t("Non calculable") : formatMinor(v * 10 ** decimales, code), nom]} />
+                <Tooltip content={<InfobulleCase grain={grain} decimales={decimales} code={code} />} />
                 <Legend wrapperStyle={{ fontSize: 12 }} />
                 <Bar dataKey="encaisse" name={t("Encaissé")} fill={COULEUR_ENCAISSE} radius={[4, 4, 0, 0]} maxBarSize={36}
                   isAnimationActive={false} cursor="pointer" onClick={ouvrirCase} />
@@ -436,6 +548,14 @@ export default function GraphiquePaiements() {
               {t("Voir les paiements")}
             </button>
           </div>
+          {(courante.par_nature?.length > 0 || courante.par_mode?.length > 0) && (
+            <div className="grid md:grid-cols-2 gap-3 mt-4">
+              <Repartition titre={t("Encaissé par nature de frais")} lignes={courante.par_nature} total={ind.encaisse_minor}
+                devise={code} onChoisir={basculer("nature")} choisis={filtres.nature} testid="repartition-nature" />
+              <Repartition titre={t("Encaissé par mode de paiement")} lignes={courante.par_mode} total={ind.encaisse_minor}
+                devise={code} onChoisir={basculer("mode")} choisis={filtres.mode} testid="repartition-mode" />
+            </div>
+          )}
           {serie.length > 0 && (
             <ul className="sr-only" data-testid="cases-graphique">
               {serie.map((c) => (
@@ -475,13 +595,17 @@ export default function GraphiquePaiements() {
               <li>{t("Recouvrement : payé sur ces échéances passées, divisé par leur montant attendu.")}</li>
               <li>{t("En attente / échoués : paiements par carte sans encaissement, créés dans la période.")}</li>
               <li>{t("Non calculable : aucun tarif avec échéances n'est configuré ; la valeur est inconnue, pas nulle.")}</li>
+              <li>{t("Montant moyen : encaissé net divisé par le nombre de paiements confirmés.")}</li>
+              <li>{t("Granularité : par heure pour une journée (heure locale de l'académie), par jour, par semaine (du lundi au dimanche) ou par mois selon la durée.")}</li>
               <li>{t("La classe, le niveau et le cycle sont ceux de l'élève aujourd'hui ; l'année est celle du paiement ou de l'échéance.")}</li>
             </ul>
           </details>
         </>
       )}
       <DetailPaiements ouvert={Boolean(detail)} onClose={() => setDetail(null)} titre={detail?.titre || ""}
-        params={{ ...parametres(periode, du, au, filtres, false), ...(detail?.case ? { case: detail.case } : {}) }} />
+        params={{ ...parametres(periode, du, au, filtres, false, granularite),
+          ...(detail?.case ? { case: detail.case } : {}),
+          ...(detail?.heure !== undefined && detail?.heure !== null ? { heure: detail.heure } : {}) }} />
     </section>
   );
 }

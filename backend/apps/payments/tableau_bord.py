@@ -38,8 +38,10 @@ from django.db.models import Count, Sum
 from django.db.models.functions import TruncMonth
 from django.utils import timezone
 
-PERIODES = ("7j", "30j", "3m", "6m", "12m", "annee", "civile", "perso")
+PERIODES = ("jour", "hier", "semaine", "semaine_prec", "mois", "mois_prec",
+            "7j", "30j", "3m", "6m", "12m", "annee", "civile", "perso")
 MAX_JOURS_PERSO = 3 * 366
+GRANULARITES = ("auto", "heure", "jour", "semaine", "mois")
 
 
 class PeriodeInvalide(ValueError):
@@ -54,10 +56,33 @@ def _mois_avant(jour, n):
     return date(annee, mois, 1)
 
 
+def _fin_de_mois(jour):
+    import calendar
+    return date(jour.year, jour.month, calendar.monthrange(jour.year, jour.month)[1])
+
+
 def bornes(periode, aujourd_hui, academies, du=None, au=None):
-    """(début, fin) inclus, d'après le choix de période."""
+    """(début, fin) inclus, d'après le choix de période.
+
+    Semaines du lundi au dimanche ; « ce mois » et « cette semaine » couvrent la
+    période calendaire entière (les échéances à venir y figurent, les jours futurs
+    restent vides d'encaissements).
+    """
     if periode not in PERIODES:
         raise PeriodeInvalide("Période inconnue.")
+    if periode == "jour":
+        return aujourd_hui, aujourd_hui
+    if periode == "hier":
+        hier = aujourd_hui - timedelta(days=1)
+        return hier, hier
+    if periode in ("semaine", "semaine_prec"):
+        lundi = aujourd_hui - timedelta(days=aujourd_hui.weekday())
+        if periode == "semaine_prec":
+            lundi -= timedelta(days=7)
+        return lundi, lundi + timedelta(days=6)
+    if periode in ("mois", "mois_prec"):
+        premier = _mois_avant(aujourd_hui, 1 if periode == "mois_prec" else 0)
+        return premier, _fin_de_mois(premier)
     if periode == "7j":
         return aujourd_hui - timedelta(days=6), aujourd_hui
     if periode == "30j":
@@ -81,14 +106,59 @@ def bornes(periode, aujourd_hui, academies, du=None, au=None):
     return du, au
 
 
-def _cases(debut, fin, par_jour):
-    """Toutes les dates de case de la période (cases vides comprises)."""
+def granularites_possibles(debut, fin):
+    """Granularités qui ont un sens pour la durée : jamais de découpage artificiel.
+
+    - heure : une seule journée ;
+    - jour : jusqu'à 92 jours ;
+    - semaine : de 8 jours à deux ans ;
+    - mois : au-delà d'un mois.
+    """
+    jours = (fin - debut).days + 1
+    possibles = []
+    if jours == 1:
+        possibles.append("heure")
+    if jours <= 92:
+        possibles.append("jour")
+    if 8 <= jours <= 731:
+        possibles.append("semaine")
+    if jours > 31:
+        possibles.append("mois")
+    return possibles
+
+
+def choisir_granularite(debut, fin, demandee="auto"):
+    if demandee not in GRANULARITES:
+        raise PeriodeInvalide("Granularité inconnue.")
+    possibles = granularites_possibles(debut, fin)
+    if demandee == "auto":
+        jours = (fin - debut).days + 1
+        return "heure" if jours == 1 else "jour" if jours <= 31 else "semaine" if jours <= 92 else "mois"
+    if demandee not in possibles:
+        raise PeriodeInvalide(
+            f"Granularité « {demandee} » inadaptée à cette période ; possibles : {', '.join(possibles)}.")
+    return demandee
+
+
+def _cases(debut, fin, grain):
+    """Toutes les cases de la période (cases vides comprises).
+
+    Une case est une date (jour, lundi de la semaine, 1er du mois) ou, pour la
+    granularité horaire, un entier 0-23.
+    """
+    if grain == "heure":
+        return list(range(24))
     cases = []
-    if par_jour:
+    if grain == "jour":
         j = debut
         while j <= fin:
             cases.append(j)
             j += timedelta(days=1)
+    elif grain == "semaine":
+        j = debut - timedelta(days=debut.weekday())
+        while j <= fin:
+            cases.append(j)
+            j += timedelta(days=7)
     else:
         j = date(debut.year, debut.month, 1)
         while j <= fin:
@@ -97,9 +167,20 @@ def _cases(debut, fin, par_jour):
     return cases
 
 
-def _case(jour, par_jour):
-    return jour if par_jour else date(jour.year, jour.month, 1)
+def _case(jour, grain):
+    if grain == "jour":
+        return jour
+    if grain == "semaine":
+        return jour - timedelta(days=jour.weekday())
+    return date(jour.year, jour.month, 1)
 
+
+def _fin_case(case, grain):
+    if grain == "jour":
+        return case
+    if grain == "semaine":
+        return case + timedelta(days=6)
+    return _fin_de_mois(case)
 
 
 class FiltreInvalide(ValueError):
@@ -306,30 +387,69 @@ class _Contexte:
         return qs
 
 
-def _indicateurs(ctx, debut, fin, par_jour, cases):
-    """Indicateurs et série d'une académie sur [debut, fin]."""
+def _zone(academie):
+    from zoneinfo import ZoneInfo
+    try:
+        return ZoneInfo(academie.timezone or "UTC")
+    except Exception:
+        return timezone.get_current_timezone()
+
+
+def _indicateurs(ctx, debut, fin, grain, cases):
+    """Indicateurs, série et répartitions d'une académie sur [debut, fin].
+
+    Un paiement est compté une seule fois, à sa date de paiement, pour son montant
+    confirmé ; un remboursement carte est déduit à la date du paiement remboursé.
+    En granularité horaire, seuls les paiements dont l'heure a été enregistrée
+    peuvent être placés : les autres sont comptés à part (« sans heure »).
+    """
+    from django.db.models.functions import ExtractHour
+    from apps.payments.models import Payment
     from apps.payments.transaction_models import PaymentTransaction
     payes = ctx.paiements(debut, fin)
     confirmes = payes.filter(is_confirmed=True)
-    serie = {c: {"encaisse": 0, "attendu": 0} for c in cases}
-    if par_jour:
-        lignes = confirmes.values("payment_date").annotate(t=Sum("amount_minor"), n=Count("id"))
-        brut = [(l["payment_date"], l["t"] or 0, l["n"]) for l in lignes]
+    serie = {c: {"encaisse": 0, "attendu": 0, "nb": 0} for c in cases}
+    remb_par_paiement = dict(PaymentTransaction.objects.filter(payment__in=confirmes, amount_refunded_minor__gt=0)
+                             .values_list("payment_id", "amount_refunded_minor"))
+    total_brut = total_remb = nb = sans_heure = 0
+    if grain == "heure":
+        heures = dict(confirmes.filter(paid_at__isnull=False)
+                      .annotate(h=ExtractHour("paid_at", tzinfo=_zone(ctx.academie)))
+                      .values_list("id", "h"))
+        for pid, montant in confirmes.values_list("id", "amount_minor"):
+            remb = remb_par_paiement.get(pid, 0)
+            total_brut += montant
+            total_remb += remb
+            nb += 1
+            if pid in heures:
+                serie[heures[pid]]["encaisse"] += montant - remb
+                serie[heures[pid]]["nb"] += 1
+            else:
+                sans_heure += 1
     else:
-        lignes = (confirmes.annotate(m=TruncMonth("payment_date")).values("m")
-                  .annotate(t=Sum("amount_minor"), n=Count("id")))
-        brut = [(l["m"], l["t"] or 0, l["n"]) for l in lignes]
-    remb = (PaymentTransaction.objects.filter(payment__in=confirmes, amount_refunded_minor__gt=0)
-            .values_list("payment__payment_date", "amount_refunded_minor"))
-    total_brut = total_remb = nb = 0
-    for jour, t, n in brut:
-        jour = jour.date() if isinstance(jour, datetime) else jour
-        serie[_case(jour, par_jour)]["encaisse"] += t
-        total_brut += t
-        nb += n
-    for jour, r in remb:
-        serie[_case(jour, par_jour)]["encaisse"] -= r
-        total_remb += r
+        lignes = confirmes.values("payment_date").annotate(t=Sum("amount_minor"), n=Count("id"))
+        for l in lignes:
+            c = serie[_case(l["payment_date"], grain)]
+            c["encaisse"] += l["t"] or 0
+            c["nb"] += l["n"]
+            total_brut += l["t"] or 0
+            nb += l["n"]
+        if remb_par_paiement:
+            for pid, jour in confirmes.filter(pk__in=remb_par_paiement).values_list("id", "payment_date"):
+                serie[_case(jour, grain)]["encaisse"] -= remb_par_paiement[pid]
+                total_remb += remb_par_paiement[pid]
+
+    # Répartitions par nature et par mode (montants nets des remboursements).
+    natures, modes = dict(Payment.PAYMENT_TYPES), dict(Payment.PAYMENT_METHODS)
+    par_nature, par_mode = defaultdict(lambda: [0, 0]), defaultdict(lambda: [0, 0])
+    for pid, nature, mode, montant in confirmes.values_list("id", "payment_type", "payment_method", "amount_minor"):
+        net = montant - remb_par_paiement.get(pid, 0)
+        par_nature[nature][0] += net
+        par_nature[nature][1] += 1
+        par_mode[mode][0] += net
+        par_mode[mode][1] += 1
+    nb_eleves = confirmes.values("student_id").distinct().count()
+
     annules = payes.filter(is_confirmed=False).aggregate(t=Sum("amount_minor"), n=Count("id"))
     transactions = ctx.transactions(debut, fin)
     attente = transactions.filter(status__in=PaymentTransaction.OPEN_STATUSES).aggregate(
@@ -338,28 +458,43 @@ def _indicateurs(ctx, debut, fin, par_jour, cases):
                                              PaymentTransaction.EXPIRED]).aggregate(t=Sum("amount_minor"), n=Count("id"))
     echeances = [i for i in ctx.items if debut <= i.installment.due_date <= fin]
     echues = [i for i in echeances if i.installment.due_date <= ctx.aujourd_hui]
-    for i in echeances:
-        serie[_case(i.installment.due_date, par_jour)]["attendu"] += i.net
+    if grain != "heure":
+        for i in echeances:
+            serie[_case(i.installment.due_date, grain)]["attendu"] += i.net
+    exoneres = [i for i in echeances if getattr(i, "status", None) == "exempted"]
     return {
-        "encaisse_brut": total_brut, "rembourse": total_remb, "nb_paiements": nb,
+        "encaisse_brut": total_brut, "rembourse": total_remb, "nb_paiements": nb, "nb_eleves": nb_eleves,
+        "sans_heure": sans_heure,
         "annule": annules["t"] or 0, "nb_annules": annules["n"],
         "en_attente": attente["t"] or 0, "nb_en_attente": attente["n"],
         "echoue": echecs["t"] or 0, "nb_echoues": echecs["n"],
         "attendu": sum(i.net for i in echeances), "attendu_echu": sum(i.net for i in echues),
         "paye_echu": sum(min(i.paid, i.net) for i in echues),
         "restant": sum(max(i.outstanding, 0) for i in echues),
+        "nb_exonerees": len(exoneres),
+        "par_nature": {k: v for k, v in par_nature.items()},
+        "par_mode": {k: v for k, v in par_mode.items()},
+        "libelles": {"nature": natures, "mode": modes},
     }, serie
 
 
-CLES = ("encaisse_brut", "rembourse", "nb_paiements", "annule", "nb_annules", "en_attente", "nb_en_attente",
-        "echoue", "nb_echoues", "attendu", "attendu_echu", "paye_echu", "restant")
+CLES = ("encaisse_brut", "rembourse", "nb_paiements", "nb_eleves", "sans_heure", "annule", "nb_annules",
+        "en_attente", "nb_en_attente", "echoue", "nb_echoues", "attendu", "attendu_echu", "paye_echu", "restant",
+        "nb_exonerees")
 
 
 def _sortie(d, echeancier):
+    net = d["encaisse_brut"] - d["rembourse"]
     return {
-        "encaisse_minor": d["encaisse_brut"] - d["rembourse"],
+        "encaisse_minor": net,
+        "encaisse_brut_minor": d["encaisse_brut"],
         "rembourse_minor": d["rembourse"],
         "nb_paiements": d["nb_paiements"],
+        # Moyenne par paiement confirmé (net des remboursements) ; inconnue sans paiement.
+        "moyenne_minor": round(net / d["nb_paiements"]) if d["nb_paiements"] else None,
+        "nb_eleves_payeurs": d["nb_eleves"],
+        "nb_sans_heure": d["sans_heure"],
+        "nb_echeances_exonerees": d["nb_exonerees"] if echeancier else None,
         "annule_minor": d["annule"], "nb_annules": d["nb_annules"],
         "en_attente_minor": d["en_attente"], "nb_en_attente": d["nb_en_attente"],
         "echoue_minor": d["echoue"], "nb_echoues": d["nb_echoues"],
@@ -385,8 +520,12 @@ def periode_precedente(periode, debut, fin):
 
     - périodes en mois (3, 6, 12 mois) : les mêmes dates N mois plus tôt ;
     - année scolaire et année civile : les mêmes dates un an plus tôt ;
-    - 7 jours, 30 jours, personnalisée : même durée, juste avant.
+    - ce mois, mois précédent : le mois calendaire d'avant, en entier ;
+    - jour, hier, semaines, 7 jours, 30 jours, personnalisée : même durée, juste avant.
     """
+    if periode in ("mois", "mois_prec"):
+        premier = _mois_avant(debut, 1)
+        return premier, _fin_de_mois(premier)
     if periode in ("3m", "6m", "12m"):
         n = int(periode[:-1])
         return _decaler(debut, n), _decaler(fin, n)
@@ -403,19 +542,22 @@ def _variation(actuel, precedent):
     return round(100 * (actuel - precedent) / abs(precedent), 1)
 
 
-def calculer(academies, periode="12m", du=None, au=None, aujourd_hui=None, filtres=None, comparer=False):
+def calculer(academies, periode="12m", du=None, au=None, aujourd_hui=None, filtres=None, comparer=False,
+             granularite="auto"):
     academies = list(academies)
     filtres = filtres or Filtres()
     if filtres.structure and len(academies) != 1:
         raise FiltreInvalide({"academie": "Les filtres de structure s'appliquent à une seule académie : choisissez-la."})
     aujourd_hui = aujourd_hui or timezone.localdate()
     debut, fin = bornes(periode, aujourd_hui, academies, du, au)
-    par_jour = (fin - debut).days <= 31
-    cases = _cases(debut, fin, par_jour)
+    grain = choisir_granularite(debut, fin, granularite)
+    cases = _cases(debut, fin, grain)
     p_debut, p_fin = periode_precedente(periode, debut, fin)
-    p_cases = _cases(p_debut, p_fin, par_jour)
+    p_grain = grain if grain in granularites_possibles(p_debut, p_fin) else choisir_granularite(p_debut, p_fin)
+    p_cases = _cases(p_debut, p_fin, p_grain)
 
-    devises = defaultdict(lambda: {"academies": [], "echeancier": False, "eleves_actifs": 0, "eleves_avec_echeances": 0, "serie": {c: {"encaisse": 0, "attendu": 0} for c in cases},
+    devises = defaultdict(lambda: {"academies": [], "echeancier": False, "eleves_actifs": 0, "eleves_avec_echeances": 0, "serie": {c: {"encaisse": 0, "attendu": 0, "nb": 0} for c in cases},
+                                   "par_nature": defaultdict(lambda: [0, 0]), "par_mode": defaultdict(lambda: [0, 0]),
                                    **{k: 0 for k in CLES}, "precedent": {k: 0 for k in CLES}})
     par_academie = []
     for academie in academies:
@@ -425,14 +567,19 @@ def calculer(academies, periode="12m", du=None, au=None, aujourd_hui=None, filtr
         d["echeancier"] = d["echeancier"] or ctx.a_tarifs
         d["eleves_actifs"] += ctx.eleves_actifs
         d["eleves_avec_echeances"] += len(ctx.eleves_avec_echeances)
-        valeurs, serie = _indicateurs(ctx, debut, fin, par_jour, cases)
+        valeurs, serie = _indicateurs(ctx, debut, fin, grain, cases)
+        libelles = valeurs["libelles"]
         for k in CLES:
             d[k] += valeurs[k]
         for c, v in serie.items():
-            d["serie"][c]["encaisse"] += v["encaisse"]
-            d["serie"][c]["attendu"] += v["attendu"]
+            for k in ("encaisse", "attendu", "nb"):
+                d["serie"][c][k] += v[k]
+        for cle in ("par_nature", "par_mode"):
+            for code, (montant, n) in valeurs[cle].items():
+                d[cle][code][0] += montant
+                d[cle][code][1] += n
         if comparer:
-            prec, _ = _indicateurs(ctx, p_debut, p_fin, par_jour, p_cases)
+            prec, _ = _indicateurs(ctx, p_debut, p_fin, p_grain, p_cases)
             for k in CLES:
                 d["precedent"][k] += prec[k]
         par_academie.append({
@@ -456,19 +603,26 @@ def calculer(academies, periode="12m", du=None, au=None, aujourd_hui=None, filtr
                            "academies_sans_tarif": [a["nom"] for a in par_academie
                                                     if a["devise"] == code and not a["echeancier_configure"]]},
             "indicateurs": _sortie(d, echeancier),
-            "serie": [{"date": c.isoformat(), "encaisse_minor": v["encaisse"],
-                       "attendu_minor": v["attendu"] if echeancier else None}
+            "serie": [{"date": c if isinstance(c, int) else c.isoformat(),
+                       "fin": None if isinstance(c, int) else _fin_case(c, grain).isoformat(),
+                       "encaisse_minor": v["encaisse"], "nb_paiements": v["nb"],
+                       "attendu_minor": (v["attendu"] if echeancier else None) if grain != "heure" else None}
                       for c, v in sorted(d["serie"].items())],
+            "par_nature": [{"code": k, "libelle": libelles["nature"].get(k, k), "montant_minor": m, "nb": n}
+                           for k, (m, n) in sorted(d["par_nature"].items(), key=lambda x: -x[1][0])],
+            "par_mode": [{"code": k, "libelle": libelles["mode"].get(k, k), "montant_minor": m, "nb": n}
+                         for k, (m, n) in sorted(d["par_mode"].items(), key=lambda x: -x[1][0])],
         }
         if comparer:
             prec = _sortie(d["precedent"], echeancier)
             entree["precedent"] = prec
             entree["variations"] = {k: _variation(entree["indicateurs"][k], prec[k])
-                                    for k in ("encaisse_minor", "nb_paiements", "attendu_minor", "restant_minor")}
+                                    for k in ("encaisse_minor", "nb_paiements", "attendu_minor", "restant_minor",
+                                              "moyenne_minor", "nb_eleves_payeurs")}
         resultat.append(entree)
     reponse = {
         "periode": {"code": periode, "du": debut.isoformat(), "au": fin.isoformat(),
-                    "granularite": "jour" if par_jour else "mois"},
+                    "granularite": grain, "granularites_possibles": granularites_possibles(debut, fin)},
         "filtres": filtres.actifs(),
         "devises": resultat,
         "par_academie": par_academie,
@@ -478,7 +632,8 @@ def calculer(academies, periode="12m", du=None, au=None, aujourd_hui=None, filtr
     return reponse
 
 
-def detail(academies, periode="12m", du=None, au=None, aujourd_hui=None, filtres=None, case=None, limite=500):
+def detail(academies, periode="12m", du=None, au=None, aujourd_hui=None, filtres=None, case=None, limite=500,
+           granularite="auto", heure=None):
     """Paiements derrière un indicateur ou une barre : mêmes filtres, même période (bornée à la case)."""
     from apps.payments.transaction_models import PaymentTransaction
     academies = list(academies)
@@ -487,15 +642,17 @@ def detail(academies, periode="12m", du=None, au=None, aujourd_hui=None, filtres
         raise FiltreInvalide({"academie": "Les filtres de structure s'appliquent à une seule académie : choisissez-la."})
     aujourd_hui = aujourd_hui or timezone.localdate()
     debut, fin = bornes(periode, aujourd_hui, academies, du, au)
-    if case is not None:
-        par_jour = (fin - debut).days <= 31
-        c_fin = case if par_jour else date(case.year + (case.month == 12), case.month % 12 + 1, 1) - timedelta(days=1)
-        debut, fin = max(debut, case), min(fin, c_fin)
+    grain = choisir_granularite(debut, fin, granularite)
+    if case is not None and grain != "heure":
+        debut, fin = max(debut, case), min(fin, _fin_case(case, grain))
     lignes, total = [], 0
     for academie in academies:
         ctx = _Contexte(academie, filtres, aujourd_hui)
         qs = (ctx.paiements(debut, fin).select_related("student__current_class__level", "school_year")
               .order_by("-payment_date", "-pk"))
+        if heure is not None:
+            from django.db.models.functions import ExtractHour
+            qs = qs.annotate(h=ExtractHour("paid_at", tzinfo=_zone(academie))).filter(h=heure)
         total += qs.count()
         reste = max(limite - len(lignes), 0)
         paiements = list(qs[:reste])
@@ -546,9 +703,35 @@ def options(academie, f):
         "niveaux": [{"id": n.pk, "nom": n.name, "cycle": n.cycle} for n in niveaux],
         "classes": [{"id": c.pk, "nom": c.name, "niveau_id": c.level_id} for c in classes],
         "eleves": eleves,
-        "natures": [{"id": k, "nom": v} for k, v in Payment.PAYMENT_TYPES],
-        "modes": [{"id": k, "nom": v} for k, v in Payment.PAYMENT_METHODS],
+        **natures_et_modes([academie]),
     }
+
+
+def natures_et_modes(academies):
+    """Natures et modes proposés aux filtres : ceux qui existent réellement.
+
+    - natures : présentes dans les paiements ou publiées dans les tarifs ;
+    - modes : présents dans les paiements, plus la carte si le paiement en ligne
+      est configuré. Un mode jamais utilisé et non opérationnel n'est pas proposé.
+    Chaque choix porte le nombre de paiements (non supprimés) concernés.
+    """
+    from apps.payments.fee_models import FeeSchedule
+    from apps.payments.models import Payment
+    from apps.payments.providers import get_provider, PaymentProviderError
+    paiements = Payment.objects.filter(student__school__in=academies, is_deleted=False)
+    n_nature = dict(paiements.values_list("payment_type").annotate(n=Count("id")).order_by())
+    n_mode = dict(paiements.values_list("payment_method").annotate(n=Count("id")).order_by())
+    tarifs = set(FeeSchedule.objects.filter(academy__in=academies, is_active=True)
+                 .values_list("payment_type", flat=True))
+    try:
+        carte = get_provider().is_configured()
+    except PaymentProviderError:
+        carte = False
+    natures = [{"id": k, "nom": v, "nb": n_nature.get(k, 0)} for k, v in Payment.PAYMENT_TYPES
+               if k in n_nature or k in tarifs]
+    modes = [{"id": k, "nom": v, "nb": n_mode.get(k, 0)} for k, v in Payment.PAYMENT_METHODS
+             if k in n_mode or (k == "card" and carte)]
+    return {"natures": natures, "modes": modes}
 
 
 # ── Vues ──────────────────────────────────────────────────────────────
@@ -581,8 +764,17 @@ def _requete(request):
         filtres = lire_filtres(p)
     except FiltreInvalide as exc:
         return None, Response({"detail": "Filtre invalide.", **exc.erreurs}, status=400)
+    heure = None
+    if p.get("heure") not in (None, ""):
+        try:
+            heure = int(p["heure"])
+            if not 0 <= heure <= 23:
+                raise ValueError
+        except ValueError:
+            return None, Response({"detail": "Heure invalide (0 à 23).", "heure": "Heure invalide."}, status=400)
     return {"academies": academies, "periode": p.get("periode", "12m"), "du": dates["du"], "au": dates["au"],
-            "case": dates["case"], "filtres": filtres}, None
+            "case": dates["case"], "filtres": filtres, "granularite": p.get("granularite") or "auto",
+            "heure": heure}, None
 
 
 class TableauBordPaiementsView(APIView):
@@ -601,7 +793,8 @@ class TableauBordPaiementsView(APIView):
             return erreur
         try:
             return Response(calculer(q["academies"], q["periode"], q["du"], q["au"], filtres=q["filtres"],
-                                     comparer=request.query_params.get("comparer") in ("1", "true")))
+                                     comparer=request.query_params.get("comparer") in ("1", "true"),
+                                     granularite=q["granularite"]))
         except (PeriodeInvalide, FiltreInvalide) as exc:
             return Response({"detail": str(exc), **getattr(exc, "erreurs", {})}, status=400)
 
@@ -624,7 +817,7 @@ class DetailPaiementsView(APIView):
         en_csv = request.query_params.get("export") == "csv"
         try:
             r = detail(q["academies"], q["periode"], q["du"], q["au"], filtres=q["filtres"], case=q["case"],
-                       limite=10000 if en_csv else 500)
+                       limite=10000 if en_csv else 500, granularite=q["granularite"], heure=q["heure"])
         except (PeriodeInvalide, FiltreInvalide) as exc:
             return Response({"detail": str(exc), **getattr(exc, "erreurs", {})}, status=400)
         if not en_csv:
@@ -654,14 +847,39 @@ class OptionsFiltresView(APIView):
 
     def get(self, request):
         from apps.core.tenancy import get_request_school
-        from apps.payments.models import Payment
         ecole = get_request_school(request)
         try:
             f = lire_filtres(request.query_params)
         except FiltreInvalide as exc:
             return Response({"detail": "Filtre invalide.", **exc.erreurs}, status=400)
         if ecole is None:
+            from apps.schools.models import School
             return Response({"structure_disponible": False, "annees": [], "cycles": [], "niveaux": [], "classes": [],
-                             "eleves": [], "natures": [{"id": k, "nom": v} for k, v in Payment.PAYMENT_TYPES],
-                             "modes": [{"id": k, "nom": v} for k, v in Payment.PAYMENT_METHODS]})
+                             "eleves": [], **natures_et_modes(list(School.objects.all()))})
+        return Response({"structure_disponible": True, **options(ecole, f)})
+
+
+class OptionsPaiementsView(APIView):
+    """GET /api/payments/filtres/?annee=&cycle=&niveau=&classe=
+
+    Choix des filtres de la page « Paiements » (administration de l'académie et
+    super administrateur) : mêmes listes que le graphique, limitées à l'académie
+    de l'utilisateur. Natures et modes : ceux réellement utilisés ou configurés.
+    """
+    from apps.accounts.permissions import IsAdminOrAbove
+    permission_classes = [IsAuthenticated, IsAdminOrAbove]
+
+    def get(self, request):
+        from apps.core.tenancy import get_request_school
+        from apps.schools.models import School
+        ecole = get_request_school(request)
+        try:
+            f = lire_filtres(request.query_params)
+        except FiltreInvalide as exc:
+            return Response({"detail": "Filtre invalide.", **exc.erreurs}, status=400)
+        if ecole is None:
+            if not request.user.is_superadmin():
+                return Response({"detail": "Aucune académie."}, status=403)
+            return Response({"structure_disponible": False, "annees": [], "cycles": [], "niveaux": [], "classes": [],
+                             "eleves": [], **natures_et_modes(list(School.objects.all()))})
         return Response({"structure_disponible": True, **options(ecole, f)})

@@ -89,6 +89,7 @@ class PaymentViewSet(BulkDeleteMixin, viewsets.ModelViewSet):
 
         # FIX: Default to current active year to avoid inactive year data leaking
         if (not restoring and not self.request.query_params.get("school_year")
+                and not self.request.query_params.get("annee")
                 and self.request.query_params.get("all_years") != "1"):
             from apps.core.tenancy import current_school_years
             current_years = current_school_years(school)
@@ -102,10 +103,21 @@ class PaymentViewSet(BulkDeleteMixin, viewsets.ModelViewSet):
             if parsed is not None:
                 qs = qs.filter(**{lookup: parsed})
 
+        # Recherche et filtres de la page « Paiements » (mêmes règles que le
+        # graphique du tableau de bord) : appliqués APRÈS l'isolation par académie.
+        if self.action == "list":
+            from apps.schools.models import School
+            from .recherche import filtrer
+            academies = [school] if school is not None else list(School.objects.all())
+            qs = filtrer(qs, self.request.query_params, academies)
+
         if user.role_level >= 80:
             return qs
         # BUG FIX: exclude payments for inactive students
-        qs = qs.filter(student__is_active=True, student__user__is_active=True)
+        # Un élève sans compte utilisateur (jeune enfant) reste visible de ses parents :
+        # seul un compte élève DÉSACTIVÉ masque ses paiements.
+        from django.db.models import Q
+        qs = qs.filter(Q(student__user__isnull=True) | Q(student__user__is_active=True), student__is_active=True)
         if user.is_parent():
             return qs.filter(student__parents__parent__user=user)
         elif user.is_student():
@@ -114,6 +126,69 @@ class PaymentViewSet(BulkDeleteMixin, viewsets.ModelViewSet):
             except Exception:
                 return qs.none()
         return qs.none()
+
+    def list(self, request, *args, **kwargs):
+        """Liste filtrée, triée (`tri`), paginée, avec le récapitulatif des montants
+        de TOUTE la sélection (`totaux`, par devise) ; `export=xlsx` : classeur Excel."""
+        from .recherche import FiltreInvalide, PeriodeInvalide, ordonner, totaux
+        try:
+            qs = self.filter_queryset(self.get_queryset())
+            # `ordering` (paramètre DRF historique) reste honoré ; sinon tri stable de la page Paiements.
+            if request.query_params.get("tri") or not request.query_params.get("ordering"):
+                qs = ordonner(qs, request.query_params.get("tri"))
+        except (FiltreInvalide, PeriodeInvalide) as exc:
+            return Response({"detail": str(exc), **getattr(exc, "erreurs", {})}, status=status.HTTP_400_BAD_REQUEST)
+        if request.query_params.get("export") == "xlsx":
+            return self._export_xlsx(qs)
+        recap = totaux(qs)
+        page = self.paginate_queryset(qs)
+        if page is not None:
+            reponse = self.get_paginated_response(self.get_serializer(page, many=True).data)
+            reponse.data["totaux"] = recap
+            return reponse
+        return Response({"count": len(qs), "results": self.get_serializer(qs, many=True).data, "totaux": recap})
+
+    def _export_xlsx(self, qs, limite=20000):
+        """Toute la sélection (filtres et tri actifs), montants dans l'unité de la devise."""
+        from io import BytesIO
+        from django.http import HttpResponse
+        from openpyxl import Workbook
+        from openpyxl.styles import Font
+        from apps.core.currency import get_currency
+        from .transaction_models import PaymentTransaction
+        lignes = list(qs.select_related("student__current_class", "enrollment__class_obj", "school_year",
+                                        "received_by", "student__school")[:limite])
+        remb = dict(PaymentTransaction.objects.filter(payment__in=lignes, amount_refunded_minor__gt=0)
+                    .values_list("payment_id", "amount_refunded_minor"))
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "Paiements"
+        entetes = ["Académie", "Référence", "Date", "Heure", "Élève", "Matricule", "Classe", "Année", "Type",
+                   "Mode", "Montant", "Remboursé", "Devise", "Statut", "Reçu par", "Notes"]
+        ws.append(entetes)
+        for c in ws[1]:
+            c.font = Font(bold=True)
+        for p in lignes:
+            unite = get_currency(p.currency).minor_units_per_unit
+            local = p.local_paid_at()
+            classe = (p.enrollment.class_obj if p.enrollment_id and p.enrollment.class_obj_id
+                      else p.student.current_class)
+            ws.append([
+                getattr(p.student.school, "name", ""), p.reference_number, p.payment_date,
+                local.strftime("%H:%M") if local else "", p.student.get_full_name(), p.student.matricule,
+                getattr(classe, "name", ""), getattr(p.school_year, "name", ""), p.get_payment_type_display(),
+                p.get_payment_method_display(), float(p.amount_minor / unite),
+                float(remb.get(p.pk, 0) / unite), p.currency, "Confirmé" if p.is_confirmed else "Annulé",
+                p.received_by.get_full_name() if p.received_by_id else "", p.notes,
+            ])
+        for col, largeur in zip("ABCDEFGHIJKLMNOP", (22, 18, 12, 8, 28, 14, 12, 12, 16, 16, 14, 12, 8, 10, 20, 30)):
+            ws.column_dimensions[col].width = largeur
+        tampon = BytesIO()
+        wb.save(tampon)
+        reponse = HttpResponse(tampon.getvalue(),
+                               content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+        reponse["Content-Disposition"] = f'attachment; filename="paiements_{timezone.localdate().isoformat()}.xlsx"'
+        return reponse
 
     def get_permissions(self):
         if self.action in ["create", "update", "partial_update", "destroy", "restore", "cancel", "generate_receipt"]:
