@@ -42,6 +42,9 @@ jobs:
   backend:
     name: Backend (PostgreSQL)
     runs-on: ubuntu-latest
+    # Suite complète ≈ 20 min ; au-delà, le job est bloqué : il échoue au lieu de
+    # retenir la file des déploiements pendant des heures.
+    timeout-minutes: 60
 
     services:
       postgres:
@@ -98,6 +101,9 @@ jobs:
           cache-dependency-path: backend/requirements/*.txt
 
       - name: LibreOffice et polices (comme backend/Dockerfile.prod)
+        # Un miroir apt bloqué a figé ce pas 35 min (05/11) : sans délai, le job durait
+        # jusqu'à 6 h et bloquait la file des déploiements (groupe feba-production).
+        timeout-minutes: 15
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y -qq --no-install-recommends \
