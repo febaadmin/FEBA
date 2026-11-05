@@ -1,7 +1,7 @@
 # Point de reprise — phase 8 (05-06/11/2026)
 
 ## Production
-- `33577cb` déployé (fusions #102 messagerie, #105 boîte contact, #104 rapports) ; #103 (paiement carte FedaPay, désactivé tant que `CARD_PAYMENTS_ENABLED` n'est pas défini) fusionnée ensuite, déploiement suivi dans ce rapport.
+- `7e9bf59` déployé et vérifié (06/11, 00 h 05 UTC) : #102 messagerie, #105 boîte contact, #104 rapports, #103 paiement carte FedaPay (désactivé : webhook → 503 « non configuré », tant que `CARD_PAYMENTS_ENABLED` et les clés ne sont pas définis). 0 migration en attente, 0 erreur dans les journaux, synchronisation périodique de la boîte réussie (Celery).
 - Migrations appliquées : `messaging.0005_phase7_messagerie`, `boite_mail.0001_initial` (ajouts uniquement).
 - Boîte contact : première synchronisation réelle réussie — réception 44 messages (40 non lus, comme chez Hostinger), Envoyés 1 + 53 envois FEBA importés ; second passage : 0 nouveau (aucun doublon). Tâche Celery `boite_mail.synchroniser` toutes les 3 min.
 - Messagerie : cas exact de la capture rejoué en production sur les vrais comptes, dans une transaction annulée — 201, reçu par le destinataire, présent dans « Envoyés », compteur à jour, 154/154 destinataires proposés acceptés ; aucune donnée conservée, aucun e-mail ni notification émis.
@@ -12,7 +12,7 @@
 | #102 | Messagerie (correctif d'envoi + refonte) | fusionnée, déployée |
 | #105 | Boîte contact@globalfeba.com + Espace d'envoi d'e-mails | fusionnée, déployée |
 | #104 | Rapports phase 7 + 8 | fusionnée, déployée |
-| #103 | Paiement carte FedaPay | fusionnée |
+| #103 | Paiement carte FedaPay | fusionnée, déployée (désactivé) |
 | #106 | Délais CI (+ ce point de reprise) | ouverte, à fusionner |
 
 ## Incident d'exploitation
