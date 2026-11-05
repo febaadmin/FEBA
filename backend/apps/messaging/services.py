@@ -46,11 +46,9 @@ def etat(conversation, user):
 def destinataires_autorises(user, request=None):
     from apps.accounts.views import allowed_message_recipients
     from apps.core.tenancy import get_request_school
-    qs = allowed_message_recipients(user)
-    school = get_request_school(request) if request is not None else getattr(user, "school", None)
-    if school is not None:
-        qs = qs.filter(school=school)
-    return qs
+    # Même appel que la liste de l'interface (/api/auth/recipients/) : jamais deux règles.
+    school = get_request_school(request) if (request is not None and user.is_superadmin()) else None
+    return allowed_message_recipients(user, school)
 
 
 def resoudre_destinataires(user, ids, request=None):

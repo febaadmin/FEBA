@@ -177,3 +177,45 @@ class PiecesEtBrouillonsTests(MessagerieBase):
         self.assertFalse(EtatConversation.objects.filter(utilisateur=self.parent).exists())
         self.par.post(f"{URL}{conv['id']}/important/", {"important": True}, format="json")
         self.assertTrue(EtatConversation.objects.get(utilisateur=self.parent).important)
+
+
+class RegleUniqueDestinatairesTests(MessagerieBase):
+    """Phase 8 — « La ressource demandée est introuvable » : la liste proposée et le
+    contrôle à l'envoi divergeaient (super administrateur, académie sélectionnée)."""
+
+    def test_super_admin_avec_academie_selectionnee_vers_autre_super_admin(self):
+        from apps.accounts.models import CustomUser
+        autre_sa = CustomUser.objects.create_user(username="sa2", email="sa2@test.bj", password="Pass1234!",
+                                                  role="superadmin", first_name="S", last_name="Deux")
+        sa = self.client_de("sa@test.bj")
+        sa.post("/api/auth/entity-context/switch/", {"entity_id": self.school.id})
+        proposes = {u["id"] for u in sa.get("/api/auth/recipients/").data}
+        self.assertIn(autre_sa.id, proposes)
+        r = sa.post(URL, {"recipient_ids": [autre_sa.id], "subject": "test", "body": "test"}, format="multipart")
+        self.assertEqual(r.status_code, 201, r.data)                       # reproduisait 404
+        self.assertEqual(len(self.liste(self.client_de("sa2@test.bj"))), 1)
+
+    def test_administration_et_super_admin(self):
+        self.assertEqual(self.adm.post(URL, {"recipient_ids": [self.superadmin.id], "body": "x"}, format="multipart").status_code, 201)
+        self.assertEqual(self.adm.post(URL, {"recipient_ids": [self.admin_autre.id], "body": "x"}, format="multipart").status_code, 404)
+
+    def test_enseignant_vers_collegue(self):
+        from apps.accounts.models import CustomUser
+        collegue = CustomUser.objects.create_user(username="prof2", email="prof2@test.bj", password="Pass1234!",
+                                                  role="teacher", first_name="C", last_name="L", school=self.school)
+        self.assertEqual(self.prof.post(URL, {"recipient_ids": [collegue.id], "body": "x"}, format="multipart").status_code, 201)
+
+    def test_tout_destinataire_propose_est_accepte(self):
+        """Propriété : pour chaque profil, chaque compte proposé est accepté à l'envoi."""
+        for email in ("sa@test.bj", "adm@test.bj", "prof@test.bj", "parent@test.bj", "eleve@test.bj"):
+            c = self.client_de(email)
+            for cible in c.get("/api/auth/recipients/").data:
+                r = c.post(URL, {"recipient_ids": [cible["id"]], "body": "x", "subject": f"p-{email}"}, format="multipart")
+                self.assertEqual(r.status_code, 201, (email, cible))
+            self.assertEqual(c.post(URL, {"recipient_ids": [999999], "body": "x"}, format="multipart").status_code, 404)
+
+    def test_message_vide_refuse_sans_rien_creer(self):
+        avant = Conversation.objects.count()
+        r = self.prof.post(URL, {"recipient_ids": [self.parent.id], "subject": "x", "body": "   "}, format="multipart")
+        self.assertEqual(r.status_code, 400)
+        self.assertEqual(Conversation.objects.count(), avant)
