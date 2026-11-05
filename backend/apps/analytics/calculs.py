@@ -46,12 +46,14 @@ def notes(ctx, avec_periode=True):
         qs = qs.filter(cycle_ref=ctx.cycle)
     if ctx.niveau:
         qs = qs.filter(niveau_ref=ctx.niveau.pk)
-    if ctx.classe:
-        qs = qs.filter(classe_ref=ctx.classe.pk)
-    if ctx.matiere:
-        qs = qs.filter(subject_id=ctx.matiere.pk)
-    if ctx.enseignant:
-        qs = qs.filter(teacher_id=ctx.enseignant.pk)
+    if ctx.classes:
+        qs = qs.filter(classe_ref__in=[c.pk for c in ctx.classes])
+    if ctx.matieres:
+        qs = qs.filter(subject_id__in=[m.pk for m in ctx.matieres])
+    if ctx.enseignants:
+        qs = qs.filter(teacher_id__in=[e.pk for e in ctx.enseignants])
+    if ctx.types_evaluation:
+        qs = qs.filter(note_type__in=ctx.types_evaluation)
     if ctx.eleve:
         qs = qs.filter(student_id=ctx.eleve.pk)
     if ctx.genre:
@@ -288,8 +290,8 @@ def effectifs(ctx):
         qs = qs.filter(class_obj__level__cycle=ctx.cycle)
     if ctx.niveau:
         qs = qs.filter(class_obj__level=ctx.niveau)
-    if ctx.classe:
-        qs = qs.filter(class_obj=ctx.classe)
+    if ctx.classes:
+        qs = qs.filter(class_obj__in=ctx.classes)
     if ctx.genre:
         qs = qs.filter(student__gender=ctx.genre)
     if ctx.classes_autorisees is not None:
@@ -316,7 +318,7 @@ def effectifs(ctx):
                        for r in par_classe],
         "inscriptions_par_mois": par_mois,
     }
-    if ctx.est_personnel and not any((ctx.cycle, ctx.niveau, ctx.classe, ctx.genre)):
+    if ctx.est_personnel and not any((ctx.cycle, ctx.niveau, ctx.classes, ctx.genre)):
         # Contrôle de cohérence : élèves actifs sans inscription pour l'année affichée.
         actifs = Student.objects.filter(school=ctx.academie, is_active=True)
         reponse["eleves_actifs"] = actifs.count()
@@ -341,7 +343,8 @@ def presences(ctx, du=None, au=None):
     if au:
         qs = qs.filter(date__lte=au)
     for cond, filtre in ((ctx.cycle, {"cycle_ref": ctx.cycle}), (ctx.niveau, {"niveau_ref": getattr(ctx.niveau, "pk", None)}),
-                         (ctx.classe, {"classe_ref": getattr(ctx.classe, "pk", None)}), (ctx.matiere, {"subject_id": getattr(ctx.matiere, "pk", None)}),
+                         (ctx.classes, {"classe_ref__in": [c.pk for c in ctx.classes]}),
+                         (ctx.matieres, {"subject_id__in": [m.pk for m in ctx.matieres]}),
                          (ctx.eleve, {"student_id": getattr(ctx.eleve, "pk", None)}), (ctx.genre, {"student__gender": ctx.genre})):
         if cond:
             qs = qs.filter(**filtre)
@@ -411,4 +414,220 @@ def eleve(ctx, eleve_obj):
                              "coefficient": getattr(infos.get(sid), "coefficient", None), "periodes": p}
                             for sid, p in par_matiere.items()], key=lambda x: x["nom"]),
         "presences": pres,
+    }
+
+
+# ── Phase 6 : pilotage visuel ───────────────────────────────────────────
+
+PERIODES_ORDRE = ("T1", "T2", "T3", "exam")
+
+
+def _repartition(valeurs20, bareme):
+    """5 tranches égales du barème d'affichage ; la borne haute appartient à la dernière."""
+    pas = bareme.valeur / 5
+    sortie = []
+    for i in range(5):
+        bas, haut = pas * i, pas * (i + 1)
+        n = sum(1 for v in valeurs20 if bas <= Decimal(v) / VINGT * bareme.valeur < haut
+                or (i == 4 and Decimal(v) / VINGT * bareme.valeur == haut))
+        sortie.append({"de": _r(bas), "a": _r(haut), "eleves": n})
+    return sortie
+
+
+def _evolution(lignes_periode, cle, bareme, seuil20):
+    """Moyenne par période pour chaque valeur de `cle` (matière, classe…) : {id: [{periode, moyenne, eleves}]}."""
+    acc = defaultdict(lambda: defaultdict(list))
+    for l in lignes_periode:
+        acc[l[cle]][l["period"]].append(l["moy"])
+    return {k: [{"periode": p, "moyenne": bareme.aff(sum(Decimal(x) for x in v) / len(v)), "eleves_notes": len(v),
+                 "taux_reussite": _r(100 * sum(1 for x in v if Decimal(x) >= seuil20) / len(v), 1)}
+                for p in PERIODES_ORDRE if (v := per.get(p))]
+            for k, per in acc.items()}
+
+
+def matieres_detail(ctx, params):
+    """Matières : classement contextualisé, répartition et évolution par période."""
+    seuil = _seuil(params)
+    seuil20 = seuil / 100 * VINGT
+    min_eval = _min_evaluations(params)
+    base = matieres(ctx, params)
+    bareme = Bareme(set())
+    bareme.valeur, bareme.mixte = Decimal(base["bareme"]), base["bareme_mixte"]
+    lignes = list(notes(ctx).values("student_id", "subject_id").annotate(moy=Avg("value"), n=Count("id")))
+    par = defaultdict(list)
+    for l in lignes:
+        par[l["subject_id"]].append(l["moy"])
+    toutes = list(notes(ctx, avec_periode=False).values("student_id", "subject_id", "period").annotate(moy=Avg("value"), n=Count("id")))
+    evol = _evolution(toutes, "subject_id", bareme, seuil20)
+    for m in base["matieres"]:
+        m["repartition"] = _repartition(par.get(m["id"], []), bareme)
+        m["evolution"] = evol.get(m["id"], [])
+        m["comparable"] = m["notes"] >= min_eval and m["eleves_notes"] >= 2
+    comparables = [m for m in base["matieres"] if m["comparable"] and m["moyenne"] is not None]
+    tri = sorted(comparables, key=lambda m: m["moyenne"], reverse=True)
+    base["classement"] = {
+        "plus_hautes": [m["id"] for m in tri[:3]],
+        "difficultes": [m["id"] for m in reversed(tri[-3:]) if m["taux_reussite"] is not None and m["taux_reussite"] < 100] if len(tri) > 3 else [],
+        "non_comparees": len(base["matieres"]) - len(comparables),
+        "min_evaluations": min_eval,
+    }
+    return base
+
+
+def classes_detail(ctx, params):
+    """Classes : effectif inscrit, élèves notés, moyenne, réussite, répartition et évolution."""
+    from apps.classes.models import Class
+    from apps.students.models import StudentEnrollment
+    seuil = _seuil(params)
+    seuil20 = seuil / 100 * VINGT
+    lignes = list(notes(ctx).values("student_id", "subject_id", "classe_ref", "niveau_ref").annotate(moy=Avg("value"), n=Count("id")))
+    matieres_infos = _matieres({l["subject_id"] for l in lignes})
+    eleves = moyennes_eleves(lignes, matieres_infos)
+    bareme = Bareme({e["niveau"] for e in eleves.values()})
+    toutes = list(notes(ctx, avec_periode=False).values("student_id", "subject_id", "classe_ref", "niveau_ref", "period")
+                  .annotate(moy=Avg("value"), n=Count("id")))
+    infos_toutes = matieres_infos | _matieres({l["subject_id"] for l in toutes})
+    evol = defaultdict(list)
+    for p in PERIODES_ORDRE:
+        par_p = moyennes_eleves([l for l in toutes if l["period"] == p], infos_toutes)
+        groupes = defaultdict(list)
+        for e in par_p.values():
+            groupes[e["classe"]].append(e["moyenne"])
+        for cid, v in groupes.items():
+            evol[cid].append({"periode": p, "moyenne": bareme.aff(sum(v) / len(v)), "eleves_notes": len(v)})
+    classes_qs = ctx.filtrer_classes(Class.objects.filter(level__school=ctx.academie, school_year=ctx.annee)).select_related("level")
+    if ctx.classes:
+        classes_qs = classes_qs.filter(pk__in=[c.pk for c in ctx.classes])
+    if ctx.niveau:
+        classes_qs = classes_qs.filter(level=ctx.niveau)
+    if ctx.cycle:
+        classes_qs = classes_qs.filter(level__cycle=ctx.cycle)
+    effectifs = dict(StudentEnrollment.objects.filter(school_year=ctx.annee, is_active=True, student__is_active=True,
+                                                      class_obj__in=classes_qs).values_list("class_obj").annotate(n=Count("id")))
+    par_classe = defaultdict(list)
+    for e in eleves.values():
+        par_classe[e["classe"]].append(e)
+    sortie = []
+    for c in classes_qs.order_by("level__order", "name"):
+        membres = par_classe.get(c.pk, [])
+        st = _stats([m["moyenne"] for m in membres], seuil20, bareme)
+        sortie.append({"id": c.pk, "nom": c.name, "niveau": c.level.name if c.level else None,
+                       "inscrits": effectifs.get(c.pk, 0), "eleves_notes": len(membres),
+                       "notes": sum(m["notes"] for m in membres), **st,
+                       "repartition": _repartition([m["moyenne"] for m in membres], bareme),
+                       "evolution": evol.get(c.pk, [])})
+    return {"filtres": ctx.actifs, **bareme.dict(), "seuil_pourcent": _r(seuil, 1), "classes": sortie}
+
+
+def enseignants_profils(ctx, params):
+    """Un profil descriptif par enseignant : classes, matières, élèves, notes, répartition, évolution.
+
+    Jamais de classement : tri par nom ; l'avertissement accompagne toujours les chiffres.
+    """
+    from apps.classes.models import Class
+    from apps.teachers.models import Teacher, TeacherAssignment
+    seuil = _seuil(params)
+    seuil20 = seuil / 100 * VINGT
+    qs = notes(ctx)
+    if not ctx.est_personnel:
+        qs = qs.filter(teacher__user=ctx.user)
+    lignes = list(qs.values("teacher_id", "student_id", "subject_id", "classe_ref", "niveau_ref").annotate(moy=Avg("value"), n=Count("id")))
+    bareme = Bareme({l["niveau_ref"] for l in lignes})
+    toutes = list((notes(ctx, avec_periode=False) if ctx.est_personnel else notes(ctx, avec_periode=False).filter(teacher__user=ctx.user))
+                  .values("teacher_id", "student_id", "subject_id", "period").annotate(moy=Avg("value"), n=Count("id")))
+    evol = _evolution(toutes, "teacher_id", bareme, seuil20)
+    ids = {l["teacher_id"] for l in lignes}
+    profs = {t.pk: t for t in Teacher.objects.filter(pk__in=ids).select_related("user")}
+    classes = {c.pk: c.name for c in Class.objects.filter(pk__in={l["classe_ref"] for l in lignes})}
+    infos = _matieres({l["subject_id"] for l in lignes})
+    affectations = defaultdict(set)
+    for tid, cid, sid in TeacherAssignment.objects.filter(teacher_id__in=ids, class_obj__school_year=ctx.annee).values_list("teacher_id", "class_obj_id", "subject_id"):
+        affectations[tid].add((cid, sid))
+    par = defaultdict(list)
+    for l in lignes:
+        par[l["teacher_id"]].append(l)
+    profils = []
+    for tid, ls in par.items():
+        moyennes = [l["moy"] for l in ls]
+        detail = defaultdict(list)
+        for l in ls:
+            detail[(l["classe_ref"], l["subject_id"])].append(l)
+        profils.append({
+            "id": tid, "nom": profs[tid].user.get_full_name() if tid in profs else "Non renseigné",
+            "classes": sorted({classes.get(l["classe_ref"], "Sans classe") for l in ls}),
+            "matieres": sorted({getattr(infos.get(l["subject_id"]), "name", "?") for l in ls}),
+            "eleves_evalues": len({l["student_id"] for l in ls}), "notes": sum(l["n"] for l in ls),
+            # Unité des statistiques ci-dessous : la moyenne d'un élève dans une matière de cet enseignant.
+            "moyennes_eleve_matiere": len(ls),
+            **{k: v for k, v in _stats(moyennes, seuil20, bareme).items() if k in ("moyenne", "ecart_type", "taux_reussite")},
+            "repartition": _repartition(moyennes, bareme),
+            "evolution": evol.get(tid, []),
+            "affectations_sans_note": len(affectations.get(tid, set()) - {(l["classe_ref"], l["subject_id"]) for l in ls}),
+            "detail": sorted([{"classe": classes.get(cid, "Sans classe"), "matiere": getattr(infos.get(sid), "name", "?"),
+                               "eleves_notes": len(d), "notes": sum(x["n"] for x in d),
+                               "moyenne": bareme.aff(sum(Decimal(x["moy"]) for x in d) / len(d)),
+                               "taux_reussite": _r(100 * sum(1 for x in d if Decimal(x["moy"]) >= seuil20) / len(d), 1)}
+                              for (cid, sid), d in detail.items()], key=lambda x: (x["classe"], x["matiere"])),
+        })
+    profils.sort(key=lambda p: p["nom"])
+    # Enseignants choisis sans aucune note dans la sélection : signalés, jamais omis en silence.
+    sans_note = [{"id": e.pk, "nom": e.user.get_full_name()} for e in ctx.enseignants if e.pk not in par]
+    return {"filtres": ctx.actifs, **bareme.dict(), "seuil_pourcent": _r(seuil, 1),
+            "avertissement": AVERTISSEMENT_ENSEIGNANTS, "profils": profils, "sans_note": sans_note}
+
+
+def vue_ensemble(ctx, params):
+    """KPI de pilotage et limites des données (ce qui ne peut pas être calculé, et pourquoi)."""
+    from apps.attendance.models import Attendance
+    from apps.students.models import StudentEnrollment
+    r = resultats(ctx, params)
+    eff = effectifs(ctx)
+    pres = presences(ctx)
+    m = matieres_detail(ctx, params)
+    s = r["synthese"]
+    seuil20 = Decimal(str(r["seuil_pourcent"])) / 100 * VINGT
+    par_cycle = defaultdict(int)
+    from apps.schools.models import Level
+    cycles = dict(Level.objects.filter(school=ctx.academie).values_list("pk", "cycle"))
+    for n in eff["par_niveau"]:
+        par_cycle[cycles.get(n["id"], "sans")] += n["inscrits"]
+    limites = []
+    if len(r["progression"]) < 2:
+        limites.append({"texte": "Une seule période notée : l'évolution des résultats apparaîtra avec la période suivante.", "params": {}})
+    if not pres["synthese"]["appels"]:
+        limites.append({"texte": "Aucun appel enregistré pour cette sélection : la présence ne peut pas être mesurée.", "params": {}})
+    statuts = set(StudentEnrollment.objects.filter(school_year=ctx.annee, student__school=ctx.academie).values_list("promotion_status", flat=True))
+    if len(statuts) == 1:
+        from apps.students.models import StudentEnrollment as _E
+        libelle = dict(_E.PROMOTION_CHOICES).get(next(iter(statuts)), next(iter(statuts)))
+        limites.append({"texte": "Toutes les inscriptions de l'année ont le même statut (« {statut} ») : nouvelles inscriptions et réinscriptions ne peuvent pas être distinguées.",
+                        "params": {"statut": libelle}})
+    if eff.get("actifs_sans_inscription"):
+        limites.append({"texte": "{n} élève(s) actif(s) sans inscription pour cette année ne sont pas comptés dans les effectifs.",
+                        "params": {"n": eff["actifs_sans_inscription"]}})
+    noms = {x["id"]: x["nom"] for x in m["matieres"]}
+    lignes = list(notes(ctx).values("student_id", "subject_id", "classe_ref", "niveau_ref").annotate(moy=Avg("value"), n=Count("id")))
+    eleves = moyennes_eleves(lignes, _matieres({l["subject_id"] for l in lignes}))
+    a_accompagner = sum(1 for e in eleves.values() if e["moyenne"] < seuil20)
+    return {
+        "filtres": ctx.actifs, "annee": eff["annee"], "bareme": r["bareme"], "bareme_mixte": r["bareme_mixte"],
+        "seuil_pourcent": r["seuil_pourcent"],
+        "kpi": {
+            "inscrits": eff["inscrits"], "eleves_actifs": eff.get("eleves_actifs"),
+            "eleves_notes": s["eleves_notes"], "notes": s["notes"], "moyenne": s["moyenne"], "mediane": s["mediane"],
+            "taux_reussite": s["taux_reussite"],
+            "objectif_atteint": s["eleves_notes"] - a_accompagner if s["eleves_notes"] else 0,
+            "a_accompagner": a_accompagner,
+            "taux_presence": pres["synthese"]["taux_presence"], "appels": pres["synthese"]["appels"],
+        },
+        "par_cycle": [{"cycle": c, "inscrits": n} for c, n in sorted(par_cycle.items())],
+        "par_niveau": eff["par_niveau"], "par_genre": eff["par_genre"],
+        "repartition": r["repartition"], "progression": r["progression"],
+        "classes": [{"id": c["id"], "nom": c["nom"], "moyenne": c["moyenne"], "taux_reussite": c["taux_reussite"], "eleves_notes": c["eleves_notes"]}
+                    for c in r["par_classe"]],
+        "matieres_plus_hautes": [{"id": i, "nom": noms[i]} | {k: next(x for x in m["matieres"] if x["id"] == i)[k] for k in ("moyenne", "taux_reussite", "notes")}
+                                 for i in m["classement"]["plus_hautes"]],
+        "matieres_difficultes": [{"id": i, "nom": noms[i]} | {k: next(x for x in m["matieres"] if x["id"] == i)[k] for k in ("moyenne", "taux_reussite", "notes")}
+                                 for i in m["classement"]["difficultes"]],
+        "limites": limites,
     }

@@ -223,3 +223,62 @@ class CentreAnalyseTests(TestCase):
             StudentEnrollment.objects.create(student=e, school_year=self.annee, class_obj=self.ce1b)
             Grade.objects.create(student=e, subject=self.maths, school_year=self.annee, period="T1", value=Decimal(11))
         self.assertEqual(compter(), avant)
+
+
+class PilotageVisuelTests(CentreAnalyseTests):
+    """Phase 6 : sélections multiples, type d'évaluation, vue d'ensemble, matières, classes, profils enseignants."""
+
+    def test_selection_multiple_et_type_d_evaluation(self):
+        deux = self.get(self.admin, "resultats/", classe=f"{self.ce1a.pk},{self.ce1b.pk}", periode="T1").data
+        self.assertEqual(deux["synthese"]["eleves_notes"], 3)                    # Ana, Ben, Cleo
+        self.assertIsNone(deux["listes"])                                        # plusieurs classes : pas de liste nominative
+        self.assertEqual(deux["filtres"]["classe"], [self.ce1a.pk, self.ce1b.pk])
+        Grade.objects.filter(student=self.dan, subject=self.fr).update(note_type="examen")
+        ex = self.get(self.admin, "resultats/", type_evaluation="examen").data["synthese"]
+        self.assertEqual((ex["eleves_notes"], ex["notes"]), (1, 1))
+        self.assertEqual(self.get(self.admin, "resultats/", type_evaluation="quiz").status_code, 400)
+        self.assertEqual(self.get(self.admin, "resultats/", classe=f"{self.ce1a.pk},abc").status_code, 400)
+        self.assertEqual(self.get(self.prof1.user, "resultats/", classe=f"{self.ce1a.pk},{self.sixa.pk}").status_code, 403)
+        self.assertEqual(self.get(self.prof1.user, "enseignants/profils/", enseignant=f"{self.prof1.pk},{self.prof2.pk}").status_code, 403)
+
+    def test_vue_ensemble(self):
+        r = self.get(self.admin, "vue-ensemble/", periode="T1")
+        self.assertEqual(r.status_code, 200, r.data)
+        k = r.data["kpi"]
+        self.assertEqual((k["inscrits"], k["eleves_notes"], k["taux_reussite"]), (4, 4, 75.0))   # Ben sous le seuil
+        self.assertEqual((k["objectif_atteint"], k["a_accompagner"]), (3, 1))
+        self.assertEqual({c["cycle"]: c["inscrits"] for c in r.data["par_cycle"]}, {"primaire": 3, "college": 1})
+        self.assertTrue(any("sans inscription" in l["texte"] for l in r.data["limites"]))           # Eve
+        self.assertTrue(any("réinscriptions" in l["texte"] for l in r.data["limites"]))
+        sans_appel = self.get(self.admin, "vue-ensemble/", classe=self.ce1b.pk).data
+        self.assertIsNone(sans_appel["kpi"]["taux_presence"])
+        self.assertTrue(any("Aucun appel" in l["texte"] for l in sans_appel["limites"]))
+
+    def test_matieres_detail_classes_et_profils(self):
+        m = self.get(self.admin, "matieres/detail/", niveau=self.ce1.pk, periode="T1", min_evaluations=2).data
+        maths = next(x for x in m["matieres"] if x["nom"] == "Mathématiques")
+        self.assertEqual(sum(t["eleves"] for t in maths["repartition"]), 3)
+        self.assertEqual([e["periode"] for e in maths["evolution"]], ["T1", "T2"])
+        self.assertEqual(m["classement"]["min_evaluations"], 2)
+        c = {x["nom"]: x for x in self.get(self.admin, "classes/", periode="T1").data["classes"]}
+        self.assertEqual((c["CE1-A"]["inscrits"], c["CE1-A"]["eleves_notes"]), (2, 2))
+        self.assertEqual(c["CE1-B"]["inscrits"], 1)                                # Eve sans inscription n'est pas comptée
+        self.assertEqual([e["periode"] for e in c["CE1-A"]["evolution"]], ["T1", "T2"])
+        p = self.get(self.admin, "enseignants/profils/", periode="T1").data
+        self.assertIn("aucune conclusion", p["avertissement"])
+        noms = [x["nom"] for x in p["profils"]]
+        self.assertEqual(noms, sorted(noms))
+        un = next(x for x in p["profils"] if x["id"] == self.prof1.pk)
+        self.assertEqual((un["classes"], un["matieres"], un["eleves_evalues"], un["notes"]), (["CE1-A"], ["Mathématiques"], 2, 3))
+        comp = self.get(self.admin, "enseignants/profils/", enseignant=f"{self.prof1.pk},{self.prof2.pk}").data["profils"]
+        self.assertEqual({x["id"] for x in comp}, {self.prof1.pk, self.prof2.pk})
+        self.assertEqual(un["moyennes_eleve_matiere"], 2)
+        # Enseignant choisi sans note dans la sélection : signalé, pas omis.
+        vide = self.get(self.admin, "enseignants/profils/", enseignant=f"{self.prof1.pk},{self.prof2.pk}", classe=self.ce1a.pk).data
+        self.assertEqual([x["id"] for x in vide["profils"]], [self.prof1.pk])
+        self.assertEqual([x["id"] for x in vide["sans_note"]], [self.prof2.pk])
+        moi = self.get(self.prof1.user, "enseignants/profils/").data["profils"]
+        self.assertEqual([x["id"] for x in moi], [self.prof1.pk])
+        for chemin in ("vue-ensemble/", "classes/", "matieres/detail/", "enseignants/profils/"):
+            self.assertEqual(self.get(self.parent, chemin).status_code, 403, chemin)
+            self.assertEqual(self.get(self.u_ana, chemin).status_code, 403, chemin)

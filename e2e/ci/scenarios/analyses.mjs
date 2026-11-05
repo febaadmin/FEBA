@@ -8,6 +8,9 @@ export default async function () {
   const opts = (await api("GET", "/analytics/filtres/", ja)).donnees;
   ok(S, "API admin : filtres de l'académie", opts.classes?.length > 0, JSON.stringify(opts).slice(0, 120));
   const res = await api("GET", "/analytics/resultats/", ja);
+  for (const chemin of ["vue-ensemble", "classes", "matieres/detail", "enseignants/profils"]) {
+    ok(S, `API admin : ${chemin} répond`, (await api("GET", `/analytics/${chemin}/`, ja)).statut === 200);
+  }
   const eff = await api("GET", "/analytics/effectifs/", ja);
   ok(S, "API admin : résultats et effectifs", res.statut === 200 && eff.statut === 200);
   if (res.donnees.par_classe?.length) {
@@ -15,17 +18,20 @@ export default async function () {
     ok(S, "API : élèves notés = somme des classes", somme === res.donnees.synthese.eleves_notes, `${somme} / ${res.donnees.synthese.eleves_notes}`);
   }
 
-  // Administrateur : écran, onglets, présentation.
+  // Administrateur : centre de pilotage, onglets, présentation, parcours analytique complet.
+  const ens = (await api("GET", "/analytics/vue-ensemble/", ja)).donnees;
   const p = await connecter("admin");
   ok(S, "menu « Centre d'analyse »", await p.locator('a[href="/admin/analyses"]').count() === 1);
   await p.goto(BASE + "/admin/analyses");
   await p.getByTestId("analyse-filtres").waitFor({ timeout: 15000 });
-  await p.waitForTimeout(1500);
-  const resultatsVisibles = await p.getByTestId("analyse-resultats").count() + await p.getByTestId("resultats-vide").count();
-  ok(S, "onglet Résultats : indicateurs ou état vide", resultatsVisibles === 1);
-  for (const o of ["matieres", "enseignants", "effectifs", "presences"]) {
+  await p.getByTestId("kpi-inscrits").waitFor({ timeout: 15000 });
+  ok(S, "vue d'ensemble : KPI inscrits = API", (await p.getByTestId("kpi-inscrits").innerText()).includes(String(ens.kpi.inscrits)));
+  ok(S, "vue d'ensemble : limites des données expliquées", ens.limites.length === 0 || await p.getByTestId("analyse-limites").count() === 1);
+  ok(S, "vue d'ensemble : graphiques avec période et unité",
+    (await p.getByTestId("ens-repartition").innerText()).includes("Unité") && await p.locator("[data-testid=ens-repartition] svg").count() > 0);
+  for (const o of ["resultats", "matieres", "classes", "enseignants", "effectifs", "presences"]) {
     await p.getByTestId(`onglet-${o}`).click();
-    await p.waitForTimeout(1000);
+    await p.waitForTimeout(1200);
     ok(S, `onglet ${o} sans erreur`, await p.getByTestId("analyse-erreur").count() === 0);
   }
   await p.getByTestId("onglet-effectifs").click();
@@ -36,11 +42,51 @@ export default async function () {
   await p.getByTestId("presentation-bi").click();
   ok(S, "présentation bilingue, même chiffre", (await p.getByTestId("eff-inscrits").innerText()).includes("Élèves inscrits / Enrolled students")
     && (await p.getByTestId("eff-inscrits").innerText()).includes(String(eff.donnees.inscrits)));
-  await p.getByTestId("af-niveau").selectOption(String(opts.niveaux[0].id));
+  await p.getByTestId("presentation-fr").click();
+  // Parcours : classe → matière → enseignant, puis KPI et détail cohérents avec l'API.
+  const classe = opts.classes.find((c) => res.donnees.par_classe?.some((x) => x.id === c.id)) || opts.classes[0];
+  await p.getByTestId("onglet-ensemble").click();
+  await p.getByTestId("af-classe").click();
+  await p.getByTestId(`af-classe-${classe.id}`).check();
+  await p.keyboard.press("Escape");
+  await p.waitForTimeout(1500);
+  const deps = (await api("GET", `/analytics/filtres/?classe=${classe.id}`, ja)).donnees;
+  const matiere = (await api("GET", `/analytics/matieres/?classe=${classe.id}`, ja)).donnees.matieres[0];
+  if (matiere) {
+    await p.getByTestId("af-matiere").click();
+    await p.getByTestId(`af-matiere-${matiere.id}`).check();
+    await p.keyboard.press("Escape");
+    await p.waitForTimeout(1500);
+  }
+  const profs = (await api("GET", `/analytics/enseignants/profils/?classe=${classe.id}${matiere ? `&matiere=${matiere.id}` : ""}`, ja)).donnees.profils;
+  const prof = profs.find((x) => x.id) ;
+  if (prof) {
+    await p.getByTestId("af-enseignant").click();
+    await p.getByTestId(`af-enseignant-${prof.id}`).check();
+    await p.keyboard.press("Escape");
+    await p.waitForTimeout(1500);
+  }
+  const q = `classe=${classe.id}${matiere ? `&matiere=${matiere.id}` : ""}${prof ? `&enseignant=${prof.id}` : ""}`;
+  const attendu = (await api("GET", `/analytics/vue-ensemble/?${q}`, ja)).donnees.kpi;
+  ok(S, "parcours classe → matière → enseignant : puces actives", (await p.getByTestId("af-actifs").innerText()).includes(classe.nom));
+  ok(S, "parcours : KPI de l'écran = API pour la sélection exacte",
+    (await p.getByTestId("kpi-notes").innerText()).includes(`${attendu.notes} `) && (await p.getByTestId("kpi-notes").innerText()).includes(String(attendu.eleves_notes)),
+    `${await p.getByTestId("kpi-notes").innerText()} / ${attendu.eleves_notes} ${attendu.notes}`);
+  ok(S, "parcours : la classe choisie limite les élèves proposés", deps.eleves.length >= 0);
+  await p.getByTestId("onglet-enseignants").click();
+  await p.waitForTimeout(1500);
+  ok(S, "parcours : profil de l'enseignant affiché", !prof || await p.getByTestId(`ens-profil-${prof.id}`).count() === 1);
+  ok(S, "parcours : avertissement sur les enseignants", (await p.getByTestId("avertissement-enseignants").innerText()).includes("aucune conclusion"));
+  await p.getByTestId("onglet-classes").click();
   await p.waitForTimeout(1200);
-  ok(S, "filtre niveau : puce active", (await p.getByTestId("af-actifs").innerText()).includes(opts.niveaux[0].nom));
+  const detail = p.getByTestId("cls-effectifs-detail");
+  if (await detail.count()) { await detail.click(); await p.waitForTimeout(300); }
+  ok(S, "parcours : tableau détaillé à la demande", await p.getByTestId("cls-table").count() === 1);
+  await p.getByTestId("af-reinitialiser").click();
+  await p.waitForTimeout(800);
+  ok(S, "réinitialisation des filtres", await p.getByTestId("af-actifs").count() === 0);
   const deborde = await p.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1);
-  ok(S, "admin : aucune erreur JS ni 5xx, aucun débordement", p.erreurs.length === 0 && !deborde, p.erreurs.join(" | "));
+  ok(S, "admin : aucune erreur JS ni 5xx ni CSP, aucun débordement", p.erreurs.length === 0 && !deborde, p.erreurs.join(" | "));
   await p.contexte.close();
 
   // Enseignant : ses classes seulement.

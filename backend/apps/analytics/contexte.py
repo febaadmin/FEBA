@@ -19,6 +19,7 @@ from dataclasses import dataclass, field
 from rest_framework.exceptions import NotFound, PermissionDenied, ValidationError
 
 PERIODES = ("T1", "T2", "T3", "exam")
+MULTIPLES = ("classe", "matiere", "enseignant")
 GENRES = ("M", "F")
 
 
@@ -39,6 +40,12 @@ class Contexte:
     enseignant: object = None
     eleve: object = None
     genre: str = None
+    # Sélections multiples (phase 6) : listes d'objets ; `classe`, `matiere`, `enseignant`
+    # restent renseignés quand UNE seule valeur est choisie (compatibilité).
+    classes: list = field(default_factory=list)
+    matieres: list = field(default_factory=list)
+    enseignants: list = field(default_factory=list)
+    types_evaluation: tuple = ()
     classes_autorisees: set = None      # None : toutes les classes de l'académie
     eleves_autorises: set = None        # None : tous les élèves du périmètre
     est_personnel: bool = False         # administration (voit l'analyse par enseignant)
@@ -49,6 +56,18 @@ class Contexte:
         if self.classes_autorisees is not None:
             qs = qs.filter(**{f"{champ}__in": self.classes_autorisees})
         return qs
+
+
+def _identifiants(params, cle, erreurs):
+    """Liste d'identifiants « 3,5,8 » (sélection multiple). Valeur invalide : erreur 400."""
+    from apps.core.request_text import identifiant
+    brut = params.get(cle) or ""
+    valeurs = [x for x in brut.split(",") if x.strip()]
+    ids = [identifiant(x.strip()) for x in valeurs]
+    if any(v is None for v in ids) or len(ids) > 50:
+        erreurs[cle] = "Identifiant invalide."
+        return []
+    return list(dict.fromkeys(ids))
 
 
 def _identifiant(params, cle, erreurs):
@@ -89,7 +108,12 @@ def resoudre(request, personnel_seulement=True):
         raise AcademieRequise({"academie": "Choisissez une académie dans le sélecteur : les analyses portent sur une académie à la fois."})
 
     p, erreurs = request.query_params, {}
-    ids = {cle: _identifiant(p, cle, erreurs) for cle in ("annee", "niveau", "classe", "matiere", "enseignant", "eleve")}
+    ids = {cle: _identifiant(p, cle, erreurs) for cle in ("annee", "niveau", "eleve")}
+    listes = {cle: _identifiants(p, cle, erreurs) for cle in MULTIPLES}
+    from apps.grades.models import Grade
+    types = tuple(x for x in (p.get("type_evaluation") or "").split(",") if x)
+    if any(t not in dict(Grade.NOTE_TYPE_CHOICES) for t in types):
+        erreurs["type_evaluation"] = f"Valeur attendue : {', '.join(dict(Grade.NOTE_TYPE_CHOICES))}."
     periode = p.get("periode") or None
     if periode and periode not in PERIODES:
         erreurs["periode"] = f"Valeur attendue : {', '.join(PERIODES)}."
@@ -118,21 +142,33 @@ def resoudre(request, personnel_seulement=True):
             raise ValidationError({"annee": "Aucune année scolaire active pour cette académie."})
 
     ctx = Contexte(user=user, academie=academie, annee=annee, periode=periode, cycle=cycle, genre=genre,
-                   est_personnel=user.is_superadmin() or user.is_admin())
+                   types_evaluation=types, est_personnel=user.is_superadmin() or user.is_admin())
     ctx.niveau = objet(Level, "niveau", school=academie)
-    ctx.classe = objet(Class, "classe", level__school=academie)
-    ctx.matiere = objet(Subject, "matiere", school=academie)
-    ctx.enseignant = objet(Teacher, "enseignant", user__school=academie)
     ctx.eleve = objet(Student, "eleve", school=academie)
+
+    def objets(modele, cle, **portee):
+        voulus = listes[cle]
+        if not voulus:
+            return []
+        trouves = list(modele.objects.filter(pk__in=voulus, **portee))
+        if len(trouves) != len(voulus):
+            raise NotFound(f"{cle.capitalize()} introuvable dans cette académie.")
+        return sorted(trouves, key=lambda o: voulus.index(o.pk))
+    ctx.classes = objets(Class, "classe", level__school=academie)
+    ctx.matieres = objets(Subject, "matiere", school=academie)
+    ctx.enseignants = objets(Teacher, "enseignant", user__school=academie)
+    ctx.classe = ctx.classes[0] if len(ctx.classes) == 1 else None
+    ctx.matiere = ctx.matieres[0] if len(ctx.matieres) == 1 else None
+    ctx.enseignant = ctx.enseignants[0] if len(ctx.enseignants) == 1 else None
 
     if user.is_teacher():
         prof, classes = _classes_enseignant(user)
         ctx.classes_autorisees = classes
-        if ctx.classe is not None and ctx.classe.pk not in classes:
+        if any(c.pk not in classes for c in ctx.classes):
             raise PermissionDenied("Cette classe ne fait pas partie de vos classes.")
         if ctx.eleve is not None and ctx.eleve.current_class_id not in classes:
             raise PermissionDenied("Cet élève ne fait pas partie de vos classes.")
-        if ctx.enseignant is not None and (prof is None or ctx.enseignant.pk != prof.pk):
+        if ctx.enseignants and (prof is None or any(e.pk != prof.pk for e in ctx.enseignants)):
             raise PermissionDenied("Vous ne pouvez consulter que vos propres classes.")
     elif user.is_parent():
         ctx.eleves_autorises = set(Student.objects.filter(parents__parent__user=user).values_list("id", flat=True))
@@ -141,6 +177,8 @@ def resoudre(request, personnel_seulement=True):
 
     ctx.actifs = {k: v for k, v in {
         "annee": annee.pk, "periode": periode, "cycle": cycle, "genre": genre,
-        **{k: ids[k] for k in ("niveau", "classe", "matiere", "enseignant", "eleve")},
+        "type_evaluation": list(types) or None,
+        **{k: ids[k] for k in ("niveau", "eleve")},
+        **{k: listes[k] or None for k in MULTIPLES},
     }.items() if v is not None}
     return ctx
