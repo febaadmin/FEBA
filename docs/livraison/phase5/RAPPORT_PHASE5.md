@@ -101,7 +101,7 @@ Conception et audit : `CONCEPTION_FINANCES.md`. On fait évoluer l'existant, san
 | #88 | Tarifs et échéances, natures, historique | fusionnée (`3dc4e3a`), déployée, vérifiée en production (ci-dessous) |
 | #89 | Situation financière | fermée automatiquement à la suppression de sa branche de base ; remplacée par #92 |
 | #90 | Graphique : filtres | remplacée par #93, même contenu |
-| #91 | Centre d'analyse | ouverte, basée sur `main` |
+| #91 | Centre d'analyse | fusionnée par commit de fusion (`0528101`), déployée |
 | #92 | Situation financière | fusionnée par commit de fusion (`1bca3eb`) |
 | #93 | Graphique : filtres | fusionnée par commit de fusion (`f5b0ef6`) |
 
@@ -113,11 +113,31 @@ Conception et audit : `CONCEPTION_FINANCES.md`. On fait évoluer l'existant, san
 - site 200 ; historique des tarifs refusé sans connexion (401) ;
 - le menu « Tarifs et échéances », l'écran Tarifs et le glossaire sont présents dans le frontend déployé.
 
-Déploiements de `1bca3eb`, `f5b0ef6` et #91 : à vérifier de la même façon (§ F).
+Déploiements de `1bca3eb`, `f5b0ef6` et `0528101` : réussis, vérifiés au § F.
 
 ## F. État final et limites
 
-À compléter après déploiement et vérification en production.
+**Production sur `0528101` (= `main`), vérifiée en lecture seule le 05/11** :
+- aucune migration en attente ; backend, Celery (répond au ping) et planificateur sains ; PostgreSQL et Redis non redémarrés ;
+- **0 tarif** créé ; 242 paiements et 925 notes non supprimés : rien n'a été modifié ;
+- nouvelles routes (`/api/analytics/…`, `/api/payments/situation/`, `/api/payments/tableau-de-bord/detail/` et `/filtres/`) : 401 sans connexion, aucune erreur 500 ni trace dans les journaux après le déploiement ;
+- écrans « Centre d'analyse », « Analyse des résultats » et « Situation financière » présents dans le frontend déployé.
+
+**Incident de déploiement** : le premier déploiement de `0528101` a échoué avant la mise en production. Le dépôt de paquets Microsoft du runner GitHub a renvoyé une erreur 403 pendant l'installation de LibreOffice. Ce n'est pas un défaut du code : la même révision avait passé ses 12 contrôles. Seul le job en échec a été relancé, par le workflow ; tests et déploiement réussis. La production est restée sur `f5b0ef6`, saine, entre-temps.
+
+**Classement final** :
+
+| Fonctionnalité | Statut |
+|---|---|
+| Glossaire par profil | I, TA, TL, D, VP (présence) ; HV (relecture des définitions) |
+| Tarifs et échéances, natures, historique | I, TA, TL, D, VP (présence, aucune saisie) ; HV (première saisie par l'administration) |
+| Situation financière, vue parent | I, TA, TL, D, VP (présence) ; HV (dépend des tarifs à saisir) |
+| Graphique : filtres, comparaison, détail, export | I, TA, TL, D, VP (routes protégées) ; HV |
+| Centre d'analyse, 5 profils, FR / EN / bilingue | I, TA, TL, D, VP (routes protégées, écrans présents) ; HV |
+| Majoration individuelle ; catégories libres ; examens, vie scolaire, ressources | ND (voir § B et § D) |
+| Tableau de bord parent (132 requêtes) | ND : refonte du calcul des moyennes partagé avec les bulletins, à traiter en lot séparé |
+
+Aucune vérification n'a été faite avec un compte réel en production : il n'y a ni mot de passe ni compte de test à utiliser. Les écrans authentifiés ont été éprouvés en local (E2E) et en CI.
 
 **Limites connues** :
 - la classe d'une note ou d'un paiement analysé est celle de l'inscription annuelle, à défaut la classe actuelle de l'élève ;
