@@ -23,7 +23,7 @@ from django.utils import timezone
 
 from .models import Conversation, EtatConversation, Message, PieceJointeMessage
 
-DOSSIERS_LISTE = ("reception", "envoyes", "importants", "archives", "corbeille")
+DOSSIERS_LISTE = ("reception", "non_lus", "envoyes", "importants", "archives", "corbeille")
 MAX_DESTINATAIRES = 50
 MAX_PIECES = 5
 
@@ -208,8 +208,10 @@ def filtrer(user, params):
     envoye = Exists(Message.objects.filter(conversation=OuterRef("pk"), sender=user))
     qs = qs.annotate(_masquee=masquee, _corbeille=corbeille, _archives=archives, _important=important,
                      _recu=recu, _envoye=envoye).filter(_masquee=False)
-    if dossier == "reception":
+    if dossier in ("reception", "non_lus"):
         qs = qs.filter(_recu=True, _corbeille=False, _archives=False)
+        if dossier == "non_lus":
+            qs = qs.filter(Exists(Message.objects.filter(conversation=OuterRef("pk")).filter(non_lus_q(user))))
     elif dossier == "envoyes":
         qs = qs.filter(_envoye=True, _corbeille=False)
     elif dossier == "importants":
@@ -236,7 +238,7 @@ def filtrer(user, params):
             if jour is None:
                 raise RegleMessagerie("Date invalide (AAAA-MM-JJ).", cle)
             qs = qs.filter(**{lookup: jour})
-    return qs.order_by("-updated_at")
+    return qs.order_by("updated_at" if params.get("tri") == "date" else "-updated_at")
 
 
 def compteurs(user):

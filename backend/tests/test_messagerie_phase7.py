@@ -219,3 +219,13 @@ class RegleUniqueDestinatairesTests(MessagerieBase):
         r = self.prof.post(URL, {"recipient_ids": [self.parent.id], "subject": "x", "body": "   "}, format="multipart")
         self.assertEqual(r.status_code, 400)
         self.assertEqual(Conversation.objects.count(), avant)
+
+
+class DossierNonLusEtTriTests(MessagerieBase):
+    def test_non_lus_et_tri(self):
+        a = self.ecrire(self.adm, [self.parent.id], objet="Premier")
+        self.ecrire(self.prof, [self.parent.id], objet="Second")
+        self.par.put(f"{URL}{a['id']}/mark_read/")
+        self.assertEqual([c["subject"] for c in self.liste(self.par, dossier="non_lus")], ["Second"])
+        self.assertEqual([c["subject"] for c in self.liste(self.par, tri="date")], ["Premier", "Second"])
+        self.assertEqual([c["subject"] for c in self.liste(self.par)], ["Second", "Premier"])

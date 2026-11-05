@@ -3898,4 +3898,10 @@ export const EN = {
   "Sélectionner {r}": "Select {r}",
   "Par page": "Per page",
   "{a}–{b} sur {n}": "{a}–{b} of {n}",
+  "Tout est lu : aucun message en attente.": "All read: no pending message.",
+  "Démarrer une conversation": "Start a conversation",
+  "Plus anciens": "Oldest first",
+  "Plus récents": "Newest first",
+  "Choisissez au moins un destinataire.": "Choose at least one recipient.",
+  "Écrivez votre message.": "Write your message.",
 };

@@ -14,8 +14,8 @@ import { useSearchParams } from "react-router-dom";
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import {
-  Archive, ArrowLeft, FileText, Inbox, Loader2, MailOpen, Mail, Paperclip, PenSquare, Reply, ReplyAll,
-  RotateCcw, Search, Send, Star, Trash2, X,
+  Archive, ArrowDownUp, ArrowLeft, FileText, Inbox, Loader2, MailOpen, Mail, Paperclip, PenSquare, Reply, ReplyAll,
+  RefreshCw, RotateCcw, Search, Send, Star, Trash2, X,
 } from "lucide-react";
 import { authAPI, conversationsAPI, messageDraftsAPI } from "../../api";
 import Modal from "../../components/ui/Modal";
@@ -25,7 +25,7 @@ import { extractApiError } from "../../utils/errors";
 import { dateLocale, t, useI18n } from "../../i18n";
 
 export const DOSSIERS = [
-  ["reception", "Boîte de réception", Inbox], ["envoyes", "Envoyés", Send], ["brouillons", "Brouillons", FileText],
+  ["reception", "Boîte de réception", Inbox], ["non_lus", "Non lus", MailOpen], ["envoyes", "Envoyés", Send], ["brouillons", "Brouillons", FileText],
   ["importants", "Importants", Star], ["archives", "Archivés", Archive], ["corbeille", "Corbeille", Trash2],
 ];
 const ROLES = { superadmin: "Super administrateur", admin: "Administration", teacher: "Enseignant", parent: "Parent", student: "Élève" };
@@ -154,9 +154,10 @@ function Composition({ ouvert, brouillon, onFermer }) {
       return conversationsAPI.create(fd);
     },
     onSuccess: (rep) => {
+      // Le serveur a ENREGISTRÉ le message (201) : seulement alors « Envoyé ».
       toast.success(t("Message envoyé !"));
       qc.invalidateQueries({ queryKey: ["messagerie"] });
-      onFermer(rep.data.id);
+      setTimeout(() => { envoi.reset(); onFermer(rep.data.id); }, 500);
     },
     onError: (e) => toast.error(extractApiError(e)),
   });
@@ -171,7 +172,8 @@ function Composition({ ouvert, brouillon, onFermer }) {
     },
     onError: (e) => toast.error(extractApiError(e)),
   });
-  const envoyable = dest.length > 0 && corps.trim() && !envoi.isPending;
+  const envoyable = dest.length > 0 && corps.trim() && !envoi.isPending && !envoi.isSuccess;
+  const aide = !dest.length ? t("Choisissez au moins un destinataire.") : !corps.trim() ? t("Écrivez votre message.") : "";
   return (
     <Modal open={ouvert} onClose={() => !envoi.isPending && onFermer()} title={brouillonId ? t("Brouillon") : t("Nouveau message")} size="lg">
       <form className="space-y-3" onSubmit={(e) => { e.preventDefault(); if (envoyable) envoi.mutate(); }} data-testid="composition">
@@ -191,8 +193,11 @@ function Composition({ ouvert, brouillon, onFermer }) {
           <button type="button" className="btn-secondary text-sm" onClick={() => sauver.mutate()} disabled={sauver.isPending}
             data-testid="composition-brouillon">{t("Enregistrer le brouillon")}</button>
           <span className="text-xs text-slate-400 ml-auto hidden sm:inline">{t("Ctrl + Entrée pour envoyer")}</span>
-          <button type="submit" className="btn-primary flex items-center gap-2" disabled={!envoyable} data-testid="composition-envoyer">
-            {envoi.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}{t("Envoyer")}
+          {aide && <span className="text-xs text-slate-400" data-testid="composition-aide">{aide}</span>}
+          <button type="submit" className={`flex items-center gap-2 ${envoi.isError ? "btn-primary bg-red-600" : "btn-primary"}`} disabled={!envoyable}
+            data-testid="composition-envoyer" data-etat={envoi.isPending ? "envoi" : envoi.isSuccess ? "envoye" : envoi.isError ? "erreur" : "pret"}>
+            {envoi.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+            {envoi.isPending ? t("Envoi…") : envoi.isSuccess ? t("Envoyé") : envoi.isError ? t("Réessayer") : t("Envoyer")}
           </button>
         </div>
       </form>
@@ -256,7 +261,7 @@ function Fil({ id, onRetour, onOuvrir }) {
   const enCorbeille = fil.dossier === "corbeille";
   const bouton = "p-2 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-800 transition-colors";
   return (
-    <div className="flex-1 flex flex-col min-w-0 animate-apparition" data-testid="fil">
+    <div className="flex-1 flex flex-col min-w-0 motion-safe:animate-apparition" data-testid="fil">
       <header className="flex items-start gap-2 border-b border-slate-100 px-4 py-3">
         <button type="button" onClick={onRetour} className={`${bouton} lg:hidden`} aria-label={t("Retour à la liste")} data-testid="fil-retour"><ArrowLeft className="w-4 h-4" /></button>
         <div className="flex-1 min-w-0">
@@ -295,7 +300,7 @@ function Fil({ id, onRetour, onOuvrir }) {
       </header>
       <ol className="flex-1 overflow-y-auto px-4 py-4 space-y-4 bg-slate-50/50" aria-label={t("Messages")}>
         {fil.messages.map((m) => (
-          <li key={m.id} className={`flex gap-2 ${m.is_mine ? "flex-row-reverse" : ""} animate-apparition`}>
+          <li key={m.id} className={`flex gap-2 ${m.is_mine ? "flex-row-reverse" : ""} motion-safe:animate-apparition`}>
             {!m.is_mine && <Avatar personne={m.sender} taille="w-8 h-8" />}
             <div className={`max-w-[85%] sm:max-w-[75%] ${m.is_mine ? "items-end" : "items-start"} flex flex-col`}>
               <p className="text-xs text-slate-500 mb-0.5">
@@ -391,16 +396,23 @@ function ListeBrouillons({ onOuvrir }) {
   );
 }
 
-function Vide({ icone: Icone, texte }) {
+function Vide({ icone: Icone, texte, action, onAction }) {
   return (
-    <div className="flex flex-col items-center justify-center gap-2 py-16 text-center text-sm text-slate-400" data-testid="messagerie-vide">
-      <Icone className="w-8 h-8 text-slate-300" aria-hidden="true" />{texte}
+    <div className="flex flex-col items-center justify-center gap-3 px-6 py-16 text-center text-sm text-slate-500" data-testid="messagerie-vide">
+      <span className="grid place-items-center w-14 h-14 rounded-2xl bg-feba-navy/5 text-feba-navy/70"><Icone className="w-7 h-7" aria-hidden="true" /></span>
+      <p className="max-w-xs">{texte}</p>
+      {action && (
+        <button type="button" className="btn-primary text-sm inline-flex items-center gap-1.5" onClick={onAction} data-testid="vide-action">
+          <PenSquare className="w-4 h-4" />{action}
+        </button>
+      )}
     </div>
   );
 }
 
 const VIDES = {
-  reception: "Aucune conversation dans la boîte de réception.", envoyes: "Aucun message envoyé.",
+  reception: "Aucune conversation dans la boîte de réception.", non_lus: "Tout est lu : aucun message en attente.",
+  envoyes: "Aucun message envoyé.",
   importants: "Aucune conversation marquée comme importante.", archives: "Aucune conversation archivée.",
   corbeille: "La corbeille est vide.",
 };
@@ -418,7 +430,9 @@ export default function Messagerie() {
   const [correspondant, setCorrespondant] = useState("");
   const [composer, setComposer] = useState(null);          // null | { brouillon? }
 
-  const filtres = Object.fromEntries(Object.entries({ dossier, q: q.trim(), non_lus: nonLus ? 1 : "", correspondant }).filter(([, v]) => v));
+  const [tri, setTri] = useState("-date");
+  const filtres = Object.fromEntries(Object.entries({ dossier, q: q.trim(), non_lus: nonLus ? 1 : "", correspondant,
+    tri: tri === "date" ? "date" : "" }).filter(([, v]) => v));
   const liste = useQuery({
     queryKey: ["messagerie", "liste", filtres], queryFn: () => conversationsAPI.list(filtres),
     enabled: dossier !== "brouillons", refetchInterval: 15000, refetchOnWindowFocus: true, placeholderData: keepPreviousData,
@@ -429,7 +443,21 @@ export default function Messagerie() {
   const correspondants = useQuery({ queryKey: ["messagerie", "correspondants"], queryFn: conversationsAPI.correspondants });
   const conversations = liste.data?.data || [];
   const c = compteurs.data?.data || {};
-  const badge = { reception: c.reception_non_lus, brouillons: c.brouillons };
+  const badge = { reception: c.reception_non_lus, non_lus: c.reception_non_lus, brouillons: c.brouillons };
+  const [actualise, setActualise] = useState(false);
+  const actualiser = async () => {
+    setActualise(true);
+    await qc.invalidateQueries({ queryKey: ["messagerie"] });
+    setActualise(false);
+  };
+  const rapide = useMutation({
+    mutationFn: ([nom, id, corps]) => conversationsAPI[nom](id, corps),
+    onSuccess: (_r, [nom, , corps]) => {
+      qc.invalidateQueries({ queryKey: ["messagerie"] });
+      if (nom === "deplacer") toast.success(corps.dossier === "archives" ? t("Conversation archivée.") : t("Conversation placée dans la corbeille."));
+    },
+    onError: (e) => toast.error(extractApiError(e)),
+  });
 
   const ouvrir = (id) => {
     setOuverte(id);
@@ -493,6 +521,14 @@ export default function Messagerie() {
                   {(correspondants.data?.data || []).map((p) => <option key={p.id} value={p.id}>{p.full_name}</option>)}
                 </select>
                 {filtreActif && <button type="button" className="text-red-700 hover:underline" onClick={() => { setSaisie(""); setNonLus(false); setCorrespondant(""); }}>{t("Effacer")}</button>}
+                <button type="button" className="ml-auto inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-slate-600 hover:bg-slate-200"
+                  onClick={() => setTri((x) => (x === "date" ? "-date" : "date"))} data-testid="tri" title={t("Ordre d'affichage")}>
+                  <ArrowDownUp className="w-3 h-3" />{tri === "date" ? t("Plus anciens") : t("Plus récents")}
+                </button>
+                <button type="button" className="p-1 rounded-full text-slate-500 hover:bg-slate-100" onClick={actualiser}
+                  aria-label={t("Actualiser")} title={t("Actualiser")} data-testid="actualiser">
+                  <RefreshCw className={`w-3.5 h-3.5 ${actualise || liste.isFetching ? "motion-safe:animate-spin" : ""}`} />
+                </button>
               </div>
             </div>
           )}
@@ -504,13 +540,34 @@ export default function Messagerie() {
             ) : liste.isError ? (
               <p className="p-4 text-sm text-red-700" role="alert">{extractApiError(liste.error)}</p>
             ) : conversations.length === 0 ? (
-              <Vide icone={Inbox} texte={filtreActif ? t("Aucune conversation ne correspond à cette recherche.") : t(VIDES[dossier])} />
+              <Vide icone={Inbox} texte={filtreActif ? t("Aucune conversation ne correspond à cette recherche.") : t(VIDES[dossier])}
+                action={!filtreActif && ["reception", "envoyes"].includes(dossier) ? t("Démarrer une conversation") : null}
+                onAction={() => setComposer({})} />
             ) : (
               <ul className="divide-y divide-slate-50" data-testid="conversations">
                 {conversations.map((cv) => {
                   const nonLu = cv.unread_count > 0;
                   return (
-                    <li key={cv.id}>
+                    <li key={cv.id} className="group relative">
+                      <div className="absolute right-2 bottom-2 z-10 hidden gap-0.5 rounded-lg bg-white/95 p-0.5 shadow-sm ring-1 ring-slate-100 group-hover:flex group-focus-within:flex">
+                        <button type="button" className="p-1 rounded text-slate-500 hover:text-amber-600" title={cv.important ? t("Retirer des importants") : t("Marquer comme important")}
+                          aria-label={cv.important ? t("Retirer des importants") : t("Marquer comme important")}
+                          onClick={() => rapide.mutate(["important", cv.id, { important: !cv.important }])} data-testid={`rapide-important-${cv.id}`}>
+                          <Star className={`w-3.5 h-3.5 ${cv.important ? "fill-amber-400 text-amber-500" : ""}`} />
+                        </button>
+                        {cv.dossier === "reception" && (
+                          <button type="button" className="p-1 rounded text-slate-500 hover:text-slate-800" title={t("Archiver")} aria-label={t("Archiver")}
+                            onClick={() => rapide.mutate(["deplacer", cv.id, { dossier: "archives" }])} data-testid={`rapide-archiver-${cv.id}`}>
+                            <Archive className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                        {cv.dossier !== "corbeille" && (
+                          <button type="button" className="p-1 rounded text-slate-500 hover:text-red-700" title={t("Placer dans la corbeille")} aria-label={t("Placer dans la corbeille")}
+                            onClick={() => rapide.mutate(["deplacer", cv.id, { dossier: "corbeille" }])}>
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
                       <button type="button" onClick={() => ouvrir(cv.id)} aria-current={ouverte === cv.id ? "true" : undefined}
                         className={`w-full flex gap-3 px-3 py-2.5 text-left transition-colors ${ouverte === cv.id ? "bg-feba-navy/5" : "hover:bg-slate-50"}`}
                         data-testid={`conversation-${cv.id}`}>

@@ -150,3 +150,40 @@ describe("messagerie interne", () => {
     expect((await screen.findByRole("alert")).textContent).toMatch(/introuvable ou inaccessible/);
   });
 });
+
+describe("messagerie : finitions phase 8", () => {
+  beforeEach(() => {
+    vi.clearAllMocks(); setLang("fr");
+    conversationsAPI.list.mockResolvedValue({ data: [] });
+    conversationsAPI.compteurs.mockResolvedValue({ data: { reception_non_lus: 0, brouillons: 0 } });
+    conversationsAPI.correspondants.mockResolvedValue({ data: [] });
+    authAPI.recipients.mockResolvedValue({ data: [{ id: 2, full_name: "Tina Prof", role: "teacher" }] });
+  });
+
+  it("état vide avec action, dossier « Non lus », tri", async () => {
+    monter();
+    fireEvent.click(await screen.findByTestId("vide-action"));
+    expect(await screen.findByTestId("composition")).toBeTruthy();
+    fireEvent.click(screen.getByTestId("dossier-non_lus"));
+    await waitFor(() => expect(conversationsAPI.list).toHaveBeenLastCalledWith({ dossier: "non_lus" }));
+    fireEvent.click(screen.getByTestId("tri"));
+    await waitFor(() => expect(conversationsAPI.list).toHaveBeenLastCalledWith({ dossier: "non_lus", tri: "date" }));
+  });
+
+  it("bouton d'envoi : aide, puis « Envoyé » seulement après la réponse du serveur ; « Réessayer » en cas d'erreur", async () => {
+    conversationsAPI.create.mockRejectedValueOnce({ response: { status: 404, data: { recipient_ids: "Destinataire introuvable." } } });
+    monter();
+    fireEvent.click(await screen.findByTestId("nouveau-message"));
+    expect(screen.getByTestId("composition-aide").textContent).toMatch(/au moins un destinataire/);
+    fireEvent.click(await screen.findByTestId("destinataire-2"));
+    fireEvent.change(screen.getByLabelText("Message"), { target: { value: "Bonjour" } });
+    const bouton = screen.getByTestId("composition-envoyer");
+    fireEvent.click(bouton);
+    await waitFor(() => expect(bouton.dataset.etat).toBe("erreur"));
+    expect(bouton.textContent).toMatch(/Réessayer/);
+    conversationsAPI.create.mockResolvedValueOnce({ data: { id: 3 } });
+    fireEvent.click(bouton);
+    await waitFor(() => expect(bouton.dataset.etat).toBe("envoye"));
+    expect(conversationsAPI.create).toHaveBeenCalledTimes(2);
+  });
+});

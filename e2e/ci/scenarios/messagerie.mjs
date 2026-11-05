@@ -105,6 +105,22 @@ export default async function () {
   const admin = await api("GET", "/messages/conversations/?dossier=reception", await jeton("admin"));
   ok(S, "l'administration ne voit pas l'échange", !admin.donnees.some((c) => c.id === convId));
 
+  // Cas de la capture (phase 8) : super administrateur, académie sélectionnée, écrivant à un
+  // compte proposé par la liste (autre super administrateur s'il existe, sinon administration).
+  const js = await jeton("superadmin");
+  const ent = (await api("GET", "/auth/entity-context/", js)).donnees.entities;
+  await api("POST", "/auth/entity-context/switch/", js, { entity_id: ent[0].id });
+  try {
+    const proposes = (await api("GET", "/auth/recipients/", js)).donnees;
+    const cible = proposes.find((x) => x.role === "superadmin") || proposes.find((x) => x.role === "admin");
+    const envoi = await api("POST", "/messages/conversations/", js, { recipient_ids: [cible.id], subject: "SA" + u, body: "Bonjour" });
+    ok(S, `super administrateur → ${cible.role} proposé : enregistré (201)`, envoi.statut === 201, envoi.statut);
+    const tous = await Promise.all(proposes.slice(0, 40).map((x) => api("POST", "/messages/conversations/", js, { recipient_ids: [x.id], subject: "P" + u, body: "x" })));
+    ok(S, "tout destinataire proposé est accepté (40 premiers)", tous.every((r) => r.statut === 201), tous.map((r) => r.statut).filter((x) => x !== 201));
+  } finally {
+    await api("POST", "/auth/entity-context/switch/", js, { entity_id: null });
+  }
+
   ok(S, "aucune erreur", t.erreurs.length + p.erreurs.length === 0, [...t.erreurs, ...p.erreurs].join(" | "));
   await t.contexte.close();
   await p.contexte.close();
