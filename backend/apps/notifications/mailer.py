@@ -335,6 +335,10 @@ def build_message(delivery, live_bodies=None):
             raise LookupError(blocker)
         text_body, html_body = content.text_body, content.html_body
     headers = {TRACKING_HEADER: str(delivery.tracking_id)}
+    # Message reconstruit (copie dans « Envoyés », nouvel essai) : même Message-ID que
+    # l'original — c'est la clé de rapprochement sans doublon.
+    if delivery.message_id:
+        headers["Message-ID"] = delivery.message_id
     # Message commun : en-têtes « To » / « Cc » AFFICHÉS, sans effet sur l'enveloppe
     # (Django ne remet qu'à `to` + `cc`) : ce destinataire seul reçoit cette copie,
     # et une copie cachée (Cci) n'apparaît jamais dans les en-têtes des autres.
@@ -343,6 +347,13 @@ def build_message(delivery, live_bodies=None):
         headers["To"] = ", ".join(visibles["to"])
     if visibles.get("cc"):
         headers["Cc"] = ", ".join(visibles["cc"])
+    # Réponses (boîte contact) : fil conservé chez le destinataire. Liste fermée d'en-têtes.
+    for nom, valeur in (visibles.get("extra") or {}).items():
+        if nom in ("In-Reply-To", "References") and valeur and "\n" not in valeur and "\r" not in valeur:
+            headers[nom] = valeur
+    # En-têtes affichés fournis : les autres destinataires de l'enveloppe passent en
+    # copie cachée (aucun en-tête), sinon Django les afficherait dans « Cc ».
+    cachees = bool(visibles.get("to"))
     message = EmailMultiAlternatives(
         subject=delivery.subject,
         body=text_body or "",
@@ -350,7 +361,8 @@ def build_message(delivery, live_bodies=None):
         # l'adresse officielle, jamais avec l'adresse retirée.
         from_email=normalize_sender(delivery.from_email) or None,
         to=[delivery.to_email],
-        cc=list(delivery.cc_emails or []) or None,
+        cc=None if cachees else (list(delivery.cc_emails or []) or None),
+        bcc=(list(delivery.cc_emails or []) or None) if cachees else None,
         reply_to=[delivery.reply_to] if delivery.reply_to else None,
         headers=headers,
     )

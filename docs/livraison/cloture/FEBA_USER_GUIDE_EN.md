@@ -560,11 +560,11 @@ This guide mirrors the help centre built into FEBA ("Help" menu), generated from
 
 - The data shown belongs to the academy chosen in the selector at the top of the page.
 
-**Where to find it.** Menu « Group emails » : `/superadmin/emails`, `/admin/emails`
+**Where to find it.** Menu « Email Center » : `/superadmin/emails`, `/admin/emails`
 
 **Steps.**
 
-1. Open "Group emails".
+1. Open "Email Center".
 2. Choose the profile types, then tick the recipients.
 3. Enter the subject and content, add attachments if needed.
 4. "Preview", then "Confirm sending".

@@ -26,6 +26,7 @@ urlpatterns = [
     path('api/announcements/', include('apps.announcements.urls')),
     path('api/notifications/', include('apps.notifications.urls')),
     path('api/mass-email/', include('apps.notifications.campaign_urls')),
+    path('api/boite-mail/', include('apps.boite_mail.urls')),
     path('api/user-files/', include('apps.user_files.urls')),
     path('api/dashboard/', include('apps.dashboard.urls')),
     path('api/virtual-rooms/', include('apps.virtualclass.urls')),

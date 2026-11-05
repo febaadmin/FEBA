@@ -560,11 +560,11 @@ Ce guide reprend le centre d'aide intégré à FEBA (menu « Aide »), généré
 
 - Les données affichées sont celles de l'académie choisie dans le sélecteur en haut de page.
 
-**Où la trouver.** Menu « E-mails groupés » : `/superadmin/emails`, `/admin/emails`
+**Où la trouver.** Menu « Espace d'envoi d'e-mails » : `/superadmin/emails`, `/admin/emails`
 
 **Étapes.**
 
-1. Ouvrez « E-mails groupés ».
+1. Ouvrez « Espace d'envoi d'e-mails ».
 2. Choisissez les types de profil, puis cochez les destinataires.
 3. Saisissez l'objet et le contenu, ajoutez des pièces jointes si besoin.
 4. « Prévisualiser », puis « Confirmer l'envoi ».

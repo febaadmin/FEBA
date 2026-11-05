@@ -320,13 +320,13 @@ export const ARTICLES = [
     permissions: ["Super administrateur uniquement.", "Super administrator only."],
   },
   {
-    id: "emails-groupes", categorie: "administration", module: ["E-mails groupés", "Group emails"], roles: PERSONNEL,
+    id: "emails-groupes", categorie: "administration", module: ["Espace d'envoi d'e-mails", "Email Center"], roles: PERSONNEL,
     liens: { superadmin: "emails", admin: "emails" },
     titre: ["Comment envoyer un e-mail à un groupe ?", "How do I send an email to a group?"],
     objet: ["Écrire à des profils d'une académie (parents, enseignants…) en une fois.", "Write to profiles of an academy (parents, teachers...) at once."],
     prerequis: [SELECTEUR],
     etapes: [
-      ["Ouvrez « E-mails groupés ».", "Open \"Group emails\"."],
+      ["Ouvrez « Espace d'envoi d'e-mails ».", "Open \"Email Center\"."],
       ["Choisissez les types de profil, puis cochez les destinataires.", "Choose the profile types, then tick the recipients."],
       ["Saisissez l'objet et le contenu, ajoutez des pièces jointes si besoin.", "Enter the subject and content, add attachments if needed."],
       ["« Prévisualiser », puis « Confirmer l'envoi ».", "\"Preview\", then \"Confirm sending\"."],

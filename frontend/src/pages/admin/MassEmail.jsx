@@ -74,7 +74,7 @@ export default function MassEmail() {
   if (isAllAcademies) {
     return (
       <div className="space-y-4">
-        <PageHeader title={t("E-mails groupés")} subtitle={t("Envoi par académie et par type de profil")} />
+        <PageHeader title={t("Espace d'envoi d'e-mails")} subtitle={t("Envoi par académie et par type de profil")} />
         <div className="card text-sm text-amber-800 bg-amber-50 border-amber-200" role="status">
           {t("Sélectionnez une académie en haut de la page : chaque envoi part au nom d'une seule académie.")}
         </div>
@@ -83,7 +83,7 @@ export default function MassEmail() {
   }
   return (
     <div className="space-y-6">
-      <PageHeader title={t("E-mails groupés")} subtitle={t("Composer, enregistrer et suivre les e-mails envoyés au nom de l'académie")} />
+      <PageHeader title={t("Espace d'envoi d'e-mails")} subtitle={t("Composer, enregistrer et suivre les e-mails envoyés au nom de l'académie")} />
       <div className="flex gap-1 border-b border-slate-200" role="tablist" aria-label={t("E-mails")}>
         {[["nouveau", "Nouveau message", PenSquare], ["brouillons", "Brouillons", FileText], ["envoyes", "Envoyés", Send]].map(([v, n, Icone]) => (
           <button key={v} type="button" role="tab" aria-selected={onglet === v} onClick={() => setOnglet(v)} data-testid={`onglet-${v}`}

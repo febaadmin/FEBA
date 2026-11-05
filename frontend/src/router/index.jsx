@@ -123,7 +123,7 @@ const AdminEnrollments = lazy(() => import("../pages/admin/Enrollments"));
 const AdminProfile = lazy(() => import("../pages/admin/Profile"));
 const FhaAdmissions = lazy(() => import("../pages/admin/FhaAdmissions"));
 const MassEmail = lazy(() => import("../pages/admin/MassEmail"));
-const Outbox = lazy(() => import("../pages/admin/Outbox"));
+const BoiteMail = lazy(() => import("../pages/admin/BoiteMail"));
 const PaymentReminders = lazy(() => import("../pages/admin/PaymentReminders"));
 const Tarifs = lazy(() => import("../pages/admin/Tarifs"));
 const SituationFinanciere = lazy(() => import("../pages/admin/SituationFinanciere"));
@@ -386,7 +386,7 @@ export default function AppRouter() {
             les consulter — voici leur back-office dédié. */}
         <Route path="fha-admissions" element={<FeatureGate feature="online_admissions"><FhaAdmissions /></FeatureGate>} />
         <Route path="emails" element={<MassEmail />} />
-        <Route path="outbox" element={<Outbox />} />
+        <Route path="outbox" element={<BoiteMail />} />
         <Route path="payment-reminders" element={<PaymentReminders />} />
         <Route path="tarifs" element={<Tarifs />} />
         <Route path="situation-financiere" element={<SituationFinanciere />} />
@@ -447,7 +447,7 @@ export default function AppRouter() {
             les consulter — voici leur back-office dédié. */}
         <Route path="fha-admissions" element={<FeatureGate feature="online_admissions"><FhaAdmissions /></FeatureGate>} />
         <Route path="emails" element={<MassEmail />} />
-        <Route path="outbox" element={<Outbox />} />
+        <Route path="outbox" element={<BoiteMail />} />
         <Route path="payment-reminders" element={<PaymentReminders />} />
         <Route path="tarifs" element={<Tarifs />} />
         <Route path="situation-financiere" element={<SituationFinanciere />} />
