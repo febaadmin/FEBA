@@ -1,5 +1,7 @@
 # Suivi et point de reprise (04/11/2026)
 
+> **Phase 6 (05/11/2026)** : voir `SUIVI_REPRISE_PHASE6.md` (état, actions humaines, prochaine action) et `docs/livraison/phase6/`.
+
 Ce fichier dit exactement où en est le travail, pour une reprise sans perte.
 
 ## PR de la phase 3
