@@ -30,6 +30,13 @@ def get_or_create_enrollment(student, school_year_id, class_obj_id=None, promoti
     scolaires" : plus aucun module ne doit créer un couple
     (élève, année) sans passer par une StudentEnrollment.
     """
+    if class_obj_id is None:
+        # Phase 6 : sans classe fournie, la classe actuelle de l'élève est reprise
+        # SI elle appartient à cette année (sinon l'inscription restait sans classe et
+        # les listes, analyses et exports de l'année n'affichaient aucune classe).
+        cls = getattr(student, 'current_class', None)
+        if cls is not None and cls.school_year_id == int(school_year_id):
+            class_obj_id = cls.pk
     enrollment, created = StudentEnrollment.objects.get_or_create(
         student=student,
         school_year_id=school_year_id,
@@ -46,6 +53,46 @@ def get_or_create_enrollment(student, school_year_id, class_obj_id=None, promoti
     return enrollment, created
 
 
+def eleves_de_la_classe(class_obj, school_year, actifs=True):
+    """Élèves d'une classe POUR UNE ANNÉE : règle unique (bulletins, rangs, statistiques).
+
+    Un élève est dans la classe si son inscription de l'année porte cette classe, ou,
+    à défaut de classe sur son inscription, si c'est sa classe actuelle. Avant (phase 6),
+    les statistiques prenaient « les inscrits avec classe, OU SINON les élèves de la
+    classe actuelle » : dès qu'un seul élève avait une classe sur son inscription, les
+    autres disparaissaient des moyennes, minimums et rangs de la classe.
+    """
+    from django.db.models import Exists, OuterRef, Q
+    avec_classe = StudentEnrollment.objects.filter(student=OuterRef("pk"), school_year=school_year,
+                                                    class_obj__isnull=False)
+    qs = Student.objects.filter(
+        Q(enrollments__school_year=school_year, enrollments__class_obj=class_obj)
+        | (~Exists(avec_classe) & Q(current_class=class_obj))
+    ).distinct()
+    return qs.filter(is_active=True) if actifs else qs
+
+
+def synchroniser_classe_inscription(student):
+    """Aligne l'inscription de l'année de la classe actuelle sur cette classe.
+
+    Appelée quand la classe d'un élève est choisie ou changée depuis sa fiche : la
+    classe de la fiche et celle de l'inscription de la même année ne doivent jamais
+    diverger (listes, bulletins, analyses et exports lisent l'une ou l'autre).
+    Ne touche à aucune autre année : l'historique reste intact.
+    """
+    cls = student.current_class
+    if cls is None or not cls.school_year_id:
+        return None
+    enrollment, created = StudentEnrollment.objects.get_or_create(
+        student=student, school_year_id=cls.school_year_id,
+        defaults={'class_obj': cls, 'promotion_status': 'normal', 'is_active': True},
+    )
+    if not created and enrollment.class_obj_id != cls.pk:
+        enrollment.class_obj = cls
+        enrollment.save(update_fields=['class_obj'])
+    return enrollment
+
+
 # Alias rétro-compatible (nom interne utilisé par les premières versions
 # de ce module avant son exposition aux autres apps).
 _get_or_create_enrollment = get_or_create_enrollment
@@ -60,6 +107,13 @@ def set_enrollment(student, school_year_id, class_obj_id=None, promotion_status=
     d'une inscription existante. Réservée aux actions de décision de
     fin d'année (promotion, redoublement, départ...).
     """
+    if class_obj_id is None:
+        # Phase 6 : sans classe fournie, la classe actuelle de l'élève est reprise
+        # SI elle appartient à cette année (sinon l'inscription restait sans classe et
+        # les listes, analyses et exports de l'année n'affichaient aucune classe).
+        cls = getattr(student, 'current_class', None)
+        if cls is not None and cls.school_year_id == int(school_year_id):
+            class_obj_id = cls.pk
     enrollment, created = StudentEnrollment.objects.get_or_create(
         student=student,
         school_year_id=school_year_id,

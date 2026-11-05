@@ -227,6 +227,9 @@ class _Contexte:
         self.eleves_dus = {i.student.pk for i in items
                            if i.installment.due_date <= aujourd_hui and i.outstanding > 0}
         self.eleves_avec_echeances = {i.student.pk for i in items}
+        from apps.students.models import Student
+        # Couverture de l'échéancier (académie entière) : élèves actifs sans aucun tarif applicable.
+        self.eleves_actifs = Student.objects.filter(school=academie, is_active=True).count()
         self.items = [i for i in items if self._garde(i)]
 
     def _garde(self, i):
@@ -412,7 +415,7 @@ def calculer(academies, periode="12m", du=None, au=None, aujourd_hui=None, filtr
     p_debut, p_fin = periode_precedente(periode, debut, fin)
     p_cases = _cases(p_debut, p_fin, par_jour)
 
-    devises = defaultdict(lambda: {"academies": [], "echeancier": False, "serie": {c: {"encaisse": 0, "attendu": 0} for c in cases},
+    devises = defaultdict(lambda: {"academies": [], "echeancier": False, "eleves_actifs": 0, "eleves_avec_echeances": 0, "serie": {c: {"encaisse": 0, "attendu": 0} for c in cases},
                                    **{k: 0 for k in CLES}, "precedent": {k: 0 for k in CLES}})
     par_academie = []
     for academie in academies:
@@ -420,6 +423,8 @@ def calculer(academies, periode="12m", du=None, au=None, aujourd_hui=None, filtr
         d = devises[academie.currency_code]
         d["academies"].append({"id": academie.pk, "nom": academie.name})
         d["echeancier"] = d["echeancier"] or ctx.a_tarifs
+        d["eleves_actifs"] += ctx.eleves_actifs
+        d["eleves_avec_echeances"] += len(ctx.eleves_avec_echeances)
         valeurs, serie = _indicateurs(ctx, debut, fin, par_jour, cases)
         for k in CLES:
             d[k] += valeurs[k]
@@ -435,6 +440,9 @@ def calculer(academies, periode="12m", du=None, au=None, aujourd_hui=None, filtr
             "encaisse_minor": valeurs["encaisse_brut"] - valeurs["rembourse"], "nb_paiements": valeurs["nb_paiements"],
             "attendu_minor": valeurs["attendu"] if ctx.a_tarifs else None,
             "restant_minor": valeurs["restant"] if ctx.a_tarifs else None,
+            "echeancier_configure": ctx.a_tarifs,
+            "eleves_actifs": ctx.eleves_actifs,
+            "eleves_sans_tarif": ctx.eleves_actifs - len(ctx.eleves_avec_echeances) if ctx.a_tarifs else ctx.eleves_actifs,
         })
 
     resultat = []
@@ -442,6 +450,11 @@ def calculer(academies, periode="12m", du=None, au=None, aujourd_hui=None, filtr
         echeancier = d["echeancier"]
         entree = {
             "devise": code, "academies": d["academies"], "echeancier_configure": echeancier,
+            # Situation 2 (données partielles) : combien d'élèves actifs n'ont aucun tarif applicable.
+            "couverture": {"eleves_actifs": d["eleves_actifs"], "eleves_avec_echeances": d["eleves_avec_echeances"],
+                           "eleves_sans_tarif": d["eleves_actifs"] - d["eleves_avec_echeances"],
+                           "academies_sans_tarif": [a["nom"] for a in par_academie
+                                                    if a["devise"] == code and not a["echeancier_configure"]]},
             "indicateurs": _sortie(d, echeancier),
             "serie": [{"date": c.isoformat(), "encaisse_minor": v["encaisse"],
                        "attendu_minor": v["attendu"] if echeancier else None}

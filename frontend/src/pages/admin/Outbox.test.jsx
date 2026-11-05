@@ -6,6 +6,11 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor, fireEvent, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
+// pdf.js dessine dans un <canvas>, absent de jsdom : l'aperçu est remplacé par un témoin
+// qui expose le PDF reçu (le composant réel a ses propres tests).
+vi.mock("../../components/ui/ApercuPdf", () => ({ default: ({ donnees, titre, testid }) => (
+  <div data-testid={testid} title={titre} data-taille={donnees?.size ?? ""} />
+) }));
 vi.mock("../../api", () => ({
   outboxAPI: { list: vi.fn(), detail: vi.fn(), retry: vi.fn(), attachment: vi.fn(), config: vi.fn(), testSend: vi.fn() },
   massEmailAPI: {},
@@ -81,7 +86,7 @@ describe("Boîte d'envoi", () => {
     fireEvent.click(await screen.findByText("Sortie scolaire"));
     fireEvent.click(await screen.findByRole("button", { name: "Aperçu programme.pdf" }));
     await waitFor(() => expect(outboxAPI.attachment).toHaveBeenCalledWith(7, 3, true));
-    expect(await screen.findByTitle("programme.pdf")).toBeTruthy();
+    expect((await screen.findByTestId("apercu-piece-jointe")).getAttribute("title")).toBe("programme.pdf");
   });
 
   it("la relance ne part qu'une fois malgré un double clic", async () => {

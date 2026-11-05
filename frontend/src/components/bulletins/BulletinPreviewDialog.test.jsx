@@ -6,6 +6,11 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
+// pdf.js dessine dans un <canvas>, absent de jsdom : l'aperçu est remplacé par un témoin
+// qui expose le PDF reçu (le composant réel a ses propres tests).
+vi.mock("../ui/ApercuPdf", () => ({ default: ({ donnees, titre, testid }) => (
+  <div data-testid={testid} title={titre} data-taille={donnees?.size ?? ""} />
+) }));
 vi.mock("../../context/AcademyContext", () => ({ useAcademy: () => ({ isAllAcademies: false }) }));
 vi.mock("../../api", () => ({
   studentsAPI: { list: () => Promise.resolve({ data: [{ id: 7, first_name: "Naomi", last_name: "Adjovi" }] }) },

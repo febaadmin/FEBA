@@ -168,3 +168,22 @@ class GraphiqueFiltresTests(ReminderBase):
         self.assertEqual((r.status_code, r.data["total"]), (200, 0))
         o = fha.get(base + f"filtres/?classe={self.class_ce.pk}").data
         self.assertEqual(o["eleves"], [])
+
+
+class CouvertureTarifsTests(ReminderBase):
+    """Situations 2 et 3 : données partielles ou absentes, toujours expliquées."""
+
+    def test_couverture(self):
+        from apps.classes.models import Class
+        from apps.schools.models import Level
+        # Élève d'un niveau sans tarif (CP) : il n'a aucune échéance.
+        cp = Class.objects.create(name="CP-A", level=Level.objects.create(school=self.feba, name="CP", order=1), school_year=self.year)
+        self.student("Chloé", cp)
+        xof = calculer([self.feba], "12m", aujourd_hui=AUJ)["devises"][0]
+        self.assertTrue(xof["echeancier_configure"])
+        self.assertEqual(xof["couverture"], {"eleves_actifs": 3, "eleves_avec_echeances": 2, "eleves_sans_tarif": 1,
+                                             "academies_sans_tarif": []})
+        usd = calculer([self.fha], "12m", aujourd_hui=AUJ)
+        self.assertFalse(usd["devises"][0]["echeancier_configure"])
+        self.assertEqual(usd["devises"][0]["couverture"]["academies_sans_tarif"], [self.fha.name])
+        self.assertEqual(usd["par_academie"][0]["eleves_sans_tarif"], usd["par_academie"][0]["eleves_actifs"])

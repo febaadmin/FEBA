@@ -22,6 +22,7 @@ import { useAcademy } from "../../context/AcademyContext";
 import { useSchoolYearScope } from "../../hooks/useSchoolYearScope";
 import { extractApiError } from "../../utils/errors";
 import { studentOptionLabel } from "../../utils/age";
+import ApercuPdf from "../ui/ApercuPdf";
 import { t } from "../../i18n";
 import { COMMENT_MAX } from "./BulletinCommentManager";
 
@@ -52,6 +53,7 @@ export default function BulletinPreviewDialog({ open, onClose, initial = {} }) {
   const [draft, setDraft] = useState(null);          // null = commentaire enregistré
   const [pdfUrl, setPdfUrl] = useState(null);
   const [previewedText, setPreviewedText] = useState(null);
+  const [pdfBlob, setPdfBlob] = useState(null);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [confirming, setConfirming] = useState(false);
@@ -85,6 +87,7 @@ export default function BulletinPreviewDialog({ open, onClose, initial = {} }) {
     if (urlRef.current) URL.revokeObjectURL(urlRef.current);
     urlRef.current = URL.createObjectURL(blob);
     setPdfUrl(urlRef.current);
+    setPdfBlob(blob);
     setPreviewedText(text);
   };
   useEffect(() => () => { if (urlRef.current) URL.revokeObjectURL(urlRef.current); }, []);
@@ -234,7 +237,7 @@ export default function BulletinPreviewDialog({ open, onClose, initial = {} }) {
                 </div>
               )}
               {pdfUrl ? (
-                <iframe title={t("Aperçu du bulletin")} src={pdfUrl} className="w-full h-full" data-testid="preview-frame" />
+                <ApercuPdf donnees={pdfBlob} titre={t("Aperçu du bulletin")} className="w-full h-full" testid="preview-frame" />
               ) : (
                 <span className="text-sm text-slate-500 flex items-center gap-2"><Eye className="w-4 h-4" />
                   {t("Choisissez l'élève, l'année et la période pour afficher l'aperçu.")}</span>

@@ -814,11 +814,8 @@ class GradeViewSet(BulkDeleteMixin, viewsets.ModelViewSet):
         total_in_class = 0
         if student_class:
             from apps.students.models import StudentEnrollment
-            class_students = list(Student.objects.filter(
-                enrollments__school_year=school_year,
-                enrollments__class_obj=student_class,
-                is_active=True,
-            ).distinct()) or list(student_class.students.filter(is_active=True))
+            from apps.students.services import eleves_de_la_classe
+            class_students = list(eleves_de_la_classe(student_class, school_year))
             total_in_class = len(class_students)
             avgs_list = []
             for s in class_students:

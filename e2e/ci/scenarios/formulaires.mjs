@@ -47,6 +47,9 @@ export default async function () {
   }
   await q.goto(BASE + "/admin/classes");
   await q.waitForTimeout(1500);
+  // Recherche comme un utilisateur : la liste est paginée et la base de test s'enrichit à chaque passage.
+  const recherche = q.locator('main input[placeholder^="Rechercher"]').first();
+  if (await recherche.count()) { await recherche.fill("Classe" + u); await q.waitForTimeout(600); }
   ok(S, "classe créée visible après rechargement", (await q.getByText("Classe" + u).count()) > 0);
   ok(S, "aucune erreur", q.erreurs.length === 0, q.erreurs.join(" | "));
   await q.contexte.close();
