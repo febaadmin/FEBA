@@ -1,5 +1,6 @@
 // Outils communs des tests navigateur de la CI. Aucun mot de passe ici : ils viennent de l'environnement.
 import { chromium } from "playwright-core";
+import { readFileSync } from "node:fs";
 
 export const BASE = process.env.E2E_BASE_URL || "http://127.0.0.1:4173";
 export const API = process.env.E2E_API_URL || "http://127.0.0.1:8000/api";
@@ -33,12 +34,42 @@ export function ok(scenario, nom, vrai, detail = "") {
   console.log(`${vrai ? "OK " : "KO "} [${scenario}] ${nom}${vrai || !detail ? "" : " : " + String(detail).slice(0, 300)}`);
 }
 
-/** Nouvelle page qui relève les erreurs JS et les réponses 5xx. */
+/**
+ * Politique de sécurité du contenu (CSP) de PRODUCTION, lue dans nginx/nginx.prod.conf.
+ *
+ * Le serveur de prévisualisation des tests n'envoie aucune CSP : un écran bloqué en
+ * production (aperçu PDF dans un cadre blob:, script ou style refusé) passait donc
+ * inaperçu. Chaque page de test reçoit désormais la CSP réelle, et toute violation
+ * est une erreur du scénario.
+ */
+export function cspProduction() {
+  const conf = readFileSync(new URL("../../nginx/nginx.prod.conf", import.meta.url), "utf8");
+  const m = conf.match(/add_header Content-Security-Policy "(default-src 'self'; script-src[^"]+)"/);
+  if (!m) throw new Error("CSP de production introuvable dans nginx/nginx.prod.conf");
+  return m[1];
+}
+const CSP = process.env.E2E_SANS_CSP ? null : cspProduction();
+
+/** Nouvelle page qui relève les erreurs JS, les violations de CSP et les réponses 5xx. */
 export async function page(options = {}) {
   const contexte = await navigateur.newContext({ viewport: { width: 1366, height: 900 }, ...options });
+  if (CSP) {
+    await contexte.route((url) => url.href.startsWith(BASE), async (route) => {
+      if (route.request().resourceType() !== "document") return route.continue();
+      try {
+        const reponse = await route.fetch();
+        await route.fulfill({ response: reponse, headers: { ...reponse.headers(), "content-security-policy": CSP } });
+      } catch {
+        await route.continue().catch(() => {});
+      }
+    });
+  }
   const p = await contexte.newPage();
   p.erreurs = [];
   p.on("pageerror", (e) => p.erreurs.push("JS " + e.message.slice(0, 160)));
+  p.on("console", (m) => {
+    if (m.type() === "error" && m.text().includes("Content Security Policy")) p.erreurs.push("CSP " + m.text().slice(0, 200));
+  });
   p.on("response", (r) => {
     // Le contrôle de santé visio répond 503 sans serveur plugNmeet : attendu en CI.
     if (r.url().includes("/api/") && r.status() >= 500 && !r.url().includes("/virtual-rooms/health")) {

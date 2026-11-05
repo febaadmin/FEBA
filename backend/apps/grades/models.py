@@ -490,11 +490,8 @@ class Grade(models.Model):
 
         # Élèves de la classe POUR CETTE ANNÉE (inscriptions annuelles),
         # avec repli sur le pointeur current_class.
-        students = list(Student.objects.filter(
-            enrollments__school_year=school_year,
-            enrollments__class_obj=student_class,
-            is_active=True,
-        ).distinct()) or list(student_class.students.filter(is_active=True))
+        from apps.students.services import eleves_de_la_classe
+        students = list(eleves_de_la_classe(student_class, school_year))
 
         fr_list, en_list, bi_list, gen_list = [], [], [], []
         for s in students:

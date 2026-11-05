@@ -22,6 +22,7 @@ import { t } from "../../i18n";
 import { extractApiError } from "../../utils/errors";
 import { formatDateTime } from "../../utils/datetime";
 import { useAcademyKey } from "../../hooks/useEntityContext";
+import ApercuPdf from "../../components/ui/ApercuPdf";
 
 const STATUS_TONE = {
   sent: "bg-emerald-50 text-emerald-700",
@@ -195,7 +196,7 @@ function OutboxDetail({ id, onClose }) {
       const blob = new Blob([res.data], { type: attachment.content_type });
       const url = URL.createObjectURL(blob);
       if (inline) {
-        setPreview({ url, type: attachment.content_type, name: attachment.name });
+        setPreview({ url, blob, type: attachment.content_type, name: attachment.name });
       } else {
         const link = document.createElement("a");
         link.href = url; link.download = attachment.name; link.click();
@@ -297,7 +298,7 @@ function OutboxDetail({ id, onClose }) {
                     <div className="mt-3 space-y-1">
                       <p className="text-xs text-slate-500">{preview.name}</p>
                       {preview.type === "application/pdf"
-                        ? <iframe title={preview.name} src={preview.url} className="w-full h-96 rounded-lg border" />
+                        ? <ApercuPdf donnees={preview.blob} titre={preview.name} className="w-full h-96 rounded-lg border bg-slate-100" testid="apercu-piece-jointe" />
                         : <img src={preview.url} alt={preview.name} className="max-h-96 rounded-lg border" />}
                     </div>
                   )}

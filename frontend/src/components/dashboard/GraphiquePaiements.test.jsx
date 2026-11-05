@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, fireEvent, waitFor, act } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { MemoryRouter } from "react-router-dom";
 import GraphiquePaiements, { changerFiltre, parametres, FILTRES_VIDES } from "./GraphiquePaiements";
 import { setLang } from "../../i18n";
 
@@ -31,13 +32,14 @@ const reponse = {
       indicateurs: ind({ encaisse_minor: 10550, nb_paiements: 1, rembourse_minor: 2000 }),
       serie: [{ date: "2026-11-01", encaisse_minor: 10550, attendu_minor: null }] },
     { devise: "XOF", academies: [{ id: 1, nom: "FEBA" }], echeancier_configure: true,
+      couverture: { eleves_actifs: 80, eleves_avec_echeances: 76, eleves_sans_tarif: 4, academies_sans_tarif: [] },
       indicateurs: ind({ encaisse_minor: 210000, nb_paiements: 3, attendu_minor: 510000, restant_minor: 293000, taux_recouvrement: 42.5 }),
       serie: [{ date: "2026-09-01", encaisse_minor: 150000, attendu_minor: 300000 }] },
   ],
   par_academie: [{ id: 1, nom: "FEBA", devise: "XOF", encaisse_minor: 210000, nb_paiements: 3, restant_minor: 293000 },
     { id: 2, nom: "FHA", devise: "USD", encaisse_minor: 10550, nb_paiements: 1, restant_minor: null }],
 };
-const monter = () => render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><GraphiquePaiements /></QueryClientProvider>);
+const monter = () => render(<MemoryRouter><QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><GraphiquePaiements /></QueryClientProvider></MemoryRouter>);
 
 describe("graphique des paiements", () => {
   beforeEach(() => {
@@ -161,5 +163,16 @@ describe("graphique des paiements", () => {
     expect(detailAPI).toHaveBeenCalledWith({ periode: "12m", case: "2026-11-01" });
     expect(screen.getByTestId("detail-total").textContent).toBe("1");
     expect(screen.getByTestId("detail-paiements").textContent).toMatch(/Cyril Élève.*125[.,]50.*remboursé.*20[.,]00.*Confirmé/);
+  });
+
+  it("explique l'absence de tarif (lien direct) et signale les données partielles", async () => {
+    tableauDeBord.mockResolvedValue({ data: reponse });
+    monter();
+    await screen.findByTestId("ind-encaisse");
+    expect(screen.getByTestId("tarifs-absents").textContent).toMatch(/Aucun échéancier n'est configuré pour cette période/);
+    expect(screen.getByTestId("lien-tarifs").getAttribute("href")).toBe("/superadmin/tarifs");
+    fireEvent.click(screen.getByTestId("devise-XOF"));
+    expect(screen.queryByTestId("tarifs-absents")).toBeNull();
+    expect(screen.getByTestId("tarifs-partiels").textContent).toMatch(/4 élève\(s\) actif\(s\) sans tarif applicable sur 80/);
   });
 });

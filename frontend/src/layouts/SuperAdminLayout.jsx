@@ -215,7 +215,7 @@ export default function SuperAdminLayout() {
             </div>
           </div>
         </header>
-        <main className="flex-1 overflow-y-auto p-3 sm:p-6">
+        <main className="relative flex-1 overflow-y-auto p-3 sm:p-6">
           <AcademyScopedOutlet />
         </main>
       </div>

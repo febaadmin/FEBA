@@ -3644,4 +3644,15 @@ export const EN = {
   "Élèves à accompagner (sous le seuil)": "Students to support (below the threshold)",
   "Effectifs": "Enrolment",
   "Ces chiffres décrivent les notes attribuées et les résultats des élèves, pas la qualité d'un enseignement : le niveau de départ des élèves, l'effectif, la matière, le nombre et le type d'évaluations diffèrent d'une classe à l'autre. Ils ne permettent aucune conclusion sur un enseignant.": "These figures describe the grades given and the students' results, not the quality of teaching: students' starting level, class size, subject, and the number and type of assessments differ from one class to another. They allow no conclusion about a teacher.",
+  // Graphique : couverture des tarifs (phase 6)
+  "Ouvrir « Tarifs et échéances »": "Open \"Fees and instalments\"",
+  "Aucun échéancier n'est configuré pour cette période. Configurez les tarifs et les échéances dans « Tarifs et échéances » pour obtenir les montants prévisionnels et les restes à payer.": "No instalment schedule is configured for this period. Set up fees and instalments in \"Fees and instalments\" to get expected amounts and outstanding balances.",
+  "académies sans tarif : {n}": "academies without fees: {n}",
+  "{n} élève(s) actif(s) sans tarif applicable sur {total}": "{n} active student(s) out of {total} without an applicable fee",
+  "Données partielles : l'attendu et le reste à payer ne comptent que les élèves ayant un tarif.": "Partial data: expected and outstanding amounts only include students with a fee.",
+  "Aucun tarif avec échéances": "No fee with instalments",
+  // Aperçu PDF sans cadre (phase 6)
+  "Document PDF": "PDF document",
+  "page {n} sur {total}": "page {n} of {total}",
+  "L'aperçu n'a pas pu être affiché. Ouvrez ou téléchargez le PDF.": "The preview could not be displayed. Open or download the PDF.",
 };

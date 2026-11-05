@@ -176,7 +176,7 @@ export default function ParentLayout() {
             </div>
           </div>
         </header>
-        <main className="flex-1 overflow-y-auto p-3 sm:p-6"><AcademyScopedOutlet /></main>
+        <main className="relative flex-1 overflow-y-auto p-3 sm:p-6"><AcademyScopedOutlet /></main>
       </div>
     </div>
   );

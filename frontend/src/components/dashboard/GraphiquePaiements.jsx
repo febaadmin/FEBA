@@ -11,7 +11,8 @@
 import { useEffect, useState } from "react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { Bar, CartesianGrid, ComposedChart, Legend, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { Download, X } from "lucide-react";
+import { Link } from "react-router-dom";
+import { Download, Info, X } from "lucide-react";
 import { paymentsAPI } from "../../api";
 import { isCanceledError } from "../../api/academyScope";
 import { useAcademy } from "../../context/AcademyContext";
@@ -62,6 +63,45 @@ function telecharger(nom, donnees) {
   lien.download = nom;
   lien.click();
   URL.revokeObjectURL(url);
+}
+
+/**
+ * Pourquoi l'attendu et le reste à payer sont (ou ne sont que partiellement) calculés.
+ * Situation 3 : aucun tarif → explication et accès direct. Situation 2 : des élèves
+ * actifs n'ont aucun tarif applicable, ou une académie de la devise n'en a aucun.
+ */
+export function CouvertureTarifs({ devise }) {
+  const c = devise?.couverture;
+  if (!devise) return null;
+  const lien = (
+    <Link to="/superadmin/tarifs" className="font-semibold underline underline-offset-2" data-testid="lien-tarifs">
+      {t("Ouvrir « Tarifs et échéances »")}
+    </Link>
+  );
+  if (!devise.echeancier_configure) {
+    return (
+      <div className="mb-4 flex gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900" data-testid="tarifs-absents" role="note">
+        <Info className="w-4 h-4 mt-0.5 shrink-0" aria-hidden="true" />
+        <p>
+          {t("Aucun échéancier n'est configuré pour cette période. Configurez les tarifs et les échéances dans « Tarifs et échéances » pour obtenir les montants prévisionnels et les restes à payer.")}{" "}
+          {lien}
+        </p>
+      </div>
+    );
+  }
+  const manques = [];
+  if (c?.academies_sans_tarif?.length) manques.push(t("académies sans tarif : {n}", { n: c.academies_sans_tarif.join(", ") }));
+  if (c?.eleves_sans_tarif > 0) manques.push(t("{n} élève(s) actif(s) sans tarif applicable sur {total}", { n: c.eleves_sans_tarif, total: c.eleves_actifs }));
+  if (!manques.length) return null;
+  return (
+    <div className="mb-4 flex gap-2 rounded-xl border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-900" data-testid="tarifs-partiels" role="note">
+      <Info className="w-4 h-4 mt-0.5 shrink-0" aria-hidden="true" />
+      <p>
+        {t("Données partielles : l'attendu et le reste à payer ne comptent que les élèves ayant un tarif.")} {manques.join(" · ")}.{" "}
+        {lien}
+      </p>
+    </div>
+  );
 }
 
 function Variation({ valeur }) {
@@ -358,13 +398,14 @@ export default function GraphiquePaiements() {
               detail={`${ind.nb_paiements} ${t("paiement(s)")}${ind.rembourse_minor ? ` · ${t("remboursé")} ${m(ind.rembourse_minor)}` : ""}`} />
             <Indicateur testid="ind-attendu" titre={t("Attendu (échéances de la période)")} valeur={m(ind.attendu_minor)}
               comparer={comparer && courante.echeancier_configure} variation={variations.attendu_minor}
-              detail={courante.echeancier_configure ? null : t("Aucun échéancier configuré")} />
+              detail={courante.echeancier_configure ? null : t("Aucun tarif avec échéances")} />
             <Indicateur testid="ind-restant" titre={t("Restant à payer (échéances passées)")} valeur={m(ind.restant_minor)}
               comparer={comparer && courante.echeancier_configure} variation={variations.restant_minor}
               detail={ind.taux_recouvrement !== null && ind.taux_recouvrement !== undefined ? `${t("Recouvrement")} ${ind.taux_recouvrement} %` : null} />
             <Indicateur testid="ind-attente" titre={t("En attente / échoués (carte)")} valeur={`${m(ind.en_attente_minor)} / ${m(ind.echoue_minor)}`}
               detail={`${ind.nb_en_attente} / ${ind.nb_echoues} · ${t("annulés")} ${ind.nb_annules} (${m(ind.annule_minor)})`} />
           </div>
+          <CouvertureTarifs devise={courante} />
           {comparer && r.periode_precedente && (
             <p className="text-xs text-slate-500 mb-2" data-testid="periode-precedente">
               {t("Période précédente")} : {new Date(`${r.periode_precedente.du}T12:00:00`).toLocaleDateString(dateLocale())} → {new Date(`${r.periode_precedente.au}T12:00:00`).toLocaleDateString(dateLocale())}

@@ -198,23 +198,33 @@ class StudentSerializer(TenantRelationsMixin, AcademyMetadataMixin, serializers.
                 return enr
         return None
 
-    def get_class_name(self, obj):
-        # FIX v31 : en consultation historique (?school_year=), afficher la
-        # classe de l'inscription de CETTE année-là, pas la classe actuelle.
+    def _classe_de_l_annee(self, obj):
+        """Classe de l'élève pour l'année consultée.
+
+        1. Classe de l'inscription de cette année (consultation historique, FIX v31).
+        2. Sinon la classe actuelle de l'élève, SI elle appartient à cette même année.
+           Phase 6 : les inscriptions créées automatiquement par les notes, absences,
+           paiements ou bulletins n'avaient pas de classe ; la liste filtrée sur l'année
+           en cours affichait alors une colonne « Classe » vide alors que la classe de
+           l'élève était connue (constaté pour 76 élèves de Faith & Excellence).
+           Une classe d'une autre année n'est jamais utilisée : rien n'est inventé.
+        """
+        year_id = self._requested_year_id()
         enr = self._enrollment_for_requested_year(obj)
-        if enr is not None:
-            return enr.class_obj.name if enr.class_obj else None
-        return obj.current_class.name if obj.current_class else None
+        if enr is not None and enr.class_obj_id:
+            return enr.class_obj
+        cls = obj.current_class
+        if cls is not None and (year_id is None or cls.school_year_id == year_id):
+            return cls
+        return None
+
+    def get_class_name(self, obj):
+        cls = self._classe_de_l_annee(obj)
+        return cls.name if cls else None
 
     def get_class_level(self, obj):
-        enr = self._enrollment_for_requested_year(obj)
-        if enr is not None:
-            if enr.class_obj and enr.class_obj.level:
-                return enr.class_obj.level.name
-            return None
-        if obj.current_class and obj.current_class.level:
-            return obj.current_class.level.name
-        return None
+        cls = self._classe_de_l_annee(obj)
+        return cls.level.name if cls and cls.level else None
 
     def get_school_year_name(self, obj):
         enr = self._enrollment_for_requested_year(obj)
@@ -257,11 +267,17 @@ class StudentSerializer(TenantRelationsMixin, AcademyMetadataMixin, serializers.
         student = super().create(validated_data)
         if parent_user_id:
             self._link_parent(student, parent_user_id)
+        from apps.students.services import synchroniser_classe_inscription
+        synchroniser_classe_inscription(student)
         return student
 
     def update(self, instance, validated_data):
         parent_user_id = validated_data.pop('parent_user_id', None)
+        classe_avant = instance.current_class_id
         student = super().update(instance, validated_data)
         if parent_user_id:
             self._link_parent(student, parent_user_id)
+        if student.current_class_id != classe_avant:
+            from apps.students.services import synchroniser_classe_inscription
+            synchroniser_classe_inscription(student)
         return student
