@@ -16,21 +16,34 @@ import unicodedata
 from datetime import date
 from decimal import Decimal, InvalidOperation
 
-from django.db.models import Count, F, Func, Q, Sum, Value
+from django.db.models import CharField, Count, F, Func, Q, Sum, Value
 from django.db.models.functions import Lower
 
 from .tableau_bord import FiltreInvalide, PeriodeInvalide, bornes, lire_filtres
 
-ACCENTS = "àâäáãåçéèêëíìîïñóòôöõúùûüýÿœæ"
-SANS = "aaaaaaceeeeiiiinooooouuuuyyoa"   # œ/æ → o/a : un caractère pour un caractère
+# Correspondances un caractère pour un caractère (minuscules ET majuscules : lower() de
+# SQLite ne traite que l'ASCII).
+ACCENTS = "àâäáãåçéèêëíìîïñóòôöõúùûüýÿœæÀÂÄÁÃÅÇÉÈÊËÍÌÎÏÑÓÒÔÖÕÚÙÛÜÝŸŒÆ"
+SANS = "aaaaaaceeeeiiiinooooouuuuyyoaaaaaaaceeeeiiiinooooouuuuyyoa"
 
 
 class SansAccents(Func):
-    """translate(lower(x)) : comparaison sans accents, sans extension PostgreSQL."""
+    """Texte en minuscules sans accents, pour comparer sans extension de base de données.
+
+    PostgreSQL : translate(lower(x), …). SQLite (suite de tests) : replace() imbriqués.
+    """
     function = "translate"
+    output_field = CharField()
 
     def __init__(self, expression):
         super().__init__(Lower(expression), Value(ACCENTS), Value(SANS))
+
+    def as_sqlite(self, compiler, connection, **extra_context):
+        sql, params = compiler.compile(self.source_expressions[0])
+        for a, b in zip(ACCENTS, SANS):
+            sql = f"replace({sql}, %s, %s)"
+            params = [*params, a, b]
+        return f"lower({sql})", params
 
 
 def normaliser(texte):
