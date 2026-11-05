@@ -508,6 +508,11 @@ export const homeworkAPI = {
 
 export const paymentsAPI = {
   list: (p)         => api.get("/payments/", { params: { ...BIG, ...p } }),
+  // Page « Paiements » : recherche, filtres, tri et pagination côté serveur ;
+  // la réponse porte `totaux` (toute la sélection, par devise).
+  recherche: (p)    => api.get("/payments/", { params: p }),
+  exportXlsx: (p)   => api.get("/payments/", { params: { ...p, export: "xlsx" }, responseType: "blob" }),
+  filtres: (p)      => api.get("/payments/filtres/", { params: p }),
   listDeleted: ()   => api.get("/payments/", { params: { ...BIG, show_deleted: 1 } }),
   get: (id)         => api.get(`/payments/${id}/`),
   create: (d)       => api.post("/payments/", d),
@@ -750,7 +755,20 @@ export const massEmailAPI = {
   options:    (academyId)        => api.get("/mass-email/options/", { params: { academy_id: academyId || undefined } }),
   recipients: (academyId, p)     => api.get("/mass-email/recipients/", { params: { academy_id: academyId || undefined, ...p } }),
   preview:    (d)                => api.post("/mass-email/preview/", d),
-  campaigns:  (academyId)        => api.get("/mass-email/campaigns/", { params: { academy_id: academyId || undefined } }),
+  campaigns:  (academyId, p)     => api.get("/mass-email/campaigns/", { params: { academy_id: academyId || undefined, ...p } }),
+  // Brouillons (privés à leur auteur), pièces jointes de brouillon, signature personnelle.
+  brouillons: (academyId)        => api.get("/mass-email/brouillons/", { params: { academy_id: academyId || undefined } }),
+  creerBrouillon: (academyId, d) => api.post("/mass-email/brouillons/", { ...d, academy_id: academyId || undefined }),
+  majBrouillon: (id, academyId, d) => api.patch(`/mass-email/brouillons/${id}/`, d, { params: { academy_id: academyId || undefined } }),
+  supprimerBrouillon: (id, academyId) => api.delete(`/mass-email/brouillons/${id}/`, { params: { academy_id: academyId || undefined } }),
+  ajouterPieces: (id, academyId, files) => {
+    const form = new FormData();
+    for (const f of files) form.append("attachments", f);
+    return api.post(`/mass-email/brouillons/${id}/pieces/`, form, { params: { academy_id: academyId || undefined }, headers: { "Content-Type": "multipart/form-data" } });
+  },
+  retirerPiece: (id, pieceId, academyId) => api.delete(`/mass-email/brouillons/${id}/pieces/${pieceId}/`, { params: { academy_id: academyId || undefined } }),
+  signature:  ()                 => api.get("/mass-email/signature/"),
+  majSignature: (texte)          => api.put("/mass-email/signature/", { texte }),
   // Avec pièces jointes : multipart (`payload` JSON + fichiers). Le
   // serveur revalide formats, signatures et tailles.
   create:     (d, files = [])    => {
