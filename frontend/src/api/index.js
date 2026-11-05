@@ -548,8 +548,9 @@ export const cardPaymentsAPI = {
   fees:     (studentId) => api.get("/payments/card/fees/", { params: { student: studentId } }),
   checkout: (d)         => api.post("/payments/card/checkout/", d),
   transactions: (p)     => api.get("/payments/card/transactions/", { params: p }),
-  refund:   (id, amount) => api.post(`/payments/card/${id}/refund/`,
-                                     amount ? { amount } : {}),
+  // `horsLigne` : remboursement déjà effectué chez le prestataire (FedaPay), constaté ici.
+  refund:   (id, amount, horsLigne = false) => api.post(`/payments/card/${id}/refund/`,
+                                     { ...(amount ? { amount } : {}), ...(horsLigne ? { rembourse_chez_prestataire: true } : {}) }),
   receipt:  (id)        => api.get(`/payments/card/${id}/receipt/`),
   // Retour du prestataire : le SERVEUR interroge le prestataire (le navigateur ne prouve rien).
   verifier: (id)        => api.post(`/payments/card/${id}/verifier/`),

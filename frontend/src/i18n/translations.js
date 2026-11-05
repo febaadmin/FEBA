@@ -3793,4 +3793,7 @@ export const EN = {
   "Paiement expiré.": "Payment expired.",
   "Montant ou devise différents chez le prestataire : vérification manuelle requise.": "Amount or currency differs at the provider: manual check required.",
   "Paiement non finalisé dans le délai : tentative expirée.": "Payment not completed in time: attempt expired.",
+  "FedaPay ne permet pas de rembourser depuis FEBA : effectuez d'abord le remboursement dans le tableau de bord FedaPay, puis enregistrez-le ici pour que les montants encaissés soient justes partout.": "FedaPay does not allow refunds from FEBA: first make the refund in the FedaPay dashboard, then record it here so collected amounts are correct everywhere.",
+  "Je confirme que ce remboursement a été effectué dans le tableau de bord FedaPay.": "I confirm this refund was made in the FedaPay dashboard.",
+  "Enregistrer le remboursement": "Record the refund",
 };
