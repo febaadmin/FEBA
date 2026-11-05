@@ -42,11 +42,14 @@ export default function HomePage() {
     queryKey: ["site-gallery"], queryFn: siteAPI.gallery, staleTime: 300000, retry: 1,
   });
 
-  const slides = slidesData?.data || [];
+  // Une réponse inattendue (page d'erreur HTML d'un proxy, par exemple) ne
+  // doit pas faire tomber la page d'accueil publique : listes seulement.
+  const liste = (x) => (Array.isArray(x) ? x : []);
+  const slides = liste(slidesData?.data);
   const newsRaw = newsData?.data;
-  const news = (newsRaw?.results || newsRaw || []).slice(0, 3);
+  const news = liste(newsRaw?.results ?? newsRaw).slice(0, 3);
   // V6 : aperçu galerie jamais vide — repli sur les albums packagés.
-  const apiAlbums = (galleryData?.data || []).filter((a) => a.items?.length);
+  const apiAlbums = liste(galleryData?.data).filter((a) => Array.isArray(a.items) && a.items.length);
   const albums = apiAlbums.length ? apiAlbums : DEFAULT_ALBUMS;
   const galleryPreview = albums
     .flatMap((a) => a.items.filter((i) => i.kind === "image"))

@@ -203,6 +203,15 @@ jobs:
         working-directory: frontend
         run: npm run build
 
+      - name: Types MIME du build servis par le nginx de production
+        working-directory: frontend
+        # nginx envoie « nosniff » : un script d'extension inconnue de sa table
+        # MIME est refusé par le navigateur (cause de l'aperçu PDF cassé).
+        run: |
+          IMAGE=$(sed -n 's/^FROM \(nginx:[^ ]*\).*/\1/p' Dockerfile.prod)
+          docker run --rm "$IMAGE" cat /etc/nginx/mime.types > /tmp/mime.types
+          node scripts/verifier_types_assets.mjs /tmp/mime.types dist
+
   e2e:
     # Parcours navigateur réels (e2e/ci) : serveur Django et application construite, base jetable.
     # Mots de passe générés à chaque exécution et masqués : aucun n'est écrit dans le dépôt.

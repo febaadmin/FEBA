@@ -4,6 +4,23 @@ import path from "path";
 
 export default defineConfig({
   plugins: [react()],
+  build: {
+    rollupOptions: {
+      output: {
+        // Le worker de pdf.js est livré en « .mjs ». La table MIME de nginx
+        // (image officielle 1.28) ne connaît pas cette extension : le fichier
+        // partait en application/octet-stream avec « nosniff », le navigateur
+        // refusait de l'exécuter et l'aperçu des bulletins échouait en
+        // production (alors que `vite preview` sert le bon type). Tout script
+        // émis porte donc l'extension « .js » ; scripts/verifier_types_assets.mjs
+        // contrôle le build contre la vraie table MIME de nginx en CI.
+        assetFileNames: (info) => {
+          const nom = info.names?.[0] || info.name || "";
+          return nom.endsWith(".mjs") ? "assets/[name]-[hash].js" : "assets/[name]-[hash][extname]";
+        },
+      },
+    },
+  },
   resolve: {
     alias: { "@": path.resolve(__dirname, "./src") },
   },

@@ -64,6 +64,9 @@ export default function ApercuPdf({ donnees, titre, className = "", testid }) {
         setPages(documentPdf.numPages);
         setEtat("pret");
       } catch (e) {
+        // Cause visible dans la console (et donc dans les rapports d'incident) :
+        // un échec silencieux a masqué le worker refusé en production.
+        console.error("[ApercuPdf] rendu impossible :", e);
         if (!annule) setEtat("erreur");
       }
     })();
