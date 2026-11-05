@@ -96,7 +96,7 @@ describe("couverture de traduction FR → EN", () => {
       "Messages", "Notification", "Notifications", "Options", "Description",
       "Date", "Format", "Version", "Actions", "Documents", "Configuration",
       "Solution", "Type", "Support", "Types", "Import", "Total", "Transport",
-      "Incident", "Extra", "Contacts", "Introduction", "Sections", "Signature",
+      "Incident", "Extra", "Contacts", "Introduction", "Sections", "Signature", "Cc",
       "Photo", "Photos", "Documentation", "Communication", "Communications",
       "Simple", "Double", "Standard", "Public", "Application", "Applications",
       "Test", "Tests", "Portable", "Important", "Long", "Position",

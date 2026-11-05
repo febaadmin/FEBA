@@ -115,6 +115,40 @@ def _clean_ids(values, field):
     return cleaned
 
 
+CHAMPS = ("a", "cc", "cci")
+MAX_ADRESSES_PAR_CHAMP = 200
+
+
+def _clean_adresses(valeurs, champ):
+    """Champ À / Cc / Cci : adresses saisies (texte) ou comptes choisis (identifiant)."""
+    if valeurs in (None, ""):
+        return []
+    if not isinstance(valeurs, (list, tuple)):
+        raise AudienceError("Liste de destinataires attendue.", champ)
+    if len(valeurs) > MAX_ADRESSES_PAR_CHAMP:
+        raise AudienceError(f"Au plus {MAX_ADRESSES_PAR_CHAMP} destinataires par champ.", champ)
+    propres, invalides = [], []
+    for v in valeurs:
+        if isinstance(v, bool):
+            raise AudienceError(f"Destinataire invalide : {v!r}.", champ)
+        if isinstance(v, int):
+            propres.append(v)
+            continue
+        texte = str(v or "").strip()
+        if texte.isdigit():
+            propres.append(int(texte))
+            continue
+        try:
+            validate_email(texte)
+        except DjangoValidationError:
+            invalides.append(texte or "(vide)")
+            continue
+        propres.append(texte.lower())
+    if invalides:
+        raise AudienceError(f"Adresse(s) invalide(s) : {', '.join(invalides[:10])}.", champ)
+    return propres
+
+
 def normalize_audience(data):
     """Valide la forme des règles d'audience (sans toucher à la base)."""
     roles = data.get("roles") or []
@@ -123,11 +157,19 @@ def normalize_audience(data):
     unknown = sorted(set(roles) - set(AUDIENCE_ROLES))
     if unknown:
         raise AudienceError(f"Type de profil inconnu : {', '.join(unknown)}.", "roles")
+    adresses = data.get("adresses") or {}
+    if not isinstance(adresses, dict):
+        raise AudienceError("Champs À / Cc / Cci illisibles.", "adresses")
+    mode = data.get("mode") or EmailCampaign.INDIVIDUEL
+    if mode not in dict(EmailCampaign.MODE_CHOICES):
+        raise AudienceError("Mode d'envoi inconnu.", "mode")
     return {
         "roles": sorted(set(roles)),
         "all_profiles": bool(data.get("all_profiles")),
         "include_ids": sorted(_clean_ids(data.get("include_ids"), "include_ids")),
         "exclude_ids": sorted(_clean_ids(data.get("exclude_ids"), "exclude_ids")),
+        "adresses": {c: _clean_adresses(adresses.get(c), c) for c in CHAMPS},
+        "mode": mode,
     }
 
 
@@ -154,7 +196,9 @@ def resolve_audience(academy, audience):
     identifiant inclus ou exclu n'appartient pas à l'académie.
     """
     users = academy_users(academy)
-    explicit = set(audience["include_ids"]) | set(audience["exclude_ids"])
+    adresses = audience.get("adresses") or {}
+    ids_champs = {v for c in CHAMPS for v in adresses.get(c, []) if isinstance(v, int)}
+    explicit = set(audience["include_ids"]) | set(audience["exclude_ids"]) | ids_champs
     if explicit:
         found = set(users.filter(pk__in=explicit).values_list("pk", flat=True))
         outside = sorted(explicit - found)
@@ -181,32 +225,80 @@ def resolve_audience(academy, audience):
     )
 
     recipients, skipped, seen = [], [], set()
-    for user in selected:
-        status, email = _email_status(user)
-        entry = {
-            "user": user, "email": email, "status": status,
-            "full_name": user.get_full_name() or email, "role": user.role,
-        }
-        if status == EmailCampaignRecipient.PENDING:
-            key = email.lower()
+
+    comptes_vus = set()
+
+    def ajouter(entry):
+        # Un compte n'a qu'UNE ligne par envoi (contrainte d'unicité) : une deuxième
+        # mention du même compte reste visible comme doublon, sans lien vers le compte.
+        if entry["user"] is not None:
+            if entry["user"].pk in comptes_vus:
+                entry = {**entry, "user": None, "status": EmailCampaignRecipient.SKIPPED_DUPLICATE}
+            else:
+                comptes_vus.add(entry["user"].pk)
+        if entry["status"] == EmailCampaignRecipient.PENDING:
+            key = entry["email"].lower()
             if key in seen:
                 entry["status"] = EmailCampaignRecipient.SKIPPED_DUPLICATE
                 skipped.append(entry)
-                continue
+                return
             seen.add(key)
             recipients.append(entry)
         else:
             skipped.append(entry)
+
+    # 1. Champs À, Cc, Cci (dans cet ordre de priorité : une adresse n'est servie qu'une fois).
+    par_id = {u.pk: u for u in users.filter(pk__in=ids_champs)} if ids_champs else {}
+    emails_saisis = {v for c in CHAMPS for v in adresses.get(c, []) if isinstance(v, str)}
+    comptes_par_email = {}
+    if emails_saisis:
+        for u in users.filter(email__in=list(emails_saisis)).order_by("pk"):
+            comptes_par_email.setdefault((u.email or "").lower(), u)
+    for champ in CHAMPS:
+        for v in adresses.get(champ, []):
+            if isinstance(v, int):
+                user = par_id[v]
+                status, email = _email_status(user)
+                ajouter({"user": user, "email": email, "status": status, "champ": champ,
+                         "full_name": user.get_full_name() or email, "role": user.role})
+            else:
+                # Adresse saisie : envoyée telle quelle (validée) ; rattachée au compte FEBA
+                # de l'académie qui la porte, pour le suivi, s'il existe.
+                user = comptes_par_email.get(v)
+                ajouter({"user": user, "email": v, "status": EmailCampaignRecipient.PENDING, "champ": champ,
+                         "full_name": (user.get_full_name() if user else "") or v,
+                         "role": user.role if user else ""})
+
+    # 2. Profils et personnes choisies dans la liste : messages individuels.
+    for user in selected:
+        status, email = _email_status(user)
+        entry = {
+            "user": user, "email": email, "status": status, "champ": EmailCampaignRecipient.GROUPE,
+            "full_name": user.get_full_name() or email, "role": user.role,
+        }
+        ajouter(entry)
     return {"recipients": recipients, "skipped": skipped}
+
+
+def en_tetes_visibles(audience, resolution):
+    """En-têtes affichés d'un message commun : À et Cc visibles, jamais Cci ni les profils."""
+    if audience.get("mode") != EmailCampaign.COMMUN:
+        return {}
+    a = [e["email"] for e in resolution["recipients"] if e["champ"] == "a"]
+    cc = [e["email"] for e in resolution["recipients"] if e["champ"] == "cc"]
+    return {"to": a, "cc": cc} if (a or cc) else {}
 
 
 def preview_payload(resolution, limit=500):
     def row(entry):
         user = entry["user"]
         return {
-            "user_id": user.pk, "full_name": entry["full_name"], "email": entry["email"],
-            "role": entry["role"], "status": entry["status"],
+            "user_id": user.pk if user else None, "full_name": entry["full_name"], "email": entry["email"],
+            "role": entry["role"], "status": entry["status"], "champ": entry.get("champ", "groupe"),
         }
+    par_champ = {}
+    for e in resolution["recipients"]:
+        par_champ[e.get("champ", "groupe")] = par_champ.get(e.get("champ", "groupe"), 0) + 1
 
     return {
         "count": len(resolution["recipients"]),
@@ -215,13 +307,14 @@ def preview_payload(resolution, limit=500):
         "skipped": [row(e) for e in resolution["skipped"][:limit]],
         "truncated": len(resolution["recipients"]) > limit,
         "max_recipients": max_recipients(),
+        "par_champ": par_champ,
     }
 
 
 # ── Création ──────────────────────────────────────────────────────────
 
 def create_campaign(*, academy, user, subject, body, audience, client_token,
-                    expected_count, attachments=None):
+                    expected_count, attachments=None, body_format="texte", body_html="", brouillon=None):
     """
     Crée la campagne et ses destinataires, puis la met en file d'attente.
 
@@ -239,6 +332,17 @@ def create_campaign(*, academy, user, subject, body, audience, client_token,
         raise AudienceError("L'objet du message est obligatoire.", "subject")
     if len(subject) > 200:
         raise AudienceError("L'objet ne peut pas dépasser 200 caractères.", "subject")
+    if body_format not in dict(EmailCampaign.FORMAT_CHOICES):
+        raise AudienceError("Format de message inconnu.", "body_format")
+    if body_format == EmailCampaign.HTML:
+        from .html_securise import HtmlRefuse, en_texte, nettoyer
+        try:
+            body_html = nettoyer(body_html)
+        except HtmlRefuse as exc:
+            raise AudienceError(str(exc), "body")
+        body = en_texte(body_html)
+    else:
+        body_html = ""
     if not body:
         raise AudienceError("Le contenu du message est obligatoire.", "body")
     if not client_token or len(client_token) > 64:
@@ -284,9 +388,12 @@ def create_campaign(*, academy, user, subject, body, audience, client_token,
         with transaction.atomic():
             campaign = EmailCampaign.objects.create(
                 academy=academy, created_by=user, created_by_email=user.email or "",
-                subject=subject, body=body, audience=audience, client_token=client_token,
+                subject=subject, body=body, body_format=body_format, body_html=body_html,
+                mode=audience.get("mode") or EmailCampaign.INDIVIDUEL,
+                audience=audience, client_token=client_token,
                 total_recipients=count, skipped_count=len(resolution["skipped"]),
             )
+            visibles = en_tetes_visibles(audience, resolution)
             text, html_body = _bodies(campaign)
             campaign.content = create_content(subject=subject, text_body=text,
                                               html_body=html_body, attachments=attachments)
@@ -295,7 +402,7 @@ def create_campaign(*, academy, user, subject, body, audience, client_token,
                 EmailCampaignRecipient(
                     campaign=campaign, user=entry["user"], email=entry["email"],
                     full_name=entry["full_name"][:200], role=entry["role"],
-                    status=entry["status"],
+                    status=entry["status"], champ=entry.get("champ", EmailCampaignRecipient.GROUPE),
                 )
                 for entry in resolution["recipients"] + resolution["skipped"]
             ])
@@ -308,8 +415,11 @@ def create_campaign(*, academy, user, subject, body, audience, client_token,
                     entity=academy, reference=recipient.tracking_reference,
                     content=campaign.content, initiated_by=user, status=EmailDelivery.QUEUED,
                     sms_user=recipient.user, sms_key=f"campaign:{campaign.pk}:{recipient.pk}",
+                    en_tetes_visibles=visibles if recipient.champ in CHAMPS else {},
                 )
                 recipient.save(update_fields=["delivery"])
+            if brouillon is not None:
+                brouillon.delete()
     except IntegrityError:
         # Course entre deux soumissions du même jeton : l'autre a gagné.
         existing = EmailCampaign.objects.filter(created_by=user, client_token=client_token).first()
@@ -347,6 +457,8 @@ def enqueue_campaign(campaign_id):
 
 def _bodies(campaign):
     academy = campaign.academy
+    contenu_html = (campaign.body_html if campaign.body_format == EmailCampaign.HTML and campaign.body_html
+                    else html.escape(campaign.body).replace("\n", "<br>"))
     footer = (
         f"\n\n-\n{academy.name}\n"
         "Message envoyé depuis la plateforme de gestion de l'académie. Merci de ne pas transférer "
@@ -355,7 +467,7 @@ def _bodies(campaign):
     text = campaign.body + footer
     html_body = (
         "<div style=\"font-family:Arial,sans-serif;font-size:14px;line-height:1.5\">"
-        + html.escape(campaign.body).replace("\n", "<br>")
+        + contenu_html
         + "<hr style=\"border:none;border-top:1px solid #ddd;margin:16px 0\">"
         + f"<p style=\"color:#666;font-size:12px\">{html.escape(academy.name)}<br>"
         + "Message envoyé depuis la plateforme de gestion de l'académie.</p></div>"
@@ -419,6 +531,10 @@ def sync_recipient(recipient, delivery):
     elif delivery.status == EmailDelivery.RETRY:
         recipient.status = EmailCampaignRecipient.RETRY
         recipient.error = delivery.last_error
+    elif delivery.status == EmailDelivery.FAILED and "SMTPRecipientsRefused" in (delivery.last_error or ""):
+        # Échec définitif (nouveaux essais épuisés) sur une adresse refusée par le serveur.
+        recipient.status = EmailCampaignRecipient.REJECTED
+        recipient.error = delivery.last_error
     else:
         recipient.status = EmailCampaignRecipient.FAILED
         recipient.error = delivery.last_error
@@ -471,7 +587,9 @@ def recover_stale(campaign_id, older_than_minutes=15):
 def refresh_campaign_status(campaign):
     counts = campaign.counts()
     remaining = counts[EmailCampaignRecipient.PENDING] + counts[EmailCampaignRecipient.SENDING]
-    failed = counts[EmailCampaignRecipient.FAILED] + counts[EmailCampaignRecipient.RETRY]
+    # Rejet définitif (adresse refusée par le serveur) : compté comme un échec de la campagne.
+    failed = (counts[EmailCampaignRecipient.FAILED] + counts[EmailCampaignRecipient.RETRY]
+              + counts[EmailCampaignRecipient.REJECTED])
     sent = counts[EmailCampaignRecipient.SENT]
     if remaining:
         status = EmailCampaign.SENDING if (sent or failed) else campaign.status

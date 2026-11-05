@@ -29,6 +29,8 @@ olefile==0.47
 # gabarits). Il n'était installé que comme dépendance de WeasyPrint : déclaré ici.
 fonttools==4.67.0
 django-ratelimit==4.1.0
+# HTML des e-mails composés dans FEBA : nettoyage par liste blanche (ammonia, Rust).
+nh3==0.3.0
 gunicorn==23.0.0
 whitenoise==6.9.0   # compatible Django 5.2
 python-decouple==3.8
