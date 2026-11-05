@@ -106,12 +106,13 @@ def _clean_ids(values, field):
         return set()
     if not isinstance(values, (list, tuple, set)):
         raise AudienceError("Liste d'identifiants attendue.", field)
+    from apps.core.request_text import identifiant
     cleaned = set()
     for value in values:
-        try:
-            cleaned.add(int(value))
-        except (TypeError, ValueError):
+        valeur = identifiant(value)
+        if valeur is None:
             raise AudienceError(f"Identifiant invalide : {value!r}.", field)
+        cleaned.add(valeur)
     return cleaned
 
 
@@ -131,13 +132,14 @@ def _clean_adresses(valeurs, champ):
     for v in valeurs:
         if isinstance(v, bool):
             raise AudienceError(f"Destinataire invalide : {v!r}.", champ)
-        if isinstance(v, int):
-            propres.append(v)
+        if isinstance(v, int) or str(v or "").strip().isdigit():
+            from apps.core.request_text import identifiant
+            valeur = identifiant(v if isinstance(v, int) else str(v).strip())
+            if valeur is None:      # identifiant démesuré : refus explicite, jamais une erreur SQL
+                raise AudienceError(f"Destinataire invalide : {v!r}.", champ)
+            propres.append(valeur)
             continue
         texte = str(v or "").strip()
-        if texte.isdigit():
-            propres.append(int(texte))
-            continue
         try:
             validate_email(texte)
         except DjangoValidationError:

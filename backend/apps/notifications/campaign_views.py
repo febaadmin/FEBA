@@ -239,7 +239,8 @@ class MassEmailCampaignListView(APIView):
         brouillon = None
         if data.get("brouillon_id"):
             from .campaign_models import BrouillonEmail
-            brouillon = BrouillonEmail.objects.filter(pk=data["brouillon_id"], auteur=request.user,
+            from apps.core.request_text import identifiant
+            brouillon = BrouillonEmail.objects.filter(pk=identifiant(data["brouillon_id"]) or 0, auteur=request.user,
                                                       academy=academy).first()
             if brouillon is None:
                 raise ValidationError({"brouillon_id": "Brouillon introuvable."})
@@ -324,7 +325,7 @@ def _brouillon_payload(b):
 
 def _remplir_brouillon(b, data):
     from .campaign_models import BrouillonEmail
-    objet = (data.get("objet") or "").strip()
+    objet = str(data.get("objet") or "").strip()
     if len(objet) > 200:
         raise ValidationError({"objet": "L'objet ne peut pas dépasser 200 caractères."})
     fmt = data.get("format") or BrouillonEmail._meta.get_field("format").default
@@ -339,7 +340,7 @@ def _remplir_brouillon(b, data):
             corps_html = ""          # brouillon vide : accepté, l'envoi le refusera
     # Les règles et adresses sont validées à l'enregistrement (forme) et revalidées à l'envoi.
     audience = svc.normalize_audience(data.get("audience") or {})
-    b.objet, b.corps, b.corps_html, b.format = objet, (data.get("corps") or "")[:50000], corps_html, fmt
+    b.objet, b.corps, b.corps_html, b.format = objet, str(data.get("corps") or "")[:50000], corps_html, fmt
     b.mode, b.audience = audience["mode"], audience
     return b
 
