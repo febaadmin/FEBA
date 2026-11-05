@@ -175,4 +175,41 @@ describe("graphique des paiements", () => {
     expect(screen.queryByTestId("tarifs-absents")).toBeNull();
     expect(screen.getByTestId("tarifs-partiels").textContent).toMatch(/4 élève\(s\) actif\(s\) sans tarif applicable sur 80/);
   });
+
+  it("paramètres : listes jointes par des virgules, granularité seulement si choisie", () => {
+    expect(parametres("mois", "", "", { ...FILTRES_VIDES, nature: ["mensualite", "cantine"], mode: [] }, false, "auto"))
+      .toEqual({ periode: "mois", nature: "mensualite,cantine" });
+    expect(parametres("mois", "", "", FILTRES_VIDES, true, "semaine")).toEqual({ periode: "mois", comparer: 1, granularite: "semaine" });
+  });
+
+  it("types et modes multiples, puces lisibles, répartitions cliquables, granularité et heure", async () => {
+    const jour = { ...reponse, periode: { code: "jour", du: "2026-11-04", au: "2026-11-04", granularite: "heure",
+      granularites_possibles: ["heure", "jour"] },
+    devises: [{ ...reponse.devises[1], serie: [{ date: 9, fin: null, encaisse_minor: 50000, nb_paiements: 2, attendu_minor: null }],
+      indicateurs: { ...reponse.devises[1].indicateurs, moyenne_minor: 70000, nb_eleves_payeurs: 3, nb_sans_heure: 1 },
+      par_nature: [{ code: "mensualite", libelle: "Mensualité", montant_minor: 150000, nb: 2 },
+        { code: "cantine", libelle: "Cantine", montant_minor: 60000, nb: 1 }],
+      par_mode: [{ code: "cash", libelle: "Espèces", montant_minor: 210000, nb: 3 }] }],
+    par_academie: [] };
+    tableauDeBord.mockResolvedValue({ data: jour });
+    detailAPI.mockResolvedValue({ data: { du: "2026-11-04", au: "2026-11-04", total: 0, tronque: false, paiements: [] } });
+    monter();
+    fireEvent.click(screen.getByTestId("periode-jour"));
+    await screen.findByTestId("ind-moyenne");
+    expect(screen.getByTestId("ind-moyenne").textContent).toMatch(/70[\s\u202f\u00a0.]?000/);
+    expect(screen.getByTestId("ind-payeurs").textContent).toMatch(/3/);
+    expect(screen.getByTestId("paiements-sans-heure").textContent).toMatch(/1 paiement\(s\) sans heure/);
+    fireEvent.click(screen.getByTestId("repartition-nature-cantine"));
+    await waitFor(() => expect(tableauDeBord).toHaveBeenLastCalledWith({ periode: "jour", nature: "cantine" }));
+    fireEvent.click(screen.getByTestId("filtre-mode"));
+    fireEvent.click(screen.getByTestId("filtre-mode-cash"));
+    await waitFor(() => expect(tableauDeBord).toHaveBeenLastCalledWith({ periode: "jour", nature: "cantine", mode: "cash" }));
+    expect(screen.getByTestId("filtres-actifs").textContent).toMatch(/Mode de paiement : Espèces/);
+    fireEvent.click(screen.getByTestId("granularite-jour"));
+    await waitFor(() => expect(tableauDeBord).toHaveBeenLastCalledWith({ periode: "jour", granularite: "jour", nature: "cantine", mode: "cash" }));
+    fireEvent.click(screen.getByTestId("case-9"));
+    await waitFor(() => expect(detailAPI).toHaveBeenCalledWith(expect.objectContaining({ heure: 9, nature: "cantine" })));
+    fireEvent.click(screen.getByTestId("filtres-reinitialiser"));
+    await waitFor(() => expect(tableauDeBord).toHaveBeenLastCalledWith({ periode: "jour", granularite: "jour" }));
+  });
 });

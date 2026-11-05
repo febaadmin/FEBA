@@ -26,6 +26,7 @@ urlpatterns = [
     path("tableau-de-bord/", tableau_bord.TableauBordPaiementsView.as_view(), name="payments-dashboard"),
     path("tableau-de-bord/detail/", tableau_bord.DetailPaiementsView.as_view(), name="payments-dashboard-detail"),
     path("tableau-de-bord/filtres/", tableau_bord.OptionsFiltresView.as_view(), name="payments-dashboard-filters"),
+    path("filtres/", tableau_bord.OptionsPaiementsView.as_view(), name="payments-filters"),
     path("situation/", situation.SituationView.as_view(), name="payments-situation"),
     path("situation/eleves/<int:pk>/", situation.SituationEleveView.as_view(), name="payments-situation-eleve"),
     # ── Relances de paiement ──────────────────────────────────────────

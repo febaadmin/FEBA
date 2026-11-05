@@ -1,39 +1,25 @@
 import { useState } from "react";
 import { NATURES_FRAIS } from "../../utils/naturesFrais";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Plus, Trash2, Receipt, DollarSign, TrendingUp, Eye, RotateCcw, FileSpreadsheet } from "lucide-react";
+import { Plus, Trash2, Receipt, DollarSign, TrendingUp, Eye, RotateCcw } from "lucide-react";
 import { Controller } from "react-hook-form";
 import { useForm } from "../../utils/useFormulaire";
 import toast from "react-hot-toast";
-import { paymentsAPI, studentsAPI, schoolsAPI } from "../../api";
+import { paymentsAPI, studentsAPI } from "../../api";
 import PageHeader from "../../components/ui/PageHeader";
-import DataTable from "../../components/ui/DataTable";
+import RecherchePaiements from "../../components/payments/RecherchePaiements";
 import Modal from "../../components/ui/Modal";
 import ConfirmDialog from "../../components/ui/ConfirmDialog";
 import StatCard from "../../components/ui/StatCard";
 import SearchableSelect from "../../components/ui/SearchableSelect";
 import { extractApiError } from "../../utils/errors";
 import { t } from "../../i18n";
-import { useSchoolYearScope } from "../../hooks/useSchoolYearScope";
 import { useMoney } from "../../hooks/useMoney";
 import { useAcademy } from "../../context/AcademyContext";
 import {
-  academyNowParts, formatDateTime, paymentDateTimeText, paymentSortValue,
+  academyNowParts, formatDateTime, paymentDateTimeText,
 } from "../../utils/datetime";
-import { ageText } from "../../utils/age";
-
-import { ageColumn, studentOptionLabel } from "../../utils/age";
-import { celluleCsv } from "../../utils/csv";
-function exportCSV(rows, filename) {
-  if (!rows.length) { toast.error(t("Aucune donnée à exporter.")); return; }
-  const headers = Object.keys(rows[0]);
-  const lines = [headers.join(";"), ...rows.map(r => headers.map(h => celluleCsv(r[h])).join(";"))];
-  const blob = new Blob(["\uFEFF" + lines.join("\n")], { type: "text/csv;charset=utf-8;" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a"); a.href = url; a.download = filename;
-  document.body.appendChild(a); a.click();
-  document.body.removeChild(a); URL.revokeObjectURL(url);
-}
+import { studentOptionLabel } from "../../utils/age";
 
 export default function AdminPayments() {
   // P0 : la devise vient de l'académie, jamais d'un symbole codé en dur.
@@ -53,17 +39,10 @@ export default function AdminPayments() {
   };
   const { register, handleSubmit, reset, control } = useForm({ defaultValues: formDefaults() });
 
-  const { data: yearsData } = useQuery({ queryKey: ["years"], queryFn: schoolsAPI.years });
-  const years = yearsData?.data?.results || yearsData?.data || [];
-  // P2 : en mode « Toutes les Académies », aucune année ne peut
-  // représenter les deux académies — voir useSchoolYearScope.
-  const { currentYear: currentYear, yearLabel } = useSchoolYearScope(years);
-  const [filterYear, setFilterYear] = useState("");
-
-  const { data, isLoading } = useQuery({
-    queryKey: ["payments", filterYear || currentYear?.id],
-    queryFn: () => paymentsAPI.list({ school_year: filterYear || currentYear?.id }),
-  });
+  // Recherche, filtres, tri et pagination : components/payments/RecherchePaiements
+  // (calculés par le serveur). Incrémenté après chaque modification pour relire la liste.
+  const [rafraichir, setRafraichir] = useState(0);
+  const relire = () => setRafraichir((n) => n + 1);
   const { data: deletedData, isLoading: deletedLoading } = useQuery({
     queryKey: ["payments-deleted"],
     queryFn: () => paymentsAPI.listDeleted ? paymentsAPI.listDeleted() : paymentsAPI.list({ show_deleted: 1 }),
@@ -77,7 +56,6 @@ export default function AdminPayments() {
     enabled: !!viewItem?.id,
   });
 
-  const payments        = data?.data?.results || data?.data || [];
   const deletedPayments = (deletedData?.data?.results || deletedData?.data || []).filter(p => p.is_deleted);
   const summary         = summaryData?.data || {};
   const students        = studData?.data?.results || studData?.data || [];
@@ -86,18 +64,18 @@ export default function AdminPayments() {
 
   const cancelMut = useMutation({
     mutationFn: ({ id, justification }) => paymentsAPI.cancel(id, justification),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["payments"] }); toast.success(t("Paiement annulé.")); setViewItem(null); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["payments"] }); relire(); toast.success(t("Paiement annulé.")); setViewItem(null); },
     onError: (e) => toast.error(extractApiError(e)),
   });
   const createMut = useMutation({
     mutationFn: paymentsAPI.create,
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["payments"] }); qc.invalidateQueries({ queryKey: ["payments-summary"] }); toast.success(t("Paiement enregistré!")); closeModal(); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["payments"] }); relire(); qc.invalidateQueries({ queryKey: ["payments-summary"] }); toast.success(t("Paiement enregistré!")); closeModal(); },
     onError: (e) => toast.error(extractApiError(e)),
   });
   const deleteMut = useMutation({
     mutationFn: paymentsAPI.delete,
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["payments"] }); qc.invalidateQueries({ queryKey: ["payments-summary"] }); qc.invalidateQueries({ queryKey: ["payments-deleted"] });
+      qc.invalidateQueries({ queryKey: ["payments"] }); relire(); qc.invalidateQueries({ queryKey: ["payments-summary"] }); qc.invalidateQueries({ queryKey: ["payments-deleted"] });
       toast.success(t("Supprimé.")); setDeleteItem(null); setViewItem(null);
     },
   });
@@ -107,78 +85,29 @@ export default function AdminPayments() {
       const url = data?.data?.receipt_url || data?.data?.receipt_file;
       if (url) { toast.success(t("Reçu généré !")); window.open(url, "_blank", "noopener,noreferrer"); }
       else toast.success(t("Reçu généré !"));
-      qc.invalidateQueries({ queryKey: ["payments"] });
+      qc.invalidateQueries({ queryKey: ["payments"] }); relire();
     },
     onError: (e) => toast.error(extractApiError(e)),
   });
   const restoreMut = useMutation({
     mutationFn: paymentsAPI.restore,
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["payments"] }); qc.invalidateQueries({ queryKey: ["payments-summary"] }); qc.invalidateQueries({ queryKey: ["payments-deleted"] }); toast.success(t("Restauré !")); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["payments"] }); relire(); qc.invalidateQueries({ queryKey: ["payments-summary"] }); qc.invalidateQueries({ queryKey: ["payments-deleted"] }); toast.success(t("Restauré !")); },
     onError: (e) => toast.error(extractApiError(e)),
   });
   const bulkDeleteMut = useMutation({
     mutationFn: (ids) => paymentsAPI.bulkDelete(ids),
-    onSuccess: (d) => { qc.invalidateQueries({ queryKey: ["payments"] }); qc.invalidateQueries({ queryKey: ["payments-summary"] }); toast.success(t("{n} élément(s) supprimé(s).", { n: d?.data?.deleted || "" })); },
+    onSuccess: (d) => { qc.invalidateQueries({ queryKey: ["payments"] }); relire(); qc.invalidateQueries({ queryKey: ["payments-summary"] }); toast.success(t("{n} élément(s) supprimé(s).", { n: d?.data?.deleted || "" })); },
     onError: (e) => toast.error(extractApiError(e)),
   });
 
   const closeModal = () => { setModalOpen(false); reset(formDefaults()); };
   const openModal = () => { reset(formDefaults()); setModalOpen(true); };
 
-  /* ── Excel Export ──────────────────────────────────────────────────────── */
-  const exportPayments = () => {
-    const rows = payments.map(p => ({
-      // P2 : sans cette colonne, un export consolidé mélange les recettes
-      // des deux académies sans moyen de les séparer.
-      "Académie":      p.academy_short_name || p.academy_name || "Sans académie",
-      "Référence":     p.reference_number || "",
-      "Élève":         p.student_name || "",
-      "Matricule":     p.student_matricule || "",
-      "Classe":        p.student_class || "",
-      "Type":          p.payment_type_label || p.payment_type || "",
-      "Montant": Number(p.amount || 0).toFixed(2),
-      "Devise": p.currency || "",
-      "Mode":          p.payment_method_label || p.payment_method || "",
-      // Même valeur que la colonne affichée : date ET heure, dans le
-      // fuseau de l'académie (date seule si l'heure n'a jamais été saisie).
-      "Date et heure": paymentDateTimeText(p),
-      "Âge élève":     ageText(p.student_age, p.student_age_status),
-      "Reçu par":      p.received_by_name || "",
-      "Statut":        p.is_confirmed ? t("Confirmé") : t("Annulé"),
-      "Année":         p.school_year_name || "",
-      "Notes":         p.notes || "",
-    }));
-    const yearName = years.find(y => y.id === (filterYear || currentYear?.id))?.name || "toutes";
-    exportCSV(rows, `paiements_${yearName}_${new Date().toISOString().slice(0, 10)}.csv`);
-  };
-
-  const cols = [
-    { key: "ref",    label: t("Référence"),  accessor: "reference_number" },
-    { key: "student",label: t("Élève"),      accessor: "student_name" },
-    ageColumn("student_age"),
-    { key: "class",  label: t("Classe"),     accessor: "student_class" },
-    { key: "type",   label: t("Type"),       render: r => t(r.payment_type_label || r.payment_type || "-") },
-    { key: "amount", label: t("Montant"),    render: r => <span className="font-bold text-success">{money.amountOf(r)}</span> },
-    { key: "method", label: t("Mode"),       render: r => t(r.payment_method_label || r.payment_method || "-") },
-    { key: "date",   label: t("Date et heure"), accessor: "paid_at_display", sortValue: paymentSortValue,
-      render: r => (
-        <span className="whitespace-nowrap" title={r.has_time ? "" : t("Heure non enregistrée pour ce paiement")}>
-          {paymentDateTimeText(r)}
-          {!r.has_time && <span className="ml-1 text-xs text-slate-400">· {t("heure n.e.")}</span>}
-        </span>
-      ) },
-    { key: "status", label: t("Statut"),     render: r => r.is_confirmed
-      ? <span className="text-xs text-success font-medium bg-success/10 px-2 py-0.5 rounded-full">{t("Confirmé")}</span>
-      : <span className="text-xs text-danger font-medium bg-danger/10 px-2 py-0.5 rounded-full">{t("Annulé")}</span> },
-  ];
-
   return (
     <div className="space-y-6">
       <PageHeader title={t("Paiements")} subtitle={t("Gestion des frais scolaires")}
         action={
           <div className="flex gap-2 flex-wrap justify-end">
-            <button onClick={exportPayments} className="btn-secondary flex items-center gap-2 text-sm">
-              <FileSpreadsheet className="w-4 h-4" />{t("Export Excel")}</button>
             <button onClick={() => setShowDeleted(true)}
               className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium bg-danger/10 text-danger hover:bg-danger/20 transition-all">
               <Eye className="w-4 h-4" />{t("Voir supprimés")}</button>
@@ -187,13 +116,6 @@ export default function AdminPayments() {
           </div>
         } />
 
-      <div className="flex items-center gap-3">
-        <label className="text-sm font-semibold text-slate-600">{t("Année :")}</label>
-        <select value={filterYear} onChange={e => setFilterYear(e.target.value)} className="input w-auto text-sm">
-          <option value="">- {t("Actuelle")} ({currentYear?.name || "-"})</option>
-          {years.map(y => <option key={y.id} value={y.id}>{yearLabel(y)}{y.is_current ? " ✓" : ""}</option>)}
-        </select>
-      </div>
 
       {/*
         P1 (juillet 2026) : ces montants viennent tels quels de
@@ -244,29 +166,9 @@ export default function AdminPayments() {
         </div>
       )}
 
-      <div className="card overflow-x-auto">
-        <DataTable
-          columns={cols}
-          data={payments}
-          loading={isLoading}
-          onRowClick={row => setViewItem(row)}
-          selectable
-          onBulkDelete={ids => bulkDeleteMut.mutate(ids)}
-          bulkDeletePending={bulkDeleteMut.isPending}
-          actions={row => (
-            <div className="flex items-center gap-1 justify-end">
-              <button onClick={(e) => { e.stopPropagation(); receiptMut.mutate(row.id); }} title={t("Générer reçu")}
-                className="p-1.5 rounded-lg hover:bg-green-50 text-slate-400 hover:text-success">
-                <Receipt className="w-4 h-4" />
-              </button>
-              <button onClick={(e) => { e.stopPropagation(); setDeleteItem(row); }}
-                className="p-1.5 rounded-lg hover:bg-danger-50 text-slate-400 hover:text-danger">
-                <Trash2 className="w-4 h-4" />
-              </button>
-            </div>
-          )}
-        />
-      </div>
+      <RecherchePaiements rafraichir={rafraichir} onOuvrir={setViewItem}
+        onRecu={(p) => receiptMut.mutate(p.id)} onSupprimer={setDeleteItem}
+        onSupprimerSelection={(ids, fini) => bulkDeleteMut.mutate(ids, { onSuccess: fini })} />
 
       {/* Payment detail modal */}
       {viewItem && (
