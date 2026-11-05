@@ -57,18 +57,60 @@ export function toggleRole(audience, role) {
   return { ...audience, roles };
 }
 
+/**
+ * Champs À / Cc / Cci : listes d'entrées { type: "email" | "user", value, label }.
+ * Une adresse saisie part telle quelle (validée par le serveur) ; un compte choisi
+ * est désigné par son identifiant (le serveur vérifie qu'il est dans l'académie).
+ */
+export const champsVides = () => ({ a: [], cc: [], cci: [] });
+export const MODES = { individuel: "individuel", commun: "commun" };
+
+// Validation de confort (le serveur revalide) : forme local@domaine.tld.
+export const adresseValide = (texte) => /^[^\s@<>(),;:"[\]]+@[^\s@<>(),;:"[\]]+\.[^\s@<>(),;:"[\]]{2,}$/.test(texte);
+
+/** Découpe une saisie (virgules, points-virgules, espaces) en adresses valides et invalides. */
+export function decouperAdresses(texte) {
+  const morceaux = (texte || "").split(/[\s,;]+/).map((x) => x.trim()).filter(Boolean);
+  return {
+    valides: morceaux.filter(adresseValide).map((x) => x.toLowerCase()),
+    invalides: morceaux.filter((x) => !adresseValide(x)),
+  };
+}
+
+export function ajouterEntree(liste, entree) {
+  const cle = (e) => `${e.type}:${String(e.value).toLowerCase()}`;
+  return liste.some((e) => cle(e) === cle(entree)) ? liste : [...liste, entree];
+}
+
 /** Corps de requête attendu par l'API. */
-export function audiencePayload(audience) {
+export function audiencePayload(audience, champs = champsVides(), mode = MODES.individuel) {
+  const valeurs = (liste) => liste.map((e) => (e.type === "user" ? e.value : String(e.value)));
   return {
     roles: audience.roles,
     all_profiles: audience.allProfiles,
     include_ids: audience.include,
     exclude_ids: audience.exclude,
+    adresses: { a: valeurs(champs.a), cc: valeurs(champs.cc), cci: valeurs(champs.cci) },
+    mode,
   };
 }
 
-export function hasAnyRule(audience) {
-  return audience.allProfiles || audience.roles.length > 0 || audience.include.length > 0;
+/** Audience d'un brouillon (format API) → état de l'écran. `comptes` : comptes connus, pour les libellés. */
+export function depuisAudience(api, comptes = []) {
+  const parId = new Map(comptes.map((u) => [u.id, u]));
+  const champ = (liste) => (liste || []).map((v) => (typeof v === "number"
+    ? { type: "user", value: v, label: parId.get(v) ? `${parId.get(v).full_name} <${parId.get(v).email}>` : `#${v}` }
+    : { type: "email", value: v, label: v }));
+  return {
+    audience: { roles: api?.roles || [], allProfiles: Boolean(api?.all_profiles), include: api?.include_ids || [], exclude: api?.exclude_ids || [] },
+    champs: { a: champ(api?.adresses?.a), cc: champ(api?.adresses?.cc), cci: champ(api?.adresses?.cci) },
+    mode: api?.mode === MODES.commun ? MODES.commun : MODES.individuel,
+  };
+}
+
+export function hasAnyRule(audience, champs = champsVides()) {
+  return audience.allProfiles || audience.roles.length > 0 || audience.include.length > 0
+    || champs.a.length > 0 || champs.cc.length > 0 || champs.cci.length > 0;
 }
 
 export function newClientToken() {

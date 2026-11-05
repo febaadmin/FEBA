@@ -218,7 +218,7 @@ def create_delivery(*, purpose, to_email, subject, text_body="", html_body=None,
                     reference="", language="", cc=None, attachments=None, reply_to=None,
                     content=None, initiated_by=None, sensitive=False,
                     status=EmailDelivery.QUEUED, sms=True, sms_user=None, sms_phone=None,
-                    sms_key=None, sms_precheck=None):
+                    sms_key=None, sms_precheck=None, en_tetes_visibles=None):
     """
     Enregistre un envoi (et son contenu) SANS le tenter — et met en file la
     copie SMS de ce message pour ce destinataire (apps/notifications/sms.py).
@@ -238,6 +238,7 @@ def create_delivery(*, purpose, to_email, subject, text_body="", html_body=None,
         subject=(content.subject or subject or "")[:255], language=language or "",
         backend=transport_backend(), transport=current_transport(), smtp_host=smtp_target(),
         content=content, initiated_by=initiated_by, status=status,
+        en_tetes_visibles=dict(en_tetes_visibles or {}),
     )
     if sms:
         from .sms import schedule_for_email
@@ -300,6 +301,7 @@ def resend(delivery, text_body=None, html_body=None, attachments=None, initiated
         entity=delivery.entity, reference=delivery.subject_reference, language=delivery.language,
         cc=delivery.cc_emails, reply_to=delivery.reply_to or None, content=content,
         initiated_by=initiated_by, status=EmailDelivery.PENDING,
+        en_tetes_visibles=delivery.en_tetes_visibles,
         # Le SMS de cet événement existe déjà (envoi d'origine) : un renvoi
         # manuel de l'e-mail n'en produit pas un second.
         sms=False,
@@ -332,6 +334,15 @@ def build_message(delivery, live_bodies=None):
         if blocker:
             raise LookupError(blocker)
         text_body, html_body = content.text_body, content.html_body
+    headers = {TRACKING_HEADER: str(delivery.tracking_id)}
+    # Message commun : en-têtes « To » / « Cc » AFFICHÉS, sans effet sur l'enveloppe
+    # (Django ne remet qu'à `to` + `cc`) : ce destinataire seul reçoit cette copie,
+    # et une copie cachée (Cci) n'apparaît jamais dans les en-têtes des autres.
+    visibles = delivery.en_tetes_visibles or {}
+    if visibles.get("to"):
+        headers["To"] = ", ".join(visibles["to"])
+    if visibles.get("cc"):
+        headers["Cc"] = ", ".join(visibles["cc"])
     message = EmailMultiAlternatives(
         subject=delivery.subject,
         body=text_body or "",
@@ -341,7 +352,7 @@ def build_message(delivery, live_bodies=None):
         to=[delivery.to_email],
         cc=list(delivery.cc_emails or []) or None,
         reply_to=[delivery.reply_to] if delivery.reply_to else None,
-        headers={TRACKING_HEADER: str(delivery.tracking_id)},
+        headers=headers,
     )
     if html_body:
         message.attach_alternative(html_body, "text/html")

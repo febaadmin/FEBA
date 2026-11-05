@@ -97,6 +97,8 @@ def campaign_summary(campaign):
         "skipped_count": campaign.skipped_count,
         "counts": counts,
         "audience": campaign.audience,
+        "body_format": campaign.body_format,
+        "mode": campaign.mode,
         "last_error": campaign.last_error,
         "attachments": [
             {"id": a.pk, "name": a.original_name, "size": a.size, "content_type": a.content_type}
@@ -170,6 +172,14 @@ class MassEmailPreviewView(APIView):
             raise ValidationError({exc.field or "non_field_errors": str(exc)})
         payload = svc.preview_payload(resolution)
         payload["academy"] = _academy_payload(academy)
+        # Aperçu fidèle du message mis en forme : le HTML tel qu'il sera ENVOYÉ (nettoyé ici).
+        if request.data.get("body_format") == EmailCampaign.HTML:
+            from .html_securise import HtmlRefuse, en_texte, nettoyer
+            try:
+                propre = nettoyer(request.data.get("body_html"))
+            except HtmlRefuse as exc:
+                raise ValidationError({"body": str(exc)})
+            payload["html_nettoye"], payload["texte"] = propre, en_texte(propre)
         payload["provider_configured"] = provider_is_configured()
         return Response(payload)
 
@@ -178,11 +188,27 @@ class MassEmailCampaignListView(APIView):
     permission_classes = [IsAuthenticated, IsAdminOrAbove]
 
     def get(self, request):
+        """Envois de l'académie ; `q` (objet, destinataire), `statut`, `du` / `au` (dates d'envoi)."""
+        from django.utils.dateparse import parse_date
         academy = resolve_academy(request)
-        campaigns = (
-            EmailCampaign.objects.filter(academy=academy)
-            .select_related("academy").order_by("-created_at")[:100]
-        )
+        qs = EmailCampaign.objects.filter(academy=academy).select_related("academy", "content")
+        p = request.query_params
+        q = (p.get("q") or "").strip()[:100]
+        if q:
+            qs = qs.filter(Q(subject__icontains=q) | Q(recipients__email__icontains=q)
+                           | Q(recipients__full_name__icontains=q)).distinct()
+        statut = p.get("statut")
+        if statut:
+            if statut not in dict(EmailCampaign.STATUS_CHOICES):
+                raise ValidationError({"statut": "Statut inconnu."})
+            qs = qs.filter(status=statut)
+        for cle, lookup in (("du", "created_at__date__gte"), ("au", "created_at__date__lte")):
+            if p.get(cle):
+                jour = parse_date(p[cle]) if len(p[cle]) == 10 else None
+                if jour is None:
+                    raise ValidationError({cle: "Date invalide (AAAA-MM-JJ)."})
+                qs = qs.filter(**{lookup: jour})
+        campaigns = qs.order_by("-created_at")[:200]
         return Response({"results": [campaign_summary(c) for c in campaigns]})
 
     def post(self, request):
@@ -210,12 +236,31 @@ class MassEmailCampaignListView(APIView):
             attachments = validate_uploads(files)
         except AttachmentError as exc:
             raise ValidationError({"attachments": str(exc)})
+        brouillon = None
+        if data.get("brouillon_id"):
+            from .campaign_models import BrouillonEmail
+            from apps.core.request_text import identifiant
+            brouillon = BrouillonEmail.objects.filter(pk=identifiant(data["brouillon_id"]) or 0, auteur=request.user,
+                                                      academy=academy).first()
+            if brouillon is None:
+                raise ValidationError({"brouillon_id": "Brouillon introuvable."})
+            # Pièces du brouillon (déjà validées au dépôt) + nouvelles pièces jointes.
+            deja = [(pj.nom, pj.lire(), pj.type_mime) for pj in brouillon.pieces.all()]
+            if deja:
+                from .attachments import max_files, max_total_bytes
+                if len(deja) + len(attachments) > max_files():
+                    raise ValidationError({"attachments": f"Au plus {max_files()} pièces jointes par message."})
+                if sum(len(d) for _, d, _ in deja + attachments) > max_total_bytes():
+                    raise ValidationError({"attachments": "Taille totale des pièces jointes dépassée."})
+                attachments = deja + attachments
         try:
             campaign, created = svc.create_campaign(
                 academy=academy, user=request.user,
                 subject=data.get("subject"), body=data.get("body"),
                 audience=audience, client_token=data.get("client_token"),
                 expected_count=data.get("expected_count"), attachments=attachments,
+                body_format=data.get("body_format") or "texte", body_html=data.get("body_html") or "",
+                brouillon=brouillon,
             )
         except svc.AudienceError as exc:
             raise ValidationError({exc.field or "non_field_errors": str(exc)})
@@ -242,9 +287,11 @@ class MassEmailCampaignDetailView(APIView):
         campaign = self.get_campaign(request, pk)
         body = campaign_summary(campaign)
         body["body"] = campaign.body
+        body["body_html"] = campaign.body_html
         body["recipients"] = [
             {
                 "id": r.pk, "user_id": r.user_id, "full_name": r.full_name, "email": r.email,
+                "champ": r.champ, "champ_display": r.get_champ_display(),
                 "role": r.role, "status": r.status, "status_display": r.get_status_display(),
                 "attempts": r.attempts, "error": r.error, "sent_at": r.sent_at,
                 "used_real_provider": bool(r.delivery and r.delivery.used_real_provider),
@@ -264,3 +311,139 @@ class MassEmailRetryFailedView(MassEmailCampaignDetailView):
         body = campaign_summary(campaign)
         body["requeued"] = requeued
         return Response(body)
+
+
+# ── Brouillons et signature ───────────────────────────────────────────
+
+def _brouillon_payload(b):
+    return {
+        "id": b.pk, "objet": b.objet, "corps": b.corps, "corps_html": b.corps_html, "format": b.format,
+        "mode": b.mode, "audience": b.audience, "cree_le": b.cree_le, "modifie_le": b.modifie_le,
+        "pieces": [{"id": p.pk, "nom": p.nom, "taille": p.taille, "type": p.type_mime} for p in b.pieces.all()],
+    }
+
+
+def _remplir_brouillon(b, data):
+    from .campaign_models import BrouillonEmail
+    objet = str(data.get("objet") or "").strip()
+    if len(objet) > 200:
+        raise ValidationError({"objet": "L'objet ne peut pas dépasser 200 caractères."})
+    fmt = data.get("format") or BrouillonEmail._meta.get_field("format").default
+    if fmt not in dict(EmailCampaign.FORMAT_CHOICES):
+        raise ValidationError({"format": "Format inconnu."})
+    corps_html = ""
+    if fmt == EmailCampaign.HTML and (data.get("corps_html") or "").strip():
+        from .html_securise import HtmlRefuse, nettoyer
+        try:
+            corps_html = nettoyer(data["corps_html"])
+        except HtmlRefuse:
+            corps_html = ""          # brouillon vide : accepté, l'envoi le refusera
+    # Les règles et adresses sont validées à l'enregistrement (forme) et revalidées à l'envoi.
+    audience = svc.normalize_audience(data.get("audience") or {})
+    b.objet, b.corps, b.corps_html, b.format = objet, str(data.get("corps") or "")[:50000], corps_html, fmt
+    b.mode, b.audience = audience["mode"], audience
+    return b
+
+
+class BrouillonListeView(APIView):
+    """GET : mes brouillons dans cette académie ; POST : nouveau brouillon."""
+    permission_classes = [IsAuthenticated, IsAdminOrAbove]
+
+    def get(self, request):
+        from .campaign_models import BrouillonEmail
+        academy = resolve_academy(request)
+        qs = BrouillonEmail.objects.filter(auteur=request.user, academy=academy).prefetch_related("pieces")
+        return Response({"results": [_brouillon_payload(b) for b in qs[:100]]})
+
+    def post(self, request):
+        from .campaign_models import BrouillonEmail
+        academy = resolve_academy(request, raw_id=request.data.get("academy_id"))
+        if BrouillonEmail.objects.filter(auteur=request.user).count() >= 100:
+            raise ValidationError({"non_field_errors": "Au plus 100 brouillons : supprimez-en avant d'en créer."})
+        try:
+            b = _remplir_brouillon(BrouillonEmail(academy=academy, auteur=request.user), request.data)
+        except svc.AudienceError as exc:
+            raise ValidationError({exc.field or "non_field_errors": str(exc)})
+        b.save()
+        return Response(_brouillon_payload(b), status=status.HTTP_201_CREATED)
+
+
+class BrouillonDetailView(APIView):
+    """Un brouillon n'est visible et modifiable que par son auteur (404 sinon)."""
+    permission_classes = [IsAuthenticated, IsAdminOrAbove]
+
+    def objet(self, request, pk):
+        from .campaign_models import BrouillonEmail
+        academy = resolve_academy(request)
+        return get_object_or_404(BrouillonEmail, pk=pk, auteur=request.user, academy=academy)
+
+    def get(self, request, pk):
+        return Response(_brouillon_payload(self.objet(request, pk)))
+
+    def patch(self, request, pk):
+        b = self.objet(request, pk)
+        try:
+            _remplir_brouillon(b, {**_brouillon_payload(b), **request.data})
+        except svc.AudienceError as exc:
+            raise ValidationError({exc.field or "non_field_errors": str(exc)})
+        b.save()
+        return Response(_brouillon_payload(b))
+
+    def delete(self, request, pk):
+        b = self.objet(request, pk)
+        for piece in b.pieces.all():
+            piece.fichier.delete(save=False)
+        b.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class BrouillonPiecesView(BrouillonDetailView):
+    """POST : ajoute des pièces jointes (mêmes contrôles qu'à l'envoi) ; DELETE <piece> : retire."""
+
+    def post(self, request, pk):
+        from django.core.files.base import ContentFile
+        from .attachments import AttachmentError, max_files, max_total_bytes, validate_uploads
+        from .campaign_models import PieceJointeBrouillon
+        b = self.objet(request, pk)
+        try:
+            nouvelles = validate_uploads(request.FILES.getlist("attachments"))
+        except AttachmentError as exc:
+            raise ValidationError({"attachments": str(exc)})
+        existantes = list(b.pieces.all())
+        if len(existantes) + len(nouvelles) > max_files():
+            raise ValidationError({"attachments": f"Au plus {max_files()} pièces jointes par message."})
+        if sum(p.taille for p in existantes) + sum(len(d) for _, d, _ in nouvelles) > max_total_bytes():
+            raise ValidationError({"attachments": f"Taille totale supérieure à {max_total_bytes() // (1024 * 1024)} Mo."})
+        for nom, octets, mime in nouvelles:
+            piece = PieceJointeBrouillon(brouillon=b, nom=nom, type_mime=mime, taille=len(octets))
+            piece.fichier.save(nom, ContentFile(octets), save=False)
+            piece.save()
+        b.save(update_fields=["modifie_le"])
+        return Response(_brouillon_payload(b), status=status.HTTP_201_CREATED)
+
+    def delete(self, request, pk, piece_id):
+        b = self.objet(request, pk)
+        piece = get_object_or_404(b.pieces, pk=piece_id)
+        piece.fichier.delete(save=False)
+        piece.delete()
+        return Response(_brouillon_payload(b))
+
+
+class SignatureView(APIView):
+    """Signature personnelle (texte), insérée à la demande dans un message."""
+    permission_classes = [IsAuthenticated, IsAdminOrAbove]
+
+    def get(self, request):
+        from .campaign_models import SignatureEmail
+        sig = SignatureEmail.objects.filter(utilisateur=request.user).first()
+        return Response({"texte": sig.texte if sig else ""})
+
+    def put(self, request):
+        from .campaign_models import SignatureEmail
+        texte = (request.data.get("texte") or "").strip()
+        if len(texte) > 2000:
+            raise ValidationError({"texte": "Signature limitée à 2 000 caractères."})
+        sig, _ = SignatureEmail.objects.get_or_create(utilisateur=request.user)
+        sig.texte = texte
+        sig.save()
+        return Response({"texte": sig.texte})

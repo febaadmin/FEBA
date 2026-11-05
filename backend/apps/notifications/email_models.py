@@ -100,6 +100,11 @@ class EmailDelivery(models.Model):
 
     to_email = models.EmailField()
     cc_emails = models.JSONField(default=list, blank=True)
+    #: En-têtes AFFICHÉS « To » / « Cc » d'un message commun ({"to": [...], "cc": [...]}).
+    #: Ils ne changent PAS les destinataires réels : l'enveloppe ne contient que
+    #: `to_email`. C'est ce qui permet le Cci : un destinataire en copie cachée
+    #: reçoit le message sans jamais figurer dans ces en-têtes.
+    en_tetes_visibles = models.JSONField(default=dict, blank=True)
     from_email = models.EmailField(blank=True)
     reply_to = models.EmailField(blank=True)
     subject = models.CharField(max_length=255)

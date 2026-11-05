@@ -15,7 +15,9 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 vi.mock("../../api", () => ({
   massEmailAPI: {
     options: vi.fn(), recipients: vi.fn(), preview: vi.fn(), campaigns: vi.fn(),
-    create: vi.fn(), campaign: vi.fn(), retryFailed: vi.fn(),
+    create: vi.fn(), campaign: vi.fn(), retryFailed: vi.fn(), signature: vi.fn(), majSignature: vi.fn(),
+    brouillons: vi.fn(), creerBrouillon: vi.fn(), majBrouillon: vi.fn(), supprimerBrouillon: vi.fn(),
+    ajouterPieces: vi.fn(), retirerPiece: vi.fn(),
   },
 }));
 vi.mock("../../context/AcademyContext", () => ({
@@ -51,6 +53,8 @@ beforeEach(() => {
     provider_configured: true, max_recipients: 2000,
   } });
   massEmailAPI.recipients.mockResolvedValue({ data: { results: USERS } });
+  massEmailAPI.signature.mockResolvedValue({ data: { texte: "La direction" } });
+  massEmailAPI.brouillons.mockResolvedValue({ data: { results: [] } });
   massEmailAPI.campaigns.mockResolvedValue({ data: { results: [] } });
   massEmailAPI.preview.mockResolvedValue({ data: {
     count: 2, skipped_count: 0, recipients: [], skipped: [], academy: { name: "FEBA" },
@@ -59,6 +63,8 @@ beforeEach(() => {
 
 async function fillDraft() {
   renderPage();
+  fireEvent.click(await screen.findByTestId("voir-groupes"));
+  fireEvent.click(screen.getByTestId("format-texte"));
   const parents = await screen.findByLabelText(/^Parents/);
   fireEvent.click(parents);
   fireEvent.change(screen.getByLabelText("Objet"), { target: { value: "Réunion" } });
@@ -73,6 +79,7 @@ describe("E-mails groupés", () => {
     expect(await screen.findByText("Envoyer à 2 destinataire(s)")).toBeTruthy();
     expect(massEmailAPI.preview).toHaveBeenCalledWith({
       academy_id: 1, roles: ["parent"], all_profiles: false, include_ids: [], exclude_ids: [],
+      adresses: { a: [], cc: [], cci: [] }, mode: "individuel", body_format: "texte", body: "Lundi 18 h.", body_html: "",
     });
     fireEvent.change(screen.getByLabelText("Objet"), { target: { value: "Réunion modifiée" } });
     expect(screen.queryByText(/Envoyer à/)).toBeNull();
@@ -106,5 +113,66 @@ describe("E-mails groupés", () => {
     fireEvent.click(screen.getByText("Prévisualiser"));
     await screen.findByText("Envoyer à 2 destinataire(s)");
     expect(massEmailAPI.preview).toHaveBeenLastCalledWith(expect.objectContaining({ exclude_ids: [10] }));
+  });
+
+  it("À / Cc / Cci : adresses saisies et membres suggérés, message commun, aperçu HTML nettoyé par le serveur", async () => {
+    massEmailAPI.preview.mockResolvedValue({ data: { count: 3, skipped_count: 0, recipients: [], skipped: [],
+      academy: { name: "FEBA" }, par_champ: { a: 1, cc: 1, cci: 1 }, html_nettoye: "<p>Bonjour <strong>tous</strong></p>", texte: "Bonjour tous" } });
+    renderPage();
+    const a = await screen.findByTestId("champ-a-saisie");
+    fireEvent.change(a, { target: { value: "Externe@Exemple.org; faux" } });
+    fireEvent.keyDown(a, { key: "Enter" });
+    expect(screen.getByRole("alert").textContent).toMatch(/Adresse\(s\) invalide\(s\) : faux/);
+    fireEvent.click(screen.getByTestId("voir-copies"));
+    const cc = screen.getByTestId("champ-cc-saisie");
+    fireEvent.change(cc, { target: { value: "cy" } });
+    fireEvent.click(await screen.findByTestId("champ-cc-suggestion-12"));
+    const cci = screen.getByTestId("champ-cci-saisie");
+    fireEvent.change(cci, { target: { value: "cache@exemple.org" } });
+    fireEvent.keyDown(cci, { key: "," });
+    fireEvent.click(screen.getByTestId("mode-commun"));
+    fireEvent.change(screen.getByLabelText("Objet"), { target: { value: "Conseil" } });
+    const editeur = screen.getByTestId("editeur-html");
+    editeur.innerHTML = "<p>Bonjour <strong>tous</strong></p><script>x()</script>";
+    fireEvent.input(editeur);
+    fireEvent.click(screen.getByTestId("previsualiser"));
+    await screen.findByTestId("apercu-email");
+    expect(massEmailAPI.preview).toHaveBeenLastCalledWith(expect.objectContaining({
+      adresses: { a: ["externe@exemple.org"], cc: [12], cci: ["cache@exemple.org"] }, mode: "commun", body_format: "html",
+    }));
+    expect(screen.getByTestId("apercu-champs").textContent).toMatch(/À : 1 · Cc : 1 · Cci : 1/);
+    // L'aperçu affiche le HTML du SERVEUR (nettoyé), pas celui de l'éditeur.
+    expect(screen.getByTestId("apercu-html").innerHTML).toBe("<p>Bonjour <strong>tous</strong></p>");
+  });
+
+  it("brouillon : enregistrement, pièces jointes envoyées au brouillon, signature insérée", async () => {
+    massEmailAPI.creerBrouillon.mockResolvedValue({ data: { id: 9, pieces: [] } });
+    massEmailAPI.ajouterPieces.mockResolvedValue({ data: { id: 9, pieces: [{ id: 1, nom: "note.pdf", taille: 2048, type: "application/pdf" }] } });
+    renderPage();
+    await screen.findByTestId("champ-a-saisie");
+    fireEvent.click(screen.getByTestId("format-texte"));
+    fireEvent.change(screen.getByLabelText("Objet"), { target: { value: "Sortie" } });
+    fireEvent.change(screen.getByLabelText("Contenu"), { target: { value: "Bonjour" } });
+    await waitFor(() => expect(massEmailAPI.signature).toHaveBeenCalled());
+    await waitFor(() => { fireEvent.click(screen.getByTestId("inserer-signature")); expect(screen.getByLabelText("Contenu").value).toMatch(/-- \nLa direction$/); });
+    const fichier = new File(["%PDF-1.4"], "note.pdf", { type: "application/pdf" });
+    fireEvent.change(screen.getByLabelText("Pièces jointes"), { target: { files: [fichier] } });
+    fireEvent.click(screen.getByTestId("enregistrer-brouillon"));
+    await waitFor(() => expect(massEmailAPI.ajouterPieces).toHaveBeenCalledWith(9, 1, [fichier]));
+    expect(massEmailAPI.creerBrouillon).toHaveBeenCalledWith(1, expect.objectContaining({ objet: "Sortie", format: "texte" }));
+    expect(await screen.findByLabelText("Retirer note.pdf")).toBeTruthy();
+    expect(screen.getByText("Brouillon")).toBeTruthy();
+  });
+
+  it("envoyés : recherche différée et filtre par statut envoyés au serveur", async () => {
+    massEmailAPI.campaigns.mockResolvedValue({ data: { results: [{ id: 3, subject: "Cantine", status: "done", status_display: "Envoyé au fournisseur",
+      created_at: "2026-11-05T10:00:00Z", counts: { sent: 2, failed: 0, retry: 0, rejected: 0 }, skipped_count: 0, attachments: [] }] } });
+    renderPage();
+    fireEvent.click(await screen.findByTestId("onglet-envoyes"));
+    expect(await screen.findByTestId("envoi-3")).toBeTruthy();
+    fireEvent.change(screen.getByTestId("envois-statut"), { target: { value: "failed" } });
+    await waitFor(() => expect(massEmailAPI.campaigns).toHaveBeenLastCalledWith(1, { statut: "failed" }));
+    fireEvent.change(screen.getByTestId("envois-recherche"), { target: { value: "cantine" } });
+    await waitFor(() => expect(massEmailAPI.campaigns).toHaveBeenLastCalledWith(1, { q: "cantine", statut: "failed" }), { timeout: 2000 });
   });
 });
