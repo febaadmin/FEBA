@@ -1,5 +1,5 @@
 /**
- * Écran « E-mails groupés » — garde-fous côté interface.
+ * Écran « Espace d'envoi d'e-mails » — garde-fous côté interface.
  *
  *  1. Pas de bouton d'envoi sans aperçu calculé par le serveur.
  *  2. Toute modification du brouillon invalide l'aperçu.
@@ -71,7 +71,7 @@ async function fillDraft() {
   fireEvent.change(screen.getByLabelText("Contenu"), { target: { value: "Lundi 18 h." } });
 }
 
-describe("E-mails groupés", () => {
+describe("Espace d'envoi d'e-mails", () => {
   it("n'offre l'envoi qu'après un aperçu, et l'invalide si le brouillon change", async () => {
     await fillDraft();
     expect(screen.queryByText(/Envoyer à/)).toBeNull();

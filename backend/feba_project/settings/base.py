@@ -50,6 +50,7 @@ INSTALLED_APPS = [
     'apps.suivi',
     'apps.analytics',
     'apps.evaluations',
+    'apps.boite_mail',
 ]
 
 MIDDLEWARE = [
@@ -375,6 +376,12 @@ CELERY_BEAT_SCHEDULE = {
     },
     # Reprise des envois groupés interrompus (broker indisponible au moment
     # de la création, worker redémarré pendant l'envoi).
+    # Boîte contact@globalfeba.com : synchronisation incrémentale (IMAP).
+    'boite-mail-synchronisation': {
+        'task': 'boite_mail.synchroniser',
+        'schedule': crontab(minute='*/3'),
+        'options': {'expires': 150},
+    },
     'envois-groupes-reprise': {
         'task': 'notifications.process_pending_campaigns',
         'schedule': crontab(minute='*/5'),
@@ -456,6 +463,17 @@ DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='noreply@globalfeba.co
 # Expéditeur des alertes d'erreur de Django (mail_admins). Sans lui, Django
 # écrit depuis « root@localhost », refusé par tout serveur SMTP sérieux.
 SERVER_EMAIL = config('SERVER_EMAIL', default=DEFAULT_FROM_EMAIL)
+
+# Boîte professionnelle (contact@globalfeba.com) lue par IMAP. Hébergée chez Hostinger
+# Email (MX mx1/mx2.hostinger.com) : même compte que l'envoi SMTP. Par défaut, l'hôte
+# IMAP est déduit du serveur SMTP Hostinger ; tout se surcharge par variables
+# d'environnement. Les identifiants restent côté serveur, jamais en base ni en réponse API.
+_IMAP_PAR_DEFAUT = {'smtp.hostinger.com': 'imap.hostinger.com'}.get(EMAIL_HOST.lower(), '')
+MAILBOX_IMAP_HOST = config('MAILBOX_IMAP_HOST', default=_IMAP_PAR_DEFAUT)
+MAILBOX_IMAP_PORT = config('MAILBOX_IMAP_PORT', default=993, cast=int)
+MAILBOX_IMAP_USER = config('MAILBOX_IMAP_USER', default=EMAIL_HOST_USER)
+MAILBOX_IMAP_PASSWORD = config('MAILBOX_IMAP_PASSWORD', default=EMAIL_HOST_PASSWORD)
+MAILBOX_ADDRESS = config('MAILBOX_ADDRESS', default=EMAIL_HOST_USER)
 
 # Expéditeur PROPRE À CHAQUE ACADÉMIE. Un parent de l'académie en ligne ne
 # doit pas recevoir un message venant de l'adresse de l'école de Cotonou :

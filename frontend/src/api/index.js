@@ -805,6 +805,24 @@ export const remindersAPI = {
 };
 
 /* ── Boîte d'envoi et diagnostic SMTP ──────────────────────────────── */
+/**
+ * Boîte professionnelle contact@globalfeba.com (Hostinger, IMAP) : copie synchronisée,
+ * actions appliquées chez le fournisseur. Aucun identifiant de la boîte ne transite ici.
+ */
+export const boiteMailAPI = {
+  etat:        ()          => api.get("/boite-mail/etat/"),
+  messages:    (p)         => api.get("/boite-mail/messages/", { params: p }),
+  message:     (id, images) => api.get(`/boite-mail/messages/${id}/`, { params: images ? { images: 1 } : {} }),
+  action:      (id, action) => api.post(`/boite-mail/messages/${id}/action/`, { action }),
+  actions:     (ids, action) => api.post("/boite-mail/actions/", { ids, action }),
+  piece:       (id)        => api.get(`/boite-mail/pieces/${id}/`, { responseType: "blob" }),
+  envoyer:     (form)      => api.post("/boite-mail/envoyer/", form, { headers: { "Content-Type": "multipart/form-data" } }),
+  synchroniser: ()         => api.post("/boite-mail/synchroniser/"),
+  acces:       ()          => api.get("/boite-mail/acces/"),
+  majAcces:    (d)         => api.put("/boite-mail/acces/", d),
+  journal:     ()          => api.get("/boite-mail/journal/"),
+};
+
 export const outboxAPI = {
   list:       (p)        => api.get("/notifications/outbox/", { params: p }),
   detail:     (id, p)    => api.get(`/notifications/outbox/${id}/`, { params: p }),
