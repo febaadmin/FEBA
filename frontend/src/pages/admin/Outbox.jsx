@@ -75,7 +75,7 @@ function SmsBadge({ sms }) {
   return <div><Badge tone={SMS_TONE[sms.status] || ""}>{label}</Badge></div>;
 }
 
-export default function Outbox() {
+export default function Outbox({ integre = false }) {
   const academyKey = useAcademyKey();
   const [filters, setFilters] = useState({ status: "", purpose: "", to: "", q: "", date_from: "", date_to: "" });
   const [applied, setApplied] = useState(filters);
@@ -97,7 +97,7 @@ export default function Outbox() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title={t("Boîte d'envoi")} subtitle={t("Tous les e-mails envoyés depuis la plateforme, avec leur contenu et leurs pièces jointes")} />
+      {!integre && <PageHeader title={t("Boîte d'envoi")} subtitle={t("Tous les e-mails envoyés depuis la plateforme, avec leur contenu et leurs pièces jointes")} />}
       <SmtpPanel />
 
       <form className="card grid gap-2 sm:grid-cols-3 lg:grid-cols-7 items-end text-sm" onSubmit={apply}>
