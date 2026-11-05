@@ -587,7 +587,14 @@ export const documentTemplatesAPI = {
 
 
 export const conversationsAPI = {
-  list:     ()        => api.get("/messages/conversations/"),
+  // Dossiers personnels, recherche et filtres : dossier, q, non_lus, correspondant, du, au.
+  list:     (p)       => api.get("/messages/conversations/", { params: p }),
+  compteurs: ()       => api.get("/messages/conversations/compteurs/"),
+  correspondants: ()  => api.get("/messages/conversations/correspondants/"),
+  marquer:  (id, d)   => api.post(`/messages/conversations/${id}/marquer/`, d),
+  important: (id, d)  => api.post(`/messages/conversations/${id}/important/`, d),
+  deplacer: (id, d)   => api.post(`/messages/conversations/${id}/deplacer/`, d),
+  supprimerDefinitivement: (id) => api.post(`/messages/conversations/${id}/supprimer_definitivement/`),
   get:      (id)      => api.get(`/messages/conversations/${id}/`),
   create:   (d)       => {
     if (d instanceof FormData) return api.post("/messages/conversations/", d, { headers: { "Content-Type": "multipart/form-data" } });
@@ -599,6 +606,14 @@ export const conversationsAPI = {
   },
   markRead: (id)      => api.put(`/messages/conversations/${id}/mark_read/`),
   unreadCount: ()     => api.get("/messages/conversations/unread_count/"),
+};
+
+// Brouillons de la messagerie interne (privés à leur auteur).
+export const messageDraftsAPI = {
+  list:   ()       => api.get("/messages/brouillons/"),
+  create: (d)      => api.post("/messages/brouillons/", d),
+  update: (id, d)  => api.patch(`/messages/brouillons/${id}/`, d),
+  delete: (id)     => api.delete(`/messages/brouillons/${id}/`),
 };
 
 export const messagesAPI = {
