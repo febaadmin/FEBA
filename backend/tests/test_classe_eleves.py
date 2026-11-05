@@ -132,3 +132,49 @@ class ClasseElevesTests(TestCase):
         StudentEnrollment.objects.create(student=parti, school_year=self.y2, class_obj=self.ce1b)
         self.assertEqual(set(eleves_de_la_classe(self.ce1, self.y2).values_list("first_name", flat=True)), {"Avec", "Sans"})
         self.assertEqual(set(eleves_de_la_classe(self.ce1b, self.y2).values_list("first_name", flat=True)), {"Parti"})
+
+
+class DonneesOrphelinesTests(TestCase):
+    """Désinscription puis réinscription : les notes et paiements de l'année se rattachent de nouveau."""
+
+    def test_reinscription_rattache_les_donnees(self):
+        from apps.grades.models import Grade
+        from apps.payments.models import Payment
+        from apps.subjects.models import Subject
+        a = School.objects.create(name="Orph", address="x", code="ORPH")
+        y = SchoolYear.objects.create(school=a, name="2026-2027", is_current=True, start_date="2026-09-01", end_date="2027-06-30")
+        autre_annee = SchoolYear.objects.create(school=a, name="2025-2026", start_date="2025-09-01", end_date="2026-06-30")
+        e = Student.objects.create(school=a, school_year=y, first_name="O", last_name="T", date_of_birth="2018-01-01")
+        ins = StudentEnrollment.objects.create(student=e, school_year=y)
+        m = Subject.objects.create(school=a, name="Maths", code="M")
+        g = Grade.objects.create(student=e, subject=m, school_year=y, enrollment=ins, period="T1", value=Decimal("12"))
+        g_autre = Grade.objects.create(student=e, subject=m, school_year=autre_annee, period="T1", value=Decimal("9"))
+        p = Payment.objects.create(student=e, school_year=y, enrollment=ins, payment_type="cantine", amount=Decimal("1000"), payment_method="cash")
+        ins.delete()                                                   # « Désinscrire »
+        g.refresh_from_db(); p.refresh_from_db()
+        self.assertIsNone(g.enrollment_id)
+        nouvelle = StudentEnrollment.objects.create(student=e, school_year=y)
+        g.refresh_from_db(); p.refresh_from_db(); g_autre.refresh_from_db()
+        self.assertEqual((g.enrollment_id, p.enrollment_id), (nouvelle.pk, nouvelle.pk))
+        self.assertEqual(g.value, Decimal("12"))                       # aucune valeur modifiée
+        self.assertIsNone(g_autre.enrollment_id)                       # autre année : intacte
+
+    def test_commande_simulation_application_retour(self):
+        from apps.grades.models import Grade
+        from apps.subjects.models import Subject
+        a = School.objects.create(name="Orph2", address="x", code="ORPH2")
+        y = SchoolYear.objects.create(school=a, name="2026-2027", is_current=True, start_date="2026-09-01", end_date="2027-06-30")
+        e = Student.objects.create(school=a, school_year=y, first_name="O", last_name="T", date_of_birth="2018-01-01")
+        ins = StudentEnrollment.objects.create(student=e, school_year=y)
+        g = Grade.objects.create(student=e, subject=Subject.objects.create(school=a, name="M", code="M"), school_year=y, period="T1", value=Decimal("12"))
+        Grade.objects.filter(pk=g.pk).update(enrollment=None)          # état constaté en production
+        sortie = io.StringIO()
+        call_command("rattacher_donnees_inscriptions", stdout=sortie)
+        self.assertIn("notes 1", sortie.getvalue())
+        g.refresh_from_db(); self.assertIsNone(g.enrollment_id)
+        with tempfile.TemporaryDirectory() as d:
+            j = os.path.join(d, "j.json")
+            call_command("rattacher_donnees_inscriptions", appliquer=True, journal=j, stdout=io.StringIO())
+            g.refresh_from_db(); self.assertEqual(g.enrollment_id, ins.pk)
+            call_command("rattacher_donnees_inscriptions", annuler=j, stdout=io.StringIO())
+            g.refresh_from_db(); self.assertIsNone(g.enrollment_id)
