@@ -137,7 +137,8 @@ class BalayageTests(TestCase):
         # s'ouvre à ces rôles doit figurer ici, délibérément.
         commun = {
             "/api/auth/avatar/", "/api/auth/change-password/", "/api/auth/login/", "/api/auth/logout/",
-            "/api/auth/refresh/", "/api/messages/conversations/", "/api/payments/card/checkout/",
+            "/api/auth/refresh/", "/api/messages/conversations/", "/api/messages/brouillons/",
+            "/api/payments/card/checkout/",
             "/api/payments/webhook/stripe/", "/api/user-files/", "/api/website/contact/",
             "/api/website/fha/contact/", "/api/website/fha/enroll/", "/api/website/fha/placement-test/",
             "/api/website/preregistrations/",
