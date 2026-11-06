@@ -145,7 +145,8 @@ export default function DataTable({
               {actions && <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-500">{t("Actions")}</th>}
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100">
+          {/* Changement de page ou de tri : apparition brève (coupée si moins d'animations est demandé). */}
+          <tbody key={`${page}-${sortCol}-${sortDir}`} className="divide-y divide-slate-100 animate-apparition motion-reduce:animate-none">
             {paged.length === 0 ? (
               <tr><td colSpan={colSpanTotal} className="px-4 py-0 whitespace-pre-line"><span className="etat-vide"><Inbox className="w-7 h-7 text-slate-300" aria-hidden="true" />{emptyMessage || t("Aucun résultat")}</span></td></tr>
             ) : paged.map((row, i) => {

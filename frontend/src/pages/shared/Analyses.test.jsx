@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { MemoryRouter } from "react-router-dom";
 import Analyses, { changer, parametres, VIDES } from "./Analyses";
 import { traducteur } from "../../components/analytics/presentation";
 import { setLang } from "../../i18n";
@@ -29,7 +30,7 @@ const ensemble = { annee: { id: 3, nom: "2026-2027" }, bareme: 10, bareme_mixte:
 const AVERTISSEMENT = "Ces chiffres décrivent les notes attribuées et les résultats des élèves, pas la qualité d'un enseignement : le niveau de départ des élèves, l'effectif, la matière, le nombre et le type d'évaluations diffèrent d'une classe à l'autre. Ils ne permettent aucune conclusion sur un enseignant.";
 const profil = (id, nom) => ({ id, nom, classes: ["CE1-A"], matieres: ["Maths"], eleves_evalues: 6, notes: 12, moyenne: 7, ecart_type: 1,
   taux_reussite: 100, repartition: [{ de: 0, a: 2, eleves: 0 }], evolution: [], affectations_sans_note: 0, detail: [] });
-const monter = () => render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><Analyses /></QueryClientProvider>);
+const monter = () => render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><MemoryRouter><Analyses /></MemoryRouter></QueryClientProvider>);
 
 describe("centre de pilotage", () => {
   beforeEach(() => {
@@ -64,11 +65,30 @@ describe("centre de pilotage", () => {
     expect(screen.getByTestId("analyse-limites").textContent).toMatch(/1 élève\(s\) actif\(s\) sans inscription/);
     expect(screen.getByTestId("ens-classes").textContent).toMatch(/2026-2027 · toutes périodes · 1 classes · Unité : moyenne sur 10/);
     expect(screen.getByTestId("ens-progression").textContent).toMatch(/Une seule période notée/);
-    const appels = api.vueEnsemble.mock.calls.length;
-    fireEvent.click(screen.getByTestId("presentation-en"));
-    expect(screen.getByTestId("kpi-inscrits").textContent).toMatch(/Enrolled students78/);
-    expect(screen.getByTestId("analyse-limites").textContent).toMatch(/1 active student\(s\) without an enrolment/);
-    expect(api.vueEnsemble.mock.calls.length).toBe(appels);
+    // Plus de second sélecteur de langue : les actions utiles le remplacent.
+    expect(screen.queryByTestId("presentation-en")).toBeNull();
+    expect(screen.getByTestId("analyse-imprimer")).toBeInTheDocument();
+    expect(screen.getByTestId("analyse-exporter")).toBeInTheDocument();
+  });
+
+  it("actions : lien avec onglet et filtres, relu à l'ouverture ; valeurs inconnues ignorées", async () => {
+    const { lienAnalyse, lireLien } = await import("../../components/analytics/ActionsAnalyse");
+    const VIDES = { annee: "", classe: [], genre: "" };
+    const url = lienAnalyse("https://x/admin/analyses", "classes", { annee: "3", classe: ["5", "6"], genre: "" });
+    expect(url).toBe("https://x/admin/analyses?onglet=classes&filtres=%7B%22annee%22%3A%223%22%2C%22classe%22%3A%5B%225%22%2C%226%22%5D%7D");
+    const lu = lireLien(url.split("?")[1], VIDES, ["ensemble", "classes"]);
+    expect(lu).toEqual({ onglet: "classes", filtres: { annee: "3", classe: ["5", "6"], genre: "" } });
+    expect(lireLien("onglet=pirate&filtres=%7B%22inconnu%22%3A1%2C%22annee%22%3A5%7D", VIDES, ["ensemble"]))
+      .toEqual({ onglet: null, filtres: { annee: "", classe: [], genre: "" } });
+  });
+
+  it("export CSV des tableaux du rapport, avec titres et protection des formules", async () => {
+    const { tableauxEnCsv } = await import("../../utils/exportTableaux");
+    const div = document.createElement("div");
+    div.innerHTML = '<figure><figcaption><p>Moyennes</p></figcaption><table><tr><th>Classe</th><th>Moyenne</th></tr><tr><td>=HACK()</td><td>7,5 / 10</td></tr></table></figure>';
+    const { csv, tableaux } = tableauxEnCsv(div, ["En-tête"]);
+    expect(tableaux).toBe(1);
+    expect(csv).toContain("Moyennes\nClasse;Moyenne\n'=HACK();7,5 / 10");
   });
 
   it("sélection multiple de classes : requête combinée, puce lisible, réinitialisation", async () => {

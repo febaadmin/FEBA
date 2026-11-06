@@ -4,10 +4,12 @@
  */
 import { useState } from "react";
 import { Bar, BarChart, CartesianGrid, Cell, Legend, Line, LineChart, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { BLEU, CIEL, ETAT, MOUVEMENT, VIOLET } from "../../../theme/graphiques";
 import { useReducedMotion } from "framer-motion";
 import { t } from "../../../i18n";
 
-const COULEURS = { suivi: "#2563eb", examens: "#7c3aed", notes: "#0f766e", presents: "#15803d", retards: "#d97706", absences: "#b91c1c" };
+// Système graphique FEBA : séries de la palette, états (présence, retard, absence) en couleurs d'état.
+const COULEURS = { suivi: BLEU, examens: VIOLET, notes: CIEL, presents: ETAT.succes, retards: ETAT.attention, absences: ETAT.alerte, avant: ETAT.neutre };
 const AXE = { tick: { fontSize: 11, fill: "#64748b" }, tickLine: false };
 const INFOBULLE = { contentStyle: { borderRadius: 12, border: "1px solid #e2e8f0", fontSize: 12 }, cursor: { fill: "rgba(148,163,184,.12)" } };
 
@@ -35,7 +37,7 @@ export function Evolution({ lignes }) {
         <YAxis domain={[0, 100]} {...AXE} axisLine={false} />
         <Tooltip {...INFOBULLE} formatter={(v, n) => [`${v} %`, n]} />
         {series.length > 1 && <Legend wrapperStyle={{ fontSize: 12 }} />}
-        {series.map(([k, nom]) => <Line key={k} type="monotone" dataKey={k} name={nom} stroke={COULEURS[k]} strokeWidth={2} connectNulls dot={{ r: 4, stroke: "#fff", strokeWidth: 2, fill: COULEURS[k] }} activeDot={{ r: 6 }} isAnimationActive={!reduit} animationDuration={900} />)}
+        {series.map(([k, nom]) => <Line key={k} type="monotone" dataKey={k} name={nom} stroke={COULEURS[k]} strokeWidth={2} connectNulls dot={{ r: 4, stroke: "#fff", strokeWidth: 2, fill: COULEURS[k] }} activeDot={{ r: 6 }} isAnimationActive={!reduit} animationDuration={MOUVEMENT.duree} />)}
       </LineChart>
     </Cadre>
   );
@@ -156,7 +158,7 @@ export function ComparaisonPeriodes({ comp }) {
         <YAxis domain={[0, 100]} {...AXE} axisLine={false} />
         <Tooltip {...INFOBULLE} formatter={(v, n) => [`${v} %`, n]} />
         <Legend wrapperStyle={{ fontSize: 12 }} />
-        <Bar dataKey="a" name={t("Période 1")} fill="#94a3b8" radius={[4, 4, 0, 0]} maxBarSize={36} isAnimationActive={!reduit} />
+        <Bar dataKey="a" name={t("Période 1")} fill={COULEURS.avant} radius={[4, 4, 0, 0]} maxBarSize={36} isAnimationActive={!reduit} />
         <Bar dataKey="b" name={t("Période 2")} fill={COULEURS.suivi} radius={[4, 4, 0, 0]} maxBarSize={36} isAnimationActive={!reduit} />
       </BarChart>
     </Cadre>

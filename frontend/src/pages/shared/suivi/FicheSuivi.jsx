@@ -6,6 +6,7 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useLocation, useParams } from "react-router-dom";
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { BLEU, useAnimation } from "../../../theme/graphiques";
 import { ArrowDownRight, ArrowRight, ArrowUpRight, Minus, Plus } from "lucide-react";
 import toast from "react-hot-toast";
 import { suiviAPI, subjectsAPI, teachersAPI } from "../../../api";
@@ -53,6 +54,7 @@ function Indicateur({ titre, valeur, nombre, suffixe = "", detail, raison, actio
 }
 
 function Courbe({ titre, lignes, cle, max, unite }) {
+  const anim = useAnimation();
   if (lignes.length < 2) return null;
   return (
     <div>
@@ -64,7 +66,7 @@ function Courbe({ titre, lignes, cle, max, unite }) {
             <XAxis dataKey="date" tick={{ fontSize: 11, fill: "#64748b" }} tickLine={false} axisLine={{ stroke: "#cbd5e1" }} />
             <YAxis domain={[0, max]} tick={{ fontSize: 11, fill: "#64748b" }} tickLine={false} axisLine={false} />
             <Tooltip formatter={(v) => [`${v}${unite}`, titre]} labelStyle={{ color: "#0f172a" }} />
-            <Line type="linear" dataKey={cle} stroke="#1d4ed8" strokeWidth={2} dot={{ r: 4, fill: "#1d4ed8", stroke: "#fff", strokeWidth: 2 }} isAnimationActive={false} />
+            <Line type="linear" dataKey={cle} stroke={BLEU} strokeWidth={2} dot={{ r: 4, fill: BLEU, stroke: "#fff", strokeWidth: 2 }} {...anim} />
           </LineChart>
         </ResponsiveContainer>
       </div>

@@ -331,7 +331,7 @@ function Boite({ etat }) {
           <div className="lg:hidden flex gap-1.5 overflow-x-auto px-3 pt-3" role="tablist">
             {DOSSIERS.map(([v, n]) => (
               <button key={v} type="button" role="tab" aria-selected={dossier === v} onClick={() => changerDossier(v)}
-                className={`whitespace-nowrap rounded-full px-3 py-1 text-xs ${dossier === v ? "bg-feba-navy text-white" : "bg-slate-100 text-slate-600"}`}>{t(n)}</button>
+                className={dossier === v ? "puce-active" : "puce"}>{t(n)}</button>
             ))}
           </div>
           <div className="p-3 space-y-2 border-b border-slate-100">

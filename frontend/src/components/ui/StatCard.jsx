@@ -2,12 +2,13 @@ import { motion } from "framer-motion";
 import { TrendingUp, TrendingDown } from "lucide-react";
 import { clsx } from "clsx";
 
+// Charte FEBA (theme/graphiques.js) : bleu, ciel, or, vert ; rouge réservé à l'alerte.
 const TUILES = {
   primary: "from-primary-500 to-sidebar-2",
-  success: "from-emerald-400 to-emerald-600",
-  accent: "from-amber-400 to-amber-600",
-  danger: "from-red-400 to-red-600",
-  secondary: "from-secondary-500 to-secondary-600",
+  success: "from-[#2E8B57] to-feba-green2",
+  accent: "from-feba-gold to-feba-gold2",
+  danger: "from-red-500 to-red-700",
+  secondary: "from-[#3A9BD9] to-[#1E4FA8]",
 };
 
 export default function StatCard({ title, value, icon: Icon, trend, trendValue, color = "primary", delay = 0 }) {

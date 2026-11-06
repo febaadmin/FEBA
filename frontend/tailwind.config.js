@@ -10,6 +10,9 @@ export default {
         accent: { DEFAULT: "#F59E0B", 500: "#F59E0B" },
         success: { DEFAULT: "#10B981", 50: "#ECFDF5", 500: "#10B981" },
         danger: { DEFAULT: "#EF4444", 50: "#FEF2F2", 500: "#EF4444" },
+        // États (texte et indicateurs) : mêmes valeurs que theme/graphiques.js (ETAT).
+        warning: { DEFAULT: "#B45309", 50: "#FFFBEB", 500: "#F59E0B" },
+        info: { DEFAULT: "#1D4ED8", 50: "#EFF6FF" },
         sidebar: { DEFAULT: "#071D49", 2: "#0E2A63" },
         // Charte du site vitrine FEBA (palette officielle — voir
         // Medias/FEBA-SITE-MEDIAS/00-CHARTE/palette-couleurs.txt)

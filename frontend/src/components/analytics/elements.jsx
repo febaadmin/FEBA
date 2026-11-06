@@ -9,10 +9,14 @@ import { useEffect, useRef, useState } from "react";
 import { ChevronDown, Info, X } from "lucide-react";
 import { useT } from "./presentation";
 
-export const NAVY = "#0E2A63";
-export const OR = "#D89B16";
-export const VERT = "#15803D";
-export const GRIS = "#94A3B8";
+import { BLEU, ETAT, OR as OR_FEBA, VERT as VERT_FEBA } from "../../theme/graphiques";
+import { AideKpi } from "../payments/AideKpi";
+
+// Couleurs issues du système graphique FEBA (theme/graphiques.js) : une seule source.
+export const NAVY = BLEU;
+export const OR = OR_FEBA;
+export const VERT = VERT_FEBA;
+export const GRIS = ETAT.neutre;
 
 export function Tuile({ titre, valeur, detail, aide, testid, accent }) {
   return (
@@ -38,13 +42,13 @@ export function Vide({ raison, testid }) {
  * Carte d'un graphique. `population` : qui est compté (ex. « 30 élèves notés, 600 notes ») ;
  * `contexte` : année et période ; `unite` : unité des valeurs ; `detail` : tableau à la demande.
  */
-export function CarteGraphique({ titre, contexte, population, unite, vide, raisonVide, detail, children, testid, className = "" }) {
+export function CarteGraphique({ titre, description, contexte, population, unite, vide, raisonVide, detail, children, testid, className = "" }) {
   const t = useT();
   const [ouvert, setOuvert] = useState(false);
   return (
     <figure className={`rounded-xl border border-slate-100 bg-white p-3 min-w-0 ${className}`} data-testid={testid}>
       <figcaption className="mb-2">
-        <p className="text-sm font-semibold text-slate-800">{titre}</p>
+        <p className="text-sm font-semibold text-slate-800 flex items-center gap-1.5">{titre}{description && <AideKpi texte={description} />}</p>
         <p className="text-xs text-slate-500">
           {[contexte, population, unite && `${t("Unité")} : ${unite}`].filter(Boolean).join(" · ")}
         </p>
@@ -57,7 +61,9 @@ export function CarteGraphique({ titre, contexte, population, unite, vide, raiso
             <ChevronDown className={`w-3 h-3 transition-transform ${ouvert ? "rotate-180" : ""}`} aria-hidden="true" />
             {ouvert ? t("Masquer le détail") : t("Voir le détail")}
           </button>
-          {ouvert && <div className="mt-2">{detail}</div>}
+          {/* Toujours présent (masqué tant qu'il n'est pas ouvert) : l'export CSV et l'impression du
+              rapport reprennent ainsi chaque tableau de détail, et le contenu reste lisible sans le graphique. */}
+          <div className="mt-2" hidden={!ouvert} data-detail>{detail}</div>
         </div>
       )}
     </figure>

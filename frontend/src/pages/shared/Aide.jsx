@@ -190,7 +190,7 @@ export default function Aide() {
           {[{ id: null, titre: UI.toutes }, ...categories].map((c) => (
             <button key={c.id || "toutes"} type="button" onClick={() => choisir(c.id)} aria-pressed={categorie === c.id}
               data-testid="aide-categorie" data-categorie={c.id || ""}
-              className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-colors ${categorie === c.id ? "bg-feba-navy text-white" : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50"}`}>
+              className={categorie === c.id ? "puce-active" : "puce"}>
               {L(c.titre, lang)}
             </button>
           ))}

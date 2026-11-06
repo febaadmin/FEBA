@@ -2,15 +2,9 @@
 import { readFileSync } from "node:fs";
 import { BASE, connecter, ok } from "../outils.mjs";
 
-// Pages de chaque profil : celles de routes.json ET toutes les entrées des menus réels
-// (lues dans les layouts), pour qu'un nouvel écran soit couvert sans liste à tenir à jour.
-const FIXES = JSON.parse(readFileSync(new URL("../routes.json", import.meta.url)));
-const LAYOUTS = { superadmin: "SuperAdmin", admin: "Admin", teacher: "Teacher", parent: "Parent", student: "Student" };
-const ROUTES = Object.fromEntries(Object.entries(LAYOUTS).map(([role, nom]) => {
-  const source = readFileSync(new URL(`../../../frontend/src/layouts/${nom}Layout.jsx`, import.meta.url), "utf8");
-  const menus = [...source.matchAll(/to:\s*"(\/[^"]+)"/g)].map((m) => m[1]);
-  return [role, [...new Set([...(FIXES[role] || []), ...menus])]];
-}));
+// Pages de chaque profil : routes.json, qui contient toutes les entrées des menus
+// (contrôlé par frontend/src/layouts/menus.test.js : une entrée absente fait échouer le test).
+const ROUTES = JSON.parse(readFileSync(new URL("../routes.json", import.meta.url)));
 const S = "navigation";
 export default async function () {
   for (const role of Object.keys(ROUTES)) {

@@ -245,7 +245,7 @@ export default function RemisesExonerations() {
         <div className="flex flex-wrap items-center gap-2">
           {[["remise", "Remises", BadgePercent], ["exoneration", "Exonérations", ShieldCheck]].map(([v, l, Icone]) => (
             <button key={v} type="button" onClick={() => setGenre(v)} aria-pressed={genre === v} data-testid={`genre-${v}`}
-              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-sm font-medium ${genre === v ? "bg-feba-navy text-white" : "bg-white border border-slate-200 text-slate-600"}`}>
+              className={genre === v ? "onglet-actif" : "onglet"}>
               <Icone className="w-4 h-4" aria-hidden="true" />{t(l)}
             </button>
           ))}

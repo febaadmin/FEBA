@@ -4,7 +4,7 @@
 // badge du menu exact et mis à jour après lecture ; onglet resté ouvert pendant un
 // déploiement (module JavaScript introuvable) : rechargement unique, pas d'écran d'erreur.
 // Backend E2E en locmem : aucun e-mail ne sort ; destinataires fictifs @exemple.org.
-import { API, BASE, api, connecter, jeton, ok, unique } from "../outils.mjs";
+import { API, BASE, api, connecter, jeton, ok, unique, ouvrirMenus } from "../outils.mjs";
 
 const S = "messages_site";
 
@@ -32,8 +32,10 @@ export default async function () {
   const wa = p.getByTestId("repondre-whatsapp");
   await wa.waitFor({ timeout: 10000 });
   ok(S, "WhatsApp : numéro WhatsApp normalisé", (await wa.getAttribute("href") || "").startsWith("https://wa.me/2290196112233?"), await wa.getAttribute("href"));
-  const [l1, l2] = [await wa.boundingBox(), await p.getByTestId("repondre-email").boundingBox()];
-  ok(S, "deux boutons de même hauteur", Math.abs(l1.height - l2.height) < 1, `${l1.height}/${l2.height}`);
+  // Hauteur de mise en page (offsetHeight) : la boîte affichée varie pendant l'animation
+  // d'ouverture de la fenêtre (échelle 0,95 → 1), ce qui faussait la comparaison en CI.
+  const [h1, h2] = [await wa.evaluate((e) => e.offsetHeight), await p.getByTestId("repondre-email").evaluate((e) => e.offsetHeight)];
+  ok(S, "deux boutons de même hauteur", h1 === h2 && h1 >= 40, `${h1}/${h2}`);
   await p.keyboard.press("Escape");
   await p.waitForTimeout(400);
 
@@ -111,6 +113,7 @@ export default async function () {
   let coupes = 0;
   const debutChunk = Date.now();
   await s.route(/\/assets\/Messages-[\w-]+\.js$/, (r) => (coupes++ === 0 ? r.fulfill({ status: 404, body: "" }) : r.continue()));
+  await ouvrirMenus(s);
   await s.getByRole("link", { name: /^Messages/ }).first().click();
   await s.waitForTimeout(4000);
   const ecranErreur = await s.getByText("Une erreur est survenue.").count();

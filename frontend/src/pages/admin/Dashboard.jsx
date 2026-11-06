@@ -1,6 +1,9 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { Area, AreaChart, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { AXE, BLEU, CURSEUR, GRILLE, VERT, useAnimation } from "../../theme/graphiques";
+import Infobulle from "../../components/charts/Infobulle";
+import { AideKpi } from "../../components/payments/AideKpi";
 import { Users, GraduationCap, BookOpen, DollarSign, Megaphone } from "lucide-react";
 import { dashboardAPI, announcementsAPI } from "../../api";
 import StatCard from "../../components/ui/StatCard";
@@ -21,7 +24,16 @@ export default function AdminDashboard() {
   const d = data?.data;
   const announcements = annData?.data?.results || annData?.data || [];
 
-  const chartData = (d?.monthly_revenue || []).map(m => ({ month: t(MONTHS[m.month-1]), montant: m.amount }));
+  const anim = useAnimation();
+  // Cumul : somme des mois successifs, à partir des seuls montants réels renvoyés par le serveur.
+  const mois = d?.monthly_revenue || [];
+  // Série de l'année civile en cours (serveur) : les mois à venir n'ont pas de cumul
+  // (rien n'est extrapolé ; la courbe s'arrête au mois courant).
+  const moisCourant = new Date().getMonth() + 1;
+  const chartData = mois.map((m, i) => ({
+    month: t(MONTHS[m.month - 1]), montant: m.month > moisCourant ? null : m.amount,
+    cumul: m.month > moisCourant ? null : mois.slice(0, i + 1).reduce((s, x) => s + (Number(x.amount) || 0), 0),
+  }));
 
   if (isLoading) return (
     <div className="space-y-6">
@@ -55,30 +67,40 @@ export default function AdminDashboard() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="card">
-          <h3 className="font-semibold text-slate-800 mb-4">
+        <div className="card" data-testid="dash-revenus-mois">
+          <h3 className="font-semibold text-slate-800 mb-1 flex items-center gap-1.5">
             {t("Revenus mensuels")}{money.symbol ? ` (${money.symbol})` : ""}
+            <AideKpi texte={t("Paiements confirmés encaissés chaque mois de l'année scolaire active.")} />
           </h3>
+          <p className="text-xs text-slate-500 mb-3">{t("Montant encaissé par mois")}</p>
           <ResponsiveContainer width="100%" height={220}>
             <BarChart data={chartData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-              <XAxis dataKey="month" tick={{ fontSize: 11 }} />
-              <YAxis tick={{ fontSize: 11 }} tickFormatter={v => `${(v/1000).toFixed(0)}k`} />
-              <Tooltip formatter={v => [money.format(v), t("Montant")]} />
-              <Bar dataKey="montant" fill="#1D4ED8" radius={[6,6,0,0]} />
+              <CartesianGrid {...GRILLE} vertical={false} />
+              <XAxis dataKey="month" tick={AXE} />
+              <YAxis tick={AXE} tickFormatter={v => `${(v/1000).toFixed(0)}k`} width={44} />
+              <Tooltip cursor={CURSEUR} content={<Infobulle format={(v) => money.format(v)} />} />
+              <Bar dataKey="montant" name={t("Montant")} fill={BLEU} radius={[4, 4, 0, 0]} maxBarSize={36} {...anim} />
             </BarChart>
           </ResponsiveContainer>
         </div>
-        <div className="card">
-          <h3 className="font-semibold text-slate-800 mb-4">{t("Évolution des revenus")}</h3>
+        <div className="card" data-testid="dash-revenus-cumul">
+          <h3 className="font-semibold text-slate-800 mb-1 flex items-center gap-1.5">
+            {t("Cumul des encaissements")}
+            <AideKpi texte={t("Somme des montants encaissés depuis le début de la période affichée, mois après mois.")} />
+          </h3>
+          <p className="text-xs text-slate-500 mb-3">{t("Total encaissé depuis le premier mois affiché")}</p>
           <ResponsiveContainer width="100%" height={220}>
-            <LineChart data={chartData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-              <XAxis dataKey="month" tick={{ fontSize: 11 }} />
-              <YAxis tick={{ fontSize: 11 }} />
-              <Tooltip formatter={v => [money.format(v)]} />
-              <Line type="monotone" dataKey="montant" stroke="#1D4ED8" strokeWidth={2} dot={{ fill: "#1D4ED8", r: 4 }} />
-            </LineChart>
+            <AreaChart data={chartData} margin={{ top: 8, right: 12 }}>
+              <defs><linearGradient id="degrade-cumul" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor={VERT} stopOpacity={0.28} /><stop offset="100%" stopColor={VERT} stopOpacity={0.02} />
+              </linearGradient></defs>
+              <CartesianGrid {...GRILLE} vertical={false} />
+              <XAxis dataKey="month" tick={AXE} />
+              <YAxis tick={AXE} tickFormatter={v => `${(v/1000).toFixed(0)}k`} width={44} />
+              <Tooltip content={<Infobulle format={(v) => money.format(v)} />} />
+              <Area type="monotone" dataKey="cumul" name={t("Cumul")} stroke={VERT} strokeWidth={2} fill="url(#degrade-cumul)"
+                dot={{ r: 3, strokeWidth: 2, fill: "#fff" }} activeDot={{ r: 5 }} {...anim} />
+            </AreaChart>
           </ResponsiveContainer>
         </div>
       </div>

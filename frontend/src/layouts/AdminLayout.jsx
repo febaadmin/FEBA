@@ -1,7 +1,6 @@
-import { NavLink } from "react-router-dom";
+
 import { useState, useEffect, useRef } from "react";
-import {
-  BarChart3, Star, Stamp, FileBarChart, LayoutDashboard, Users, GraduationCap, UserCheck, BookOpen, ClipboardList, DollarSign, Calendar, FileText, MessageSquare, Megaphone, Settings, LogOut, School, Menu, X, UserCog, Layers, FolderOpen, ClipboardCheck, CircleHelp, ListTree, Video, Globe, CreditCard, Award, Mail, BellRing, Inbox, TrendingUp, ReceiptText, Wallet } from "lucide-react";
+import { LogOut, Menu, X } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
 import AcademyLogo from "../components/AcademyLogo";
 import AcademyName from "../components/AcademyName";
@@ -13,52 +12,12 @@ import { useNonLusMessagerie } from "../hooks/useNonLusMessagerie";
 import NotificationBell from "../components/NotificationBell";
 import LanguageSwitcher from "../components/ui/LanguageSwitcher";
 import { t } from "../i18n";
+import MenuLateral from "../components/navigation/MenuLateral";
+import { useEchap } from "../hooks/useEchap";
+import { MENU_ADMIN } from "./menus";
 import { useEntityContext } from "../hooks/useEntityContext";
 import EntitySwitcher from "../components/EntitySwitcher";
 import AcademyScopedOutlet from "../components/AcademyScopedOutlet";
-
-const nav = [
-  { label: "Tableau de bord", icon: LayoutDashboard, to: "/admin/dashboard" },
-  { label: "Élèves",          icon: GraduationCap,   to: "/admin/students" },
-  { label: "Enseignants",     icon: UserCheck,        to: "/admin/teachers" },
-  { label: "Parents",         icon: Users,            to: "/admin/parents" },
-  { label: "Inscriptions",    icon: ClipboardCheck, CircleHelp,   to: "/admin/enrollments" },
-  { label: "Classes",         icon: BookOpen,         to: "/admin/classes" },
-  { label: "Niveaux",         icon: Layers,           to: "/admin/levels" },
-  { label: "Notes",           icon: ClipboardList,    to: "/admin/grades" },
-  { label: "Bulletins",       icon: FileText,         to: "/admin/bulletins" },
-  { label: "Centre d'analyse", icon: BarChart3,       to: "/admin/analyses" },
-  { label: "Appréciations",   icon: Star,             to: "/admin/appreciations" },
-  { label: "Absences",        icon: Calendar,         to: "/admin/attendance" },
-  { label: "Emploi du temps", icon: Calendar,         to: "/admin/schedule" },
-  // Fonctionnalité conditionnelle : réservée aux entités « académie en
-  // ligne » (FEBA FHA). Masquée pour FEBA — et refusée par l\'API.
-  { label: "Salles virtuelles", icon: Video,          to: "/admin/virtual", feature: "virtual_classrooms" },
-  { label: "Devoirs",         icon: BookOpen,         to: "/admin/homework" },
-  { label: "Paiements",       icon: DollarSign,       to: "/admin/payments" },
-  { label: "Transactions carte", icon: CreditCard, to: "/admin/card-transactions" },
-  { label: "Tarifs et échéances", icon: ReceiptText, to: "/admin/tarifs" },
-  { label: "Situation financière", icon: Wallet, to: "/admin/situation-financiere" },
-  { label: "Relances de paiement", icon: BellRing, to: "/admin/payment-reminders" },
-  { label: "Documents officiels", icon: Award, to: "/admin/official-documents" },
-  { label: "Gabarits des documents", icon: Stamp, to: "/admin/document-templates" },
-  { label: "Messages",        icon: MessageSquare,    to: "/admin/messages" },
-  { label: "Espace d'envoi d'e-mails", icon: Mail, to: "/admin/emails" },
-  { label: "Boîte mail contact", icon: Inbox, to: "/admin/outbox" },
-  { label: "Annonces",        icon: Megaphone,        to: "/admin/announcements" },
-  { label: "Utilisateurs",    icon: UserCog,          to: "/admin/users" },
-  { label: "Fichiers",         icon: FolderOpen,       to: "/admin/user-files" },
-  { label: "Admissions en ligne", icon: ClipboardList, to: "/admin/fha-admissions", feature: "online_admissions" },
-  { label: "Suivi pédagogique", icon: TrendingUp, to: "/admin/suivi", feature: "suivi_pedagogique" },
-  { label: "Compétences", icon: ListTree, to: "/admin/suivi/referentiels", feature: "suivi_pedagogique" },
-  { label: "Examens et évaluations", icon: ClipboardCheck, CircleHelp, to: "/admin/evaluations", feature: "evaluations_en_ligne" },
-  { label: "Aide", icon: CircleHelp, to: "/admin/aide" },
-  { label: "Rapports mensuels", icon: FileBarChart, to: "/admin/monthly-reports", feature: "monthly_reports" },
-  { label: "Site vitrine",     icon: Globe,            to: "/admin/website" },
-  { label: "Branding & Logo",  icon: School,           to: "/admin/branding" },
-  { label: "Paramètres",      icon: Settings,         to: "/admin/settings" },
-  { label: "Mon profil",      icon: UserCog,          to: "/admin/profile" },
-];
 
 // Responsive: start open on desktop, closed on mobile
 function useIsMobile() {
@@ -81,7 +40,6 @@ export default function AdminLayout() {
   // protection réelle est côté serveur (permission HasEntityFeature),
   // qui refuse l'endpoint même si l'URL est saisie à la main.
   const { hasFeature } = useEntityContext();
-  const visibleNav = nav.filter((item) => isNavItemVisible(item, { hasFeature }));
 
   const isMobile = useIsMobile();
   const [sidebarOpen, setSidebarOpen] = useState(!isMobile);
@@ -93,13 +51,13 @@ export default function AdminLayout() {
     else setSidebarOpen(true);
   }, [isMobile]);
 
-
   const msgUnread = useNonLusMessagerie(user?.id);
-
 
   const closeSidebarOnMobile = () => {
     if (isMobile) setSidebarOpen(false);
   };
+  // Téléphone : Échap ferme le menu ouvert.
+  useEchap(isMobile && sidebarOpen, () => setSidebarOpen(false));
 
   return (
     <div className="flex h-screen fond-app overflow-hidden">
@@ -140,22 +98,7 @@ export default function AdminLayout() {
                 </button>
               )}
             </div>
-            <nav className="flex-1 p-3 overflow-y-auto space-y-0.5">
-              {visibleNav.map(item => (
-                <NavLink key={item.to} to={item.to} end={item.to.endsWith("/suivi")}
-                  onClick={closeSidebarOnMobile}
-                  className={({ isActive }) => (isActive ? "nav-item-actif" : "nav-item")}>
-                  <item.icon className="w-4 h-4 shrink-0" />
-                  <span className="truncate">{t(item.label)}</span>
-                  {/* Message badge on nav item */}
-                  {item.to === "/admin/messages" && msgUnread > 0 && (
-                    <span data-testid="badge-messages-menu" aria-label={t("{n} conversation(s) non lue(s)", { n: msgUnread })} className="ml-auto w-5 h-5 bg-danger text-white text-[10px] rounded-full flex items-center justify-center font-bold shrink-0">
-                      {msgUnread > 9 ? "9+" : msgUnread}
-                    </span>
-                  )}
-                </NavLink>
-              ))}
-            </nav>
+            <MenuLateral menu={MENU_ADMIN} profil="admin" visible={(item) => isNavItemVisible(item, { hasFeature })} badges={{ messages: msgUnread }} onNavigate={closeSidebarOnMobile} />
             <div className="p-3 border-t border-white/10">
               <div className="flex items-center gap-2 px-4 py-2 mb-1">
                 <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-white text-xs font-bold shrink-0">

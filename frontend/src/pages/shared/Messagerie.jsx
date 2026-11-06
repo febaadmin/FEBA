@@ -497,7 +497,7 @@ export default function Messagerie() {
           <div className="lg:hidden flex gap-1.5 overflow-x-auto px-3 pt-3 pb-1" role="tablist" aria-label={t("Dossiers")}>
             {DOSSIERS.map(([v, n]) => (
               <button key={v} type="button" role="tab" aria-selected={dossier === v} onClick={() => changerDossier(v)}
-                className={`whitespace-nowrap rounded-full px-3 py-1 text-xs ${dossier === v ? "bg-feba-navy text-white" : "bg-slate-100 text-slate-600"}`}>
+                className={dossier === v ? "puce-active" : "puce"}>
                 {t(n)}{badge[v] > 0 ? ` (${badge[v]})` : ""}
               </button>
             ))}
