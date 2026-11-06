@@ -132,7 +132,8 @@ def _liste(valeurs):
     return propres
 
 
-def envoyer(user, *, a, cc=(), cci=(), sujet, texte="", html="", fichiers=(), origine=None, mode="nouveau"):
+def envoyer(user, *, a, cc=(), cci=(), sujet, texte="", html="", fichiers=(), origine=None, mode="nouveau",
+            message_site=None, controle_droits=True):
     """
     Envoi depuis l'adresse officielle (nouveau, répondre, répondre à tous, transférer).
     Passe par le journal d'envoi FEBA (mailer), puis la copie est déposée dans le dossier
@@ -141,7 +142,9 @@ def envoyer(user, *, a, cc=(), cci=(), sujet, texte="", html="", fichiers=(), or
     from apps.notifications.attachments import AttachmentError, validate_uploads
     from apps.notifications.html_securise import HtmlRefuse, en_texte, nettoyer
     from apps.notifications.mailer import build_message, create_delivery, deliver
-    if not droits(user)["envoyer"]:
+    # `controle_droits=False` : l'appelant a déjà vérifié un droit équivalent (réponse à un
+    # message du site vitrine que l'utilisateur est autorisé à consulter).
+    if controle_droits and not droits(user)["envoyer"]:
         raise ActionRefusee("Vous n'avez pas le droit d'écrire depuis l'adresse officielle.")
     a, cc, cci = _liste(a), _liste(cc), _liste(cci)
     if not a:
@@ -181,7 +184,9 @@ def envoyer(user, *, a, cc=(), cci=(), sujet, texte="", html="", fichiers=(), or
         expediteur_email=configuration()["adresse"] or (envoi.from_email or ""), a=[{"nom": "", "email": e} for e in a],
         cc=[{"nom": "", "email": e} for e in cc], cci=[{"nom": "", "email": e} for e in cci],
         date=envoi.sent_at or timezone.now(), texte=texte, html=html, extrait=re.sub(r"\s+", " ", texte)[:300],
-        lu=True, envoi=envoi, statut_envoi=envoi.status, origine="boite_contact", nb_pieces=len(pieces),
+        lu=True, envoi=envoi, statut_envoi=envoi.status,
+        origine="site_vitrine" if message_site is not None else "boite_contact", nb_pieces=len(pieces),
+        message_site=message_site, envoye_par=user,
         in_reply_to=(entetes.get("extra") or {}).get("In-Reply-To", ""),
     )
     if envoi.status == envoi.SENT:

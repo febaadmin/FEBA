@@ -220,7 +220,7 @@ function Fil({ id, onRetour, onOuvrir }) {
   useEffect(() => {
     if (fil && fil.unread_count > 0 && lu.current !== `${id}:${fil.nb_messages}`) {
       lu.current = `${id}:${fil.nb_messages}`;
-      conversationsAPI.markRead(id).then(() => qc.invalidateQueries({ queryKey: ["messagerie", "liste"] })).catch(() => {});
+      conversationsAPI.markRead(id).then(() => qc.invalidateQueries({ queryKey: ["messagerie"] })).catch(() => {});
     }
   }, [fil, id, qc]);
   useEffect(() => { fin.current?.scrollIntoView?.({ block: "end" }); }, [fil?.messages?.length]);

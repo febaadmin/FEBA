@@ -17,6 +17,7 @@ from django.utils.decorators import method_decorator
 from django_ratelimit.decorators import ratelimit
 from rest_framework import generics, status, viewsets
 from rest_framework.decorators import action
+from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.permissions import AllowAny, IsAuthenticated
 
 from apps.core.csv_sur import cellule
@@ -204,10 +205,16 @@ class AdminContactMessageViewSet(viewsets.ModelViewSet):
     """
     permission_classes = [IsAuthenticated, IsAdminOrAbove]
     serializer_class = ContactMessageAdminSerializer
-    http_method_names = ['get', 'patch', 'delete', 'head', 'options']
+    # POST n'est ouvert QUE pour l'action « reponses » : la création d'un message
+    # depuis l'administration reste refusée (create ci-dessous).
+    http_method_names = ['get', 'post', 'patch', 'delete', 'head', 'options']
+
+    def create(self, request, *args, **kwargs):
+        return Response({"detail": "Méthode non autorisée."}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
 
     def get_queryset(self):
-        qs = ContactMessage.objects.select_related('entity').all()
+        from django.db.models import Count
+        qs = ContactMessage.objects.select_related('entity').annotate(nb_reponses_annote=Count('reponses_email')).order_by('-created_at', '-pk')
         school = get_request_school(self.request)
         if school is not None:
             return qs.filter(entity=school)
@@ -219,6 +226,49 @@ class AdminContactMessageViewSet(viewsets.ModelViewSet):
                 return qs.filter(entity__code=entity_code)
             return qs
         return qs.none()
+
+
+    @action(detail=True, methods=["get", "post"], url_path="reponses",
+            parser_classes=[MultiPartParser, FormParser, JSONParser])
+    def reponses(self, request, pk=None):
+        """
+        GET  : réponses e-mail déjà envoyées depuis FEBA pour ce message (traçabilité).
+        POST : répondre DEPUIS FEBA (adresse officielle, service d'envoi existant) —
+               {a[], cc[], cci[], sujet, texte | html, attachments[]}.
+
+        Accès : celui du message lui-même (queryset filtré par académie : 404 sinon).
+        Statut renvoyé : 201 seulement si le serveur d'envoi a ACCEPTÉ le message ;
+        202 s'il est en nouvel essai ; jamais « envoyé » sans acceptation.
+        """
+        from apps.boite_mail import services as boite
+        from apps.boite_mail.models import MessageMail
+        contact = self.get_object()
+        if request.method == "GET":
+            return Response([_reponse_site(m) for m in MessageMail.objects.filter(message_site=contact)
+                             .select_related("envoi", "envoye_par").order_by("-date")])
+        data = request.data
+        liste = (lambda cle: data.getlist(cle)) if hasattr(data, "getlist") else (lambda cle: data.get(cle) or [])
+        try:
+            msg, envoi = boite.envoyer(request.user, a=liste("a"), cc=liste("cc"), cci=liste("cci"),
+                                       sujet=data.get("sujet"), texte=data.get("texte") or "", html=data.get("html") or "",
+                                       fichiers=request.FILES.getlist("attachments"), mode="nouveau",
+                                       message_site=contact, controle_droits=False)
+        except boite.ActionRefusee as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        if not contact.is_read:
+            contact.is_read = True
+            contact.save(update_fields=["is_read"])
+        accepte = envoi.status in (envoi.SENT, envoi.ACCEPTED)
+        return Response(_reponse_site(msg), status=status.HTTP_201_CREATED if accepte else status.HTTP_202_ACCEPTED)
+
+
+def _reponse_site(m):
+    envoi = m.envoi
+    return {"id": m.pk, "date": m.date, "a": [p.get("email") for p in m.a], "cc": [p.get("email") for p in m.cc],
+            "sujet": m.sujet, "texte": m.texte, "statut": envoi.status if envoi else m.statut_envoi,
+            "statut_libelle": envoi.get_status_display() if envoi else "",
+            "erreur": (envoi.last_error[:300] if envoi and envoi.status not in (envoi.SENT, envoi.ACCEPTED) else ""),
+            "par": m.envoye_par.get_full_name() if m.envoye_par else "", "nb_pieces": m.nb_pieces}
 
 
 class AdminPreRegistrationViewSet(viewsets.ModelViewSet):

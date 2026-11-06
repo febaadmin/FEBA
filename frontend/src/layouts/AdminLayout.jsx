@@ -8,10 +8,11 @@ import AcademyName from "../components/AcademyName";
 import { safeInternalPath } from "../utils/safePath";
 import { isNavItemVisible } from "./navFeatures";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { notificationsAPI, conversationsAPI } from "../api";
+import { notificationsAPI } from "../api";
 import { motion, AnimatePresence } from "framer-motion";
 import { clsx } from "clsx";
 import { useAuthStore } from "../store/authStore";
+import { useNonLusMessagerie, usePretPourDonnees } from "../hooks/useNonLusMessagerie";
 import LanguageSwitcher from "../components/ui/LanguageSwitcher";
 import { t } from "../i18n";
 import { useEntityContext } from "../hooks/useEntityContext";
@@ -97,10 +98,12 @@ export default function AdminLayout() {
     else setSidebarOpen(true);
   }, [isMobile]);
 
+  const pret = usePretPourDonnees();
   const { data: notifData, refetch: refetchCount } = useQuery({
     queryKey: ["notif-count"],
     queryFn: notificationsAPI.unreadCount,
     refetchInterval: 30000,
+    enabled: pret,
   });
   const { data: notifListData, refetch: refetchList } = useQuery({
     queryKey: ["notif-list"],
@@ -112,8 +115,7 @@ export default function AdminLayout() {
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["notif-count"] }); qc.invalidateQueries({ queryKey: ["notif-list"] }); },
   });
 
-  const { data: msgCountData } = useQuery({ queryKey: ["msg-count-a"], queryFn: conversationsAPI.unreadCount, refetchInterval: 15000 });
-  const msgUnread = msgCountData?.data?.count || 0;
+  const msgUnread = useNonLusMessagerie(user?.id);
   const unread = notifData?.data?.count || 0;
   const notifications = notifListData?.data?.results || notifListData?.data || [];
 
@@ -175,7 +177,7 @@ export default function AdminLayout() {
                   <span className="truncate">{t(item.label)}</span>
                   {/* Message badge on nav item */}
                   {item.to === "/admin/messages" && msgUnread > 0 && (
-                    <span className="ml-auto w-5 h-5 bg-danger text-white text-[10px] rounded-full flex items-center justify-center font-bold shrink-0">
+                    <span data-testid="badge-messages-menu" aria-label={t("{n} conversation(s) non lue(s)", { n: msgUnread })} className="ml-auto w-5 h-5 bg-danger text-white text-[10px] rounded-full flex items-center justify-center font-bold shrink-0">
                       {msgUnread > 9 ? "9+" : msgUnread}
                     </span>
                   )}

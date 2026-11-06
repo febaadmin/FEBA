@@ -203,6 +203,9 @@ export const websiteAdminAPI = {
   contactMessages: ()     => api.get("/website/admin/contact-messages/", { params: BIG }),
   updateContact: (id, d)  => api.patch(`/website/admin/contact-messages/${id}/`, d),
   deleteContact: (id)     => api.delete(`/website/admin/contact-messages/${id}/`),
+  // Réponse par e-mail DEPUIS FEBA (adresse officielle) et historique des réponses.
+  reponsesContact: (id)   => api.get(`/website/admin/contact-messages/${id}/reponses/`),
+  repondreContact: (id, form) => api.post(`/website/admin/contact-messages/${id}/reponses/`, form, { headers: { "Content-Type": "multipart/form-data" } }),
   preregistrations: ()    => api.get("/website/admin/preregistrations/", { params: BIG }),
 
   // ── FEBA French Heritage Academy (P2) ─────────────────────────────────
@@ -661,6 +664,7 @@ export const notificationsAPI = {
 
 // V8 — Incidents techniques (super administrateur uniquement)
 export const incidentsAPI = {
+  signalerInterface: (d) => api.post("/incidents/frontend/", d),
   list:    (p)      => api.get("/incidents/", { params: p }),
   detail:  (id)     => api.get(`/incidents/${id}/`),
   stats:   ()       => api.get("/incidents/stats/"),

@@ -1,11 +1,12 @@
 import { NavLink, useNavigate } from "react-router-dom";
+import { useNonLusMessagerie, usePretPourDonnees } from "../hooks/useNonLusMessagerie";
 import { BarChart3, LayoutDashboard, BookOpen, ClipboardList, Calendar, FileText, MessageSquare, User, LogOut, School, Menu, X, Bell, Megaphone, Video, TrendingUp, ClipboardCheck, CircleHelp, ListTree } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
 import AcademyLogo from "../components/AcademyLogo";
 import AcademyName from "../components/AcademyName";
 import { safeInternalPath } from "../utils/safePath";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { notificationsAPI, conversationsAPI } from "../api";
+import { notificationsAPI } from "../api";
 import { clsx } from "clsx";
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -69,9 +70,9 @@ export default function TeacherLayout() {
     else setOpen(true);
   }, [isMobile]);
 
-  const { data: notifData } = useQuery({ queryKey: ["notif-count-t"], queryFn: notificationsAPI.unreadCount, refetchInterval: 30000 });
-  const { data: msgCountData } = useQuery({ queryKey: ["msg-count-t"], queryFn: conversationsAPI.unreadCount, refetchInterval: 15000 });
-  const msgUnread = msgCountData?.data?.count || 0;
+  const pret = usePretPourDonnees();
+  const { data: notifData } = useQuery({ queryKey: ["notif-count-t"], queryFn: notificationsAPI.unreadCount, refetchInterval: 30000, enabled: pret });
+  const msgUnread = useNonLusMessagerie(user?.id);
   const { data: notifListData } = useQuery({ queryKey: ["notif-list-t"], queryFn: notificationsAPI.list, enabled: notifOpen });
   const markAllMut = useMutation({ mutationFn: notificationsAPI.markAllRead, onSuccess: () => { qc.invalidateQueries({ queryKey: ["notif-count-t"] }); qc.invalidateQueries({ queryKey: ["notif-list-t"] }); } });
   const unread = notifData?.data?.count || 0;
@@ -117,7 +118,7 @@ export default function TeacherLayout() {
                   <span className="truncate">{t(item.label)}</span>
                   {/* FIX: message unread badge on nav item */}
                   {item.to === "/teacher/messages" && msgUnread > 0 && (
-                    <span className="ml-auto w-5 h-5 bg-danger text-white text-[10px] rounded-full flex items-center justify-center font-bold shrink-0">
+                    <span data-testid="badge-messages-menu" aria-label={t("{n} conversation(s) non lue(s)", { n: msgUnread })} className="ml-auto w-5 h-5 bg-danger text-white text-[10px] rounded-full flex items-center justify-center font-bold shrink-0">
                       {msgUnread > 9 ? "9+" : msgUnread}
                     </span>
                   )}

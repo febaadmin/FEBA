@@ -1,6 +1,7 @@
 import { Component } from "react";
 import { AlertTriangle, RotateCcw, Home } from "lucide-react";
 import { tBoth } from "../i18n";
+import { estErreurChargementModule, rechargerUneFois, signalerErreurInterface } from "../utils/versionPerimee";
 
 /**
  * Error Boundary global — filet de sécurité contre les pages blanches.
@@ -27,9 +28,15 @@ export default class ErrorBoundary extends Component {
   componentDidCatch(error, info) {
     // Toujours tracer la cause racine — jamais silencieux.
     console.error("[ErrorBoundary] Erreur de rendu interceptée :", error, info?.componentStack);
+    const perimee = estErreurChargementModule(error);
+    signalerErreurInterface(perimee ? "chunk" : "rendu", error);
+    // Nouvelle version déployée pendant que l'onglet était ouvert : recharger une fois.
+    if (perimee) rechargerUneFois();
   }
 
   handleRetry = () => {
+    // Un module introuvable ne réapparaîtra pas sans recharger la page.
+    if (estErreurChargementModule(this.state.error)) { window.location.reload(); return; }
     this.setState({ error: null });
   };
 
@@ -51,7 +58,9 @@ export default class ErrorBoundary extends Component {
             {tBoth("Une erreur est survenue.")}
           </h1>
           <p className="text-sm text-slate-500 mb-6">
-            {tBoth("La page n'a pas pu s'afficher. Vous pouvez réessayer ou revenir à l'accueil.")}
+            {estErreurChargementModule(this.state.error)
+              ? tBoth("Une nouvelle version de FEBA a été mise en ligne. Rechargez la page pour continuer.")
+              : tBoth("La page n'a pas pu s'afficher. Vous pouvez réessayer ou revenir à l'accueil.")}
           </p>
           {import.meta.env.DEV && (
             <pre className="text-left text-xs bg-slate-50 border border-slate-200 rounded-xl p-3 mb-6 overflow-x-auto text-red-600 max-h-40">

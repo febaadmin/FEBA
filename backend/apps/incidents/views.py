@@ -101,3 +101,41 @@ class TechnicalIncidentViewSet(viewsets.ModelViewSet):
         incident = self.get_object()
         changer_statut(incident, "reopened", request.user)
         return Response(self.get_serializer(incident).data, status=status.HTTP_200_OK)
+
+
+class ErreurInterface(Exception):
+    """Erreur remontée par l'interface (navigateur) — jamais levée côté serveur."""
+
+
+class SignalementInterfaceView(viewsets.ViewSet):
+    """POST /api/incidents/frontend/ — tout utilisateur connecté.
+
+    Trace côté serveur les erreurs d'affichage (page d'erreur, module JavaScript
+    introuvable après un déploiement…), sans rien renvoyer d'autre qu'un accusé.
+    Limité à 20 signalements par heure et par compte ; texte assaini et tronqué ;
+    dédoublonné par l'empreinte habituelle des incidents.
+    """
+    permission_classes = [IsAuthenticated]
+    TYPES = {"chunk": "Module de l'interface introuvable (version périmée)", "rendu": "Erreur d'affichage"}
+
+    def create(self, request):
+        from django.core.cache import cache
+        from .services import report_incident
+        cle = f"incident-front:{request.user.pk}"
+        n = cache.get(cle, 0)
+        if n >= 20:
+            return Response({"enregistre": False}, status=status.HTTP_429_TOO_MANY_REQUESTS)
+        cache.set(cle, n + 1, 3600)
+        if not isinstance(request.data, dict):
+            return Response({"detail": "Objet JSON attendu."}, status=status.HTTP_400_BAD_REQUEST)
+        genre = request.data.get("type")
+        genre = genre if isinstance(genre, str) and genre in self.TYPES else "rendu"
+        message = text_field(request.data, "message")[:500]
+        route = text_field(request.data, "route")[:200]
+        incident = report_incident(
+            # Version périmée : un seul incident regroupé (le nom du fichier change à
+            # chaque déploiement et ne doit pas multiplier les alertes).
+            ErreurInterface(self.TYPES[genre] if genre == "chunk" else f"{self.TYPES[genre]} : {message}"), request=request, module="frontend",
+            attempted_action=f"Affichage de {route}"[:255], severity="medium" if genre == "chunk" else "high",
+            status_code=None, context={"route": route, "type": genre, "detail": message})
+        return Response({"enregistre": incident is not None}, status=status.HTTP_201_CREATED)

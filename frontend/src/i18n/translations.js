@@ -1466,6 +1466,20 @@ export const EN = {
   "Conflit d'horaire : cette salle est déjà occupée sur ce créneau.": "Schedule conflict: this room is already occupied in this time slot.",
   "La page n'a pas pu s'afficher. Vous pouvez réessayer ou revenir à l'accueil.": "The page could not be displayed. You can try again or return to the home page.",
   "Réessayer": "Try again",
+  "{n} conversation(s) non lue(s)": "{n} unread conversation(s)",
+  // Phase 9 — réponses aux messages du site, version périmée
+  "Bonjour {n}, nous revenons vers vous au sujet de votre message « {s} ».": "Hello {n}, we are getting back to you about your message \"{s}\".",
+  "Répondre depuis FEBA (contact@globalfeba.com)": "Reply from FEBA (contact@globalfeba.com)",
+  "Adresse e-mail absente ou invalide.": "Email address missing or invalid.",
+  "Réponses envoyées depuis FEBA": "Replies sent from FEBA",
+  "Accepté par le serveur d'envoi": "Accepted by the mail server",
+  "Le serveur d'envoi n'a pas encore accepté la réponse : nouvel essai automatique.": "The mail server has not accepted the reply yet: it will be retried automatically.",
+  "Réponse acceptée par le serveur d'envoi (contact@globalfeba.com).": "Reply accepted by the mail server (contact@globalfeba.com).",
+  "la réponse est enregistrée dans la boîte mail contact et reliée à ce message.": "the reply is saved in the contact mailbox and linked to this message.",
+  "Aucun numéro WhatsApp renseigné par le contact.": "The contact did not provide a WhatsApp number.",
+  "Numéro WhatsApp invalide (indicatif pays et longueur à vérifier).": "Invalid WhatsApp number (check the country code and length).",
+  "Numéro WhatsApp sans indicatif pays : impossible de savoir à quel pays il appartient.": "WhatsApp number without a country code: its country cannot be determined.",
+  "Une nouvelle version de FEBA a été mise en ligne. Rechargez la page pour continuer.": "A new version of FEBA has been released. Reload the page to continue.",
   "Progression T1 → T2 :": "Progress T1 → T2:",
 
   // ── V7 : bilinguisation complète de l'application privée ─────────────
