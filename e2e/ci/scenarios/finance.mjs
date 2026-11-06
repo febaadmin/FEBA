@@ -21,7 +21,8 @@ export default async function () {
   const sit = async (p = "") => (await api("GET", `/payments/situation/?groupe=eleve&nature=examen${p}`, jt)).donnees.academies[0];
   const avant = await sit();
   const eleve = avant.eleves[0];
-  ok(S, "API : vue par élève, net = théorique sans ajustement", avant.totaux.net_minor === avant.totaux.theorique_minor && avant.eleves_total > 0);
+  ok(S, "API : vue par élève, net = théorique − exonérations − remises", avant.eleves_total > 0
+    && avant.totaux.net_minor === avant.totaux.theorique_minor - avant.totaux.exonerations_minor - avant.totaux.remises_minor);
 
   // Remise en pourcentage créée par l'interface, sur la nature « examen ».
   const p = await connecter("admin");
@@ -36,8 +37,10 @@ export default async function () {
   await p.getByTestId("regles-liste").getByText(`Remise E2E ${u}`).waitFor({ timeout: 10000 });
   ok(S, "remise créée depuis l'interface", true);
   const apres = await sit();
-  ok(S, "situation : remise de 25 % appliquée à toute la sélection", apres.totaux.remises_minor === Math.round(avant.totaux.theorique_minor * 0.25)
-    && apres.totaux.net_minor === avant.totaux.net_minor - apres.totaux.remises_minor, `${apres.totaux.remises_minor}`);
+  // Indépendant des règles déjà présentes : la nouvelle remise (cumulable) ajoute 25 % du montant après exonération.
+  const ajout = apres.totaux.remises_minor - avant.totaux.remises_minor;
+  ok(S, "situation : remise de 25 % appliquée à toute la sélection", ajout === Math.round((avant.totaux.theorique_minor - avant.totaux.exonerations_minor) * 0.25)
+    && apres.totaux.net_minor === avant.totaux.net_minor - ajout, `${ajout}`);
 
   // Exonération totale pour un élève (justification exigée par le serveur).
   const refus = await api("POST", "/payments/regles-remise/", jt, { nom: "Exo", genre: "exoneration", categorie: "sociale", mode: "pourcentage", pourcentage: "100", student: eleve.id });
