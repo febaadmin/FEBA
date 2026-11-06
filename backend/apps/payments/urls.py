@@ -9,7 +9,7 @@ détail d'un paiement dont l'identifiant serait « card ».
 from django.urls import path
 from rest_framework.routers import DefaultRouter, SimpleRouter
 
-from . import card_views, reminder_views, situation, tableau_bord, views
+from . import card_views, remise_views, reminder_views, situation, tableau_bord, views
 
 router = DefaultRouter()
 router.register(r"", views.PaymentViewSet, basename="payment")
@@ -21,6 +21,7 @@ router.register(r"", views.PaymentViewSet, basename="payment")
 schedules_router = SimpleRouter()
 schedules_router.register(r"fee-schedules", reminder_views.FeeScheduleViewSet, basename="fee-schedule")
 schedules_router.register(r"fee-arrangements", reminder_views.ArrangementViewSet, basename="fee-arrangement")
+schedules_router.register(r"regles-remise", remise_views.RegleRemiseViewSet, basename="regle-remise")
 
 urlpatterns = [
     path("tableau-de-bord/", tableau_bord.TableauBordPaiementsView.as_view(), name="payments-dashboard"),
@@ -29,6 +30,11 @@ urlpatterns = [
     path("filtres/", tableau_bord.OptionsPaiementsView.as_view(), name="payments-filters"),
     path("situation/", situation.SituationView.as_view(), name="payments-situation"),
     path("situation/eleves/<int:pk>/", situation.SituationEleveView.as_view(), name="payments-situation-eleve"),
+    path("situation/export/", situation.SituationExportView.as_view(), name="payments-situation-export"),
+    path("echeanciers-eleves/", remise_views.EcheancierEleveView.as_view(), name="echeanciers-eleves"),
+    path("echeanciers-eleves/retablir/", remise_views.RetablirEcheancierView.as_view(), name="echeanciers-eleves-retablir"),
+    path("journal-financier/", remise_views.JournalFinancierView.as_view(), name="journal-financier"),
+    path("baremes/", remise_views.BaremesView.as_view(), name="baremes"),
     # ── Relances de paiement ──────────────────────────────────────────
     path("fee-schedules/historique/", reminder_views.FeeChangeHistoryView.as_view(), name="fee-changes"),
     path("reminders/status/", reminder_views.ReminderStatusView.as_view(), name="reminders-status"),

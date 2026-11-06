@@ -10,7 +10,10 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
-import { feeSchedulesAPI, schoolsAPI } from "../../api";
+import { feeSchedulesAPI, journalFinancierAPI, schoolsAPI } from "../../api";
+import RemisesExonerations from "../../components/payments/RemisesExonerations";
+import EcheanciersPersonnels from "../../components/payments/EcheanciersPersonnels";
+import ImportBareme from "../../components/payments/ImportBareme";
 import PageHeader from "../../components/ui/PageHeader";
 import { useAcademy } from "../../context/AcademyContext";
 import { useAcademyKey } from "../../hooks/useEntityContext";
@@ -20,7 +23,8 @@ import { formatDateTime } from "../../utils/datetime";
 import { NATURES_FRAIS } from "../../utils/naturesFrais";
 import { FeeEditor, SchedulesTab } from "./PaymentReminders";
 
-const ONGLETS = [["grille", "Grille par niveau"], ["tarifs", "Tarifs et échéances"], ["historique", "Historique"]];
+const ONGLETS = [["grille", "Grille par niveau"], ["tarifs", "Tarifs et échéances"], ["remises", "Remises et exonérations"],
+  ["echeanciers", "Échéanciers personnalisés"], ["historique", "Historique"]];
 const liste = (q) => q.data?.data?.results || q.data?.data || [];
 
 /** Tarif applicable à (niveau, année, nature) : niveau > année > permanent, comme le serveur. */
@@ -44,6 +48,7 @@ function Grille({ fees, years, levels, onEdit }) {
       <div className="card text-sm text-slate-600 space-y-2" data-testid="tarifs-vide">
         <p>{t("Aucun tarif n'est encore configuré pour cette académie : le montant attendu et le reste à payer ne peuvent pas être calculés.")}</p>
         <button type="button" className="btn-primary" onClick={() => onEdit({ school_year: yearId || "" })}>{t("Créer le premier tarif")}</button>
+        <ImportBareme />
       </div>
     );
   }
@@ -87,32 +92,53 @@ function Grille({ fees, years, levels, onEdit }) {
   );
 }
 
+const OBJETS = [["", "Tout"], ["tarif", "Tarifs"], ["regle", "Remises et exonérations"], ["echeancier", "Échéanciers personnels"], ["disposition", "Dispositions d'élèves"]];
+
+function valeurs(o) {
+  const entrees = Object.entries(o || {});
+  if (!entrees.length) return "-";
+  return entrees.map(([k, v]) => `${k} : ${Array.isArray(v) ? v.map((x) => (Array.isArray(x) ? x.join(" ") : x)).join(" ; ") : v ?? "-"}`).join(" · ");
+}
+
+/** Historique : tarifs ET décisions (remises, exonérations, échéanciers, dispositions), avec avant / après et motif. */
 function Historique() {
   const academyKey = useAcademyKey();
-  const q = useQuery({ queryKey: ["fee-changes", academyKey], queryFn: feeSchedulesAPI.historique });
+  const [objet, setObjet] = useState("");
+  const q = useQuery({ queryKey: ["journal-financier", academyKey, objet], queryFn: () => journalFinancierAPI.list(objet ? { objet } : {}) });
   const lignes = q.data?.data || [];
-  if (q.isPending) return <div className="card h-24 animate-pulse" />;
-  if (!lignes.length) return <div className="card text-sm text-slate-500">{t("Aucun changement de tarif enregistré.")}</div>;
   return (
-    <div className="card overflow-x-auto">
-      <table className="w-full text-sm" data-testid="tarifs-historique">
-        <thead><tr className="text-left text-xs text-slate-500">
-          {["Date et heure", "Action", "Tarif", "Ancien montant", "Nouveau montant", "Motif", "Auteur"].map((h) => <th key={h} className="py-2 pr-3 font-medium">{t(h)}</th>)}
-        </tr></thead>
-        <tbody>
-          {lignes.map((h) => (
-            <tr key={h.id} className="border-t border-slate-100 align-top">
-              <td className="py-2 pr-3 whitespace-nowrap">{formatDateTime(h.date)}</td>
-              <td className="py-2 pr-3">{t(h.action_label)}</td>
-              <td className="py-2 pr-3">{h.description}</td>
-              <td className="py-2 pr-3 tabular-nums">{h.ancien || "-"}</td>
-              <td className="py-2 pr-3 tabular-nums">{h.nouveau || "-"}</td>
-              <td className="py-2 pr-3">{h.motif || "-"}</td>
-              <td className="py-2 pr-3">{h.auteur || "-"}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+    <div className="card space-y-3">
+      <div className="flex flex-wrap gap-2" role="group" aria-label={t("Filtrer l'historique")}>
+        {OBJETS.map(([v, l]) => (
+          <button key={v || "tout"} type="button" aria-pressed={objet === v} onClick={() => setObjet(v)}
+            className={`px-2.5 py-1 rounded-lg text-xs ${objet === v ? "bg-feba-navy text-white" : "border border-slate-200 text-slate-600"}`}>{t(l)}</button>
+        ))}
+      </div>
+      {q.isPending ? <div className="h-24 animate-pulse motion-reduce:animate-none rounded-xl bg-slate-100" /> : !lignes.length ? (
+        <p className="text-sm text-slate-500">{t("Aucun changement enregistré.")}</p>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm" data-testid="tarifs-historique">
+            <thead><tr className="text-left text-xs text-slate-500">
+              {["Date et heure", "Objet", "Action", "Description", "Avant", "Après", "Motif", "Auteur"].map((h) => <th key={h} className="py-2 pr-3 font-medium">{t(h)}</th>)}
+            </tr></thead>
+            <tbody>
+              {lignes.map((h) => (
+                <tr key={h.id} className="border-t border-slate-100 align-top">
+                  <td className="py-2 pr-3 whitespace-nowrap">{formatDateTime(h.le)}</td>
+                  <td className="py-2 pr-3">{t(h.objet_libelle)}</td>
+                  <td className="py-2 pr-3">{t(h.action_libelle)}</td>
+                  <td className="py-2 pr-3">{h.description}</td>
+                  <td className="py-2 pr-3 text-xs text-slate-600 max-w-[16rem] break-words">{valeurs(h.avant)}</td>
+                  <td className="py-2 pr-3 text-xs text-slate-600 max-w-[16rem] break-words">{valeurs(h.apres)}</td>
+                  <td className="py-2 pr-3">{h.motif || "-"}</td>
+                  <td className="py-2 pr-3">{h.auteur || "-"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }
@@ -134,7 +160,7 @@ export default function Tarifs() {
     },
     onSuccess: () => {
       setEdition(null);
-      ["fee-schedules", "fee-changes"].forEach((k) => qc.invalidateQueries({ queryKey: [k, academyKey] }));
+      ["fee-schedules", "fee-changes", "journal-financier"].forEach((k) => qc.invalidateQueries({ queryKey: [k, academyKey] }));
       toast.success(t("Tarif enregistré."));
     },
     onError: (e) => toast.error(extractApiError(e)),
@@ -154,10 +180,10 @@ export default function Tarifs() {
         </div>
       ) : (
         <>
-          <div className="flex flex-wrap gap-2" role="tablist">
+          <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1" role="tablist">
             {ONGLETS.map(([id, libelle]) => (
               <button key={id} type="button" role="tab" aria-selected={onglet === id} onClick={() => setOnglet(id)} data-testid={`onglet-${id}`}
-                className={`px-3 py-1.5 rounded-xl text-sm font-medium ${onglet === id ? "bg-feba-navy text-white" : "bg-white border border-slate-200 text-slate-600"}`}>
+                className={`shrink-0 whitespace-nowrap px-3 py-1.5 rounded-xl text-sm font-medium ${onglet === id ? "bg-feba-navy text-white" : "bg-white border border-slate-200 text-slate-600"}`}>
                 {t(libelle)}
               </button>
             ))}
@@ -167,6 +193,8 @@ export default function Tarifs() {
             <Grille fees={fees} years={liste(yearsQ)} levels={liste(levelsQ)} onEdit={ouvrir} />
           )}
           {onglet === "tarifs" && <SchedulesTab />}
+          {onglet === "remises" && <RemisesExonerations />}
+          {onglet === "echeanciers" && <EcheanciersPersonnels />}
           {onglet === "historique" && <Historique />}
           {edition && (
             <FeeEditor fee={edition} years={liste(yearsQ)} levels={liste(levelsQ)} saving={enregistrer.isPending}

@@ -294,5 +294,8 @@ from apps.payments.schedule_models import (  # noqa: E402,F401
     StudentFeeArrangement,
 )
 
+# ── Remises, exonérations, échéanciers personnels, journal (novembre 2026) ──
+from apps.payments.remise_models import EcheanceEleve, JournalFinancier, RegleRemise  # noqa: E402,F401
+
 # ── Taux de change (P1 — totaux consolidés multi-académies) ────────────
 from apps.payments.exchange_rate_models import ExchangeRate  # noqa: E402,F401

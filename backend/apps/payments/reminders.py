@@ -87,11 +87,15 @@ class DueItem:
     school_year_id: int
     expected: int
     discount: int = 0
+    exemption: int = 0
     paid: int = 0
     outstanding: int = 0
     status: str = STATUS_UPCOMING
     days_overdue: int = 0
     blockers: list = field(default_factory=list)
+    # Explication du calcul (remises et exonérations retenues ou écartées),
+    # commune à toutes les échéances de l'élève × tarif × année.
+    adjustments: list = field(default_factory=list)
 
     @property
     def currency(self):
@@ -99,8 +103,8 @@ class DueItem:
 
     @property
     def net(self):
-        """Montant réellement dû pour cette échéance : réduction déduite, 0 si exonérée."""
-        return 0 if self.status == STATUS_EXEMPTED else self.expected - self.discount
+        """Montant réellement dû pour cette échéance : exonération et remise déduites."""
+        return max(self.expected - self.exemption - self.discount, 0)
 
     def money(self, minor):
         return Money(minor, self.currency).formatted()
@@ -114,15 +118,21 @@ class DueItem:
             "fee_label": fee.label or type_label(fee.payment_type),
             "payment_type": fee.payment_type,
             "installment_id": self.installment.pk,
+            "personnelle": bool(getattr(self.installment, "est_personnelle", False)),
             "installment_label": self.installment.label,
             "due_date": self.installment.due_date,
             "currency": self.currency,
             "expected_minor": self.expected,
             "discount_minor": self.discount,
+            "exemption_minor": self.exemption,
+            "net_minor": self.net,
             "paid_minor": self.paid,
             "outstanding_minor": self.outstanding,
             "expected_display": self.money(self.expected),
             "paid_display": self.money(self.paid),
+            "exemption_display": self.money(self.exemption),
+            "discount_display": self.money(self.discount),
+            "net_display": self.money(self.net),
             "outstanding_display": self.money(max(self.outstanding, 0)),
             "status": self.status,
             "status_label": STATUS_LABELS[self.status],
@@ -153,7 +163,8 @@ def compute_dues(academy, on_date=None):
     Échéances de tous les élèves actifs de l'académie à la date `on_date`
     (date LOCALE de l'académie par défaut). Aucune écriture.
     """
-    from apps.payments.models import FeeSchedule, Payment, StudentFeeArrangement
+    from apps.payments.ajustements import rangs_fratrie
+    from apps.payments.models import EcheanceEleve, FeeSchedule, Payment, RegleRemise, StudentFeeArrangement
     from apps.payments.transaction_models import PaymentTransaction
     from apps.students.models import Student
 
@@ -164,7 +175,8 @@ def compute_dues(academy, on_date=None):
         FeeSchedule.objects.filter(academy=academy, is_active=True)
         .prefetch_related("installments")
     )
-    fees = [f for f in fees if f.installments.all()]
+    avec_personnelles = set(EcheanceEleve.objects.filter(academy=academy, actif=True).values_list("fee_schedule_id", flat=True))
+    fees = [f for f in fees if f.installments.all() or f.pk in avec_personnelles]
     blocked_fees = set()
     for fee in fees:
         total = sum(i.amount_minor for i in fee.installments.all())
@@ -194,6 +206,13 @@ def compute_dues(academy, on_date=None):
     arrangements = defaultdict(dict)
     for arr in StudentFeeArrangement.objects.filter(student_id__in=student_ids):
         arrangements[(arr.student_id, arr.fee_schedule_id)][arr.kind] = arr
+
+    # Remises et exonérations en vigueur ; échéanciers personnels actifs.
+    regles = list(RegleRemise.objects.filter(academy=academy, actif=True, annulee_le__isnull=True))
+    rangs, parents_de = rangs_fratrie(students) if regles else ({}, {})
+    personnelles = defaultdict(list)
+    for e in EcheanceEleve.objects.filter(academy=academy, actif=True, student_id__in=student_ids):
+        personnelles[(e.student_id, e.fee_schedule_id, e.school_year_id)].append(e)
 
     payments = defaultdict(list)
     payments_without_year = set()
@@ -226,13 +245,16 @@ def compute_dues(academy, on_date=None):
     for student in students:
         enrollments = {e.school_year_id: e for e in student.enrollments.all()}
 
-        def level_for(year_id):
+        def class_for(year_id):
             enrollment = enrollments.get(year_id)
             if enrollment is not None and enrollment.class_obj is not None:
-                return enrollment.class_obj.level_id
+                return enrollment.class_obj
             if year_id == student.school_year_id and student.current_class:
-                return student.current_class.level_id
+                return student.current_class
             return None
+
+        def level_for(year_id):
+            return getattr(class_for(year_id), "level_id", None)
 
         def enrolled_in(year_id):
             return year_id == student.school_year_id or year_id in enrollments
@@ -250,10 +272,17 @@ def compute_dues(academy, on_date=None):
                 by_year[year_id].append(fee)
             for year_id, year_fees in by_year.items():
                 fee = _pick_fee(year_fees)
+                classe = class_for(year_id)
+                contexte = dict(student=student, fee=fee, year_id=year_id, level_id=level_for(year_id),
+                                class_id=getattr(classe, "pk", None), parents_ids=parents_de.get(student.pk, set()),
+                                rang=rangs.get(student.pk))
                 items.extend(_items_for(
                     student, fee, year_id, on_date,
                     arrangements.get((student.pk, fee.pk), {}),
                     payments.get((student.pk, payment_type, year_id), []),
+                    regles=[g for g in regles if _concerne(g, contexte)],
+                    personnelles=personnelles.get((student.pk, fee.pk, year_id)),
+                    classe=classe,
                     blocked=fee.pk in blocked_fees,
                     no_year=(student.pk, payment_type) in payments_without_year,
                     currency_issue=(student.pk, payment_type) in payment_currency_issue,
@@ -263,11 +292,20 @@ def compute_dues(academy, on_date=None):
     return Computation(items=items, anomalies=anomalies)
 
 
+def _concerne(regle, contexte):
+    from apps.payments.ajustements import regle_concerne
+    return regle_concerne(regle, **contexte)
+
+
 def _items_for(student, fee, year_id, on_date, arrangement, payments, *, blocked,
-               no_year, currency_issue, card_open, anomalies):
+               no_year, currency_issue, card_open, anomalies, regles=(), personnelles=None, classe=None):
+    from apps.payments.ajustements import appliquer
     from apps.payments.models import StudentFeeArrangement
 
-    installments = sorted(fee.installments.all(), key=lambda i: (i.due_date, i.order, i.pk))
+    # Échéancier personnel de l'élève : il REMPLACE les échéances standard (et
+    # elles seules) ; les paiements, remises et exonérations s'y appliquent de même.
+    source = personnelles or fee.installments.all()
+    installments = sorted(source, key=lambda i: (i.due_date, i.order, i.pk))
     if not fee.is_mandatory:
         subscription = arrangement.get(StudentFeeArrangement.SUBSCRIPTION)
         if subscription is None:
@@ -279,17 +317,19 @@ def _items_for(student, fee, year_id, on_date, arrangement, payments, *, blocked
         ]
     if not installments:
         return []
-
-    exempted = StudentFeeArrangement.EXEMPTION in arrangement
-    discount_left = getattr(arrangement.get(StudentFeeArrangement.DISCOUNT), "discount_minor", 0)
+    perso_incoherent = bool(personnelles) and fee.installment_mode == fee.INSTALLMENTS_SPLIT and \
+        sum(i.amount_minor for i in installments) != fee.amount_minor
 
     rows = [DueItem(student=student, fee=fee, installment=i, school_year_id=year_id,
                     expected=i.amount_minor) for i in installments]
-    # Réduction imputée sur les dernières échéances.
-    for row in reversed(rows):
-        take = min(discount_left, row.expected)
-        row.discount = take
-        discount_left -= take
+    for row in rows:
+        row.classe = classe
+    # Exonérations puis remises (règles + dispositions historiques de l'élève).
+    details = appliquer(
+        rows, list(regles), payments,
+        legacy_exoneration=StudentFeeArrangement.EXEMPTION in arrangement,
+        legacy_remise=getattr(arrangement.get(StudentFeeArrangement.DISCOUNT), "discount_minor", 0),
+    )
 
     # 1) imputation réelle : paiements précisant leur mois.
     pool = 0
@@ -303,19 +343,27 @@ def _items_for(student, fee, year_id, on_date, arrangement, payments, *, blocked
         if target is None:
             pool += amount
             continue
-        need = max(target.expected - target.discount - target.paid, 0)
+        need = max(target.net - target.paid, 0)
         take = min(amount, need)
         target.paid += take
         pool += amount - take
     # 2) le reste à l'échéance la plus ancienne non soldée.
     for row in rows:
-        need = max(row.expected - row.discount - row.paid, 0)
+        need = max(row.net - row.paid, 0)
         take = min(pool, need)
         row.paid += take
         pool -= take
 
     blockers = []
-    if blocked:
+    if perso_incoherent:
+        blockers.append("Échéancier personnel : somme différente du montant du tarif")
+        anomalies.append(_anomaly(
+            "personal_sum_mismatch",
+            f"{student.get_full_name()} : l'échéancier personnel de « {fee.label or type_label(fee.payment_type)} » "
+            f"ne totalise pas le montant du tarif ({fee.money.formatted()}). Aucune relance tant que ce n'est pas corrigé.",
+            student_id=student.pk, fee_id=fee.pk,
+        ))
+    elif blocked and not personnelles:
         blockers.append("Échéancier incohérent (somme ≠ total)")
     if no_year:
         blockers.append("Paiement sans année scolaire pour ce type de frais")
@@ -336,10 +384,11 @@ def _items_for(student, fee, year_id, on_date, arrangement, payments, *, blocked
         blockers.append("Paiement par carte en cours")
 
     for row in rows:
-        row.outstanding = row.expected - row.discount - row.paid
+        row.outstanding = row.net - row.paid
         row.days_overdue = max((on_date - row.installment.due_date).days, 0)
         row.blockers = list(blockers)
-        if exempted:
+        row.adjustments = details
+        if row.exemption >= row.expected:
             row.status, row.outstanding = STATUS_EXEMPTED, 0
         elif row.outstanding <= 0:
             row.status = STATUS_PAID
@@ -398,6 +447,20 @@ def get_policy(academy, create=False):
             or PaymentReminderPolicy(academy=academy))
 
 
+def cle_perso(item):
+    return bool(getattr(item.installment, "est_personnelle", False))
+
+
+def cle_echeance(item):
+    """Identifiant d'échéance sans collision entre échéances standard et personnelles."""
+    return ("pers" if cle_perso(item) else "inst", item.installment.pk)
+
+
+def models_q(**kwargs):
+    from django.db.models import Q
+    return Q(**kwargs)
+
+
 def plan_reminders(academy, on_date=None, computation=None, policy=None, now=None):
     """
     Relances qui DOIVENT partir aujourd'hui, sans rien écrire.
@@ -423,10 +486,12 @@ def plan_reminders(academy, on_date=None, computation=None, policy=None, now=Non
 
     history = defaultdict(list)
     for r in PaymentReminder.objects.filter(
-        installment_id__in={i.installment.pk for i in eligible},
+        models_q(installment_id__in={i.installment.pk for i in eligible if not cle_perso(i)})
+        | models_q(student_installment_id__in={i.installment.pk for i in eligible if cle_perso(i)}),
         student_id__in={i.student.pk for i in eligible},
-    ).only("installment_id", "student_id", "recipient_id", "level", "created_at"):
-        history[(r.installment_id, r.student_id, r.recipient_id)].append(r)
+    ).only("installment_id", "student_installment_id", "student_id", "recipient_id", "level", "created_at"):
+        cle = ("pers", r.student_installment_id) if r.student_installment_id else ("inst", r.installment_id)
+        history[(cle, r.student_id, r.recipient_id)].append(r)
 
     plan = []
     parents_cache = {}
@@ -439,7 +504,7 @@ def plan_reminders(academy, on_date=None, computation=None, policy=None, now=Non
             item.blockers.append("Aucun responsable joignable")
             continue
         for user in recipients:
-            past = history[(item.installment.pk, student.pk, user.pk)]
+            past = history[(cle_echeance(item), student.pk, user.pk)]
             level = len(past) + 1
             if level > policy.max_reminders:
                 continue
@@ -561,17 +626,21 @@ def run_reminders(academy, *, trigger, user=None, on_date=None, dry_run=False, n
             created = []
             for entry in entries:
                 item = entry["item"]
-                key = PaymentReminder.make_key(item.installment.pk, item.student.pk, recipient.pk, entry["level"])
+                perso = bool(getattr(item.installment, "est_personnelle", False))
+                key = PaymentReminder.make_key(item.installment.pk, item.student.pk, recipient.pk, entry["level"],
+                                               personnelle=perso)
                 try:
                     with transaction.atomic():
                         created.append(PaymentReminder.objects.create(
                             academy=academy, student=item.student, fee_schedule=item.fee,
-                            installment=item.installment, recipient=recipient, level=entry["level"],
+                            installment=None if perso else item.installment,
+                            student_installment=item.installment if perso else None,
+                            recipient=recipient, level=entry["level"],
                             idempotency_key=key, run=run, currency=item.currency,
                             due_date=item.installment.due_date,
                             fee_label=(item.fee.label or type_label(item.fee.payment_type))[:160],
                             installment_label=item.installment.label[:80],
-                            amount_expected_minor=item.expected - item.discount,
+                            amount_expected_minor=item.net,
                             amount_paid_minor=item.paid,
                             amount_due_minor=item.outstanding,
                         ))
@@ -676,14 +745,15 @@ def reminder_sms_still_valid(reminder_ids):
     if len(rows) != len(set(reminder_ids)) or not rows:
         return False, "Relance supprimée depuis sa programmation."
     academy = rows[0].academy
-    current = {(i.student.pk, i.installment.pk): i for i in compute_dues(academy).items}
+    current = {(i.student.pk, cle_echeance(i)): i for i in compute_dues(academy).items}
     for row in rows:
-        if row.installment_id is None:
+        if row.installment_id is None and row.student_installment_id is None:
             return False, f"Échéance « {row.installment_label} » supprimée."
         # Même règle que le choix initial du destinataire.
         if row.recipient_id not in {u.pk for u in responsible_parents(row.student)}:
             return False, "Le destinataire n'est plus responsable financier de cet élève."
-        item = current.get((row.student_id, row.installment_id))
+        cle = ("pers", row.student_installment_id) if row.student_installment_id else ("inst", row.installment_id)
+        item = current.get((row.student_id, cle))
         if item is None or item.outstanding <= 0:
             return False, f"« {row.installment_label} » réglée depuis la relance."
         if item.outstanding != row.amount_due_minor:

@@ -23,16 +23,20 @@ export default async function () {
   const p = await connecter("admin");
   ok(S, "entrée « Situation financière » au menu", await p.locator('a[href="/admin/situation-financiere"]').count() === 1);
   await p.goto(BASE + "/admin/situation-financiere");
+  await p.getByTestId("situation-kpi").waitFor({ timeout: 15000 });
+  ok(S, "écran : KPI et classes", await p.locator("[data-testid=situation-groupes] tbody tr").count() === a.groupes.length);
+  ok(S, "graphiques affichés", await p.getByTestId("graph-repartition").count() === 1 && await p.getByTestId("graph-groupes").count() === 1);
+  await p.getByTestId("groupe-eleve").click();
+  await p.getByTestId("filtre-statut").selectOption("en_retard");
   await p.waitForTimeout(1500);
-  ok(S, "écran : totaux et classes", await p.getByTestId("situation-totaux").count() === 1 && await p.locator("[data-testid=situation-groupes] tbody tr").count() === a.groupes.length);
-  await p.getByTestId("filtre-retard").click();
-  await p.waitForTimeout(300);
   const enRetard = await p.locator("[data-testid=situation-eleves] tbody tr").count();
-  ok(S, "filtre « En retard » : élèves avec tranche échue", enRetard > 0 && enRetard === a.eleves.filter((e) => e.retard_minor > 0).length, enRetard);
-  await p.locator("[data-testid=situation-eleves] tbody tr").first().click();
-  await p.waitForTimeout(1200);
-  ok(S, "relevé d'un élève : échéances et totaux", await p.getByTestId("releve-echeances").count() === 1 && (await p.getByTestId("releve-echeances").innerText()).includes("Tranche échue"));
+  ok(S, "filtre « En retard » : élèves avec tranche échue", enRetard > 0 && enRetard === Math.min(50, a.kpi.eleves_en_retard), `${enRetard}/${a.kpi.eleves_en_retard}`);
+  await p.locator("[data-testid=situation-eleves] tbody tr button").first().click();
+  await p.getByTestId("releve-eleve").waitFor({ timeout: 10000 });
+  ok(S, "fiche d'un élève : échéances, calcul expliqué", await p.getByTestId("releve-echeances").count() === 1
+    && (await p.getByTestId("releve-echeances").innerText()).includes("Tranche échue") && await p.getByTestId("releve-explication").count() === 1);
   await p.keyboard.press("Escape");
+  await p.getByTestId("filtre-statut").selectOption("");
   await p.getByTestId("groupe-niveau").click();
   await p.waitForTimeout(1200);
   ok(S, "regroupement par niveau", (await p.locator("[data-testid=situation-groupes] th").first().innerText()).toLowerCase().includes("niveau"));

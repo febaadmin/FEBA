@@ -531,6 +531,7 @@ export const paymentsAPI = {
   tableauDeBordExport: (p) => api.get("/payments/tableau-de-bord/detail/", { params: { ...p, export: "csv" }, responseType: "blob" }),
   situation: (p)    => api.get("/payments/situation/", { params: p }),
   situationEleve: (id, p) => api.get(`/payments/situation/eleves/${id}/`, { params: p }),
+  situationExport: (p) => api.get("/payments/situation/export/", { params: p, responseType: "blob" }),
   pending: ()       => api.get("/payments/pending/"),
   generateReceipt: (id) => api.post(`/payments/${id}/generate-receipt/`),
   history: (id)     => api.get(`/payments/${id}/history/`),
@@ -799,6 +800,28 @@ export const feeSchedulesAPI = {
   createArrangement: (d)     => api.post("/payments/fee-arrangements/", d),
   deleteArrangement: (id)    => api.delete(`/payments/fee-arrangements/${id}/`),
   historique:        (p)     => api.get("/payments/fee-schedules/historique/", { params: p }),
+};
+
+/** Remises et exonérations (jamais supprimées : annulées avec un motif), échéanciers personnels, journal. */
+export const remisesAPI = {
+  list:      (p)        => api.get("/payments/regles-remise/", { params: p }),
+  create:    (d)        => api.post("/payments/regles-remise/", d),
+  update:    (id, d)    => api.patch(`/payments/regles-remise/${id}/`, d),
+  annuler:   (id, motif) => api.post(`/payments/regles-remise/${id}/annuler/`, { motif }),
+  reactiver: (id, motif) => api.post(`/payments/regles-remise/${id}/reactiver/`, { motif }),
+  impact:    (id)       => api.get(`/payments/regles-remise/${id}/impact/`),
+};
+export const echeanciersAPI = {
+  list:     (p) => api.get("/payments/echeanciers-eleves/", { params: p }),
+  definir:  (d) => api.post("/payments/echeanciers-eleves/", d),
+  retablir: (d) => api.post("/payments/echeanciers-eleves/retablir/", d),
+};
+export const baremesAPI = {
+  list:     ()      => api.get("/payments/baremes/"),
+  importer: (fichier) => api.post("/payments/baremes/", { fichier, confirmation: true }),
+};
+export const journalFinancierAPI = {
+  list: (p) => api.get("/payments/journal-financier/", { params: p }),
 };
 
 export const remindersAPI = {

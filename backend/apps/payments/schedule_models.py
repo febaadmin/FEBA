@@ -265,6 +265,10 @@ class PaymentReminder(models.Model):
     installment = models.ForeignKey(
         FeeInstallment, on_delete=models.SET_NULL, null=True, related_name="reminders",
     )
+    # Échéance PERSONNELLE d'un élève (échéancier adapté) : `installment` est alors vide.
+    student_installment = models.ForeignKey(
+        "payments.EcheanceEleve", on_delete=models.SET_NULL, null=True, blank=True, related_name="reminders",
+    )
     fee_label = models.CharField(max_length=160, blank=True)
     installment_label = models.CharField(max_length=80, blank=True)
     recipient = models.ForeignKey(
@@ -313,5 +317,6 @@ class PaymentReminder(models.Model):
         return self.idempotency_key
 
     @staticmethod
-    def make_key(installment_id, student_id, recipient_id, level):
-        return f"inst{installment_id}:stu{student_id}:usr{recipient_id}:L{level}"
+    def make_key(installment_id, student_id, recipient_id, level, personnelle=False):
+        prefixe = "pers" if personnelle else "inst"
+        return f"{prefixe}{installment_id}:stu{student_id}:usr{recipient_id}:L{level}"

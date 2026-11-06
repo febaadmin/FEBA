@@ -314,7 +314,8 @@ class _Contexte:
         self.items = [i for i in items if self._garde(i)]
 
     def _garde(self, i):
-        f, cls = self.f, i.student.current_class
+        # Classe DE L'ANNÉE de l'échéance (inscription), pas la classe actuelle de l'élève.
+        f, cls = self.f, getattr(i, "classe", None) or i.student.current_class
         if f.annee and i.school_year_id != f.annee:
             return False
         if f.cycle and getattr(getattr(cls, "level", None), "cycle", None) != f.cycle:
