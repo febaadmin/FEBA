@@ -142,6 +142,9 @@ class BalayageTests(TestCase):
             "/api/user-files/", "/api/website/contact/",
             "/api/website/fha/contact/", "/api/website/fha/enroll/", "/api/website/fha/placement-test/",
             "/api/website/preregistrations/",
+            # Phase 9 : signalement des erreurs d'affichage (tout compte connecté,
+            # 20 par heure, ne renvoie qu'un accusé ; la liste reste super admin).
+            "/api/incidents/frontend/",
         }
         enseignant = commun | {
             "/api/attendance/", "/api/attendance/bulk/", "/api/grades/", "/api/grades/appreciations/preview/",

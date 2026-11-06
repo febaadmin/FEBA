@@ -216,7 +216,10 @@ class ConversationViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=["get"])
     def unread_count(self, request):
-        return Response({"count": svc.compteurs(request.user)["messages_non_lus"]})
+        # Même règle que le badge « Réception » de la messagerie : conversations
+        # non lues hors archives, corbeille et conversations masquées.
+        c = svc.compteurs(request.user)
+        return Response({"count": c["reception_non_lus"], "messages": c["messages_non_lus"]})
 
 
 class BrouillonMessageViewSet(viewsets.ModelViewSet):

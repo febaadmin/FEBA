@@ -162,9 +162,9 @@ export default function ParentChildren() {
                       {parent.user_email && (
                         <div className="flex items-center gap-2 text-sm">
                           <Mail className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                          <a href={`mailto:${parent.user_email}`} className="text-slate-600 hover:text-primary text-xs">
-                            {parent.user_email}
-                          </a>
+                          {/* Adresse affichée (sélectionnable), sans lien vers une messagerie externe :
+                              les échanges passent par la messagerie interne de FEBA. */}
+                          <span className="text-slate-600 text-xs select-all break-all">{parent.user_email}</span>
                         </div>
                       )}
                     </div>

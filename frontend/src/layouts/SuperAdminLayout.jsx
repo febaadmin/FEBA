@@ -1,4 +1,5 @@
 import { NavLink } from "react-router-dom";
+import { useNonLusMessagerie } from "../hooks/useNonLusMessagerie";
 import { useState, useEffect } from "react";
 import {
   BarChart3, Building2, Star, Stamp, FileBarChart, LayoutDashboard, Users, Shield, GraduationCap, UserCheck, Users2, BookOpen, DollarSign, Megaphone, Settings, LogOut, Menu, X, MessageSquare, Layers, ClipboardList, FileText, Calendar, UserCog, FolderOpen, Image, ClipboardCheck, CircleHelp, ListTree, Video, Globe, AlertTriangle, CreditCard, Award, Mail, BellRing, Inbox, TrendingUp, ReceiptText, Wallet } from "lucide-react";
@@ -9,7 +10,6 @@ import { useAcademy } from "../context/AcademyContext";
 import { isNavItemVisible } from "./navFeatures";
 import { clsx } from "clsx";
 import { motion, AnimatePresence } from "framer-motion";
-import { useQuery } from "@tanstack/react-query";
 import { useAuthStore } from "../store/authStore";
 import { t } from "../i18n";
 import LanguageSwitcher from "../components/ui/LanguageSwitcher";
@@ -96,12 +96,9 @@ export default function SuperAdminLayout() {
     else setOpen(true);
   }, [isMobile]);
 
-  const { data: inboxData } = useQuery({
-    queryKey: ["inbox", storeUser?.id],
-    queryFn: () => import("../api").then(m => m.messagesAPI.inbox()),
-    refetchInterval: 30000,
-  });
-  const unreadCount = (inboxData?.data || []).filter(m => !m.is_read).length;
+  // Même compteur que les autres profils (avant : ancienne route « inbox », qui
+  // ignorait archives et corbeille et n'était jamais rafraîchie par la messagerie).
+  const unreadCount = useNonLusMessagerie(storeUser?.id);
 
   const closeSidebarOnMobile = () => { if (isMobile) setOpen(false); };
 
@@ -160,8 +157,8 @@ export default function SuperAdminLayout() {
                         <item.icon className="w-4 h-4 shrink-0" />
                         <span className="flex-1 truncate">{t(item.label)}</span>
                         {item.badge && unreadCount > 0 && (
-                          <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center shrink-0">
-                            {unreadCount}
+                          <span data-testid="badge-messages-menu" aria-label={t("{n} conversation(s) non lue(s)", { n: unreadCount })} className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center shrink-0">
+                            {unreadCount > 9 ? "9+" : unreadCount}
                           </span>
                         )}
                       </NavLink>

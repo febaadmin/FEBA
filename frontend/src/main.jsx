@@ -8,6 +8,17 @@ import { Toaster } from "react-hot-toast";
 import App from "./App";
 import { AcademyProvider } from "./context/AcademyContext";
 import "./index.css";
+import { rechargerUneFois, signalerErreurInterface } from "./utils/versionPerimee";
+
+// Vite signale ici un module de l'ancienne version introuvable (onglet ouvert
+// pendant un déploiement) : on charge la nouvelle version au lieu d'échouer.
+// L'erreur n'est PAS étouffée (pas de preventDefault) : sinon l'import se résout
+// avec « undefined » et React échoue plus loin sur une erreur trompeuse. Si le
+// rechargement a déjà été tenté, l'écran d'erreur explique la nouvelle version.
+window.addEventListener("vite:preloadError", (event) => {
+  signalerErreurInterface("chunk", event.payload);
+  rechargerUneFois();
+});
 
 // FIX v40 : ne JAMAIS réessayer les erreurs client 4xx (401/403/404) —
 // c'est ce qui produisait la salve de « /api/classes/8/ 404 » dans la

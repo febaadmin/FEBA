@@ -57,6 +57,12 @@ class MessageMail(models.Model):
     statut_envoi = models.CharField(max_length=20, blank=True)
     origine = models.CharField(max_length=64, blank=True)
     supprime_chez_fournisseur = models.BooleanField(default=False)
+    #: Réponse à un message reçu par le formulaire du site vitrine (traçabilité).
+    message_site = models.ForeignKey("website.ContactMessage", on_delete=models.SET_NULL, null=True, blank=True,
+                                     related_name="reponses_email")
+    #: Auteur FEBA d'un envoi fait depuis l'application (réponse, transfert, site vitrine).
+    envoye_par = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
+                                   related_name="+")
     synchronise_le = models.DateTimeField(auto_now=True)
 
     class Meta:

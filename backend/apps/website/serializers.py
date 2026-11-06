@@ -237,6 +237,13 @@ class ContactMessageAdminSerializer(serializers.ModelSerializer):
     preferred_language_display = serializers.CharField(
         source='get_preferred_language_display', read_only=True, default='',
     )
+    #: Réponses e-mail envoyées depuis FEBA (traçabilité, phase 9).
+    nb_reponses = serializers.SerializerMethodField()
+
+    def get_nb_reponses(self, obj):
+        # Annoté par le queryset de l'administration (pas de requête par ligne).
+        n = getattr(obj, "nb_reponses_annote", None)
+        return obj.reponses_email.count() if n is None else n
 
     class Meta:
         model = ContactMessage

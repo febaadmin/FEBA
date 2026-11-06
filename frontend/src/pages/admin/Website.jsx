@@ -14,10 +14,12 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "../../utils/useFormulaire";
 import {
   Download, Eye, FileText, Inbox, ClipboardList, Newspaper, RefreshCw,
-  Settings2, Trash2, Pencil, Plus, MailOpen, Mail, ExternalLink,
+  Settings2, Trash2, Pencil, Plus, MailOpen, Mail, ExternalLink, MessageCircle, Paperclip, Loader2, Send, X,
 } from "lucide-react";
 import toast from "react-hot-toast";
-import { websiteAdminAPI } from "../../api";
+import { massEmailAPI, websiteAdminAPI } from "../../api";
+import EditeurMessage from "../../components/email/EditeurMessage";
+import { emailValide, lienWhatsApp, numeroWhatsApp } from "../../utils/contactsSite";
 import { extractApiError } from "../../utils/errors";
 import PageHeader from "../../components/ui/PageHeader";
 import DataTable from "../../components/ui/DataTable";
@@ -84,6 +86,7 @@ function AcademyBadge({ code, name, shortName }) {
  * reste lisible, et l'absence se distingue d'une valeur.
  */
 function ContactMessageDetail({ message: m }) {
+  const [redaction, setRedaction] = useState(false);
   const rows = [
     [t("Nom complet"), m.name],
     [t("Email"), m.email],
@@ -122,20 +125,153 @@ function ContactMessageDetail({ message: m }) {
         <LongText value={m.message} />
       </div>
 
-      <div className="flex justify-end gap-2 flex-wrap">
-        {m.whatsapp && (
-          <a href={`https://wa.me/${String(m.whatsapp).replace(/[^0-9]/g, "")}`}
-            target="_blank" rel="noopener noreferrer"
-            className="btn-secondary inline-flex items-center gap-2">
-            <ExternalLink className="w-4 h-4" /> {t("Répondre sur WhatsApp")}
-          </a>
-        )}
-        <a href={`mailto:${m.email}?subject=Re: ${encodeURIComponent(m.subject || "")}`}
-          className="btn-primary inline-flex items-center gap-2">
-          <ExternalLink className="w-4 h-4" /> {t("Répondre par email")}
-        </a>
-      </div>
+      <ReponsesEnvoyees id={m.id} />
+      <ActionsContact nom={m.name} sujet={m.subject} email={m.email} whatsapp={m.whatsapp} onEmail={() => setRedaction(true)} />
+      {redaction && <ReponseEmail message={m} onFermer={() => setRedaction(false)} />}
     </div>
+  );
+}
+
+/**
+ * Les DEUX actions, toujours présentes, de même taille. Une action impossible reste
+ * visible, désactivée, avec la raison (infobulle et texte lisible au clavier).
+ * WhatsApp : seulement le numéro WhatsApp du contact (jamais son téléphone), normalisé
+ * sans invention. E-mail : éditeur INTERNE de FEBA (aucun lien mailto:).
+ */
+export function ActionsContact({ nom, sujet, email, whatsapp, onEmail }) {
+  const wa = numeroWhatsApp(whatsapp);
+  const mailOk = emailValide(email);
+  const base = "inline-flex items-center justify-center gap-2 min-w-[13rem] px-4 py-2.5 rounded-xl text-sm font-semibold transition-colors";
+  const texte = t("Bonjour {n}, nous revenons vers vous au sujet de votre message « {s} ».", { n: nom || "", s: sujet || "" });
+  return (
+    <div className="flex flex-col sm:flex-row sm:justify-end gap-2" data-testid="actions-contact">
+      {wa.valide ? (
+        <a href={lienWhatsApp(wa.numero, texte)} target="_blank" rel="noopener noreferrer" data-testid="repondre-whatsapp"
+          className={`${base} border border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100`}>
+          <MessageCircle className="w-4 h-4" aria-hidden="true" />{t("Répondre sur WhatsApp")}
+        </a>
+      ) : (
+        <span className="flex flex-col items-stretch sm:items-end gap-1">
+          <button type="button" disabled title={t(wa.raison)} aria-describedby="raison-wa" data-testid="repondre-whatsapp"
+            className={`${base} border border-slate-200 bg-slate-50 text-slate-400 cursor-not-allowed`}>
+            <MessageCircle className="w-4 h-4" aria-hidden="true" />{t("Répondre sur WhatsApp")}
+          </button>
+          <span id="raison-wa" className="text-[11px] text-slate-500">{t(wa.raison)}</span>
+        </span>
+      )}
+      <span className="flex flex-col items-stretch sm:items-end gap-1">
+        <button type="button" onClick={onEmail} disabled={!mailOk} data-testid="repondre-email"
+          title={mailOk ? t("Répondre depuis FEBA (contact@globalfeba.com)") : t("Adresse e-mail absente ou invalide.")}
+          className={`${base} border ${mailOk ? "border-transparent bg-primary text-white hover:bg-primary-700" : "border-slate-200 bg-slate-50 text-slate-400 cursor-not-allowed"}`}>
+          <Mail className="w-4 h-4" aria-hidden="true" />{t("Répondre par email")}
+        </button>
+        {!mailOk && <span className="text-[11px] text-slate-500">{t("Adresse e-mail absente ou invalide.")}</span>}
+      </span>
+    </div>
+  );
+}
+
+function ReponsesEnvoyees({ id }) {
+  const { data } = useQuery({ queryKey: ["contact-reponses", id], queryFn: () => websiteAdminAPI.reponsesContact(id), enabled: !!id });
+  const lignes = data?.data || [];
+  if (!lignes.length) return null;
+  return (
+    <div className="rounded-xl border border-slate-100 p-3" data-testid="reponses-envoyees">
+      <p className="text-xs uppercase tracking-wide text-slate-400 mb-2">{t("Réponses envoyées depuis FEBA")}</p>
+      <ul className="space-y-2">
+        {lignes.map((r) => (
+          <li key={r.id} className="text-xs text-slate-600">
+            <span className="font-medium text-slate-800">{new Date(r.date).toLocaleString()}</span> · {t("À")} {r.a.join(", ")}
+            {r.par ? ` · ${t("par")} ${r.par}` : ""} ·{" "}
+            <span className={["sent", "accepted"].includes(r.statut) ? "text-emerald-700" : "text-amber-700"}>
+              {["sent", "accepted"].includes(r.statut) ? t("Accepté par le serveur d'envoi") : t(r.statut_libelle || r.statut)}
+            </span>
+            {r.erreur && <span className="block text-red-700">{r.erreur}</span>}
+            <span className="block text-slate-500 truncate">{r.sujet}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function ReponseEmail({ message: m, onFermer }) {
+  const qc = useQueryClient();
+  const [a, setA] = useState(m.email || "");
+  const [cc, setCc] = useState("");
+  const [cci, setCci] = useState("");
+  const [sujet, setSujet] = useState(/^re\s*:/i.test(m.subject || "") ? m.subject : `Re: ${m.subject || ""}`.trim());
+  const [format, setFormat] = useState("texte");
+  const [texte, setTexte] = useState("");
+  const [html, setHtml] = useState("");
+  const [fichiers, setFichiers] = useState([]);
+  const signature = useQuery({ queryKey: ["mass-email-signature"], queryFn: massEmailAPI.signature });
+  const sig = signature.data?.data?.texte || "";
+  const envoi = useMutation({
+    mutationFn: () => {
+      const fd = new FormData();
+      const decoupe = (v) => v.split(/[,;\s]+/).filter(Boolean);
+      decoupe(a).forEach((x) => fd.append("a", x));
+      decoupe(cc).forEach((x) => fd.append("cc", x));
+      decoupe(cci).forEach((x) => fd.append("cci", x));
+      fd.append("sujet", sujet);
+      if (format === "html") fd.append("html", html); else fd.append("texte", texte);
+      fichiers.forEach((f) => fd.append("attachments", f));
+      return websiteAdminAPI.repondreContact(m.id, fd);
+    },
+    onSuccess: (rep) => {
+      if (rep.status === 202) toast(t("Le serveur d'envoi n'a pas encore accepté la réponse : nouvel essai automatique."));
+      else toast.success(t("Réponse acceptée par le serveur d'envoi (contact@globalfeba.com)."));
+      qc.invalidateQueries({ queryKey: ["contact-reponses", m.id] });
+      qc.invalidateQueries({ queryKey: ["site-admin-contact"] });
+      onFermer();
+    },
+    onError: (e) => toast.error(extractApiError(e)),
+  });
+  const pret = emailValide(a.split(/[,;\s]+/)[0]) && sujet.trim() && (format === "html" ? html.replace(/<[^>]*>/g, "").trim() : texte.trim());
+  const insererSignature = () => {
+    if (!sig) return;
+    if (format === "html") setHtml((h) => `${h}<p>--<br>${sig.replace(/[<>&]/g, "").split("\n").join("<br>")}</p>`);
+    else setTexte((x) => `${x.replace(/\s+$/, "")}\n\n-- \n${sig}`);
+  };
+  return (
+    <Modal open onClose={() => !envoi.isPending && onFermer()} title={t("Répondre par email")} size="xl">
+      <form className="space-y-3" onSubmit={(e) => { e.preventDefault(); if (pret) envoi.mutate(); }} data-testid="reponse-email">
+        <p className="text-xs text-slate-500">{t("Depuis")} <strong>contact@globalfeba.com</strong> · {t("la réponse est enregistrée dans la boîte mail contact et reliée à ce message.")}</p>
+        {[["À", a, setA, "rep-a"], ["Cc", cc, setCc, "rep-cc"], ["Cci", cci, setCci, "rep-cci"]].map(([n, v, set, id]) => (
+          <label key={id} className="flex items-center gap-2 border-b border-slate-100 pb-1">
+            <span className="w-10 text-sm text-slate-500">{t(n)}</span>
+            <input className="flex-1 bg-transparent text-sm outline-none py-1" value={v} onChange={(e) => set(e.target.value)} data-testid={id} />
+          </label>
+        ))}
+        <div>
+          <label className="label" htmlFor="rep-sujet">{t("Objet")}</label>
+          <input id="rep-sujet" className="input" maxLength={250} value={sujet} onChange={(e) => setSujet(e.target.value)} />
+        </div>
+        <details className="rounded-xl bg-slate-50 px-3 py-2 text-xs text-slate-600" open>
+          <summary className="cursor-pointer font-medium">{t("Message d'origine")} : {m.name}, {m.created_at?.slice(0, 16).replace("T", " ")}</summary>
+          <p className="mt-2 whitespace-pre-wrap max-h-40 overflow-y-auto">{m.message}</p>
+        </details>
+        <EditeurMessage id="rep-corps" format={format} onFormat={setFormat} texte={texte} onTexte={setTexte} html={html} onHtml={setHtml} />
+        <div className="flex flex-wrap items-center gap-2">
+          {sig && <button type="button" className="text-xs font-medium text-primary hover:underline" onClick={insererSignature}>{t("Insérer ma signature")}</button>}
+          <label className="btn-secondary text-sm cursor-pointer inline-flex items-center gap-1">
+            <Paperclip className="w-4 h-4" />{t("Joindre")}
+            <input type="file" multiple className="sr-only" onChange={(e) => { setFichiers([...fichiers, ...e.target.files]); e.target.value = ""; }} />
+          </label>
+          {fichiers.map((f, i) => (
+            <span key={`${f.name}-${i}`} className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-xs">
+              {f.name}<button type="button" onClick={() => setFichiers(fichiers.filter((_, j) => j !== i))} aria-label={t("Retirer {n}", { n: f.name })}><X className="w-3 h-3" /></button>
+            </span>
+          ))}
+          <button type="button" className="btn-secondary ml-auto" onClick={onFermer} disabled={envoi.isPending}>{t("Annuler")}</button>
+          <button type="submit" className="btn-primary inline-flex items-center gap-2" disabled={!pret || envoi.isPending} data-testid="rep-envoyer">
+            {envoi.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+            {envoi.isPending ? t("Envoi…") : t("Envoyer")}
+          </button>
+        </div>
+      </form>
+    </Modal>
   );
 }
 
@@ -423,13 +559,20 @@ function PreregDetail({ id, onClose, onDownload, onRegenerate, busy }) {
           </Section>
 
           <div className="flex justify-end gap-2 flex-wrap pt-2">
-            {row.whatsapp && (
-              <a href={`https://wa.me/${String(row.whatsapp).replace(/[^0-9]/g, "")}`}
+            {/* Même règle que les messages reçus : numéro WhatsApp normalisé, jamais deviné. */}
+            {numeroWhatsApp(row.whatsapp).valide ? (
+              <a href={lienWhatsApp(numeroWhatsApp(row.whatsapp).numero)}
                 target="_blank" rel="noopener noreferrer"
                 className="btn-secondary inline-flex items-center gap-2">
-                <ExternalLink className="w-4 h-4" aria-hidden="true" />
+                <MessageCircle className="w-4 h-4" aria-hidden="true" />
                 {t("Répondre sur WhatsApp")}
               </a>
+            ) : (
+              <button type="button" disabled title={t(numeroWhatsApp(row.whatsapp).raison)}
+                className="btn-secondary inline-flex items-center gap-2 opacity-50 cursor-not-allowed">
+                <MessageCircle className="w-4 h-4" aria-hidden="true" />
+                {t("Répondre sur WhatsApp")}
+              </button>
             )}
             <button type="button" onClick={() => onRegenerate(row)} disabled={busy}
               className="btn-secondary inline-flex items-center gap-2">

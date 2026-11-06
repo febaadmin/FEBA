@@ -1,4 +1,5 @@
 import { NavLink, useNavigate } from "react-router-dom";
+import { useNonLusMessagerie, usePretPourDonnees } from "../hooks/useNonLusMessagerie";
 import { BarChart3, Home, ClipboardList, Calendar, FileText, BookOpen, MessageSquare, User, LogOut, School, Menu, X, Bell, Megaphone, Video, TrendingUp, ClipboardCheck, CircleHelp } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
 import AcademyLogo from "../components/AcademyLogo";
@@ -8,7 +9,7 @@ import { clsx } from "clsx";
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { notificationsAPI, conversationsAPI } from "../api";
+import { notificationsAPI } from "../api";
 import { t } from "../i18n";
 import LanguageSwitcher from "../components/ui/LanguageSwitcher";
 import { useEntityContext } from "../hooks/useEntityContext";
@@ -68,11 +69,11 @@ export default function StudentLayout() {
     else setOpen(true);
   }, [isMobile]);
 
-  const { data: notifData } = useQuery({ queryKey: ["notif-count-s"], queryFn: notificationsAPI.unreadCount, refetchInterval: 30000 });
+  const pret = usePretPourDonnees();
+  const { data: notifData } = useQuery({ queryKey: ["notif-count-s"], queryFn: notificationsAPI.unreadCount, refetchInterval: 30000, enabled: pret });
   const { data: notifListData } = useQuery({ queryKey: ["notif-list-s"], queryFn: notificationsAPI.list, enabled: notifOpen });
   const markAllMut = useMutation({ mutationFn: notificationsAPI.markAllRead, onSuccess: () => { qc.invalidateQueries({ queryKey: ["notif-count-s"] }); } });
-  const { data: msgCountData } = useQuery({ queryKey: ["msg-count-s"], queryFn: conversationsAPI.unreadCount, refetchInterval: 15000 });
-  const msgUnread = msgCountData?.data?.count || 0;
+  const msgUnread = useNonLusMessagerie(user?.id);
   const unread = notifData?.data?.count || 0;
   const notifications = notifListData?.data?.results || notifListData?.data || [];
   const openNotifPanel = () => { setNotifOpen(true); if (unread > 0) markAllMut.mutate(); };
@@ -108,7 +109,7 @@ export default function StudentLayout() {
                   <item.icon className="w-4 h-4 shrink-0" />
                   <span className="truncate">{t(item.label)}</span>
                   {item.to === "/student/messages" && msgUnread > 0 && (
-                    <span className="ml-auto w-5 h-5 bg-danger text-white text-[10px] rounded-full flex items-center justify-center font-bold shrink-0">
+                    <span data-testid="badge-messages-menu" aria-label={t("{n} conversation(s) non lue(s)", { n: msgUnread })} className="ml-auto w-5 h-5 bg-danger text-white text-[10px] rounded-full flex items-center justify-center font-bold shrink-0">
                       {msgUnread > 9 ? "9+" : msgUnread}
                     </span>
                   )}
