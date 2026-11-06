@@ -27,7 +27,10 @@ class SituationTests(ReminderBase):
         t = s["totaux"]
         self.assertEqual((t["attendu_minor"], t["paye_minor"], t["restant_minor"]), (329800, 150000, 179800))
         self.assertEqual(t["retard_minor"], 100000)                 # tranche du 30/11 échue, impayée
-        self.assertEqual(t["taux_recouvrement"], round(100 * 150000 / 250000, 1))
+        # Définition retenue (novembre 2026) : encaissé ÷ net attendu × 100 ; le taux sur les
+        # seules échéances passées reste disponible sous son propre nom.
+        self.assertEqual(t["taux_recouvrement"], round(100 * 150000 / 329800, 1))
+        self.assertEqual(t["taux_recouvrement_echu"], round(100 * 150000 / 250000, 1))
         self.assertEqual(t["paye_total_minor"], 180000)
         self.assertEqual(t["hors_echeancier_minor"], 30000)         # cantine : sans tarif, affichée à part
         self.assertEqual(len(s["echeances"]), 3)

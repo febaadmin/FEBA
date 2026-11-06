@@ -1,15 +1,13 @@
-import { NavLink, useNavigate } from "react-router-dom";
-import { useNonLusMessagerie, usePretPourDonnees } from "../hooks/useNonLusMessagerie";
-import { BarChart3, Home, Users, ClipboardList, Calendar, FileText, MessageSquare, DollarSign, BookOpen, User, LogOut, School, Menu, X, Bell, Megaphone, Video, TrendingUp, ClipboardCheck, CircleHelp } from "lucide-react";
+import { NavLink } from "react-router-dom";
+import { useNonLusMessagerie } from "../hooks/useNonLusMessagerie";
+import NotificationBell from "../components/NotificationBell";
+import { BarChart3, Home, Users, ClipboardList, Calendar, FileText, MessageSquare, DollarSign, BookOpen, User, LogOut, School, Menu, X, Megaphone, Video, TrendingUp, ClipboardCheck, CircleHelp } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
 import AcademyLogo from "../components/AcademyLogo";
 import AcademyName from "../components/AcademyName";
-import { safeInternalPath } from "../utils/safePath";
 import { clsx } from "clsx";
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { notificationsAPI } from "../api";
 import { t } from "../i18n";
 import LanguageSwitcher from "../components/ui/LanguageSwitcher";
 import { useEntityContext } from "../hooks/useEntityContext";
@@ -60,25 +58,15 @@ export default function ParentLayout() {
   const visibleNav = nav.filter((item) => !item.feature || hasFeature(item.feature));
 
   const { user, logout } = useAuth();
-  const qc = useQueryClient();
   const isMobile = useIsMobile();
   const [open, setOpen] = useState(window.innerWidth >= 768);
-  const [notifOpen, setNotifOpen] = useState(false);
-  const navigate = useNavigate();
 
   useEffect(() => {
     if (isMobile) setOpen(false);
     else setOpen(true);
   }, [isMobile]);
 
-  const pret = usePretPourDonnees();
-  const { data: notifData } = useQuery({ queryKey: ["notif-count"], queryFn: notificationsAPI.unreadCount, refetchInterval: 30000, enabled: pret });
-  const { data: notifListData, refetch: refetchList } = useQuery({ queryKey: ["notif-list"], queryFn: notificationsAPI.list, enabled: notifOpen });
-  const markAllMut = useMutation({ mutationFn: notificationsAPI.markAllRead, onSuccess: () => { qc.invalidateQueries({ queryKey: ["notif-count"] }); qc.invalidateQueries({ queryKey: ["notif-list"] }); } });
   const msgUnread = useNonLusMessagerie(user?.id);
-  const unread = notifData?.data?.count || 0;
-  const notifications = notifListData?.data?.results || notifListData?.data || [];
-  const openNotifPanel = () => { setNotifOpen(true); refetchList(); if (unread > 0) markAllMut.mutate(); };
   const closeSidebarOnMobile = () => { if (isMobile) setOpen(false); };
 
   return (
@@ -141,31 +129,7 @@ export default function ParentLayout() {
           <button type="button" onClick={() => setOpen(!open)} aria-label={t("Ouvrir ou fermer le menu")} aria-expanded={open} className="btn-icone"><Menu className="w-5 h-5" /></button>
           <div className="flex items-center gap-3">
             <LanguageSwitcher />
-            <div className="relative">
-              <button onClick={openNotifPanel} className="p-2 rounded-xl hover:bg-slate-100 text-slate-600 relative">
-                <Bell className="w-5 h-5" />
-                {unread > 0 && <span className="absolute top-1 right-1 w-4 h-4 bg-danger text-white text-[10px] rounded-full flex items-center justify-center font-bold">{unread > 9 ? "9+" : unread}</span>}
-              </button>
-              {notifOpen && (
-                <div className="absolute right-0 top-10 w-72 sm:w-80 bg-white rounded-2xl shadow-2xl border border-slate-100 z-50">
-                  <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100">
-                    <p className="font-bold text-slate-800 text-sm">{t("Notifications")}</p>
-                    <button onClick={() => setNotifOpen(false)} className="text-slate-400 hover:text-slate-600 text-lg">×</button>
-                  </div>
-                  <div className="max-h-72 overflow-y-auto divide-y divide-slate-50">
-                    {notifications.length === 0 ? <p className="text-center text-slate-400 py-8 text-sm">{t("Aucune notification")}</p>
-                      : notifications.slice(0, 10).map(n => (
-                        <div key={n.id} onClick={() => { setNotifOpen(false); const to = safeInternalPath(n.related_url); if (to) navigate(to); }}
-                          className={`px-4 py-3 cursor-pointer hover:bg-slate-50 ${!n.is_read ? "bg-primary-50/30" : ""}`}>
-                          <p className="text-sm font-medium">{n.title}</p>
-                          <p className="text-xs text-slate-500 mt-0.5 line-clamp-2">{n.message}</p>
-                          <p className="text-xs text-slate-400 mt-1">{n.created_at?.slice(0,16)?.replace("T"," ")}</p>
-                        </div>
-                      ))}
-                  </div>
-                </div>
-              )}
-            </div>
+            <NotificationBell />
             <div className="flex items-center gap-2 pl-3 border-l border-slate-100">
               <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center text-white text-xs font-bold shrink-0">
                 {user?.first_name?.[0]}{user?.last_name?.[0]}

@@ -36,7 +36,7 @@ from .models import (
     ReminderRun, StudentFeeArrangement,
 )
 from .reminders import (
-    STATUS_LABELS, reminders_globally_enabled, run_reminders, type_label,
+    STATUS_LABELS, cle_echeance, reminders_globally_enabled, run_reminders, type_label,
 )
 
 
@@ -134,11 +134,31 @@ class FeeScheduleSerializer(serializers.ModelSerializer):
         return attrs
 
     def _save_installments(self, fee, rows):
-        keep = []
+        """
+        Remplace l'échéancier par `rows`. Une ligne est rattachée à l'échéance existante
+        de même identifiant, à défaut de même date (ce qui conserve le lien avec les
+        relances déjà envoyées). Avant novembre 2026, renvoyer une date existante sans
+        son identifiant, ou échanger deux dates, heurtait la contrainte d'unicité.
+        """
+        from datetime import date as _date
         existing = {i.pk: i for i in fee.installments.all()}
+        par_date = {i.due_date: i for i in existing.values()}
+        retenues, plan = set(), []
         for index, row in enumerate(rows):
             minor = _to_minor(row.get("amount"), fee.currency, "installments")
-            inst = existing.get(row.get("id")) or FeeInstallment(fee_schedule=fee)
+            inst = existing.get(row.get("id"))
+            if inst is None or inst.pk in retenues:
+                candidate = par_date.get(row["due_date"])
+                inst = candidate if candidate is not None and candidate.pk not in retenues else FeeInstallment(fee_schedule=fee)
+            if inst.pk:
+                retenues.add(inst.pk)
+            plan.append((inst, row, minor, index))
+        fee.installments.exclude(pk__in=retenues).delete()
+        # Phase 1 : dates provisoires pour les échéances déplacées (échange de dates sans collision).
+        for n, (inst, row, _minor, _index) in enumerate(plan):
+            if inst.pk and inst.due_date != row["due_date"]:
+                FeeInstallment.objects.filter(pk=inst.pk).update(due_date=_date(9000 + n, 1, 1))
+        for inst, row, minor, index in plan:
             inst.label = row["label"]
             inst.due_date = row["due_date"]
             inst.amount_minor = minor
@@ -147,8 +167,6 @@ class FeeScheduleSerializer(serializers.ModelSerializer):
                 inst.save()
             except Exception as exc:  # contrainte de validation lisible
                 raise ValidationError({"installments": [str(exc)]})
-            keep.append(inst.pk)
-        fee.installments.exclude(pk__in=keep).delete()
 
     def _journaliser(self, fee, action, ancien=None, champs=(), motif=""):
         from .models import FeeScheduleChange
@@ -351,6 +369,38 @@ class ArrangementViewSet(AcademyScopedMixin, viewsets.ModelViewSet):
         ctx["academy"] = self.academy()
         return ctx
 
+    # Toute disposition (abonnement, exonération, réduction) est tracée : avant
+    # novembre 2026, une suppression ne laissait aucune trace.
+    def _tracer(self, arr, action_, avant=None, apres=None):
+        from .remise_views import journaliser
+        motif = self.request.data.get("motif") if isinstance(self.request.data.get("motif"), str) else ""
+        journaliser(self.request, self.academy(), "disposition", arr, action_,
+                    f"{arr.get_kind_display()} · {arr.student.get_full_name()} · "
+                    f"{arr.fee_schedule.label or type_label(arr.fee_schedule.payment_type)}",
+                    avant=avant, apres=apres, motif=motif, student=arr.student)
+
+    @staticmethod
+    def _etat(arr):
+        return {"kind": arr.kind, "discount_minor": arr.discount_minor, "reason": arr.reason,
+                "start_date": arr.start_date.isoformat() if arr.start_date else None,
+                "end_date": arr.end_date.isoformat() if arr.end_date else None}
+
+    @transaction.atomic
+    def perform_create(self, serializer):
+        arr = serializer.save()
+        self._tracer(arr, "creation", apres=self._etat(arr))
+
+    @transaction.atomic
+    def perform_update(self, serializer):
+        avant = self._etat(serializer.instance)
+        arr = serializer.save()
+        self._tracer(arr, "modification", avant=avant, apres=self._etat(arr))
+
+    @transaction.atomic
+    def perform_destroy(self, instance):
+        self._tracer(instance, "suppression", avant=self._etat(instance))
+        instance.delete()
+
 
 # ── Relances ──────────────────────────────────────────────────────────
 
@@ -463,7 +513,7 @@ class ReminderPreviewView(AcademyScopedMixin, APIView):
             return Response({"detail": run.error}, status=500)
         planned = {}
         for entry in run.plan:
-            key = (entry["item"].installment.pk, entry["item"].student.pk)
+            key = (cle_echeance(entry["item"]), entry["item"].student.pk)
             planned.setdefault(key, []).append({
                 "recipient": entry["recipient"].get_full_name() or entry["recipient"].email,
                 "email": entry["recipient"].email, "level": entry["level"],
@@ -474,7 +524,7 @@ class ReminderPreviewView(AcademyScopedMixin, APIView):
             if not show_all and item.status not in ("overdue", "partial"):
                 continue
             row = item.as_dict()
-            row["planned_reminders"] = planned.get((item.installment.pk, item.student.pk), [])
+            row["planned_reminders"] = planned.get((cle_echeance(item), item.student.pk), [])
             items.append(row)
         items.sort(key=lambda r: (r["due_date"], r["student_name"]))
         return Response({
