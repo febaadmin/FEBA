@@ -32,8 +32,10 @@ export default async function () {
   const wa = p.getByTestId("repondre-whatsapp");
   await wa.waitFor({ timeout: 10000 });
   ok(S, "WhatsApp : numéro WhatsApp normalisé", (await wa.getAttribute("href") || "").startsWith("https://wa.me/2290196112233?"), await wa.getAttribute("href"));
-  const [l1, l2] = [await wa.boundingBox(), await p.getByTestId("repondre-email").boundingBox()];
-  ok(S, "deux boutons de même hauteur", Math.abs(l1.height - l2.height) < 1, `${l1.height}/${l2.height}`);
+  // Hauteur de mise en page (offsetHeight) : la boîte affichée varie pendant l'animation
+  // d'ouverture de la fenêtre (échelle 0,95 → 1), ce qui faussait la comparaison en CI.
+  const [h1, h2] = [await wa.evaluate((e) => e.offsetHeight), await p.getByTestId("repondre-email").evaluate((e) => e.offsetHeight)];
+  ok(S, "deux boutons de même hauteur", h1 === h2 && h1 >= 40, `${h1}/${h2}`);
   await p.keyboard.press("Escape");
   await p.waitForTimeout(400);
 

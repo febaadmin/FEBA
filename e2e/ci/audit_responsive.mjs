@@ -13,7 +13,11 @@ const profils = (process.argv[3] || "superadmin,admin,teacher,parent,student").s
 await lancer();
 const constats = [];
 for (const role of profils) {
-  const p = await connecter(role);
+  let p;
+  for (let essai = 1; essai <= 3 && !p; essai++) {
+    try { p = await connecter(role); } catch (e) { console.error(`connexion ${role} (essai ${essai}) : ${String(e).slice(0, 80)}`); }
+  }
+  if (!p) { constats.push({ role, type: "connexion", detail: "impossible après 3 essais" }); continue; }
   for (const w of largeurs) {
     await p.setViewportSize({ width: w, height: TAILLES[w] || 900 });
     for (const route of ROUTES[role]) {
