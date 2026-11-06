@@ -25,7 +25,7 @@ Méthode : lecture du code, reproduction des parcours dans un navigateur réel (
 | 5 | Sans tarif, « Total encaissé 0 FCFA » alors que la production compte 240 paiements confirmés | encaissements calculés sur les seuls élèves ayant des échéances | encaissements réels sur la sélection d'élèves ; KPI et graphique toujours visibles | test `test_encaissements_reels_meme_sans_echeancier`, capture d'écran |
 | 6 | Nouvelle remise : le formulaire ne s'envoyait pas | catégorie par défaut « exceptionnelle », qui exige une justification (champ obligatoire masqué) | catégorie par défaut « Autre » (remise) ou « sociale » (exonération) | E2E `finance` |
 | 7 | Taux de recouvrement calculé sur les seules échéances passées, alors que la définition demandée est encaissé ÷ net attendu | définition historique | `taux_recouvrement` = encaissé ÷ net × 100 ; l'ancien taux reste disponible sous le nom `taux_recouvrement_echu` | test mis à jour, avec justification |
-| 8 | Exécution CI 42134340770 de #107 en échec | l'étape apt « LibreOffice » a dépassé 15 min (miroir lent), alors que l'exécution parallèle était verte | chaque tentative est limitée, avec reprises réseau, `man-db` désactivé et 3 essais | à confirmer sur la CI de #108 |
+| 8 | Exécution CI 42134340770 de #107 en échec | étape apt « LibreOffice » au-delà de 15 min (miroir lent) | tentatives bornées, reprises, man-db désactivé | CI de #108 verte (2 exécutions) |
 | 9 | Aucune remise, exonération (hors « totale »), exception familiale ni échéancier individuel ; aucune vue par élève, aucun KPI ni graphique de situation (signalé) | fonctionnalités absentes | module complet (voir RAPPORT_MODULE_FINANCIER.md et RAPPORT_SITUATION_FINANCIERE.md) | 30 tests backend, 8 tests d'interface, E2E |
 
 ## 3. Vérifications sans anomalie
@@ -44,6 +44,7 @@ Méthode : lecture du code, reproduction des parcours dans un navigateur réel (
 
 | Risque | Pourquoi ce n'est pas corrigé | Action proposée |
 |---|---|---|
+| Niveau « MARTERNELLE 2 » mal orthographié en production : le barème ne peut pas y rattacher la scolarité | donnée réelle : correction par l'administration | renommer en « MATERNELLE 2 » avant l'import |
 | Aucun tarif en production : la situation financière reste « non calculable » | les dates exactes du barème 2026-2027 sont « à confirmer » (affiche sans jour précis) ; décision de l'administration | importer le barème depuis « Tarifs et échéances » après vérification (bouton prévu à cet effet) |
 | Modifier le montant d'un tarif déjà payé s'applique rétroactivement à ses échéances (un motif est déjà exigé) | figer des instantanés par élève est une évolution de modèle à décider | pour une nouvelle année, créer un nouveau tarif ; à arbitrer avec FEBA |
 | 5 incidents « corrigés » non validés (ERR-310AC0, ERR-A036A8, ERR-5D12BE, ERR-FC6DC7, ERR-4744E2) | la validation est une décision du super administrateur ; les causes sont corrigées et la surveillance est propre | les valider dans « Incidents techniques » |
