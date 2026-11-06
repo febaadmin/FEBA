@@ -96,6 +96,12 @@
   }
 }
 
+/* Écrans tactiles : cible minimale de 24 px pour tout bouton (WCAG 2.5.8), sans toucher
+   à l'affichage à la souris. */
+@media (pointer: coarse) {
+  main button:not(.btn):not(.btn-icone) { min-height: 24px; }
+}
+
 @media print {
   aside, .barre-haute, [data-testid="menu-lateral"] { display: none !important; }
   body, .fond-app { background: #fff !important; }

@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import process from "node:process";
 import { MENU_ADMIN, MENU_ELEVE, MENU_ENSEIGNANT, MENU_PARENT, MENU_SUPERADMIN, entrees } from "./menus";
 
 // Le parcours E2E « navigation » visite routes.json : chaque entrée de menu doit y figurer.

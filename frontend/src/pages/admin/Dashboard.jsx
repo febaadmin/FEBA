@@ -27,9 +27,12 @@ export default function AdminDashboard() {
   const anim = useAnimation();
   // Cumul : somme des mois successifs, à partir des seuls montants réels renvoyés par le serveur.
   const mois = d?.monthly_revenue || [];
+  // Série de l'année civile en cours (serveur) : les mois à venir n'ont pas de cumul
+  // (rien n'est extrapolé ; la courbe s'arrête au mois courant).
+  const moisCourant = new Date().getMonth() + 1;
   const chartData = mois.map((m, i) => ({
-    month: t(MONTHS[m.month - 1]), montant: m.amount,
-    cumul: mois.slice(0, i + 1).reduce((s, x) => s + (Number(x.amount) || 0), 0),
+    month: t(MONTHS[m.month - 1]), montant: m.month > moisCourant ? null : m.amount,
+    cumul: m.month > moisCourant ? null : mois.slice(0, i + 1).reduce((s, x) => s + (Number(x.amount) || 0), 0),
   }));
 
   if (isLoading) return (

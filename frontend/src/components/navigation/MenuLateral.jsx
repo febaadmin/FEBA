@@ -53,7 +53,7 @@ export default function MenuLateral({ menu, profil, visible = () => true, badges
           <section key={x.id} className="pt-1" data-testid={`menu-groupe-${x.id}`}>
             <button type="button" onClick={() => basculer(x.id, ouvert)} aria-expanded={ouvert} aria-controls={`menu-${profil}-${x.id}`}
               disabled={contientActif} title={contientActif ? t("Groupe de la page affichée") : undefined}
-              className="w-full flex items-center gap-2 px-4 py-1.5 rounded-lg text-[11px] font-bold uppercase tracking-wider text-slate-400 hover:text-white hover:bg-white/5 transition-colors disabled:cursor-default disabled:hover:bg-transparent disabled:text-slate-300">
+              className="w-full flex items-center gap-2 px-4 py-1.5 rounded-lg text-[12.5px] font-semibold text-slate-400 hover:text-white hover:bg-white/5 transition-colors disabled:cursor-default disabled:hover:bg-transparent disabled:text-feba-gold">
               <Icone className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
               <span className="flex-1 text-left truncate">{t(x.label)}</span>
               {!ouvert && badge > 0 && <span className="w-2 h-2 rounded-full bg-danger" aria-label={t("{n} conversation(s) non lue(s)", { n: badge })} />}

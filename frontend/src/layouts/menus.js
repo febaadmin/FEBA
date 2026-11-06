@@ -30,7 +30,7 @@ function personnel(r, { superadmin }) {
       I("Admissions en ligne", ClipboardList, `${r}/fha-admissions`, { feature: "online_admissions" }),
       I("Classes", BookOpen, `${r}/classes`), I("Niveaux", Layers, `${r}/levels`),
     ]),
-    G("pedagogie", "Pédagogie et apprentissages", BookMarked, [
+    G("pedagogie", "Pédagogie", BookMarked, [
       I("Notes", ClipboardList, `${r}/grades`), I("Bulletins", FileText, `${r}/bulletins`),
       I("Appréciations", Star, `${r}/appreciations`), I("Devoirs", BookOpen, `${r}/homework`),
       I("Examens et évaluations", ClipboardCheck, `${r}/evaluations`, { feature: "evaluations_en_ligne" }),
@@ -59,7 +59,7 @@ function personnel(r, { superadmin }) {
       I("Documents officiels", Award, `${r}/official-documents`), I("Gabarits des documents", Stamp, `${r}/document-templates`),
       I("Fichiers", FolderOpen, `${r}/user-files`),
     ]),
-    G("configuration", "Configuration et assistance", Wrench, [
+    G("configuration", "Paramètres et aide", Wrench, [
       I("Paramètres", Settings, `${r}/settings`),
       I(superadmin ? "Logo & Branding" : "Branding & Logo", superadmin ? Image : School, `${r}/branding`),
       I("Mon profil", UserCog, `${r}/profile`), I("Aide", CircleHelp, `${r}/aide`),

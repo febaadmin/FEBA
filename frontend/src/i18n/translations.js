@@ -1466,6 +1466,8 @@ export const EN = {
   "Conflit d'horaire : cette salle est déjà occupée sur ce créneau.": "Schedule conflict: this room is already occupied in this time slot.",
   "La page n'a pas pu s'afficher. Vous pouvez réessayer ou revenir à l'accueil.": "The page could not be displayed. You can try again or return to the home page.",
   "Réessayer": "Try again",
+  "Pédagogie": "Teaching",
+  "Paramètres et aide": "Settings and help",
   "Aucun tableau dans cet onglet : rien à exporter.": "No table in this tab: nothing to export.",
   "Aucune vue enregistrée.": "No saved view.",
   "Copier le lien": "Copy link",

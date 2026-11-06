@@ -16,14 +16,14 @@ export function AideKpi({ texte }) {
   if (!texte) return null;
   return (
     <span className="relative inline-flex" ref={zone} onMouseEnter={() => setOuvert(true)} onMouseLeave={() => setOuvert(false)}>
-      <button type="button" className="text-slate-400 hover:text-feba-navy focus-visible:text-feba-navy rounded" aria-label={t("Explication")}
+      <button type="button" className="-m-1.5 p-1.5 inline-flex text-slate-400 hover:text-feba-navy focus-visible:text-feba-navy rounded" aria-label={t("Explication")}
         aria-describedby={ouvert ? id : undefined} aria-expanded={ouvert} onClick={() => setOuvert((v) => !v)} onFocus={() => setOuvert(true)}
         onBlur={() => setOuvert(false)}>
-        <Info className="w-3 h-3" aria-hidden="true" />
+        <Info className="w-3.5 h-3.5" aria-hidden="true" />
       </button>
       {ouvert && (
         <span id={id} role="tooltip"
-          className="absolute left-0 top-5 z-30 w-60 max-w-[70vw] rounded-lg bg-slate-900 px-2.5 py-2 text-[11px] font-normal leading-snug text-white shadow-lg">
+          className="absolute left-0 top-6 z-30 w-60 max-w-[70vw] rounded-lg bg-slate-900 px-2.5 py-2 text-[11px] font-normal leading-snug text-white shadow-lg">
           {texte}
         </span>
       )}

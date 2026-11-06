@@ -74,7 +74,7 @@ function Grille({ fees, years, levels, onEdit }) {
                   const propre = fee && fee.level === niveau.id;
                   return (
                     <td key={code} className="py-2 px-2 text-right">
-                      <button type="button" className="hover:underline tabular-nums" data-testid={`cellule-${niveau.id}-${code}`}
+                      <button type="button" className="hover:underline tabular-nums min-w-[2.5rem] min-h-[2rem] px-1 rounded-lg hover:bg-slate-50" data-testid={`cellule-${niveau.id}-${code}`}
                         title={fee ? (propre ? t("Tarif propre à ce niveau") : t("Tarif général, hérité")) : t("Aucun tarif : cliquer pour en créer un")}
                         onClick={() => onEdit(propre ? fee : { payment_type: code, level: niveau.id, school_year: yearId || "" })}>
                         {fee ? <span className={propre ? "text-slate-900" : "text-slate-400 italic"}>{fee.amount_display}</span> : <span className="text-slate-300">-</span>}
