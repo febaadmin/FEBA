@@ -11,7 +11,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { Bar, BarChart, CartesianGrid, Cell, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { Bar, BarChart, CartesianGrid, Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { BLEU, ETAT, MOUVEMENT, OR } from "../../theme/graphiques";
 import { useReducedMotion } from "framer-motion";
 import { ArrowDown, ArrowUp, Download, Search, X } from "lucide-react";
 import toast from "react-hot-toast";
@@ -31,8 +32,9 @@ import { formatMinor } from "../../utils/money";
 import { NATURES_FRAIS } from "../../utils/naturesFrais";
 
 // Palette FEBA : encaissé (vert), à échoir (bleu nuit), en retard (rouge, statut).
-const C = { encaisse: "#15803D", a_echoir: "#0E2A63", retard: "#B91C1C", net: "#0E2A63", paye: "#15803D", restant: "#D89B16",
-  solde: "#15803D", partiel: "#D89B16", aucun: "#B91C1C", exonere: "#64748B" };
+// Système graphique FEBA : états (encaissé, en retard…) en couleurs d'état, séries en couleurs de palette.
+const C = { encaisse: ETAT.succes, a_echoir: BLEU, retard: ETAT.alerte, net: BLEU, paye: ETAT.succes, restant: OR,
+  solde: ETAT.succes, partiel: ETAT.attention, aucun: ETAT.alerte, exonere: ETAT.neutre };
 const VUES = [["classe", "Par classe"], ["niveau", "Par niveau"], ["eleve", "Par élève"]];
 const STATUTS = [["", "Tous les statuts"], ["solde", "Soldé"], ["partiel", "Paiement partiel"], ["aucun", "Aucun paiement"],
   ["exonere", "Exonéré"], ["en_retard", "En retard"], ["a_jour", "À jour"]];
@@ -93,7 +95,7 @@ function Kpis({ a }) {
   );
 }
 
-function Infobulle({ active, payload, label, devise }) {
+function Infobulle({ active, payload, label, devise, entier = false }) {
   if (!active || !payload?.length) return null;
   return (
     <div className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs shadow-md">
@@ -101,7 +103,7 @@ function Infobulle({ active, payload, label, devise }) {
       {payload.map((p) => (
         <p key={p.dataKey} className="flex items-center gap-1.5 text-slate-700">
           <span className="w-2 h-2 rounded-sm" style={{ background: p.color || p.payload?.fill }} aria-hidden="true" />
-          {p.name} : <strong className="tabular-nums">{p.unit === "%" ? `${p.value} %` : p.unit === "n" ? p.value : formatMinor(p.value, devise)}</strong>
+          {p.name} : <strong className="tabular-nums">{p.unit === "%" ? `${p.value} %` : p.unit === "n" || entier ? p.value : formatMinor(p.value, devise)}</strong>
         </p>
       ))}
     </div>
@@ -128,7 +130,7 @@ function Graphiques({ a, vue, onFiltre }) {
             <Tooltip content={<Infobulle devise={devise} />} />
             <Legend wrapperStyle={{ fontSize: 12 }} formatter={encre} />
             {[["encaisse", "Encaissé"], ["a_echoir", "Restant à échoir"], ["retard", "En retard"]].map(([cle, nom], i, tab) => (
-              <Bar key={cle} dataKey={cle} name={t(nom)} stackId="r" fill={C[cle]} isAnimationActive={anim} cursor="pointer"
+              <Bar key={cle} dataKey={cle} name={t(nom)} stackId="r" fill={C[cle]} isAnimationActive={anim} animationDuration={MOUVEMENT.duree} cursor="pointer"
                 radius={i === tab.length - 1 ? [0, 4, 4, 0] : i === 0 ? [4, 0, 0, 4] : 0}
                 onClick={() => onFiltre(cle === "retard" ? { statut: "en_retard" } : cle === "encaisse" ? { statut: "solde" } : { statut: "a_jour" }, "eleve")} />
             ))}
@@ -138,17 +140,36 @@ function Graphiques({ a, vue, onFiltre }) {
 
       <CarteGraphique titre={t("Statut de paiement des élèves")} contexte={contexte} unite={t("élèves")} testid="graph-statuts"
         vide={!a.kpi.eleves_concernes} raisonVide={t("Aucun élève concerné par cette sélection.")}>
-        <ResponsiveContainer width="100%" height={180}>
-          <BarChart data={g.statuts.map((s) => ({ ...s, libelle: t(s.libelle) }))} margin={{ left: 0, right: 8 }}>
-            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-            <XAxis dataKey="libelle" tick={{ fontSize: 11 }} interval={0} /><YAxis allowDecimals={false} tick={{ fontSize: 11 }} width={28} />
-            <Tooltip content={<Infobulle devise={devise} />} />
-            <Bar dataKey="nombre" name={t("Élèves")} unit="n" isAnimationActive={anim} cursor="pointer" radius={[4, 4, 0, 0]} maxBarSize={48}
-              onClick={(d) => onFiltre({ statut: d.cle }, "eleve")}>
-              {g.statuts.map((s) => <Cell key={s.cle} fill={C[s.cle]} />)}
-            </Bar>
-          </BarChart>
-        </ResponsiveContainer>
+        <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-3 items-center">
+          <div className="h-44 relative">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie data={g.statuts.filter((x) => x.nombre > 0).map((x) => ({ ...x, libelle: t(x.libelle) }))} dataKey="nombre" nameKey="libelle"
+                  innerRadius="62%" outerRadius="92%" paddingAngle={2} stroke="#fff" strokeWidth={2} cursor="pointer"
+                  isAnimationActive={anim} animationDuration={MOUVEMENT.duree} onClick={(d) => onFiltre({ statut: d.cle }, "eleve")}>
+                  {g.statuts.filter((x) => x.nombre > 0).map((x) => <Cell key={x.cle} fill={C[x.cle]} />)}
+                </Pie>
+                <Tooltip content={<Infobulle devise={devise} entier />} />
+              </PieChart>
+            </ResponsiveContainer>
+            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+              <span className="text-2xl font-bold text-slate-900 tabular-nums">{a.kpi.eleves_concernes}</span>
+              <span className="text-[11px] text-slate-500">{t("élèves")}</span>
+            </div>
+          </div>
+          <ul className="space-y-1.5 text-sm">
+            {g.statuts.map((x) => (
+              <li key={x.cle}>
+                <button type="button" className="w-full flex items-center gap-2 rounded-lg px-1.5 py-1 hover:bg-slate-50 text-left"
+                  onClick={() => onFiltre({ statut: x.cle }, "eleve")}>
+                  <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: C[x.cle] }} aria-hidden="true" />
+                  <span className="flex-1 truncate">{t(x.libelle)}</span>
+                  <span className="tabular-nums text-slate-700">{x.nombre}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
       </CarteGraphique>
 
       {vue !== "eleve" && (
@@ -163,7 +184,7 @@ function Graphiques({ a, vue, onFiltre }) {
               <Tooltip content={<Infobulle devise={devise} />} />
               <Legend wrapperStyle={{ fontSize: 12 }} formatter={encre} />
               {[["net", "Net attendu"], ["paye", "Encaissé"], ["restant", "Reste à payer"]].map(([cle, nom]) => (
-                <Bar key={cle} dataKey={cle} name={t(nom)} fill={C[cle]} isAnimationActive={anim} cursor="pointer" maxBarSize={14} radius={[0, 4, 4, 0]}
+                <Bar key={cle} dataKey={cle} name={t(nom)} fill={C[cle]} isAnimationActive={anim} animationDuration={MOUVEMENT.duree} cursor="pointer" maxBarSize={14} radius={[0, 4, 4, 0]}
                   onClick={(d) => d.id && onFiltre({ [champ]: String(d.id) }, "eleve")} />
               ))}
             </BarChart>
@@ -179,7 +200,7 @@ function Graphiques({ a, vue, onFiltre }) {
               <XAxis type="number" domain={[0, 100]} tick={{ fontSize: 11 }} unit=" %" />
               <YAxis type="category" dataKey="nom" width={110} tick={{ fontSize: 11 }} />
               <Tooltip content={<Infobulle devise={devise} />} />
-              <Bar dataKey="taux" name={t("Taux de recouvrement")} unit="%" fill={C.paye} isAnimationActive={anim} maxBarSize={14} radius={[0, 4, 4, 0]}
+              <Bar dataKey="taux" name={t("Taux de recouvrement")} unit="%" fill={C.paye} isAnimationActive={anim} animationDuration={MOUVEMENT.duree} maxBarSize={14} radius={[0, 4, 4, 0]}
                 cursor="pointer" onClick={(d) => d.id && onFiltre({ [champ]: String(d.id) }, "eleve")} />
             </BarChart>
           </ResponsiveContainer>
@@ -193,7 +214,7 @@ function Graphiques({ a, vue, onFiltre }) {
             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
             <XAxis dataKey="mois" tick={{ fontSize: 11 }} /><YAxis tickFormatter={axe} tick={{ fontSize: 11 }} width={64} />
             <Tooltip content={<Infobulle devise={devise} />} />
-            <Bar dataKey="montant_minor" name={t("Encaissé")} fill={C.encaisse} isAnimationActive={anim} radius={[4, 4, 0, 0]} maxBarSize={36} />
+            <Bar dataKey="montant_minor" name={t("Encaissé")} fill={C.encaisse} isAnimationActive={anim} animationDuration={MOUVEMENT.duree} radius={[4, 4, 0, 0]} maxBarSize={36} />
           </BarChart>
         </ResponsiveContainer>
       </CarteGraphique>
@@ -231,7 +252,7 @@ function Encaissements({ a }) {
           <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
           <XAxis dataKey="mois" tick={{ fontSize: 11 }} /><YAxis tickFormatter={(v) => formatMinor(v, a.devise)} tick={{ fontSize: 11 }} width={80} />
           <Tooltip content={<Infobulle devise={a.devise} />} />
-          <Bar dataKey="montant_minor" name={t("Encaissé")} fill={C.encaisse} isAnimationActive={!reduit} radius={[4, 4, 0, 0]} maxBarSize={36} />
+          <Bar dataKey="montant_minor" name={t("Encaissé")} fill={C.encaisse} isAnimationActive={!reduit} animationDuration={MOUVEMENT.duree} radius={[4, 4, 0, 0]} maxBarSize={36} />
         </BarChart>
       </ResponsiveContainer>
     </CarteGraphique>
@@ -450,7 +471,7 @@ export default function SituationFinanciere() {
       <div className="flex flex-wrap gap-2" role="tablist" aria-label={t("Vue")}>
         {VUES.map(([v, l]) => (
           <button key={v} type="button" role="tab" onClick={() => { setVue(v); setPage(1); }} aria-selected={vue === v} data-testid={`groupe-${v}`}
-            className={`px-3 py-1.5 rounded-xl text-sm font-medium transition-colors motion-reduce:transition-none ${vue === v ? "bg-feba-navy text-white" : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-50"}`}>{t(l)}</button>
+            className={vue === v ? "onglet-actif" : "onglet"}>{t(l)}</button>
         ))}
       </div>
       <BarreFiltres f={f} setF={changerF} options={options} consolide={isAllAcademies} />

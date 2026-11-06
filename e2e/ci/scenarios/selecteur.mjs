@@ -1,5 +1,5 @@
 // Sélecteur d'académie : fermeture fiable, menu au-dessus de la page, bascule persistée.
-import { connecter, ok } from "../outils.mjs";
+import { connecter, ok, ouvrirMenus } from "../outils.mjs";
 
 const S = "sélecteur";
 
@@ -52,7 +52,8 @@ export default async function () {
     if (vp.width > 768) {
       await ouvrir();
       const avant = p.url();
-      await p.locator("aside a").nth(2).click();
+      await ouvrirMenus(p);
+      await p.locator("aside a:visible").nth(2).click();
       await p.waitForTimeout(500);
       ok(S, `${nom} : navigation par le menu latéral`, (await menu.count()) === 0 && p.url() !== avant);
     }

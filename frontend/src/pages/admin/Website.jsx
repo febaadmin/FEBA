@@ -141,7 +141,7 @@ function ContactMessageDetail({ message: m }) {
 export function ActionsContact({ nom, sujet, email, whatsapp, onEmail }) {
   const wa = numeroWhatsApp(whatsapp);
   const mailOk = emailValide(email);
-  const base = "inline-flex items-center justify-center gap-2 min-w-[13rem] px-4 py-2.5 rounded-xl text-sm font-semibold transition-colors";
+  const base = "inline-flex items-center justify-center gap-2 min-w-[13rem] h-10 px-4 rounded-xl text-sm leading-5 font-semibold transition-colors";
   const texte = t("Bonjour {n}, nous revenons vers vous au sujet de votre message « {s} ».", { n: nom || "", s: sujet || "" });
   return (
     <div className="flex flex-col sm:flex-row sm:justify-end gap-2" data-testid="actions-contact">

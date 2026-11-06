@@ -11,6 +11,7 @@
 import { useEffect, useState } from "react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { Bar, CartesianGrid, ComposedChart, Legend, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { BLEU, OR, couleurMode, couleurNature, useAnimation } from "../../theme/graphiques";
 import { Link } from "react-router-dom";
 import { Download, Info, X } from "lucide-react";
 import { paymentsAPI } from "../../api";
@@ -33,8 +34,8 @@ export const PERIODES_DUREES = [
 const GRANULARITES = { heure: "Par heure", jour: "Par jour", semaine: "Par semaine", mois: "Par mois" };
 // Filtres à choix multiples (listes envoyées séparées par des virgules).
 const MULTIPLES = ["nature", "mode"];
-const COULEUR_ENCAISSE = "#0E2A63";   // bleu marine FEBA
-const COULEUR_ATTENDU = "#D89B16";    // or FEBA
+const COULEUR_ENCAISSE = BLEU;   // système graphique FEBA (theme/graphiques.js)
+const COULEUR_ATTENDU = OR;
 
 export const FILTRES_VIDES = {
   annee: "", cycle: "", niveau: "", classe: "", eleve: "",
@@ -72,7 +73,7 @@ export function parametres(periode, du, au, filtres, comparer, granularite = "au
 const estActif = (v) => (Array.isArray(v) ? v.length > 0 : v !== "");
 
 /** Répartition des encaissements (par nature ou par mode) : barres horizontales cliquables. */
-function Repartition({ titre, lignes, total, devise, onChoisir, testid, choisis }) {
+function Repartition({ titre, lignes, total, devise, onChoisir, testid, choisis, couleur = () => BLEU }) {
   if (!lignes?.length) return null;
   return (
     <div className="rounded-xl border border-slate-100 p-3" data-testid={testid}>
@@ -91,7 +92,7 @@ function Repartition({ titre, lignes, total, devise, onChoisir, testid, choisis 
                   <span className="tabular-nums whitespace-nowrap">{formatMinor(l.montant_minor, devise)} · {part.toFixed(0)} %</span>
                 </span>
                 <span className="mt-1 block h-1.5 rounded-full bg-slate-100 overflow-hidden" aria-hidden="true">
-                  <span className="block h-full rounded-full bg-feba-navy" style={{ width: `${part}%` }} />
+                  <span className="block h-full rounded-full transition-[width] duration-700 ease-out motion-reduce:transition-none" style={{ width: `${part}%`, background: couleur(l.code) }} />
                 </span>
               </button>
             </li>
@@ -273,6 +274,7 @@ function InfobulleCase({ active, payload, grain, decimales, code }) {
 
 export default function GraphiquePaiements() {
   useI18n(); // rendu à chaque changement de langue
+  const anim = useAnimation();
   const { academyKey, businessDataEnabled } = useAcademy();
   const [periode, setPeriode] = useState("12m");
   const [du, setDu] = useState("");
@@ -374,7 +376,7 @@ export default function GraphiquePaiements() {
               {groupe.map(([v, libelle]) => (
                 <button key={v} type="button" onClick={() => choisirPeriode(v)} aria-pressed={periode === v}
                   data-testid={`periode-${v}`}
-                  className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-colors ${periode === v ? "bg-feba-navy text-white" : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50"}`}>
+                  className={periode === v ? "puce-active" : "puce"}>
                   {t(libelle)}
                 </button>
               ))}
@@ -534,9 +536,9 @@ export default function GraphiquePaiements() {
                 <Tooltip content={<InfobulleCase grain={grain} decimales={decimales} code={code} />} />
                 <Legend wrapperStyle={{ fontSize: 12 }} />
                 <Bar dataKey="encaisse" name={t("Encaissé")} fill={COULEUR_ENCAISSE} radius={[4, 4, 0, 0]} maxBarSize={36}
-                  isAnimationActive={false} cursor="pointer" onClick={ouvrirCase} />
+                  {...anim} cursor="pointer" onClick={ouvrirCase} />
                 {courante.echeancier_configure && (
-                  <Line dataKey="attendu" name={t("Attendu")} stroke={COULEUR_ATTENDU} strokeWidth={2} dot={{ r: 3 }} isAnimationActive={false} />
+                  <Line dataKey="attendu" name={t("Attendu")} stroke={COULEUR_ATTENDU} strokeWidth={2} dot={{ r: 3 }} {...anim} />
                 )}
               </ComposedChart>
             </ResponsiveContainer>
@@ -550,9 +552,9 @@ export default function GraphiquePaiements() {
           </div>
           {(courante.par_nature?.length > 0 || courante.par_mode?.length > 0) && (
             <div className="grid md:grid-cols-2 gap-3 mt-4">
-              <Repartition titre={t("Encaissé par nature de frais")} lignes={courante.par_nature} total={ind.encaisse_minor}
+              <Repartition titre={t("Encaissé par nature de frais")} couleur={couleurNature} lignes={courante.par_nature} total={ind.encaisse_minor}
                 devise={code} onChoisir={basculer("nature")} choisis={filtres.nature} testid="repartition-nature" />
-              <Repartition titre={t("Encaissé par mode de paiement")} lignes={courante.par_mode} total={ind.encaisse_minor}
+              <Repartition titre={t("Encaissé par mode de paiement")} couleur={couleurMode} lignes={courante.par_mode} total={ind.encaisse_minor}
                 devise={code} onChoisir={basculer("mode")} choisis={filtres.mode} testid="repartition-mode" />
             </div>
           )}

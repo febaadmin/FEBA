@@ -1,32 +1,17 @@
 /**
- * Mode de présentation du centre d'analyse : français, anglais ou bilingue.
+ * Langue des analyses : celle de l'interface (sélecteur FR / EN en haut de page).
  *
- * Il ne change QUE les libellés affichés : les données, les filtres et les
- * calculs sont identiques dans les trois modes. Par défaut, la langue de
- * l'interface ; le choix est mémorisé pour la session du navigateur.
+ * Avant novembre 2026, un second sélecteur (Français, English, FR / EN) changeait
+ * la langue des seules analyses : il faisait doublon avec le sélecteur général et a
+ * été remplacé par des actions utiles (impression, export, lien, vues enregistrées).
  */
-import { createContext, useContext, useState } from "react";
+import { createContext, useContext } from "react";
 import { getLang, tBoth, translate } from "../../i18n";
 
 const Ctx = createContext({ mode: "fr", setMode: () => {} });
-const CLE = "feba.analyses.presentation";
-
-function lire() {
-  try {
-    const v = sessionStorage.getItem(CLE);
-    return ["fr", "en", "bi"].includes(v) ? v : null;
-  } catch {
-    return null;
-  }
-}
-
 export function PresentationProvider({ children }) {
-  const [mode, setModeEtat] = useState(() => lire() || getLang());
-  const setMode = (m) => {
-    setModeEtat(m);
-    try { sessionStorage.setItem(CLE, m); } catch { /* stockage indisponible : choix non mémorisé */ }
-  };
-  return <Ctx.Provider value={{ mode, setMode }}>{children}</Ctx.Provider>;
+  // L'application est remontée à chaque changement de langue : la langue lue ici est toujours à jour.
+  return <Ctx.Provider value={{ mode: getLang(), setMode: () => {} }}>{children}</Ctx.Provider>;
 }
 
 export function traducteur(mode) {
@@ -49,19 +34,4 @@ export function libelleDouble(mode, fr, en) {
   if (mode === "en") return en || fr;
   if (mode === "bi") return en && en !== fr ? `${fr} / ${en}` : fr;
   return fr;
-}
-
-export function ChoixPresentation() {
-  const { mode, setMode } = usePresentation();
-  const t = useT();
-  return (
-    <div className="flex gap-1" role="group" aria-label={t("Langue de présentation")} data-testid="presentation">
-      {[["fr", "Français"], ["en", "English"], ["bi", "FR / EN"]].map(([v, nom]) => (
-        <button key={v} type="button" onClick={() => setMode(v)} aria-pressed={mode === v} data-testid={`presentation-${v}`}
-          className={`px-2.5 py-1 rounded-lg text-xs font-medium ${mode === v ? "bg-feba-navy text-white" : "bg-white border border-slate-200 text-slate-600"}`}>
-          {nom}
-        </button>
-      ))}
-    </div>
-  );
 }

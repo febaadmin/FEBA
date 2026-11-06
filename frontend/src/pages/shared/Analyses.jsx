@@ -10,15 +10,19 @@
  * Chaque graphique indique sa période, sa population et son unité ; sans donnée,
  * il dit pourquoi au lieu d'afficher un graphique vide.
  */
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useLocation } from "react-router-dom";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { Bar, BarChart, CartesianGrid, Cell, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { CIEL, ETAT, GRILLE, LEGENDE, PALETTE, useAnimation } from "../../theme/graphiques";
+import Infobulle, { encre } from "../../components/charts/Infobulle";
 import { AlertTriangle, X } from "lucide-react";
 import { analyticsAPI } from "../../api";
 import { isCanceledError } from "../../api/academyScope";
 import PageHeader from "../../components/ui/PageHeader";
-import { ChoixPresentation, libelleDouble, PresentationProvider, usePresentation, useT } from "../../components/analytics/presentation";
-import { CarteGraphique, ChoixMultiple, GRIS, NAVY, OR, Tableau, Tuile, VERT, Vide } from "../../components/analytics/elements";
+import { libelleDouble, PresentationProvider, usePresentation, useT } from "../../components/analytics/presentation";
+import ActionsAnalyse, { lireLien } from "../../components/analytics/ActionsAnalyse";
+import { CarteGraphique, ChoixMultiple, NAVY, OR, Tableau, Tuile, VERT, Vide } from "../../components/analytics/elements";
 import { useAuth } from "../../hooks/useAuth";
 import { useAcademyKey } from "../../hooks/useEntityContext";
 
@@ -39,7 +43,7 @@ const PERIODES = { T1: "Trimestre 1", T2: "Trimestre 2", T3: "Trimestre 3", exam
 const CYCLES = { maternelle: "Maternelle", primaire: "Primaire", college: "Collège", lycee: "Lycée", sans: "Sans classe" };
 const TYPES = [["devoir", "Devoir"], ["interrogation", "Interrogation / Devoir de classe"], ["controle", "Contrôle"],
   ["examen", "Examen / Évaluation"], ["tp", "Travaux Pratiques"], ["autre", "Autre"]];
-const AXE = { fontSize: 11, fill: "#64748b" };
+const AXE = { fontSize: 11, fill: "#64748B" };
 
 function Erreur({ error }) {
   const t = useT();
@@ -68,37 +72,47 @@ function Etat({ q, children }) {
 }
 
 /** Barres horizontales d'une valeur par élément (classes, matières, enseignants). */
-function Barres({ donnees, max, unite, couleur = NAVY, testid, surligne = () => false }) {
+function Barres({ donnees, max, unite, couleur = NAVY, testid, surligne = () => false, seuil = null }) {
   const t = useT();
+  const anim = useAnimation();
+  const sous = (d) => seuil !== null && d.valeur !== null && d.valeur !== undefined && d.valeur < seuil;
   const hauteur = Math.max(160, donnees.length * 30 + 40);
   return (
     <div style={{ height: hauteur }} data-testid={testid}>
       <ResponsiveContainer width="100%" height="100%">
         <BarChart data={donnees} layout="vertical" margin={{ left: 8, right: 24 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" horizontal={false} />
+          <CartesianGrid {...GRILLE} horizontal={false} />
           <XAxis type="number" domain={[0, max]} tick={AXE} />
           <YAxis type="category" dataKey="nom" tick={AXE} width={120} />
-          <Tooltip formatter={(v, _n, p) => [`${v ?? t("Non disponible")}${v === null || v === undefined ? "" : unite}`, p.payload.info || p.payload.nom]} />
-          <Bar dataKey="valeur" name={t("Valeur")} radius={[0, 4, 4, 0]} isAnimationActive={false}>
-            {donnees.map((d) => <Cell key={d.nom} fill={surligne(d) ? OR : couleur} />)}
+          <Tooltip cursor={{ fill: "rgba(14,42,99,0.05)" }} formatter={(v, _n, p) => [`${v ?? t("Non disponible")}${v === null || v === undefined ? "" : unite}`, p.payload.info || p.payload.nom]} />
+          <Bar dataKey="valeur" name={t("Valeur")} radius={[0, 4, 4, 0]} maxBarSize={22} {...anim}>
+            {donnees.map((d) => <Cell key={d.nom} fill={surligne(d) ? OR : sous(d) ? ETAT.attention : couleur} />)}
           </Bar>
         </BarChart>
       </ResponsiveContainer>
+      {seuil !== null && donnees.some(sous) && (
+        <p className="text-[11px] text-slate-500 flex items-center gap-1.5 -mt-1">
+          <span className="w-2 h-2 rounded-full" style={{ background: ETAT.attention }} aria-hidden="true" />{t("Sous le seuil de réussite")}
+        </p>
+      )}
     </div>
   );
 }
 
-function Repartition({ tranches, bareme, testid }) {
+function Repartition({ tranches, bareme, testid, seuil = null }) {
   const t = useT();
+  const anim = useAnimation();
   return (
     <div className="h-52" data-testid={testid}>
       <ResponsiveContainer width="100%" height="100%">
         <BarChart data={tranches.map((x) => ({ tranche: `${x.de}–${x.a}`, eleves: x.eleves }))} margin={{ bottom: 8 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
+          <CartesianGrid {...GRILLE} vertical={false} />
           <XAxis dataKey="tranche" tick={AXE} label={{ value: t("Moyenne sur {b}", { b: bareme }), position: "insideBottom", offset: -4, fontSize: 11 }} height={40} />
           <YAxis allowDecimals={false} tick={AXE} width={32} />
           <Tooltip formatter={(v) => [v, t("élèves")]} labelFormatter={(l) => t("Moyennes entre {l}", { l })} />
-          <Bar dataKey="eleves" name={t("Élèves")} fill={NAVY} radius={[4, 4, 0, 0]} isAnimationActive={false} />
+          <Bar dataKey="eleves" name={t("Élèves")} radius={[4, 4, 0, 0]} maxBarSize={44} {...anim}>
+            {tranches.map((x) => <Cell key={`${x.de}`} fill={seuil !== null && x.a <= seuil ? ETAT.attention : NAVY} />)}
+          </Bar>
         </BarChart>
       </ResponsiveContainer>
     </div>
@@ -107,18 +121,57 @@ function Repartition({ tranches, bareme, testid }) {
 
 function Evolution({ points, bareme, testid }) {
   const t = useT();
+  const anim = useAnimation();
   if (!points || points.length < 2) return <Vide raison={t("Une seule période notée : l'évolution apparaîtra avec la période suivante.")} />;
   return (
     <div className="h-52" data-testid={testid}>
       <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={points.map((p) => ({ periode: t(PERIODES[p.periode]), moyenne: p.moyenne }))}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
+        <AreaChart data={points.map((p) => ({ periode: t(PERIODES[p.periode]), moyenne: p.moyenne }))} margin={{ top: 8, right: 12 }}>
+          <defs><linearGradient id="degrade-evolution" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor={NAVY} stopOpacity={0.25} /><stop offset="100%" stopColor={NAVY} stopOpacity={0.02} />
+          </linearGradient></defs>
+          <CartesianGrid {...GRILLE} vertical={false} />
           <XAxis dataKey="periode" tick={AXE} />
           <YAxis domain={[0, bareme]} tick={AXE} width={32} />
           <Tooltip formatter={(v) => [`${v} / ${bareme}`, t("Moyenne")]} />
-          <Line dataKey="moyenne" name={t("Moyenne")} stroke={OR} strokeWidth={2} dot={{ r: 4 }} isAnimationActive={false} />
-        </LineChart>
+          <Area type="monotone" dataKey="moyenne" name={t("Moyenne")} stroke={NAVY} strokeWidth={2} fill="url(#degrade-evolution)"
+            dot={{ r: 4, strokeWidth: 2, fill: "#fff" }} activeDot={{ r: 6 }} {...anim} />
+        </AreaChart>
       </ResponsiveContainer>
+    </div>
+  );
+}
+
+/** Répartition simple (≤ 6 parts) : anneau, total au centre, légende et valeurs. */
+function Anneau({ donnees, unite, testid }) {
+  const t = useT();
+  const anim = useAnimation();
+  const total = donnees.reduce((s, d) => s + (d.valeur || 0), 0);
+  return (
+    <div className="grid sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-3 items-center" data-testid={testid}>
+      <div className="h-48 relative">
+        <ResponsiveContainer width="100%" height="100%">
+          <PieChart>
+            <Pie data={donnees} dataKey="valeur" nameKey="nom" innerRadius="62%" outerRadius="90%" paddingAngle={2} stroke="#fff" strokeWidth={2} {...anim}>
+              {donnees.map((d, i) => <Cell key={d.nom} fill={PALETTE[i % PALETTE.length]} />)}
+            </Pie>
+            <Tooltip content={<Infobulle format={(v) => `${v} ${unite} · ${total ? Math.round((100 * v) / total) : 0} %`} />} />
+          </PieChart>
+        </ResponsiveContainer>
+        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+          <span className="text-2xl font-bold text-slate-900 tabular-nums">{total}</span>
+          <span className="text-[11px] text-slate-500">{t("au total")}</span>
+        </div>
+      </div>
+      <ul className="space-y-1.5 text-sm">
+        {donnees.map((d, i) => (
+          <li key={d.nom} className="flex items-center gap-2">
+            <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: PALETTE[i % PALETTE.length] }} aria-hidden="true" />
+            <span className="flex-1 truncate">{d.nom}</span>
+            <span className="tabular-nums text-slate-700">{d.valeur} · {total ? Math.round((100 * d.valeur) / total) : 0} %</span>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
@@ -164,26 +217,25 @@ function VueEnsemble({ params, contexte }) {
           </div>
           <Limites limites={r.limites} />
           <div className="grid lg:grid-cols-2 gap-4">
-            <CarteGraphique testid="ens-repartition" titre={t("Répartition des moyennes générales")} contexte={contexte}
+            <CarteGraphique testid="ens-repartition" titre={t("Répartition des moyennes générales")} description={t("Nombre d'élèves par tranche de moyenne générale ; en couleur « attention », les tranches sous le seuil de réussite.")} contexte={contexte}
               population={t("{n} élèves notés", { n: k.eleves_notes })} unite={t("nombre d'élèves")} vide={!k.eleves_notes}
               raisonVide={t("Aucune note pour cette sélection.")}>
-              <Repartition tranches={r.repartition} bareme={b} />
+              <Repartition tranches={r.repartition} bareme={b} seuil={(b * r.seuil_pourcent) / 100} />
             </CarteGraphique>
-            <CarteGraphique testid="ens-classes" titre={t("Moyenne générale par classe")} contexte={contexte}
+            <CarteGraphique testid="ens-classes" titre={t("Moyenne générale par classe")} description={t("Moyenne des élèves notés de chaque classe, calculée comme sur le bulletin (matières pondérées par leur coefficient).")} contexte={contexte}
               population={t("{n} classes", { n: r.classes.length })} unite={t("moyenne sur {b}", { b })} vide={!r.classes.length}
               raisonVide={t("Aucune note pour cette sélection.")} detail={tableauClasses}>
               <Barres donnees={r.classes.map((c) => ({ nom: c.nom, valeur: c.moyenne, info: `${c.nom} · ${t("Réussite")} ${val(c.taux_reussite, t, " %")} · ${c.eleves_notes} ${t("élèves")}` }))}
                 max={b} unite={` / ${b}`} />
             </CarteGraphique>
-            <CarteGraphique testid="ens-progression" titre={t("Évolution de la moyenne par période")} contexte={r.annee.nom}
+            <CarteGraphique testid="ens-progression" titre={t("Évolution de la moyenne par période")} description={t("Moyenne générale de la sélection à chaque période notée de l'année.")} contexte={r.annee.nom}
               unite={t("moyenne sur {b}", { b })}>
               <Evolution points={r.progression} bareme={b} />
             </CarteGraphique>
-            <CarteGraphique testid="ens-cycles" titre={t("Effectifs par cycle")} contexte={r.annee.nom}
+            <CarteGraphique testid="ens-cycles" titre={t("Effectifs par cycle")} description={t("Inscriptions actives de l'année, réparties par cycle.")} contexte={r.annee.nom}
               population={t("{n} inscrits", { n: k.inscrits })} unite={t("nombre d'élèves")} vide={!r.par_cycle.length}
               raisonVide={t("Aucune inscription pour cette année.")}>
-              <Barres donnees={r.par_cycle.map((c) => ({ nom: t(CYCLES[c.cycle] || c.cycle), valeur: c.inscrits }))}
-                max={Math.max(...r.par_cycle.map((c) => c.inscrits), 1)} unite="" couleur={VERT} />
+              <Anneau donnees={r.par_cycle.map((c) => ({ nom: t(CYCLES[c.cycle] || c.cycle), valeur: c.inscrits }))} unite={t("élèves")} testid="anneau-cycles" />
             </CarteGraphique>
           </div>
           <div className="grid md:grid-cols-2 gap-4">
@@ -236,18 +288,18 @@ function Resultats({ params, contexte }) {
             </select>
           </label>
           <div className="grid lg:grid-cols-2 gap-4">
-            <CarteGraphique testid="res-repartition" titre={t("Répartition des moyennes")} contexte={contexte} population={population} unite={t("nombre d'élèves")}>
+            <CarteGraphique testid="res-repartition" titre={t("Répartition des moyennes")} description={t("Nombre d'élèves par tranche de moyenne pour la sélection.")} contexte={contexte} population={population} unite={t("nombre d'élèves")}>
               <Repartition tranches={r.repartition} bareme={b} />
             </CarteGraphique>
-            <CarteGraphique testid="res-progression" titre={t("Progression par période")} contexte={contexte} unite={t("moyenne sur {b}", { b })}>
+            <CarteGraphique testid="res-progression" titre={t("Progression par période")} description={t("Moyenne de la sélection à chaque période notée.")} contexte={contexte} unite={t("moyenne sur {b}", { b })}>
               <Evolution points={r.progression} bareme={b} />
             </CarteGraphique>
-            <CarteGraphique testid="res-maitrise" titre={t("Niveaux de maîtrise")} contexte={contexte} population={population} unite={t("nombre d'élèves")}>
+            <CarteGraphique testid="res-maitrise" titre={t("Niveaux de maîtrise")} description={t("Nombre d'élèves par niveau d'appréciation défini par l'académie.")} contexte={contexte} population={population} unite={t("nombre d'élèves")}>
               <Barres donnees={r.maitrise.map((m) => ({ nom: libelleDouble(mode, m.libelle_fr, m.libelle_en), valeur: m.eleves,
                 info: `${libelleDouble(mode, m.libelle_fr, m.libelle_en)} · ${t("dès")} ${m.min_pourcent} %` }))}
                 max={Math.max(...r.maitrise.map((m) => m.eleves), 1)} unite="" couleur={VERT} />
             </CarteGraphique>
-            <CarteGraphique testid="res-classes" titre={t("Moyenne par classe")} contexte={contexte} unite={t("moyenne sur {b}", { b })}
+            <CarteGraphique testid="res-classes" titre={t("Moyenne par classe")} description={t("Moyenne des élèves notés de chaque classe pour la sélection.")} contexte={contexte} unite={t("moyenne sur {b}", { b })}
               detail={<Tableau testid="res-classes-table" lignes={r.par_classe} colonnes={[
                 ["nom", t("Classe")], ["eleves_notes", t("Élèves notés"), true], ["notes", t("Notes"), true],
                 ["moyenne", t("Moyenne"), true, (l) => sur(l.moyenne)], ["taux_reussite", t("Réussite"), true, (l) => val(l.taux_reussite, t, " %")]]} />}>
@@ -291,7 +343,7 @@ function Matieres({ params, contexte }) {
       const faibles = new Set(r.classement.difficultes);
       return (
         <div className="grid lg:grid-cols-2 gap-4" data-testid="analyse-matieres">
-          <CarteGraphique testid="mat-moyennes" titre={t("Moyenne par matière")} contexte={contexte} unite={t("moyenne sur {b}", { b })}
+          <CarteGraphique testid="mat-moyennes" titre={t("Moyenne par matière")} description={t("Moyenne des notes de chaque matière pour la sélection.")} contexte={contexte} unite={t("moyenne sur {b}", { b })}
             population={t("{n} matières", { n: r.matieres.length })}
             detail={<Tableau testid="mat-table" lignes={tri} colonnes={[
               ["nom", t("Matière")], ["coefficient", t("Coef."), true], ["eleves_notes", t("Élèves notés"), true], ["notes", t("Notes"), true],
@@ -331,6 +383,7 @@ function Matieres({ params, contexte }) {
 
 function Classes({ params, contexte }) {
   const t = useT();
+  const anim = useAnimation();
   const q = useAnalyse("classes", params);
   return (
     <Etat q={q}>{(r) => {
@@ -339,28 +392,28 @@ function Classes({ params, contexte }) {
       const notees = r.classes.filter((c) => c.eleves_notes);
       return (
         <div className="grid lg:grid-cols-2 gap-4" data-testid="analyse-classes">
-          <CarteGraphique testid="cls-moyennes" titre={t("Moyenne générale par classe")} contexte={contexte} unite={t("moyenne sur {b}", { b })}
+          <CarteGraphique testid="cls-moyennes" titre={t("Moyenne générale par classe")} description={t("Moyenne des élèves notés de chaque classe, calculée comme sur le bulletin (matières pondérées par leur coefficient).")} contexte={contexte} unite={t("moyenne sur {b}", { b })}
             vide={!notees.length} raisonVide={t("Aucune note pour cette sélection.")}>
-            <Barres donnees={notees.map((c) => ({ nom: c.nom, valeur: c.moyenne, info: `${c.nom} · ${c.eleves_notes} ${t("élèves notés")}` }))} max={b} unite={` / ${b}`} />
+            <Barres donnees={notees.map((c) => ({ nom: c.nom, valeur: c.moyenne, info: `${c.nom} · ${c.eleves_notes} ${t("élèves notés")}` }))} max={b} unite={` / ${b}`} seuil={(b * r.seuil_pourcent) / 100} />
           </CarteGraphique>
-          <CarteGraphique testid="cls-reussite" titre={t("Taux de réussite par classe")} contexte={contexte} unite="%"
+          <CarteGraphique testid="cls-reussite" titre={t("Taux de réussite par classe")} description={t("Part des élèves de la classe dont la moyenne atteint le seuil de réussite.")} contexte={contexte} unite="%"
             vide={!notees.length} raisonVide={t("Aucune note pour cette sélection.")}>
-            <Barres donnees={notees.map((c) => ({ nom: c.nom, valeur: c.taux_reussite, info: `${c.nom} · ${t("Seuil")} ${r.seuil_pourcent} %` }))} max={100} unite=" %" couleur={VERT} />
+            <Barres donnees={notees.map((c) => ({ nom: c.nom, valeur: c.taux_reussite, info: `${c.nom} · ${t("Seuil")} ${r.seuil_pourcent} %` }))} max={100} unite=" %" couleur={VERT} seuil={r.seuil_pourcent} />
           </CarteGraphique>
-          <CarteGraphique testid="cls-effectifs" titre={t("Effectifs : inscrits et élèves notés")} contexte={contexte} unite={t("nombre d'élèves")}
+          <CarteGraphique testid="cls-effectifs" titre={t("Effectifs : inscrits et élèves notés")} description={t("Pour chaque classe : élèves inscrits et élèves ayant au moins une note.")} contexte={contexte} unite={t("nombre d'élèves")}
             detail={<Tableau testid="cls-table" lignes={r.classes} colonnes={[
               ["nom", t("Classe")], ["niveau", t("Niveau")], ["inscrits", t("Inscrits"), true], ["eleves_notes", t("Élèves notés"), true],
               ["moyenne", t("Moyenne"), true, (l) => val(l.moyenne, t, ` / ${b}`)], ["taux_reussite", t("Réussite"), true, (l) => val(l.taux_reussite, t, " %")]]} />}>
             <div style={{ height: Math.max(180, r.classes.length * 34 + 50) }}>
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={r.classes.map((c) => ({ nom: c.nom, inscrits: c.inscrits, notes: c.eleves_notes }))} layout="vertical" margin={{ left: 8, right: 16 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" horizontal={false} />
+                  <CartesianGrid {...GRILLE} horizontal={false} />
                   <XAxis type="number" allowDecimals={false} tick={AXE} />
                   <YAxis type="category" dataKey="nom" tick={AXE} width={110} />
-                  <Tooltip />
-                  <Legend wrapperStyle={{ fontSize: 12 }} />
-                  <Bar dataKey="inscrits" name={t("Inscrits")} fill={GRIS} radius={[0, 4, 4, 0]} isAnimationActive={false} />
-                  <Bar dataKey="notes" name={t("Élèves notés")} fill={NAVY} radius={[0, 4, 4, 0]} isAnimationActive={false} />
+                  <Tooltip content={<Infobulle />} cursor={{ fill: "rgba(14,42,99,0.05)" }} />
+                  <Legend {...LEGENDE} formatter={encre} />
+                  <Bar dataKey="inscrits" name={t("Inscrits")} fill={CIEL} radius={[0, 4, 4, 0]} maxBarSize={14} {...anim} />
+                  <Bar dataKey="notes" name={t("Élèves notés")} fill={NAVY} radius={[0, 4, 4, 0]} maxBarSize={14} {...anim} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -394,7 +447,7 @@ function Enseignants({ params, contexte, filtres, setFiltres, options, estPerson
               {(options || []).map(([id, nom]) => (
                 <button key={id} type="button" aria-pressed={choix.includes(id)} data-testid={`ens-choix-${id}`}
                   onClick={() => setFiltres((f) => ({ ...f, enseignant: f.enseignant.includes(id) ? f.enseignant.filter((x) => x !== id) : [...f.enseignant, id] }))}
-                  className={`px-2.5 py-1 rounded-full text-xs ${choix.includes(id) ? "bg-feba-navy text-white" : "bg-white border border-slate-200 text-slate-600"}`}>
+                  className={choix.includes(id) ? "puce-active" : "puce"}>
                   {nom}
                 </button>
               ))}
@@ -408,7 +461,7 @@ function Enseignants({ params, contexte, filtres, setFiltres, options, estPerson
           {!profils.length ? <Vide raison={t("Aucune note attribuée par ces enseignants pour cette sélection.")} /> : (
             <>
               {profils.length > 1 && (
-                <CarteGraphique testid="ens-comparaison" titre={t("Comparaison descriptive des enseignants")} contexte={contexte}
+                <CarteGraphique testid="ens-comparaison" titre={t("Comparaison descriptive des enseignants")} description={t("Moyenne des notes saisies par chaque enseignant. Les classes et matières diffèrent : à lire avec le détail de chaque profil.")} contexte={contexte}
                   unite={t("moyenne sur {b}", { b })}
                   population={t("Classes, matières et nombre de notes diffèrent : à lire avec le détail de chaque profil.")}>
                   <Barres donnees={profils.map((p) => ({ nom: p.nom, valeur: p.moyenne, info: `${p.nom} · ${p.matieres.join(", ")} · ${p.classes.join(", ")} · ${p.notes} ${t("notes")}` }))}
@@ -457,6 +510,7 @@ function Enseignants({ params, contexte, filtres, setFiltres, options, estPerson
 
 function Effectifs({ params, contexte }) {
   const t = useT();
+  const anim = useAnimation();
   const q = useAnalyse("effectifs", params);
   return (
     <Etat q={q}>{(r) => (
@@ -473,11 +527,11 @@ function Effectifs({ params, contexte }) {
           </p>
         )}
         <div className="grid lg:grid-cols-2 gap-4">
-          <CarteGraphique testid="eff-niveaux" titre={t("Inscrits par niveau")} contexte={contexte} unite={t("nombre d'élèves")} vide={!r.par_niveau.length}
+          <CarteGraphique testid="eff-niveaux" titre={t("Inscrits par niveau")} description={t("Inscriptions actives de l'année par niveau.")} contexte={contexte} unite={t("nombre d'élèves")} vide={!r.par_niveau.length}
             raisonVide={t("Aucune inscription pour cette année.")}>
             <Barres donnees={r.par_niveau.map((n) => ({ nom: n.nom, valeur: n.inscrits }))} max={Math.max(...r.par_niveau.map((n) => n.inscrits), 1)} unite="" couleur={VERT} />
           </CarteGraphique>
-          <CarteGraphique testid="eff-classes" titre={t("Remplissage des classes")} contexte={contexte} unite={t("% de la capacité")}
+          <CarteGraphique testid="eff-classes" titre={t("Remplissage des classes")} description={t("Inscrits rapportés à la capacité de la classe ; au-delà de 100 %, la classe dépasse sa capacité.")} contexte={contexte} unite={t("% de la capacité")}
             vide={!r.par_classe.length} raisonVide={t("Aucune inscription pour cette année.")}
             detail={<Tableau testid="eff-table" lignes={r.par_classe} colonnes={[
               ["nom", t("Classe")], ["niveau", t("Niveau")], ["inscrits", t("Inscrits"), true], ["filles", t("Filles"), true],
@@ -485,16 +539,16 @@ function Effectifs({ params, contexte }) {
             <Barres donnees={r.par_classe.map((c) => ({ nom: c.nom, valeur: c.taux_remplissage ?? 0, info: `${c.nom} · ${c.inscrits} / ${c.capacite ?? "?"}` }))}
               max={Math.max(100, ...r.par_classe.map((c) => c.taux_remplissage || 0))} unite=" %" surligne={(d) => d.valeur > 100} />
           </CarteGraphique>
-          <CarteGraphique testid="eff-mois" titre={t("Inscriptions enregistrées par mois")} contexte={r.annee.nom} unite={t("nombre d'inscriptions")}
+          <CarteGraphique testid="eff-mois" titre={t("Inscriptions enregistrées par mois")} description={t("Nombre d'inscriptions saisies chaque mois de l'année.")} contexte={r.annee.nom} unite={t("nombre d'inscriptions")}
             vide={!r.inscriptions_par_mois.length} raisonVide={t("Aucune inscription pour cette année.")}>
             <div className="h-52">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={r.inscriptions_par_mois}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
+                  <CartesianGrid {...GRILLE} vertical={false} />
                   <XAxis dataKey="mois" tick={AXE} />
                   <YAxis allowDecimals={false} tick={AXE} width={32} />
-                  <Tooltip formatter={(v) => [v, t("inscriptions")]} />
-                  <Bar dataKey="inscriptions" name={t("Inscriptions")} fill={NAVY} radius={[4, 4, 0, 0]} isAnimationActive={false} />
+                  <Tooltip formatter={(v) => [v, t("inscriptions")]} cursor={{ fill: "rgba(14,42,99,0.05)" }} />
+                  <Bar dataKey="inscriptions" name={t("Inscriptions")} fill={CIEL} radius={[4, 4, 0, 0]} maxBarSize={40} {...anim} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -507,6 +561,7 @@ function Effectifs({ params, contexte }) {
 
 function Presences({ params, contexte }) {
   const t = useT();
+  const anim = useAnimation();
   const q = useAnalyse("presences", params);
   return (
     <Etat q={q}>{(r) => {
@@ -521,20 +576,24 @@ function Presences({ params, contexte }) {
             <Tuile titre={t("Absences excusées")} valeur={s.excused} />
           </div>
           <div className="grid lg:grid-cols-2 gap-4">
-            <CarteGraphique titre={t("Taux de présence par mois")} contexte={contexte} unite="%" vide={!r.par_mois.length}>
+            <CarteGraphique titre={t("Taux de présence par mois")} description={t("Part des appels où l'élève était présent, chaque mois.")} contexte={contexte} unite="%" vide={!r.par_mois.length}>
               <div className="h-52">
                 <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={r.par_mois.map((m) => ({ mois: m.mois, taux: m.taux_presence }))}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
+                  <AreaChart data={r.par_mois.map((m) => ({ mois: m.mois, taux: m.taux_presence }))} margin={{ top: 8, right: 12 }}>
+                    <defs><linearGradient id="degrade-presence" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor={VERT} stopOpacity={0.28} /><stop offset="100%" stopColor={VERT} stopOpacity={0.02} />
+                    </linearGradient></defs>
+                    <CartesianGrid {...GRILLE} vertical={false} />
                     <XAxis dataKey="mois" tick={AXE} />
                     <YAxis domain={[0, 100]} tick={AXE} width={32} />
                     <Tooltip formatter={(v) => [`${v} %`, t("Taux de présence")]} />
-                    <Line dataKey="taux" name={t("Taux de présence")} stroke={NAVY} strokeWidth={2} dot={{ r: 3 }} isAnimationActive={false} />
-                  </LineChart>
+                    <Area type="monotone" dataKey="taux" name={t("Taux de présence")} stroke={VERT} strokeWidth={2} fill="url(#degrade-presence)"
+                      dot={{ r: 3, strokeWidth: 2, fill: "#fff" }} activeDot={{ r: 5 }} {...anim} />
+                  </AreaChart>
                 </ResponsiveContainer>
               </div>
             </CarteGraphique>
-            <CarteGraphique titre={t("Taux de présence par classe")} contexte={contexte} unite="%"
+            <CarteGraphique titre={t("Taux de présence par classe")} description={t("Part des appels où les élèves de la classe étaient présents.")} contexte={contexte} unite="%"
               detail={<Tableau testid="pres-classes" lignes={r.par_classe} colonnes={[
                 ["nom", t("Classe")], ["appels", t("Appels"), true], ["absent", t("Absences"), true], ["late", t("Retards"), true],
                 ["taux_presence", t("Présence"), true, (l) => val(l.taux_presence, t, " %")]]} />}>
@@ -558,10 +617,18 @@ function Contenu() {
   const t = useT();
   const { user } = useAuth();
   const academyKey = useAcademyKey();
-  const [filtres, setFiltres] = useState(VIDES);
-  const [onglet, setOnglet] = useState("ensemble");
+  const { search } = useLocation();
+  // Lien partagé ou vue enregistrée : onglet et filtres repris de l'adresse (clés connues seulement).
+  const [depart] = useState(() => lireLien(search, VIDES, ONGLETS.map(([v]) => v)));
+  const [filtres, setFiltres] = useState(depart.filtres || VIDES);
+  const [onglet, setOnglet] = useState(depart.onglet || "ensemble");
+  const rapport = useRef(null);
   const estPersonnel = user?.role === "superadmin" || user?.role === "admin";
-  useEffect(() => setFiltres(VIDES), [academyKey]);
+  // Changement d'académie (après l'ouverture) : les filtres de l'ancienne n'ont plus de sens.
+  const academiePrecedente = useRef(academyKey);
+  useEffect(() => {
+    if (academiePrecedente.current !== academyKey) { academiePrecedente.current = academyKey; setFiltres(VIDES); }
+  }, [academyKey]);
   const params = parametres(filtres);
   const optionsParams = parametres({ ...VIDES, annee: filtres.annee, cycle: filtres.cycle, niveau: filtres.niveau, classe: filtres.classe });
   const options = useQuery({ queryKey: ["analyse-filtres", academyKey, optionsParams], queryFn: () => analyticsAPI.filtres(optionsParams),
@@ -605,8 +672,16 @@ function Contenu() {
   );
   return (
     <div className="space-y-4">
-      <PageHeader title={t("Centre d'analyse")} subtitle={o ? `${o.academie.nom} · ${contexte}` : t("Effectifs, résultats et présences")} action={<ChoixPresentation />} />
-      <div className="card space-y-3" data-testid="analyse-filtres">
+      <PageHeader title={t("Centre d'analyse")} subtitle={o ? `${o.academie.nom} · ${contexte}` : t("Effectifs, résultats et présences")}
+        action={<ActionsAnalyse rapport={rapport} onglet={onglet} filtres={filtres} profil={user?.role || "personnel"} nomFichier="centre-analyse"
+          appliquer={(v) => { setFiltres({ ...VIDES, ...v.filtres }); setOnglet(v.onglet || "ensemble"); }}
+          entete={[`${t("Centre d'analyse")} · ${o?.academie?.nom || ""} · ${contexte}`,
+            actifs.length ? `${t("Filtres")} : ${actifs.map(([c, v]) => `${LIBELLES[c]} = ${libelleValeur(c, v)}`).join(" ; ")}` : t("Aucun filtre"),
+            `${t("Exporté le")} ${new Date().toLocaleString()}`]} />} />
+      <p className="hidden print:block text-xs text-slate-600" data-testid="impression-entete">
+        {o?.academie?.nom} · {contexte}{actifs.length ? ` · ${actifs.map(([c, v]) => `${LIBELLES[c]} : ${libelleValeur(c, v)}`).join(" · ")}` : ""} · {new Date().toLocaleString()}
+      </p>
+      <div className="card space-y-3 print:hidden" data-testid="analyse-filtres">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2">{simples.map(select)}</div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
           {multiples.map((cle) => (
@@ -636,11 +711,11 @@ function Contenu() {
           </div>
         )}
       </div>
-      <div className="card">
-        <div className="flex flex-wrap gap-1.5 mb-4" role="tablist">
+      <div className="card print:shadow-none print:border-0 print:p-0" ref={rapport} data-testid="analyse-rapport">
+        <div className="flex flex-wrap gap-1.5 mb-4 print:hidden" role="tablist">
           {ONGLETS.map(([v, nom]) => (
             <button key={v} type="button" role="tab" aria-selected={onglet === v} onClick={() => setOnglet(v)} data-testid={`onglet-${v}`}
-              className={`px-3 py-1.5 rounded-lg text-sm font-medium ${onglet === v ? "bg-feba-navy text-white" : "bg-white border border-slate-200 text-slate-600"}`}>
+              className={onglet === v ? "onglet-actif" : "onglet"}>
               {t(nom)}
             </button>
           ))}

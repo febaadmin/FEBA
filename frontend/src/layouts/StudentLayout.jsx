@@ -1,7 +1,7 @@
-import { NavLink } from "react-router-dom";
+
 import { useNonLusMessagerie } from "../hooks/useNonLusMessagerie";
 import NotificationBell from "../components/NotificationBell";
-import { BarChart3, Home, ClipboardList, Calendar, FileText, BookOpen, MessageSquare, User, LogOut, School, Menu, X, Megaphone, Video, TrendingUp, ClipboardCheck, CircleHelp } from "lucide-react";
+import { LogOut, Menu, X } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
 import AcademyLogo from "../components/AcademyLogo";
 import AcademyName from "../components/AcademyName";
@@ -9,29 +9,13 @@ import { clsx } from "clsx";
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { t } from "../i18n";
+import MenuLateral from "../components/navigation/MenuLateral";
+import { useEchap } from "../hooks/useEchap";
+import { MENU_ELEVE } from "./menus";
 import LanguageSwitcher from "../components/ui/LanguageSwitcher";
 import { useEntityContext } from "../hooks/useEntityContext";
 import EntitySwitcher from "../components/EntitySwitcher";
 import AcademyScopedOutlet from "../components/AcademyScopedOutlet";
-
-const nav = [
-  { label: "Accueil",         icon: Home,          to: "/student/home" },
-  { label: "Mes notes",       icon: ClipboardList, to: "/student/grades" },
-  { label: "Analyse des résultats", icon: BarChart3, to: "/student/analyses" },
-  { label: "Mon suivi",       icon: TrendingUp,    to: "/student/suivi", feature: "suivi_familles" },
-  { label: "Mes épreuves", icon: ClipboardCheck, to: "/student/evaluations", feature: "evaluations_en_ligne" },
-  { label: "Aide", icon: CircleHelp, to: "/student/aide" },
-  { label: "Absences",        icon: Calendar,      to: "/student/attendance" },
-  { label: "Devoirs",         icon: FileText,      to: "/student/homework" },
-  { label: "Emploi du temps", icon: Calendar,      to: "/student/schedule" },
-  // Fonctionnalité conditionnelle : réservée aux entités « académie en
-  // ligne » (FEBA FHA). Masquée pour FEBA — et refusée par l\'API.
-  { label: "Salles virtuelles", icon: Video,       to: "/student/virtual", feature: "virtual_classrooms" },
-  { label: "Bulletins",       icon: BookOpen,      to: "/student/bulletins" },
-  { label: "Messages",        icon: MessageSquare, to: "/student/messages" },
-  { label: "Annonces",        icon: Megaphone,     to: "/student/announcements" },
-  { label: "Mon profil",      icon: User,          to: "/student/profile" },
-];
 
 function useIsMobile() {
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
@@ -53,7 +37,6 @@ export default function StudentLayout() {
   // protection réelle est côté serveur (permission HasEntityFeature),
   // qui refuse l'endpoint même si l'URL est saisie à la main.
   const { hasFeature } = useEntityContext();
-  const visibleNav = nav.filter((item) => !item.feature || hasFeature(item.feature));
 
   const { user, logout } = useAuth();
   const isMobile = useIsMobile();
@@ -66,6 +49,8 @@ export default function StudentLayout() {
 
   const msgUnread = useNonLusMessagerie(user?.id);
   const closeSidebarOnMobile = () => { if (isMobile) setOpen(false); };
+  // Téléphone : Échap ferme le menu ouvert.
+  useEchap(isMobile && open, () => setOpen(false));
 
   return (
     <div className="flex h-screen fond-app overflow-hidden">
@@ -90,20 +75,7 @@ export default function StudentLayout() {
               </div>
               {isMobile && <button onClick={() => setOpen(false)} className="text-slate-400 hover:text-white"><X className="w-5 h-5" /></button>}
             </div>
-            <nav className="flex-1 p-3 overflow-y-auto space-y-0.5">
-              {visibleNav.map(item => (
-                <NavLink key={item.to} to={item.to} end={item.to.endsWith("/suivi")} onClick={closeSidebarOnMobile}
-                  className={({ isActive }) => (isActive ? "nav-item-actif" : "nav-item")}>
-                  <item.icon className="w-4 h-4 shrink-0" />
-                  <span className="truncate">{t(item.label)}</span>
-                  {item.to === "/student/messages" && msgUnread > 0 && (
-                    <span data-testid="badge-messages-menu" aria-label={t("{n} conversation(s) non lue(s)", { n: msgUnread })} className="ml-auto w-5 h-5 bg-danger text-white text-[10px] rounded-full flex items-center justify-center font-bold shrink-0">
-                      {msgUnread > 9 ? "9+" : msgUnread}
-                    </span>
-                  )}
-                </NavLink>
-              ))}
-            </nav>
+            <MenuLateral menu={MENU_ELEVE} profil="student" visible={(item) => !item.feature || hasFeature(item.feature)} badges={{ messages: msgUnread }} onNavigate={closeSidebarOnMobile} />
             <div className="p-3 border-t border-white/10">
               <div className="flex items-center gap-2 px-4 py-2 mb-1">
                 <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center text-white text-xs font-bold shrink-0">

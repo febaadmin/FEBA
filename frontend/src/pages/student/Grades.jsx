@@ -14,6 +14,7 @@ import { gradesAPI, schoolsAPI } from "../../api";
 import PageHeader from "../../components/ui/PageHeader";
 import DataTable from "../../components/ui/DataTable";
 import { RadarChart, PolarGrid, PolarAngleAxis, Radar, ResponsiveContainer, Tooltip } from "recharts";
+import { BLEU, useAnimation } from "../../theme/graphiques";
 import { t } from "../../i18n";
 
 const NOTE_TYPE_BADGE = {
@@ -27,6 +28,7 @@ const NOTE_TYPE_BADGE = {
 
 export default function StudentGrades() {
   const [period, setPeriod] = useState("");
+  const anim = useAnimation();
 
   // 1. Récupérer l'année courante EN PREMIER
   const { data: yearsData } = useQuery({ queryKey: ["years"], queryFn: schoolsAPI.years });
@@ -146,7 +148,7 @@ export default function StudentGrades() {
             <RadarChart data={radarData}>
               <PolarGrid stroke="#e2e8f0" />
               <PolarAngleAxis dataKey="subject" tick={{ fontSize: 10 }} />
-              <Radar name="Moy. Matière" dataKey="note" stroke="#1D4ED8" fill="#1D4ED8" fillOpacity={0.2} />
+              <Radar name="Moy. Matière" dataKey="note" stroke={BLEU} fill={BLEU} fillOpacity={0.2} strokeWidth={2} {...anim} />
               <Tooltip formatter={v => [`${parseFloat(v).toFixed(2)}/20`, "Moy. Matière"]} />
             </RadarChart>
           </ResponsiveContainer>

@@ -9,17 +9,27 @@
 @layer base {
   * { @apply border-gray-200; }
   html { scroll-behavior: smooth; }
-  body { @apply text-slate-900 font-sans antialiased; background-color: #F4F6FB; }
-  :root { --sidebar-width: 260px; }
+  body { @apply text-slate-900 font-sans antialiased; background-color: var(--feba-fond); }
+  /* Jetons du système de design FEBA (mêmes valeurs que tailwind.config.js et theme/graphiques.js). */
+  :root {
+    --sidebar-width: 260px;
+    --feba-navy: #071D49; --feba-navy-2: #0E2A63; --feba-or: #D89B16; --feba-ciel: #4AA3DF; --feba-creme: #F7F2E8;
+    --feba-action: #1D4ED8;
+    --feba-succes: #15803D; --feba-attention: #B45309; --feba-alerte: #B91C1C; --feba-info: #1D4ED8;
+    --feba-fond: #F4F6FB; --feba-surface: #FFFFFF; --feba-bordure: #E2E8F0;
+    --feba-texte: #0F172A; --feba-texte-2: #475569; --feba-texte-3: #64748B;
+    --feba-rayon: 0.75rem; --feba-rayon-carte: 1rem;
+    --feba-duree-courte: 150ms; --feba-duree: 250ms; --feba-duree-graphique: 700ms;
+  }
   h1, h2, h3 { @apply tracking-tight; }
-  :focus-visible { outline: 2px solid #1D4ED8; outline-offset: 2px; border-radius: 4px; }
+  :focus-visible { outline: 2px solid var(--feba-action); outline-offset: 2px; border-radius: 4px; }
   ::selection { background: #BFDBFE; }
 }
 
 @layer components {
   /* FEBA Academic Premium : fond fixe et discret, jamais animé */
   .fond-app {
-    background-color: #F4F6FB;
+    background-color: var(--feba-fond);
     background-image:
       radial-gradient(1100px 520px at 100% -8%, rgba(29,78,216,.07), transparent 70%),
       radial-gradient(900px 480px at -8% 108%, rgba(139,92,246,.05), transparent 70%);
@@ -64,6 +74,12 @@
   .sidebar-item-active { @apply nav-item-actif; }
 
   .page-entree { @apply animate-apparition; }
+
+  /* Onglets de page et puces de filtre : un seul dessin pour tous les modules. */
+  .onglet { @apply inline-flex items-center gap-1.5 shrink-0 whitespace-nowrap px-3 py-1.5 rounded-xl text-sm font-medium bg-white border border-slate-200 text-slate-600 transition-colors duration-150 hover:bg-slate-50 hover:text-slate-900 hover:border-slate-300; }
+  .onglet-actif { @apply onglet bg-feba-navy border-feba-navy text-white shadow-carte hover:bg-feba-navy hover:text-white hover:border-feba-navy; }
+  .puce { @apply inline-flex items-center gap-1 shrink-0 whitespace-nowrap px-2.5 py-1 rounded-full text-xs font-medium bg-white border border-slate-200 text-slate-600 transition-colors duration-150 hover:bg-slate-50 hover:text-slate-900; }
+  .puce-active { @apply puce bg-feba-navy border-feba-navy text-white hover:bg-feba-navy hover:text-white; }
 }
 
 /* Tableaux sur téléphone : chaque ligne devient une carte lisible, sans défilement horizontal */
@@ -78,6 +94,13 @@
   .table-cartes td[data-label]:not([data-label=""])::before {
     content: attr(data-label); flex-shrink: 0; font-size: .75rem; font-weight: 600; color: #64748b; text-align: left;
   }
+}
+
+@media print {
+  aside, .barre-haute, [data-testid="menu-lateral"] { display: none !important; }
+  body, .fond-app { background: #fff !important; }
+  .card { box-shadow: none !important; break-inside: avoid; }
+  figure { break-inside: avoid; }
 }
 
 @media (prefers-reduced-motion: reduce) {

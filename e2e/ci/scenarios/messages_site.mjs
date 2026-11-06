@@ -4,7 +4,7 @@
 // badge du menu exact et mis à jour après lecture ; onglet resté ouvert pendant un
 // déploiement (module JavaScript introuvable) : rechargement unique, pas d'écran d'erreur.
 // Backend E2E en locmem : aucun e-mail ne sort ; destinataires fictifs @exemple.org.
-import { API, BASE, api, connecter, jeton, ok, unique } from "../outils.mjs";
+import { API, BASE, api, connecter, jeton, ok, unique, ouvrirMenus } from "../outils.mjs";
 
 const S = "messages_site";
 
@@ -111,6 +111,7 @@ export default async function () {
   let coupes = 0;
   const debutChunk = Date.now();
   await s.route(/\/assets\/Messages-[\w-]+\.js$/, (r) => (coupes++ === 0 ? r.fulfill({ status: 404, body: "" }) : r.continue()));
+  await ouvrirMenus(s);
   await s.getByRole("link", { name: /^Messages/ }).first().click();
   await s.waitForTimeout(4000);
   const ecranErreur = await s.getByText("Une erreur est survenue.").count();

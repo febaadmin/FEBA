@@ -136,3 +136,13 @@ export async function api(methode, chemin, jt, corps) {
 }
 export const liste = (d) => (Array.isArray(d) ? d : d?.results || []);
 export const unique = () => Date.now() % 1000000;
+
+/** Menu latéral regroupé : ouvre les groupes repliés (comme le ferait l'utilisateur). */
+export async function ouvrirMenus(p) {
+  // Un clic re-rend le menu : on cherche à chaque fois le prochain groupe replié.
+  for (let i = 0; i < 12; i++) {
+    const b = p.locator('[data-testid^="menu-groupe-"] > button[aria-expanded="false"]:not([disabled])').first();
+    if (!(await b.count())) return;
+    await b.click();
+  }
+}

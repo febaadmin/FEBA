@@ -37,12 +37,10 @@ export default async function () {
   await p.getByTestId("onglet-effectifs").click();
   await p.waitForTimeout(800);
   ok(S, "effectifs affichés = API", (await p.getByTestId("eff-inscrits").innerText()).includes(String(eff.donnees.inscrits)));
-  await p.getByTestId("presentation-en").click();
-  ok(S, "présentation anglaise", (await p.getByTestId("eff-inscrits").innerText()).includes("Enrolled students"));
-  await p.getByTestId("presentation-bi").click();
-  ok(S, "présentation bilingue, même chiffre", (await p.getByTestId("eff-inscrits").innerText()).includes("Élèves inscrits / Enrolled students")
-    && (await p.getByTestId("eff-inscrits").innerText()).includes(String(eff.donnees.inscrits)));
-  await p.getByTestId("presentation-fr").click();
+  // Actions du rapport (à la place de l'ancien sélecteur de langue en double).
+  ok(S, "plus de second sélecteur de langue", await p.getByTestId("presentation-en").count() === 0);
+  const [csv] = await Promise.all([p.waitForEvent("download", { timeout: 10000 }), p.getByTestId("analyse-exporter").click()]);
+  ok(S, "export CSV des tableaux de l'onglet", (await csv.suggestedFilename()).endsWith(".csv"));
   // Parcours : classe → matière → enseignant, puis KPI et détail cohérents avec l'API.
   const classe = opts.classes.find((c) => res.donnees.par_classe?.some((x) => x.id === c.id)) || opts.classes[0];
   await p.getByTestId("onglet-ensemble").click();

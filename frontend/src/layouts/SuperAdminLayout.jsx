@@ -1,8 +1,7 @@
-import { NavLink } from "react-router-dom";
+
 import { useNonLusMessagerie } from "../hooks/useNonLusMessagerie";
 import { useState, useEffect } from "react";
-import {
-  BarChart3, Building2, Star, Stamp, FileBarChart, LayoutDashboard, Users, Shield, GraduationCap, UserCheck, Users2, BookOpen, DollarSign, Megaphone, Settings, LogOut, Menu, X, MessageSquare, Layers, ClipboardList, FileText, Calendar, UserCog, FolderOpen, Image, ClipboardCheck, CircleHelp, ListTree, Video, Globe, AlertTriangle, CreditCard, Award, Mail, BellRing, Inbox, TrendingUp, ReceiptText, Wallet } from "lucide-react";
+import { LogOut, Menu, X } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
 import AcademyLogo from "../components/AcademyLogo";
 import AcademyName from "../components/AcademyName";
@@ -12,59 +11,13 @@ import { clsx } from "clsx";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuthStore } from "../store/authStore";
 import { t } from "../i18n";
+import MenuLateral from "../components/navigation/MenuLateral";
+import { useEchap } from "../hooks/useEchap";
+import { MENU_SUPERADMIN } from "./menus";
 import LanguageSwitcher from "../components/ui/LanguageSwitcher";
 import NotificationBell from "../components/NotificationBell";
 import EntitySwitcher from "../components/EntitySwitcher";
 import AcademyScopedOutlet from "../components/AcademyScopedOutlet";
-
-const nav = [
-  { section: "SuperAdmin", items: [
-    { label: "Tableau de bord",       icon: LayoutDashboard, to: "/superadmin/dashboard" },
-    { label: "Tous les utilisateurs", icon: Users,            to: "/superadmin/users" },
-    { label: "Académies",             icon: Building2,        to: "/superadmin/academies" },
-    { label: "Gestion Admins",        icon: Shield,           to: "/superadmin/admins" },
-    { label: "Messages",              icon: MessageSquare,    to: "/superadmin/messages", badge: true },
-    { label: "Espace d'envoi d'e-mails", icon: Mail, to: "/superadmin/emails" },
-    { label: "Boîte mail contact", icon: Inbox, to: "/superadmin/outbox" },
-    { label: "Incidents techniques",  icon: AlertTriangle,    to: "/superadmin/incidents" },
-    { label: "Mon profil",            icon: UserCog,          to: "/superadmin/profile" },
-  ]},
-  { section: "Gestion École", items: [
-    { label: "Élèves",            icon: GraduationCap, to: "/superadmin/students" },
-    { label: "Enseignants",       icon: UserCheck,     to: "/superadmin/teachers" },
-    { label: "Parents",           icon: Users2,        to: "/superadmin/parents" },
-    { label: "Inscriptions",      icon: ClipboardCheck, CircleHelp, to: "/superadmin/enrollments" },
-    { label: "Classes",           icon: BookOpen,      to: "/superadmin/classes" },
-    { label: "Niveaux",           icon: Layers,        to: "/superadmin/levels" },
-    { label: "Notes",             icon: ClipboardList, to: "/superadmin/grades" },
-    { label: "Bulletins",         icon: FileText,      to: "/superadmin/bulletins" },
-  { label: "Centre d'analyse", icon: BarChart3, to: "/superadmin/analyses" },
-    { label: "Appréciations",     icon: Star,          to: "/superadmin/appreciations" },
-    { label: "Paiements",         icon: DollarSign,    to: "/superadmin/payments" },
-  { label: "Transactions carte", icon: CreditCard, to: "/superadmin/card-transactions" },
-  { label: "Tarifs et échéances", icon: ReceiptText, to: "/superadmin/tarifs" },
-  { label: "Situation financière", icon: Wallet, to: "/superadmin/situation-financiere" },
-  { label: "Relances de paiement", icon: BellRing, to: "/superadmin/payment-reminders" },
-  { label: "Documents officiels", icon: Award, to: "/superadmin/official-documents" },
-  { label: "Gabarits des documents", icon: Stamp, to: "/superadmin/document-templates" },
-    { label: "Absences",          icon: Calendar,      to: "/superadmin/attendance" },
-    { label: "Devoirs",           icon: BookOpen,      to: "/superadmin/homework" },
-    { label: "Emploi du temps",   icon: Calendar,      to: "/superadmin/schedule" },
-    { label: "Salles virtuelles", icon: Video,         to: "/superadmin/virtual" },
-    { label: "Annonces",          icon: Megaphone,     to: "/superadmin/announcements" },
-    { label: "Paramètres",        icon: Settings,      to: "/superadmin/settings" },
-    { label: "Fichiers",           icon: FolderOpen,    to: "/superadmin/user-files" },
-    { label: "Admissions en ligne", icon: ClipboardList, to: "/superadmin/fha-admissions", feature: "online_admissions" },
-    { label: "Modules pédagogiques", icon: ClipboardCheck, CircleHelp, to: "/superadmin/modules" },
-    { label: "Suivi pédagogique", icon: TrendingUp, to: "/superadmin/suivi", feature: "suivi_pedagogique" },
-    { label: "Compétences", icon: ListTree, to: "/superadmin/suivi/referentiels", feature: "suivi_pedagogique" },
-    { label: "Examens et évaluations", icon: ClipboardCheck, CircleHelp, to: "/superadmin/evaluations", feature: "evaluations_en_ligne" },
-    { label: "Aide", icon: CircleHelp, to: "/superadmin/aide" },
-    { label: "Rapports mensuels", icon: FileBarChart, to: "/superadmin/monthly-reports", feature: "monthly_reports" },
-  { label: "Site vitrine",       icon: Globe,         to: "/superadmin/website" },
-    { label: "Logo & Branding",    icon: Image,         to: "/superadmin/branding" },
-  ]},
-];
 
 function useIsMobile() {
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
@@ -101,6 +54,8 @@ export default function SuperAdminLayout() {
   const unreadCount = useNonLusMessagerie(storeUser?.id);
 
   const closeSidebarOnMobile = () => { if (isMobile) setOpen(false); };
+  // Téléphone : Échap ferme le menu ouvert.
+  useEchap(isMobile && open, () => setOpen(false));
 
   return (
     <div className="flex h-screen fond-app overflow-hidden">
@@ -141,32 +96,7 @@ export default function SuperAdminLayout() {
               )}
             </div>
 
-            <nav className="flex-1 p-3 overflow-y-auto space-y-4">
-              {nav.map(section => (
-                <div key={t(section.section)}>
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500 px-4 mb-1">
-                    {t(section.section)}
-                  </p>
-                  <div className="space-y-0.5">
-                    {section.items.filter((item) => isNavItemVisible(item, academy)).map(item => (
-                      <NavLink
-                        key={item.to} to={item.to} end={item.to.endsWith("/suivi")}
-                        onClick={closeSidebarOnMobile}
-                        className={({ isActive }) => (isActive ? "nav-item-actif" : "nav-item")}
-                      >
-                        <item.icon className="w-4 h-4 shrink-0" />
-                        <span className="flex-1 truncate">{t(item.label)}</span>
-                        {item.badge && unreadCount > 0 && (
-                          <span data-testid="badge-messages-menu" aria-label={t("{n} conversation(s) non lue(s)", { n: unreadCount })} className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center shrink-0">
-                            {unreadCount > 9 ? "9+" : unreadCount}
-                          </span>
-                        )}
-                      </NavLink>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </nav>
+            <MenuLateral menu={MENU_SUPERADMIN} profil="superadmin" visible={(item) => isNavItemVisible(item, academy)} badges={{ messages: unreadCount }} onNavigate={closeSidebarOnMobile} />
 
             <div className="p-3 border-t border-white/10">
               <div className="flex items-center gap-2 px-4 py-2 mb-1">

@@ -4,12 +4,26 @@ import { motion, AnimatePresence } from "framer-motion";
 import { X } from "lucide-react";
 import { t } from "../../i18n";
 
+// Fenêtres ouvertes, de la plus ancienne à la plus récente : Échap ne ferme que la
+// fenêtre du dessus (avant : deux fenêtres superposées se fermaient ensemble et le
+// texte saisi dans la seconde était perdu).
+const pile = [];
+
 export default function Modal({ open, onClose, title, children, size = "md" }) {
+  const jeton = useRef(Symbol("fenetre"));
   useEffect(() => {
     if (!open) return undefined;
-    const handler = (e) => e.key === "Escape" && onClose();
+    const id = jeton.current;
+    pile.push(id);
+    const handler = (e) => {
+      if (e.key === "Escape" && pile[pile.length - 1] === id) { e.stopPropagation(); onClose(); }
+    };
     document.addEventListener("keydown", handler);
-    return () => document.removeEventListener("keydown", handler);
+    return () => {
+      document.removeEventListener("keydown", handler);
+      const i = pile.lastIndexOf(id);
+      if (i >= 0) pile.splice(i, 1);
+    };
   }, [open, onClose]);
 
   // Le focus entre dans la fenêtre à l'ouverture et revient au bouton d'origine à la fermeture.
@@ -33,14 +47,14 @@ export default function Modal({ open, onClose, title, children, size = "md" }) {
           <motion.div initial={{ opacity: 0, scale: 0.95, y: 16 }} animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.97, y: 8 }} transition={{ type: "spring", stiffness: 420, damping: 32 }}
             ref={fenetre} tabIndex={-1} role="dialog" aria-modal="true" aria-label={typeof title === "string" ? title : undefined}
-            className={`relative outline-none bg-white rounded-2xl shadow-fenetre w-full ${sizes[size]} max-h-[92vh] overflow-y-auto z-10 mx-4 md:mx-0`}>
-            <div className="flex items-center justify-between p-6 border-b border-slate-100">
-              <h2 className="text-lg font-semibold text-slate-800">{title}</h2>
+            className={`relative outline-none bg-white rounded-2xl shadow-fenetre w-full ${sizes[size]} max-h-[92vh] overflow-y-auto z-10`}>
+            <div className="flex items-center justify-between gap-3 px-4 py-4 sm:p-6 border-b border-slate-100">
+              <h2 className="text-base sm:text-lg font-semibold text-slate-800 min-w-0 break-words">{title}</h2>
               <button type="button" onClick={onClose} aria-label={t("Fermer")} className="p-2 rounded-xl hover:bg-slate-100 transition-colors">
                 <X className="w-5 h-5 text-slate-500" />
               </button>
             </div>
-            <div className="p-6">{children}</div>
+            <div className="p-4 sm:p-6">{children}</div>
           </motion.div>
         </div>
       )}

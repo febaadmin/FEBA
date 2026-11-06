@@ -111,7 +111,7 @@ function Historique() {
       <div className="flex flex-wrap gap-2" role="group" aria-label={t("Filtrer l'historique")}>
         {OBJETS.map(([v, l]) => (
           <button key={v || "tout"} type="button" aria-pressed={objet === v} onClick={() => setObjet(v)}
-            className={`px-2.5 py-1 rounded-lg text-xs ${objet === v ? "bg-feba-navy text-white" : "border border-slate-200 text-slate-600"}`}>{t(l)}</button>
+            className={objet === v ? "puce-active" : "puce"}>{t(l)}</button>
         ))}
       </div>
       {q.isPending ? <div className="h-24 animate-pulse motion-reduce:animate-none rounded-xl bg-slate-100" /> : !lignes.length ? (
@@ -183,7 +183,7 @@ export default function Tarifs() {
           <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1" role="tablist">
             {ONGLETS.map(([id, libelle]) => (
               <button key={id} type="button" role="tab" aria-selected={onglet === id} onClick={() => setOnglet(id)} data-testid={`onglet-${id}`}
-                className={`shrink-0 whitespace-nowrap px-3 py-1.5 rounded-xl text-sm font-medium ${onglet === id ? "bg-feba-navy text-white" : "bg-white border border-slate-200 text-slate-600"}`}>
+                className={onglet === id ? "onglet-actif" : "onglet"}>
                 {t(libelle)}
               </button>
             ))}
