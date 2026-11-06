@@ -103,13 +103,25 @@ jobs:
       - name: LibreOffice et polices (comme backend/Dockerfile.prod)
         # Un miroir apt bloqué a figé ce pas 35 min (05/11) : sans délai, le job durait
         # jusqu'à 6 h et bloquait la file des déploiements (groupe feba-production).
-        timeout-minutes: 15
+        # 06/11 : un passage a encore dépassé 15 min (miroir lent) alors que le passage
+        # parallèle installait en 3 min. Chaque tentative est désormais bornée (6 min),
+        # les téléchargements ont un délai et des reprises, et le déclencheur man-db
+        # (lent sur les exécuteurs GitHub) est désactivé ; jusqu'à 3 tentatives.
+        timeout-minutes: 20
         run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y -qq --no-install-recommends \
-            libreoffice-writer-nogui libreoffice-impress-nogui \
-            fonts-dejavu-core fonts-liberation fonts-liberation2 \
-            fonts-crosextra-carlito fonts-crosextra-caladea
+          sudo rm -f /var/lib/man-db/auto-update
+          APT="-o Acquire::Retries=3 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30 -o DPkg::Lock::Timeout=120"
+          for essai in 1 2 3; do
+            if sudo timeout 360 apt-get $APT update -qq && sudo timeout 360 apt-get $APT install -y -qq --no-install-recommends \
+                libreoffice-writer-nogui libreoffice-impress-nogui \
+                fonts-dejavu-core fonts-liberation fonts-liberation2 \
+                fonts-crosextra-carlito fonts-crosextra-caladea; then
+              break
+            fi
+            echo "Tentative $essai échouée ou trop lente, nouvel essai."
+            [ "$essai" = 3 ] && exit 1
+            sleep 10
+          done
           soffice --version
 
       - name: Installer les dépendances
